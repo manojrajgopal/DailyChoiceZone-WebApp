@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ban_delivery",
+    "message": "Free delivery on orders above ₹999",
+    "href": "/shipping"
+  },
+  {
+    "id": "ban_returns",
+    "message": "15-day easy returns on everything",
+    "href": "/returns"
+  },
+  {
+    "id": "ban_welcome",
+    "message": "New here? Use WELCOME10 for 10% off your first order",
+    "href": "/shop"
+  }
+]

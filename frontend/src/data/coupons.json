@@ -1,0 +1,32 @@
+[
+  {
+    "code": "WELCOME10",
+    "description": "10% off your first order",
+    "type": "percent",
+    "value": 10,
+    "minSubtotal": 999,
+    "maxDiscount": 500
+  },
+  {
+    "code": "ZONE500",
+    "description": "₹500 off orders above ₹2,999",
+    "type": "flat",
+    "value": 500,
+    "minSubtotal": 2999
+  },
+  {
+    "code": "DAILY15",
+    "description": "15% off orders above ₹1,999",
+    "type": "percent",
+    "value": 15,
+    "minSubtotal": 1999,
+    "maxDiscount": 1200
+  },
+  {
+    "code": "FREESHIP",
+    "description": "Free delivery, no minimum",
+    "type": "free-shipping",
+    "value": 0,
+    "minSubtotal": 0
+  }
+]

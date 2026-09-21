@@ -1,0 +1,85 @@
+{
+  "name": "Daily Choice Zone",
+  "tagline": "Quality products, happier you",
+  "description": "Daily Choice Zone is an everyday store for clothing, home, beauty and lifestyle — chosen for how things feel after a year, not a week. Free delivery over ₹999 across India.",
+  "currency": "INR",
+  "locale": "en-IN",
+  "url": "https://dailychoicezone.com",
+  "support": {
+    "email": "help@dailychoicezone.com",
+    "phone": "1800 200 4567",
+    "hours": "Mon–Sat, 9am – 7pm IST"
+  },
+  "freeDeliveryThreshold": 999,
+  "standardDeliveryFee": 79,
+  "returnWindowDays": 15,
+  "social": [
+    { "label": "Instagram", "href": "https://instagram.com", "icon": "instagram" },
+    { "label": "Facebook", "href": "https://facebook.com", "icon": "facebook" },
+    { "label": "YouTube", "href": "https://youtube.com", "icon": "youtube" }
+  ],
+  "trustPoints": [
+    {
+      "icon": "truck",
+      "title": "Free delivery over ₹999",
+      "text": "Dispatched within 24 hours from our Bengaluru warehouse."
+    },
+    {
+      "icon": "shield",
+      "title": "Quality checked",
+      "text": "Every order is inspected by hand before it is packed."
+    },
+    {
+      "icon": "refresh",
+      "title": "15-day returns",
+      "text": "Changed your mind? Send it back, no questions asked."
+    },
+    {
+      "icon": "headset",
+      "title": "Real people on support",
+      "text": "Mon–Sat, 9am – 7pm. Call, email or chat with us."
+    }
+  ],
+  "footer": [
+    {
+      "heading": "Shop",
+      "links": [
+        { "label": "Women", "href": "/category/women" },
+        { "label": "Men", "href": "/category/men" },
+        { "label": "Kids", "href": "/category/kids" },
+        { "label": "Home", "href": "/category/home" },
+        { "label": "Beauty", "href": "/category/beauty" },
+        { "label": "Accessories", "href": "/category/accessories" },
+        { "label": "All products", "href": "/shop" }
+      ]
+    },
+    {
+      "heading": "Help",
+      "links": [
+        { "label": "Contact us", "href": "/contact" },
+        { "label": "Shipping", "href": "/shipping" },
+        { "label": "Returns", "href": "/returns" },
+        { "label": "FAQ", "href": "/faq" },
+        { "label": "Size guide", "href": "/faq#size-guide" },
+        { "label": "Track order", "href": "/account/orders" }
+      ]
+    },
+    {
+      "heading": "About",
+      "links": [
+        { "label": "About Daily Choice Zone", "href": "/about" },
+        { "label": "Our story", "href": "/about#story" },
+        { "label": "Careers", "href": "/about#careers" },
+        { "label": "Collections", "href": "/collection/everyday-basics" }
+      ]
+    },
+    {
+      "heading": "Legal",
+      "links": [
+        { "label": "Privacy policy", "href": "/privacy" },
+        { "label": "Terms & conditions", "href": "/terms" },
+        { "label": "Cookie policy", "href": "/privacy#cookies" }
+      ]
+    }
+  ]
+}

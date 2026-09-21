@@ -1,0 +1,81 @@
+{
+  "sections": [
+    {
+      "type": "product-rail",
+      "id": "home_new",
+      "title": "New Arrivals",
+      "subtitle": "Just landed this week",
+      "source": "new",
+      "limit": 6,
+      "viewAllHref": "/shop?sort=newest",
+      "layout": "grid"
+    },
+    {
+      "type": "product-rail",
+      "id": "home_trending",
+      "title": "Trending Now",
+      "subtitle": "Moving fastest across the store",
+      "source": "trending",
+      "limit": 6,
+      "viewAllHref": "/collection/trending-now",
+      "layout": "grid"
+    },
+    {
+      "type": "category-grid",
+      "id": "home_categories",
+      "title": "Shop by Category",
+      "subtitle": "Eleven departments, one checkout"
+    },
+    {
+      "type": "product-rail",
+      "id": "home_bestsellers",
+      "title": "Best Sellers",
+      "subtitle": "Rated highly by thousands of customers",
+      "source": "bestsellers",
+      "limit": 6,
+      "viewAllHref": "/shop?sort=popular",
+      "layout": "grid"
+    },
+    {
+      "type": "editorial-split",
+      "id": "home_editorial",
+      "title": "Chosen for the long run",
+      "body": "We buy the way we'd want to be sold to. Every piece is handled, worn and washed before it reaches the store — and if it doesn't hold up, it doesn't make the cut. That is the whole idea behind Daily Choice Zone.",
+      "image": "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80",
+      "ctaLabel": "Read our story",
+      "ctaHref": "/about",
+      "align": "right"
+    },
+    {
+      "type": "collection-grid",
+      "id": "home_collections",
+      "title": "Featured Collections",
+      "subtitle": "Edits built around how you actually shop",
+      "limit": 3
+    },
+    {
+      "type": "product-rail",
+      "id": "home_deals",
+      "title": "Limited Picks",
+      "subtitle": "Best reductions on the floor right now",
+      "source": "deals",
+      "limit": 6,
+      "viewAllHref": "/shop?minDiscount=25&sort=discount",
+      "layout": "rail"
+    },
+    {
+      "type": "trust-strip",
+      "id": "home_trust"
+    },
+    {
+      "type": "product-rail",
+      "id": "home_recommended",
+      "title": "Recommended For You",
+      "subtitle": "Based on what you have been looking at",
+      "source": "recommended",
+      "limit": 6,
+      "viewAllHref": "/shop",
+      "layout": "grid"
+    }
+  ]
+}

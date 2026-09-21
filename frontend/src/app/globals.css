@@ -1,0 +1,326 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Daily Choice Zone — design tokens
+   --------------------------------------------------------------------------
+   Every value here is sampled from the brand logo: the cream disc, the copper
+   ring, the near-black "Daily", the terracotta "Choice", the green leaf and
+   the blush/sage/peach trust icons. Nothing outside this palette should be
+   introduced in components — reach for a token instead.
+   ========================================================================== */
+
+@theme {
+  /* --- Surfaces: the logo's cream disc and its warmer inner tones --- */
+  --color-cream: #faf7f2;
+  --color-cream-deep: #f4efe7;
+  --color-sand: #f2e7dc;
+  --color-shell: #ffffff;
+
+  /* --- Ink: the near-black of "Daily", stepped down for hierarchy --- */
+  --color-ink: #1e1b18;
+  --color-ink-700: #3a3531;
+  --color-ink-500: #6b635c;
+  --color-ink-400: #8a817a;
+  --color-ink-300: #b5ada5;
+  --color-ink-200: #ddd6ce;
+  --color-ink-100: #ede7df;
+
+  /* --- Copper: the logo ring and the swoosh. The primary accent. --- */
+  --color-copper-50: #fbf4ef;
+  --color-copper-100: #f5e5d9;
+  --color-copper-200: #e9c9b4;
+  --color-copper-300: #dcac8d;
+  --color-copper-400: #c98f6a;
+  --color-copper-500: #b5734f;
+  --color-copper-600: #9c5d3d;
+  --color-copper-700: #7d4930;
+  --color-copper-800: #5e3725;
+  --color-copper-900: #3f251a;
+
+  /* --- Clay: the deeper terracotta of the word "Choice" --- */
+  --color-clay-400: #b9663c;
+  --color-clay-500: #a0522d;
+  --color-clay-600: #8a4526;
+
+  /* --- Sage: the leaf. Used for in-stock, trust and success. --- */
+  --color-sage-100: #dde5d5;
+  --color-sage-500: #4a7a52;
+  --color-sage-600: #3c6543;
+
+  /* --- Blush: the little heart and the "Shop" icon circle --- */
+  --color-blush-100: #f9e9e6;
+  --color-blush-200: #efd4ce;
+  --color-blush-500: #d99b90;
+
+  /* --- Peach: the "Save" icon circle --- */
+  --color-peach-100: #f7e3d4;
+
+  /* --- Semantic --- */
+  --color-sale: #a0522d;
+  --color-danger: #9b3232;
+  --color-danger-bg: #f9eaea;
+
+  /* --- Typography: high-contrast serif + wide-tracked grotesque, as per logo --- */
+  --font-display: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* --- Radii: the logo is soft but not rounded-cartoonish --- */
+  --radius-card: 2px;
+  --radius-control: 2px;
+  --radius-pill: 999px;
+
+  /* --- Elevation: minimal, warm-tinted rather than grey --- */
+  --shadow-subtle: 0 1px 2px rgb(30 27 24 / 0.04);
+  --shadow-raised: 0 4px 16px -4px rgb(30 27 24 / 0.1);
+  --shadow-overlay: 0 24px 60px -12px rgb(30 27 24 / 0.28);
+
+  /* --- Motion --- */
+  --ease-brand: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* --- Layout --- */
+  --spacing-gutter: 1rem;
+  --container-wide: 96rem;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--color-ink-200);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* A single, consistent, brand-coloured focus ring everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--color-copper-600);
+    outline-offset: 2px;
+  }
+
+  /* Only suppress it for mouse users, never for keyboard users. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::selection {
+    background-color: var(--color-copper-200);
+    color: var(--color-ink);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+@utility label-wide {
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+@utility page-shell {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--container-wide);
+  padding-inline: 1rem;
+
+  @media (min-width: 640px) {
+    padding-inline: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    padding-inline: 2.5rem;
+  }
+}
+
+/* Hide scrollbars on horizontal product rails without losing scrollability. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes dcz-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* --- Dialog choreography, keyed off Radix's data-state ------------------- */
+
+@keyframes dcz-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dcz-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dcz-modal-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dcz-modal-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+}
+
+@keyframes dcz-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes dcz-slide-out-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes dcz-slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes dcz-slide-out-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes dcz-slide-in-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes dcz-slide-out-bottom {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes dcz-slide-in-top {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes dcz-slide-out-top {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes dcz-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dcz-pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.32);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@utility animate-pop {
+  animation: dcz-pop 0.34s var(--ease-brand);
+}
+
+/* Respect users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

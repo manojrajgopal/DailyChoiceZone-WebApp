@@ -1,0 +1,256 @@
+[
+  {
+    "id": "nav_women",
+    "label": "Women",
+    "href": "/category/women",
+    "columns": [
+      {
+        "heading": "Clothing",
+        "links": [
+          { "label": "Dresses", "href": "/category/women?subcategory=dresses" },
+          { "label": "Tops", "href": "/category/women?subcategory=tops" },
+          { "label": "Shirts", "href": "/category/women?subcategory=shirts" },
+          { "label": "Jeans", "href": "/category/women?subcategory=jeans" },
+          { "label": "Trousers", "href": "/category/women?subcategory=trousers" },
+          { "label": "Jackets", "href": "/category/women?subcategory=jackets" },
+          { "label": "Knitwear", "href": "/category/women?subcategory=knitwear" }
+        ]
+      },
+      {
+        "heading": "Shoes",
+        "links": [
+          { "label": "Sneakers", "href": "/category/footwear?subcategory=sneakers" },
+          { "label": "Heels", "href": "/category/footwear?subcategory=heels" },
+          { "label": "Sandals", "href": "/category/footwear?subcategory=sandals" }
+        ]
+      },
+      {
+        "heading": "Accessories",
+        "links": [
+          { "label": "Handbags", "href": "/category/bags?subcategory=handbags" },
+          { "label": "Totes", "href": "/category/bags?subcategory=totes" },
+          { "label": "Jewellery", "href": "/category/jewellery" },
+          { "label": "Eyewear", "href": "/category/accessories?subcategory=eyewear" },
+          { "label": "Scarves & Hats", "href": "/category/accessories?subcategory=scarves-hats" }
+        ]
+      },
+      {
+        "heading": "Edits",
+        "links": [
+          { "label": "New arrivals", "href": "/shop?sort=newest&category=women" },
+          { "label": "Best sellers", "href": "/shop?category=women&sort=popular" },
+          { "label": "Under ₹1,499", "href": "/shop?category=women&maxPrice=1499" },
+          { "label": "Sale", "href": "/shop?category=women&minDiscount=25" }
+        ]
+      }
+    ],
+    "promo": {
+      "title": "Everyday Basics",
+      "subtitle": "The pieces that do the heavy lifting",
+      "image": "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=700&q=80",
+      "href": "/collection/everyday-basics"
+    }
+  },
+  {
+    "id": "nav_men",
+    "label": "Men",
+    "href": "/category/men",
+    "columns": [
+      {
+        "heading": "Clothing",
+        "links": [
+          { "label": "Shirts", "href": "/category/men?subcategory=shirts" },
+          { "label": "T-Shirts", "href": "/category/men?subcategory=tshirts" },
+          { "label": "Jeans", "href": "/category/men?subcategory=jeans" },
+          { "label": "Trousers", "href": "/category/men?subcategory=trousers" },
+          { "label": "Jackets", "href": "/category/men?subcategory=jackets" },
+          { "label": "Knitwear", "href": "/category/men?subcategory=knitwear" }
+        ]
+      },
+      {
+        "heading": "Shoes",
+        "links": [
+          { "label": "Sneakers", "href": "/category/footwear?subcategory=sneakers" },
+          { "label": "Formal", "href": "/category/footwear?subcategory=formal" },
+          { "label": "Sandals", "href": "/category/footwear?subcategory=sandals" }
+        ]
+      },
+      {
+        "heading": "Accessories",
+        "links": [
+          { "label": "Backpacks", "href": "/category/bags?subcategory=backpacks" },
+          { "label": "Belts & Wallets", "href": "/category/accessories?subcategory=belts-wallets" },
+          { "label": "Watches", "href": "/category/jewellery?subcategory=watches" },
+          { "label": "Eyewear", "href": "/category/accessories?subcategory=eyewear" }
+        ]
+      },
+      {
+        "heading": "Edits",
+        "links": [
+          { "label": "New arrivals", "href": "/shop?sort=newest&category=men" },
+          { "label": "Best sellers", "href": "/shop?category=men&sort=popular" },
+          { "label": "Office Edit", "href": "/collection/office-edit" },
+          { "label": "Sale", "href": "/shop?category=men&minDiscount=25" }
+        ]
+      }
+    ],
+    "promo": {
+      "title": "Office Edit",
+      "subtitle": "Quiet tailoring for real working days",
+      "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=80",
+      "href": "/collection/office-edit"
+    }
+  },
+  {
+    "id": "nav_kids",
+    "label": "Kids",
+    "href": "/category/kids",
+    "columns": [
+      {
+        "heading": "Shop by age",
+        "links": [
+          { "label": "Infants", "href": "/category/kids?subcategory=infants" },
+          { "label": "Girls", "href": "/category/kids?subcategory=girls" },
+          { "label": "Boys", "href": "/category/kids?subcategory=boys" }
+        ]
+      },
+      {
+        "heading": "Edits",
+        "links": [
+          { "label": "New arrivals", "href": "/shop?sort=newest&category=kids" },
+          { "label": "Under ₹799", "href": "/shop?category=kids&maxPrice=799" },
+          { "label": "Sale", "href": "/shop?category=kids&minDiscount=25" }
+        ]
+      }
+    ],
+    "promo": {
+      "title": "Built for play",
+      "subtitle": "Reinforced knees, flat seams, easy washes",
+      "image": "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?auto=format&fit=crop&w=700&q=80",
+      "href": "/category/kids"
+    }
+  },
+  {
+    "id": "nav_home",
+    "label": "Home",
+    "href": "/category/home",
+    "columns": [
+      {
+        "heading": "Bedroom",
+        "links": [
+          { "label": "Bedding", "href": "/category/home?subcategory=bedding" },
+          { "label": "Throws & Quilts", "href": "/category/home?subcategory=furnishing" }
+        ]
+      },
+      {
+        "heading": "Living",
+        "links": [
+          { "label": "Decor", "href": "/category/home?subcategory=decor" },
+          { "label": "Rugs & Furnishing", "href": "/category/home?subcategory=furnishing" },
+          { "label": "Candles", "href": "/category/lifestyle?subcategory=wellness" }
+        ]
+      },
+      {
+        "heading": "Kitchen",
+        "links": [
+          { "label": "Kitchen & Dining", "href": "/category/home?subcategory=kitchen" },
+          { "label": "Serveware", "href": "/category/home?subcategory=kitchen" }
+        ]
+      },
+      {
+        "heading": "Edits",
+        "links": [
+          { "label": "Home Refresh", "href": "/collection/home-refresh" },
+          { "label": "New arrivals", "href": "/shop?sort=newest&category=home" }
+        ]
+      }
+    ],
+    "promo": {
+      "title": "Home Refresh",
+      "subtitle": "Small changes, whole new room",
+      "image": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=700&q=80",
+      "href": "/collection/home-refresh"
+    }
+  },
+  {
+    "id": "nav_beauty",
+    "label": "Beauty",
+    "href": "/category/beauty",
+    "columns": [
+      {
+        "heading": "Skin",
+        "links": [
+          { "label": "Skincare", "href": "/category/beauty?subcategory=skincare" },
+          { "label": "Serums", "href": "/search?q=serum" },
+          { "label": "SPF", "href": "/search?q=spf" }
+        ]
+      },
+      {
+        "heading": "Colour",
+        "links": [
+          { "label": "Makeup", "href": "/category/beauty?subcategory=makeup" },
+          { "label": "Lips", "href": "/search?q=lipstick" },
+          { "label": "Eyes", "href": "/search?q=mascara" }
+        ]
+      },
+      {
+        "heading": "Hair & Scent",
+        "links": [
+          { "label": "Haircare", "href": "/category/beauty?subcategory=haircare" },
+          { "label": "Fragrance", "href": "/category/beauty?subcategory=fragrance" }
+        ]
+      }
+    ],
+    "promo": {
+      "title": "Fragrance-free favourites",
+      "subtitle": "Kind to sensitive skin",
+      "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&w=700&q=80",
+      "href": "/category/beauty?subcategory=skincare"
+    }
+  },
+  {
+    "id": "nav_accessories",
+    "label": "Accessories",
+    "href": "/category/accessories",
+    "columns": [
+      {
+        "heading": "Bags",
+        "links": [
+          { "label": "Handbags", "href": "/category/bags?subcategory=handbags" },
+          { "label": "Backpacks", "href": "/category/bags?subcategory=backpacks" },
+          { "label": "Totes", "href": "/category/bags?subcategory=totes" }
+        ]
+      },
+      {
+        "heading": "Jewellery",
+        "links": [
+          { "label": "Earrings", "href": "/category/jewellery?subcategory=earrings" },
+          { "label": "Necklaces", "href": "/category/jewellery?subcategory=necklaces" },
+          { "label": "Watches", "href": "/category/jewellery?subcategory=watches" }
+        ]
+      },
+      {
+        "heading": "More",
+        "links": [
+          { "label": "Eyewear", "href": "/category/accessories?subcategory=eyewear" },
+          { "label": "Belts & Wallets", "href": "/category/accessories?subcategory=belts-wallets" },
+          { "label": "Scarves & Hats", "href": "/category/accessories?subcategory=scarves-hats" },
+          { "label": "Electronics", "href": "/category/electronics" },
+          { "label": "Lifestyle", "href": "/category/lifestyle" }
+        ]
+      }
+    ],
+    "promo": {
+      "title": "Travel Essentials",
+      "subtitle": "Packed and ready in one trip",
+      "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=700&q=80",
+      "href": "/collection/travel-essentials"
+    }
+  },
+  {
+    "id": "nav_sale",
+    "label": "Sale",
+    "href": "/shop?minDiscount=25",
+    "highlight": true
+  }
+]

@@ -1,0 +1,221 @@
+[
+  {
+    "id": "cat_women",
+    "slug": "women",
+    "name": "Women",
+    "description": "Everyday pieces cut to last — soft cottons, easy linens and knitwear that keeps its shape.",
+    "image": "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=900&q=80",
+    "order": 1,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Clothing",
+        "items": [
+          { "slug": "dresses", "name": "Dresses" },
+          { "slug": "tops", "name": "Tops" },
+          { "slug": "shirts", "name": "Shirts" },
+          { "slug": "jeans", "name": "Jeans" },
+          { "slug": "trousers", "name": "Trousers" },
+          { "slug": "jackets", "name": "Jackets" },
+          { "slug": "knitwear", "name": "Knitwear" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_men",
+    "slug": "men",
+    "name": "Men",
+    "description": "Shirts, denim and layers built around a simple idea: wear it often, wear it for years.",
+    "image": "https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&w=900&q=80",
+    "order": 2,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Clothing",
+        "items": [
+          { "slug": "shirts", "name": "Shirts" },
+          { "slug": "tshirts", "name": "T-Shirts" },
+          { "slug": "jeans", "name": "Jeans" },
+          { "slug": "trousers", "name": "Trousers" },
+          { "slug": "jackets", "name": "Jackets" },
+          { "slug": "knitwear", "name": "Knitwear" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_kids",
+    "slug": "kids",
+    "name": "Kids",
+    "description": "Soft, sturdy and easy to wash — made for the way children actually play.",
+    "image": "https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?auto=format&fit=crop&w=900&q=80",
+    "order": 3,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Shop by age",
+        "items": [
+          { "slug": "girls", "name": "Girls" },
+          { "slug": "boys", "name": "Boys" },
+          { "slug": "infants", "name": "Infants" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_home",
+    "slug": "home",
+    "name": "Home",
+    "description": "Bedding, ceramics and textiles chosen for how they feel after a year, not a week.",
+    "image": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=900&q=80",
+    "order": 4,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Living",
+        "items": [
+          { "slug": "bedding", "name": "Bedding" },
+          { "slug": "decor", "name": "Decor" },
+          { "slug": "kitchen", "name": "Kitchen & Dining" },
+          { "slug": "furnishing", "name": "Rugs & Furnishing" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_beauty",
+    "slug": "beauty",
+    "name": "Beauty",
+    "description": "Honest formulations, fragrance-free where it matters, and nothing that needs a ten-step routine.",
+    "image": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=900&q=80",
+    "order": 5,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Shop",
+        "items": [
+          { "slug": "skincare", "name": "Skincare" },
+          { "slug": "makeup", "name": "Makeup" },
+          { "slug": "haircare", "name": "Haircare" },
+          { "slug": "fragrance", "name": "Fragrance" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_footwear",
+    "slug": "footwear",
+    "name": "Footwear",
+    "description": "Cushioned where it counts, with soles that grip and uppers that soften rather than crack.",
+    "image": "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=80",
+    "order": 6,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Shop",
+        "items": [
+          { "slug": "sneakers", "name": "Sneakers" },
+          { "slug": "heels", "name": "Heels" },
+          { "slug": "sandals", "name": "Sandals" },
+          { "slug": "formal", "name": "Formal" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_bags",
+    "slug": "bags",
+    "name": "Bags",
+    "description": "Structured totes, quiet crossbodies and backpacks with a laptop sleeve that actually fits.",
+    "image": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80",
+    "order": 7,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Shop",
+        "items": [
+          { "slug": "handbags", "name": "Handbags" },
+          { "slug": "backpacks", "name": "Backpacks" },
+          { "slug": "totes", "name": "Totes" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_jewellery",
+    "slug": "jewellery",
+    "name": "Jewellery",
+    "description": "Sealed plating, hypoallergenic posts and weights light enough to forget.",
+    "image": "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80",
+    "order": 8,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Shop",
+        "items": [
+          { "slug": "earrings", "name": "Earrings" },
+          { "slug": "necklaces", "name": "Necklaces" },
+          { "slug": "watches", "name": "Watches" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_accessories",
+    "slug": "accessories",
+    "name": "Accessories",
+    "description": "The small things that finish an outfit — eyewear, leather goods and winter knits.",
+    "image": "https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=900&q=80",
+    "order": 9,
+    "featured": true,
+    "groups": [
+      {
+        "name": "Shop",
+        "items": [
+          { "slug": "eyewear", "name": "Eyewear" },
+          { "slug": "belts-wallets", "name": "Belts & Wallets" },
+          { "slug": "scarves-hats", "name": "Scarves & Hats" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_electronics",
+    "slug": "electronics",
+    "name": "Electronics",
+    "description": "Audio, wearables and charging that do one job properly.",
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80",
+    "order": 10,
+    "featured": false,
+    "groups": [
+      {
+        "name": "Shop",
+        "items": [
+          { "slug": "audio", "name": "Audio" },
+          { "slug": "wearables", "name": "Wearables" },
+          { "slug": "tech-accessories", "name": "Chargers & Cables" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cat_lifestyle",
+    "slug": "lifestyle",
+    "name": "Lifestyle",
+    "description": "Luggage, wellness and desk things for the parts of life that happen away from a wardrobe.",
+    "image": "https://images.unsplash.com/photo-1553456558-aff63285bdd1?auto=format&fit=crop&w=900&q=80",
+    "order": 11,
+    "featured": false,
+    "groups": [
+      {
+        "name": "Shop",
+        "items": [
+          { "slug": "travel", "name": "Travel" },
+          { "slug": "wellness", "name": "Wellness" },
+          { "slug": "stationery", "name": "Stationery" }
+        ]
+      }
+    ]
+  }
+]
