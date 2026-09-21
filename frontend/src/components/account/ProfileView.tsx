@@ -105,7 +105,7 @@ export function ProfileView() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="label-wide text-ink">Most recent order</h2>
             <Link
-              href={`/account/orders/${lastOrder.orderNumber}`}
+              href={`/account/order?number=${lastOrder.orderNumber}`}
               className="inline-flex items-center gap-1.5 text-xs text-copper-700 transition-colors hover:text-ink"
             >
               View details

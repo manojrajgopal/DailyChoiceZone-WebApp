@@ -10,6 +10,14 @@ import { getSiteConfig } from "@/services/siteService";
  * Adding a product to products.json puts it in the sitemap automatically —
  * which is the same principle as everywhere else in this app.
  */
+/**
+ * Written once at build time.
+ *
+ * `output: "export"` has no server to generate this per request, so Next
+ * requires the route to declare itself static explicitly.
+ */
+export const dynamic = "force-static";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [config, categories, collections, products] = await Promise.all([
     getSiteConfig(),

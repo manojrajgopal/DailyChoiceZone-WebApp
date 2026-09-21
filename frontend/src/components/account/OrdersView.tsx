@@ -64,7 +64,7 @@ export function OrdersView() {
           {orders.map((order) => (
             <li key={order.id}>
               <Link
-                href={`/account/orders/${order.orderNumber}`}
+                href={`/account/order?number=${order.orderNumber}`}
                 className="group block rounded-card border border-ink-200 bg-shell p-4 transition-colors hover:border-ink sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">

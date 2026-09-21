@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { useCart } from "@/hooks/useCart";
+import { useHydrated } from "@/hooks/useHydrated";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
 import { deliveryEstimate, formatPrice, humanize } from "@/lib/utils/format";
@@ -35,6 +36,17 @@ export function ProductPurchasePanel({
 }) {
   const router = useRouter();
   const { add } = useCart();
+
+  /**
+   * The arrival date is computed in the browser, never at build time.
+   *
+   * Product pages are prerendered, so a date baked in at build would be wrong
+   * for every visitor after that day — and would disagree with what the client
+   * computes, which is a hydration mismatch. Until hydration completes the
+   * panel shows the delivery window instead of a specific date.
+   */
+  const hydrated = useHydrated();
+  const arrivalDate = hydrated ? deliveryEstimate(5) : null;
   const { isWishlisted, toggle } = useWishlistItem(product.id);
 
   const [size, setSize] = useState<string | null>(null);
@@ -223,8 +235,10 @@ export function ProductPurchasePanel({
                 : `Delivery ${formatPrice(config.standardDeliveryFee)}`}
             </dt>
             <dd className="mt-0.5 text-xs leading-relaxed text-ink-500">
-              Order today for arrival by {deliveryEstimate(5)}. Free over{" "}
-              {formatPrice(config.freeDeliveryThreshold)}.
+              {arrivalDate
+                ? `Order today for arrival by ${arrivalDate}. `
+                : "Arrives in 3–5 business days. "}
+              Free over {formatPrice(config.freeDeliveryThreshold)}.
             </dd>
           </div>
         </div>

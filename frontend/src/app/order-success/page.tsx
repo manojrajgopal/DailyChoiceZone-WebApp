@@ -173,7 +173,7 @@ function OrderSuccess() {
         </div>
 
         <div className="mt-8 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
-          <ButtonLink href={`/account/orders/${order.orderNumber}`} variant="outline">
+          <ButtonLink href={`/account/order?number=${order.orderNumber}`} variant="outline">
             View order details
           </ButtonLink>
           <ButtonLink href="/shop">Continue shopping</ButtonLink>

@@ -8,6 +8,7 @@ The frontend for Daily Choice Zone. **Quality products, happier you.**
 | Styling | Tailwind CSS v4, CSS-first tokens |
 | State | Zustand (+ `persist` for local storage) |
 | Data | Local JSON behind a service layer — **no backend yet** |
+| Output | Fully static (`output: "export"`) — deploys to any static host |
 
 There is no backend. Every product, category, collection, coupon and page of
 copy comes from JSON in `src/data`, read through a service layer that is shaped
@@ -20,6 +21,7 @@ configuration change, not a rewrite — see
 ## Getting started
 
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
@@ -29,12 +31,13 @@ Then open <http://localhost:3000>.
 | Script | What it does |
 |---|---|
 | `npm run dev` | Development server |
-| `npm run build` | Production build (prerenders every product and category) |
-| `npm run start` | Serve the production build |
+| `npm run build` | Static export to `out/` (prerenders all 182 pages) |
+| `npm run start` | Serve on Node — only if you drop `output: "export"` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm run data:generate` | Regenerate the dummy catalogue (see [Data](#data)) |
 | `npm run data:check` | Validate `src/data` — run this after hand-editing the JSON |
+| `npm run brand:assets` | Regenerate sized logo assets from `assets/logo-original.png` |
 
 ### Environment variables
 
@@ -45,6 +48,59 @@ All optional. Nothing is required to run the store.
 | `NEXT_PUBLIC_DATA_SOURCE` | `mock` | `http` switches the whole store onto the REST API |
 | `NEXT_PUBLIC_API_URL` | — | Base URL for that API |
 | `NEXT_PUBLIC_MOCK_LATENCY` | `0` | Artificial delay in ms, to make loading skeletons visible while working on them |
+
+---
+
+## Deploying
+
+The build is a static export, so it needs no server at request time.
+
+### Render (Static Site)
+
+| Field | Value |
+|---|---|
+| Root Directory | `frontend` |
+| Build Command | `npm ci && npm run build` |
+| Publish Directory | `out` |
+
+Environment variables are optional — `mock` is already the default data source.
+`NEXT_PUBLIC_*` values are inlined at **build** time, so changing one needs a
+redeploy rather than a restart.
+
+### What `output: "export"` costs, and how the code pays for it
+
+Static hosting means nothing runs per request. Four consequences are handled
+explicitly, and are worth knowing before adding a feature that assumes a
+server:
+
+- **Nothing can read a request.** `/search` and `/account/order` take their
+  input from the query string *in the browser* (`useSearchParams`), not from
+  server-side `searchParams`. An order number is `?number=` rather than a path
+  segment, because a dynamic segment needs every possible value known at build
+  time.
+- **No image optimizer.** `images.unoptimized` is required, so `next/image`
+  serves the source file untouched. That is why `npm run brand:assets` exists:
+  the master logo is 1.3MB and the header renders it at 44px. Product
+  photography is already sized through Unsplash URL parameters.
+- **Nothing is per-request, including the clock.** Anything date-dependent runs
+  in the browser — see `CopyrightYear` and the arrival estimate in
+  `ProductPurchasePanel`. A date computed during render would freeze at build
+  time and mismatch on hydration.
+- **Prefetch filenames need reconciling.** Next 16 writes route-segment
+  prefetch payloads as nested directories but requests them with dot-joined
+  names, which 404s on a static host. `scripts/flatten-prefetch.mjs` renames
+  them and runs automatically as `postbuild`. Delete it if a future Next
+  release fixes the mismatch.
+
+`out/` is roughly 96MB, mostly the 139 prerendered product pages and their
+prefetch payloads. That is deploy weight only; hosts serve these compressed.
+
+### Moving to a Node deployment
+
+To get image optimization and server rendering back, remove `output: "export"`,
+`trailingSlash` and `images.unoptimized` from `next.config.ts`, then deploy as
+a Render **Web Service** with build `npm ci && npm run build` and start
+`npm start`. The query-param routes keep working unchanged.
 
 ---
 

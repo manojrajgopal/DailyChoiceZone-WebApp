@@ -9,6 +9,14 @@ import { getSiteConfig } from "@/services/siteService";
  * in search results, and crawling them wastes budget that should go to
  * products.
  */
+/**
+ * Written once at build time.
+ *
+ * `output: "export"` has no server to generate this per request, so Next
+ * requires the route to declare itself static explicitly.
+ */
+export const dynamic = "force-static";
+
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const config = await getSiteConfig();
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 
@@ -23,8 +23,14 @@ import { formatDate, formatPrice } from "@/lib/utils/format";
 
 /** A single order: status tracker, items, addresses and the money breakdown. */
 export function OrderDetailView() {
-  const params = useParams<{ orderNumber: string }>();
-  const orderNumber = decodeURIComponent(params?.orderNumber ?? "");
+  /**
+   * The order number arrives as `?number=` rather than a path segment.
+   *
+   * A dynamic path segment cannot be statically exported — every value would
+   * have to be known at build time, and order numbers are created at runtime.
+   */
+  const searchParams = useSearchParams();
+  const orderNumber = (searchParams?.get("number") ?? "").trim();
   const { isSignedIn } = useSession();
 
   const [order, setOrder] = useState<Order | null>(null);

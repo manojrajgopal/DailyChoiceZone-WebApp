@@ -5,6 +5,7 @@ import type { SiteConfig, SocialIcon } from "@/types";
 
 import { Logo } from "@/components/common/Logo";
 
+import { CopyrightYear } from "./CopyrightYear";
 import { Newsletter } from "./Newsletter";
 
 const SOCIAL_ICONS: Record<SocialIcon, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
@@ -22,8 +23,6 @@ const SOCIAL_ICONS: Record<SocialIcon, React.ComponentType<{ className?: string;
  * number or add a help page.
  */
 export function Footer({ config }: { config: SiteConfig }) {
-  const year = new Date().getFullYear();
-
   return (
     <footer className="mt-20 bg-ink text-cream">
       <div className="page-shell py-14 lg:py-16">
@@ -110,7 +109,7 @@ export function Footer({ config }: { config: SiteConfig }) {
       <div className="border-t border-cream/10">
         <div className="page-shell flex flex-col gap-2 py-5 text-xs text-cream/40 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            &copy; {year} {config.name}. All rights reserved.
+            &copy; <CopyrightYear /> {config.name}. All rights reserved.
           </p>
           <p>
             Free delivery over &#8377;{config.freeDeliveryThreshold.toLocaleString("en-IN")}{" "}
