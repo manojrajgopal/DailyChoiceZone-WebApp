@@ -128,6 +128,15 @@ export interface DrawerProps extends BaseProps {
   side?: Side;
   /** Pinned to the bottom, outside the scroll area — e.g. "Show 48 results". */
   footer?: React.ReactNode;
+  /**
+   * Render only the panel, with no title bar or close button.
+   *
+   * For a drawer whose content brings its own chrome — the admin sidebar has
+   * its own branded header, and the default light title bar would sit wrongly
+   * on top of it. The title is still rendered for assistive technology, and
+   * Radix still traps focus and handles Escape.
+   */
+  bare?: boolean;
 }
 
 /** A sheet anchored to an edge. Mobile nav, filters and the mini cart. */
@@ -139,6 +148,7 @@ export function Drawer({
   description,
   side = "right",
   footer,
+  bare = false,
   children,
   className,
 }: DrawerProps) {
@@ -154,17 +164,23 @@ export function Drawer({
             className,
           )}
         >
-          <div className="flex items-center justify-between gap-4 border-b border-ink-200 px-4 py-3.5">
-            <div className={cn(hideTitle && "sr-only")}>
-              <RadixDialog.Title className="label-wide text-ink">{title}</RadixDialog.Title>
-              {description ? (
-                <RadixDialog.Description className="mt-1 text-sm text-ink-500">
-                  {description}
-                </RadixDialog.Description>
-              ) : null}
+          {bare ? (
+            // The title still exists for screen readers; only the visual
+            // chrome is dropped.
+            <RadixDialog.Title className="sr-only">{title}</RadixDialog.Title>
+          ) : (
+            <div className="flex items-center justify-between gap-4 border-b border-ink-200 px-4 py-3.5">
+              <div className={cn(hideTitle && "sr-only")}>
+                <RadixDialog.Title className="label-wide text-ink">{title}</RadixDialog.Title>
+                {description ? (
+                  <RadixDialog.Description className="mt-1 text-sm text-ink-500">
+                    {description}
+                  </RadixDialog.Description>
+                ) : null}
+              </div>
+              <CloseButton className="-mr-1 shrink-0" />
             </div>
-            <CloseButton className="-mr-1 shrink-0" />
-          </div>
+          )}
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
 

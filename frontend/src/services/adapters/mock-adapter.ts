@@ -1,9 +1,7 @@
-import bannersJson from "@/data/banners.json";
 import categoriesJson from "@/data/categories.json";
 import collectionsJson from "@/data/collections.json";
 import couponsJson from "@/data/coupons.json";
 import homepageJson from "@/data/homepage.json";
-import productsJson from "@/data/products.json";
 import reviewsJson from "@/data/reviews.json";
 import siteConfigJson from "@/data/site-config.json";
 
@@ -12,6 +10,7 @@ import type {
   Collection,
   Coupon,
   HomepageConfig,
+  HomeSectionLayout,
   Paginated,
   Product,
   ProductFacets,
@@ -21,6 +20,11 @@ import type {
   SiteConfig,
 } from "@/types";
 
+import { storefrontProducts } from "@/lib/admin/catalogue";
+import { livePromoBanners } from "@/lib/admin/banners";
+import { approvedReviewIds } from "@/lib/admin/reviews";
+import { applyStoreSettings } from "@/lib/admin/site-settings";
+import { homeSectionLayout } from "@/lib/admin/homepage-layout";
 import { buildFacets, matchesFilters, queryProducts } from "@/lib/filters/apply-filters";
 import { findRelated } from "@/lib/recommendations/related";
 
@@ -36,12 +40,10 @@ import type { DataSource } from "../data-source";
  * A real HTTP adapter should *validate* rather than cast, since a network
  * response is untrusted in a way a file we generate ourselves is not.
  */
-const PRODUCTS = productsJson as Product[];
 const CATEGORIES = categoriesJson as Category[];
 const COLLECTIONS = collectionsJson as Collection[];
 const REVIEWS = reviewsJson as Review[];
 const COUPONS = couponsJson as Coupon[];
-const BANNERS = bannersJson as PromoBanner[];
 const SITE_CONFIG = siteConfigJson as SiteConfig;
 const HOMEPAGE = homepageJson as HomepageConfig;
 
@@ -61,34 +63,48 @@ async function settle<T>(value: T): Promise<T> {
   return value;
 }
 
-/** Index by id once, rather than scanning the array on every lookup. */
-const PRODUCTS_BY_ID = new Map(PRODUCTS.map((product) => [product.id, product]));
-const PRODUCTS_BY_SLUG = new Map(PRODUCTS.map((product) => [product.slug, product]));
+/**
+ * The catalogue is resolved per call, not cached at module scope.
+ *
+ * `storefrontProducts()` merges the committed JSON with whatever the admin
+ * portal has changed locally, and hides drafts. A module-level snapshot would
+ * mean an admin editing a product never saw the change on the storefront.
+ */
+function catalogue(): Product[] {
+  return storefrontProducts();
+}
+
+function indexBy<K extends "id" | "slug">(field: K): Map<string, Product> {
+  return new Map(catalogue().map((product) => [product[field], product]));
+}
 
 export const mockAdapter: DataSource = {
   async queryProducts(query: ProductQuery): Promise<Paginated<Product>> {
-    return settle(queryProducts(PRODUCTS, query));
+    return settle(queryProducts(catalogue(), query));
   },
 
   async getProductBySlug(slug: string): Promise<Product | null> {
-    return settle(PRODUCTS_BY_SLUG.get(slug) ?? null);
+    return settle(indexBy("slug").get(slug) ?? null);
   },
 
   async getProductsByIds(ids: string[]): Promise<Product[]> {
+    const byId = indexBy("id");
     const resolved = ids
-      .map((id) => PRODUCTS_BY_ID.get(id))
+      .map((id) => byId.get(id))
       .filter((product): product is Product => product !== undefined);
     return settle(resolved);
   },
 
   async getRelatedProducts(productId: string, limit = 8): Promise<Product[]> {
-    const seed = PRODUCTS_BY_ID.get(productId);
+    const products = catalogue();
+    const seed = products.find((product) => product.id === productId);
     if (!seed) return settle([]);
-    return settle(findRelated(seed, PRODUCTS, limit));
+    return settle(findRelated(seed, products, limit));
   },
 
   async getFacets(scope): Promise<ProductFacets> {
-    const scoped = scope ? PRODUCTS.filter((product) => matchesFilters(product, scope)) : PRODUCTS;
+    const products = catalogue();
+    const scoped = scope ? products.filter((product) => matchesFilters(product, scope)) : products;
     return settle(buildFacets(scoped));
   },
 
@@ -109,9 +125,12 @@ export const mockAdapter: DataSource = {
   },
 
   async listReviews(productId: string): Promise<Review[]> {
-    const forProduct = REVIEWS.filter((review) => review.productId === productId).sort(
-      (a, b) => b.date.localeCompare(a.date),
-    );
+    // Only what moderation has approved — see `approvedReviewIds`. Resolved per
+    // call so approving or rejecting a review takes effect straight away.
+    const approved = approvedReviewIds();
+    const forProduct = REVIEWS.filter(
+      (review) => review.productId === productId && approved.has(review.id),
+    ).sort((a, b) => b.date.localeCompare(a.date));
     return settle(forProduct);
   },
 
@@ -120,14 +139,23 @@ export const mockAdapter: DataSource = {
   },
 
   async getSiteConfig(): Promise<SiteConfig> {
-    return settle(SITE_CONFIG);
+    // The commercial numbers come from store settings — see `applyStoreSettings`.
+    return settle(applyStoreSettings(SITE_CONFIG));
   },
 
   async getHomepageConfig(): Promise<HomepageConfig> {
     return settle(HOMEPAGE);
   },
 
+  async getHomeSectionLayout(): Promise<HomeSectionLayout[]> {
+    // Resolved on every call, like the catalogue: an admin who hides a section
+    // must see it gone, not a cached copy of the old layout.
+    return settle(homeSectionLayout());
+  },
+
   async listBanners(): Promise<PromoBanner[]> {
-    return settle(BANNERS);
+    // Resolved per call so a banner's schedule and switch take effect without
+    // a rebuild — see `livePromoBanners`.
+    return settle(livePromoBanners());
   },
 };

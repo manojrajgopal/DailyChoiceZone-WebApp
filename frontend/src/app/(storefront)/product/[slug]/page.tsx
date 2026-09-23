@@ -172,12 +172,6 @@ export default async function ProductPage({ params }: PageProps) {
                           <dd className="text-right text-xs text-ink-700">{spec.value}</dd>
                         </div>
                       ))}
-                      <div className="flex justify-between gap-4 border-b border-ink-100 pb-2.5">
-                        <dt className="text-xs text-ink-400">Price</dt>
-                        <dd className="text-right text-xs text-ink-700">
-                          {formatPrice(product.price)}
-                        </dd>
-                      </div>
                       {product.colors.length > 0 ? (
                         <div className="flex justify-between gap-4 border-b border-ink-100 pb-2.5">
                           <dt className="text-xs text-ink-400">Colours</dt>
@@ -252,7 +246,7 @@ export default async function ProductPage({ params }: PageProps) {
             subtitle="What people say"
             className="mb-8"
           />
-          <ProductReviews reviews={reviews} summary={summary} />
+          <ProductReviews productId={product.id} reviews={reviews} summary={summary} />
         </section>
       </div>
 

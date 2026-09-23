@@ -1,17 +1,20 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 
-import { Footer } from "@/components/layout/Footer";
-import { PromoStrip } from "@/components/layout/PromoStrip";
-import { Header } from "@/components/navigation/Header";
 import { Toaster } from "@/components/ui/Toaster";
-import { getBanners, getNavigation, getSiteConfig } from "@/services/siteService";
+import { getSiteConfig } from "@/services/siteService";
 
 import "./globals.css";
 
 /**
- * The brand pairs a high-contrast serif with a quiet grotesque — the same
- * relationship the logo strikes between "Daily Choice" and "ZONE".
+ * The document shell.
+ *
+ * Deliberately thin: fonts, metadata and the toast surface, and nothing else.
+ *
+ * The storefront's header and footer live in `(storefront)/layout.tsx` rather
+ * than here, because the admin portal must not render customer navigation —
+ * and a parent layout cannot be opted out of. Route groups are how the two
+ * areas get different chrome without changing a single URL.
  */
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -29,7 +32,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfig();
 
   return {
-    // "%s · Daily Choice Zone" on every child page, without repeating it.
     title: {
       default: `${config.name} — ${config.tagline}`,
       template: `%s · ${config.name}`,
@@ -54,30 +56,12 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Chrome data is fetched once here rather than per page.
-  const [config, banners] = await Promise.all([getSiteConfig(), getBanners()]);
-  const navigation = getNavigation();
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN" className={`${playfair.variable} ${inter.variable}`}>
-      <body className="flex min-h-dvh flex-col">
-        {/* Keyboard users can jump the whole header and mega menu. */}
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-control focus:bg-ink focus:px-4 focus:py-2.5 focus:label-wide focus:text-cream"
-        >
-          Skip to content
-        </a>
-
-        <PromoStrip banners={banners} />
-        <Header items={navigation} />
-
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-
-        <Footer config={config} />
+      <body className="min-h-dvh">
+        {children}
+        {/* Mounted once for both areas — the admin uses the same toasts. */}
         <Toaster />
       </body>
     </html>

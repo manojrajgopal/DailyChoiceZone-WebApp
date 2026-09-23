@@ -1,0 +1,2087 @@
+[
+  {
+    "productId": "prod_001",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 2,
+    "barcode": "8902212497957",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-08T10:30:00.000Z",
+    "updatedAt": "2026-03-19T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Tiered Midi Dress — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "Cut for easy movement with a defined waist and a hem that falls just below the knee. Fully lined, with a concealed back zip and set-in pockets. Made from c"
+    }
+  },
+  {
+    "productId": "prod_002",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8904258448041",
+    "taxRatePercent": 5,
+    "createdAt": "2025-05-25T10:30:00.000Z",
+    "updatedAt": "2025-06-18T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Belted Shirt Dress — Nyra | Daily Choice Zone",
+      "metaDescription": "Cut for easy movement with a defined waist and a hem that falls just below the knee. Fully lined, with a concealed back zip and set-in pockets. Made from g"
+    }
+  },
+  {
+    "productId": "prod_003",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 1,
+    "barcode": "8903375509721",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-22T10:30:00.000Z",
+    "updatedAt": "2026-01-01T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Puff Sleeve Wrap Dress — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Cut for easy movement with a defined waist and a hem that falls just below the knee. Fully lined, with a concealed back zip and set-in pockets. Made from c"
+    }
+  },
+  {
+    "productId": "prod_004",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8908633268519",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-13T10:30:00.000Z",
+    "updatedAt": "2025-12-19T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Sleeveless Column Dress — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Cut for easy movement with a defined waist and a hem that falls just below the knee. Fully lined, with a concealed back zip and set-in pockets. Made from g"
+    }
+  },
+  {
+    "productId": "prod_005",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 3,
+    "barcode": "8902347825127",
+    "taxRatePercent": 5,
+    "createdAt": "2026-02-20T10:30:00.000Z",
+    "updatedAt": "2026-04-20T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Relaxed Crew Top — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "A relaxed fit through the body with a slightly dropped shoulder. Soft enough to wear straight from the wash and shaped to sit well untucked. Made from cott"
+    }
+  },
+  {
+    "productId": "prod_006",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 1,
+    "barcode": "8904958561201",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-24T10:30:00.000Z",
+    "updatedAt": "2026-09-20T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Square Neck Blouse — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "A relaxed fit through the body with a slightly dropped shoulder. Soft enough to wear straight from the wash and shaped to sit well untucked. Made from cott"
+    }
+  },
+  {
+    "productId": "prod_007",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8906681161571",
+    "taxRatePercent": 5,
+    "createdAt": "2025-06-23T10:30:00.000Z",
+    "updatedAt": "2025-06-26T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Ribbed Knit Tee — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A relaxed fit through the body with a slightly dropped shoulder. Soft enough to wear straight from the wash and shaped to sit well untucked. Made from comb"
+    }
+  },
+  {
+    "productId": "prod_008",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8902107178146",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-07T10:30:00.000Z",
+    "updatedAt": "2026-02-11T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Gathered Sleeve Top — Nyra | Daily Choice Zone",
+      "metaDescription": "A relaxed fit through the body with a slightly dropped shoulder. Soft enough to wear straight from the wash and shaped to sit well untucked. Made from comb"
+    }
+  },
+  {
+    "productId": "prod_009",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8902387227040",
+    "taxRatePercent": 5,
+    "createdAt": "2025-08-13T10:30:00.000Z",
+    "updatedAt": "2025-09-28T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Oversized Cotton Shirt — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "An oversized cut with a camp collar and a single patch pocket. Breathable enough for long days and structured enough to wear open over a tee. Made from cot"
+    }
+  },
+  {
+    "productId": "prod_010",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 3,
+    "barcode": "8905469332491",
+    "taxRatePercent": 5,
+    "createdAt": "2025-05-17T10:30:00.000Z",
+    "updatedAt": "2025-06-17T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Striped Linen Shirt — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "An oversized cut with a camp collar and a single patch pocket. Breathable enough for long days and structured enough to wear open over a tee. Made from lin"
+    }
+  },
+  {
+    "productId": "prod_011",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8901907396684",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-28T10:30:00.000Z",
+    "updatedAt": "2026-05-02T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Utility Overshirt — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "An oversized cut with a camp collar and a single patch pocket. Breathable enough for long days and structured enough to wear open over a tee. Made from lin"
+    }
+  },
+  {
+    "productId": "prod_012",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8909329943328",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-08T10:30:00.000Z",
+    "updatedAt": "2025-07-31T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "High Rise Straight Jeans — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "A high rise that stays put, with a straight leg that skims rather than clings. Five pockets, branded shank button and a clean topstitch. Made from rigid co"
+    }
+  },
+  {
+    "productId": "prod_013",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8908714200796",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-01T10:30:00.000Z",
+    "updatedAt": "2026-05-08T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Wide Leg Denim — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A high rise that stays put, with a straight leg that skims rather than clings. Five pockets, branded shank button and a clean topstitch. Made from rigid co"
+    }
+  },
+  {
+    "productId": "prod_014",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 4,
+    "barcode": "8901165501811",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-26T10:30:00.000Z",
+    "updatedAt": "2026-01-26T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Cropped Tapered Jeans — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A high rise that stays put, with a straight leg that skims rather than clings. Five pockets, branded shank button and a clean topstitch. Made from rigid co"
+    }
+  },
+  {
+    "productId": "prod_015",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8908887981617",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-10T10:30:00.000Z",
+    "updatedAt": "2026-06-22T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Pleated Wide Trousers — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "Pleated at the waist and pressed to a soft crease, falling straight to the ankle. Side pockets sit flat and the waistband is part-elasticated at the back. "
+    }
+  },
+  {
+    "productId": "prod_016",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 1,
+    "barcode": "8908177133560",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-24T10:30:00.000Z",
+    "updatedAt": "2026-06-12T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Tapered Linen Pants — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "Pleated at the waist and pressed to a soft crease, falling straight to the ankle. Side pockets sit flat and the waistband is part-elasticated at the back. "
+    }
+  },
+  {
+    "productId": "prod_017",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 4,
+    "barcode": "8906988128518",
+    "taxRatePercent": 5,
+    "createdAt": "2025-08-25T10:30:00.000Z",
+    "updatedAt": "2025-10-06T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Straight Leg Chinos — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "Pleated at the waist and pressed to a soft crease, falling straight to the ankle. Side pockets sit flat and the waistband is part-elasticated at the back. "
+    }
+  },
+  {
+    "productId": "prod_018",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 3,
+    "barcode": "8903432094761",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-16T10:30:00.000Z",
+    "updatedAt": "2026-09-06T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Cropped Denim Jacket — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "A boxy, mid-weight layer that sits over knitwear without bulk. Fully lined body, two welt pockets and horn-look buttons. Made from cotton twill."
+    }
+  },
+  {
+    "productId": "prod_019",
+    "status": "out-of-stock",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8901551027846",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-28T10:30:00.000Z",
+    "updatedAt": "2026-07-31T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Quilted Liner Jacket — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "A boxy, mid-weight layer that sits over knitwear without bulk. Fully lined body, two welt pockets and horn-look buttons. Made from cotton twill."
+    }
+  },
+  {
+    "productId": "prod_020",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 3,
+    "barcode": "8909589715367",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-27T10:30:00.000Z",
+    "updatedAt": "2026-08-03T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Wool Blend Overcoat — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "A boxy, mid-weight layer that sits over knitwear without bulk. Fully lined body, two welt pockets and horn-look buttons. Made from quilted cotton."
+    }
+  },
+  {
+    "productId": "prod_021",
+    "status": "draft",
+    "lowStockThreshold": 8,
+    "reservedStock": 2,
+    "barcode": "8907024114342",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-26T10:30:00.000Z",
+    "updatedAt": "2025-08-06T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Crew Neck Wool Sweater — Nyra | Daily Choice Zone",
+      "metaDescription": "Knitted to a medium gauge that holds its shape, with ribbed cuffs and a soft rolled neckline. Warm without feeling heavy indoors. Made from merino wool ble"
+    }
+  },
+  {
+    "productId": "prod_022",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 2,
+    "barcode": "8908365848401",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-14T10:30:00.000Z",
+    "updatedAt": "2025-10-13T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Oversized Cable Knit — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Knitted to a medium gauge that holds its shape, with ribbed cuffs and a soft rolled neckline. Warm without feeling heavy indoors. Made from cotton knit."
+    }
+  },
+  {
+    "productId": "prod_023",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8904364955391",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-14T10:30:00.000Z",
+    "updatedAt": "2026-05-11T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Fine Knit Cardigan — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Knitted to a medium gauge that holds its shape, with ribbed cuffs and a soft rolled neckline. Warm without feeling heavy indoors. Made from cotton knit."
+    }
+  },
+  {
+    "productId": "prod_024",
+    "status": "out-of-stock",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8906418672431",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-19T10:30:00.000Z",
+    "updatedAt": "2026-02-24T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Oxford Button Down Shirt — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "A regular fit with a soft-roll collar and a chest pocket. Cut long enough to stay tucked and finished with a clean single-needle seam. Made from oxford cot"
+    }
+  },
+  {
+    "productId": "prod_025",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 4,
+    "barcode": "8904241144080",
+    "taxRatePercent": 5,
+    "createdAt": "2025-05-21T10:30:00.000Z",
+    "updatedAt": "2025-07-05T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Half Sleeve Linen Shirt — Meridian | Daily Choice Zone",
+      "metaDescription": "A regular fit with a soft-roll collar and a chest pocket. Cut long enough to stay tucked and finished with a clean single-needle seam. Made from oxford cot"
+    }
+  },
+  {
+    "productId": "prod_026",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 1,
+    "barcode": "8901606493294",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-13T10:30:00.000Z",
+    "updatedAt": "2025-09-26T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Printed Resort Shirt — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "A regular fit with a soft-roll collar and a chest pocket. Cut long enough to stay tucked and finished with a clean single-needle seam. Made from oxford cot"
+    }
+  },
+  {
+    "productId": "prod_027",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 4,
+    "barcode": "8907261398701",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-08T10:30:00.000Z",
+    "updatedAt": "2026-07-09T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Flannel Check Shirt — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "A regular fit with a soft-roll collar and a chest pocket. Cut long enough to stay tucked and finished with a clean single-needle seam. Made from oxford cot"
+    }
+  },
+  {
+    "productId": "prod_028",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 1,
+    "barcode": "8906483931754",
+    "taxRatePercent": 5,
+    "createdAt": "2025-10-15T10:30:00.000Z",
+    "updatedAt": "2025-12-11T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Heavyweight Crew Tee — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A mid-weight jersey that keeps its shape through repeated washing, with a ribbed collar that will not stretch out. Straight body, set-in sleeves. Made from"
+    }
+  },
+  {
+    "productId": "prod_029",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8909964556694",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-09T10:30:00.000Z",
+    "updatedAt": "2026-06-24T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Pocket Tee — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A mid-weight jersey that keeps its shape through repeated washing, with a ribbed collar that will not stretch out. Straight body, set-in sleeves. Made from"
+    }
+  },
+  {
+    "productId": "prod_030",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 4,
+    "barcode": "8908987760913",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-29T10:30:00.000Z",
+    "updatedAt": "2026-05-26T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Henley Neck Tee — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "A mid-weight jersey that keeps its shape through repeated washing, with a ribbed collar that will not stretch out. Straight body, set-in sleeves. Made from"
+    }
+  },
+  {
+    "productId": "prod_031",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8906687482205",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-24T10:30:00.000Z",
+    "updatedAt": "2025-09-18T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Long Sleeve Cotton Tee — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A mid-weight jersey that keeps its shape through repeated washing, with a ribbed collar that will not stretch out. Straight body, set-in sleeves. Made from"
+    }
+  },
+  {
+    "productId": "prod_032",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8909323058906",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-17T10:30:00.000Z",
+    "updatedAt": "2026-10-10T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Slim Fit Stretch Jeans — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "A mid rise with a slim-straight leg and enough give to sit comfortably all day. Hardware is antique-finished and the pocket bags are cotton. Made from selv"
+    }
+  },
+  {
+    "productId": "prod_033",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 0,
+    "barcode": "8906843979217",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-29T10:30:00.000Z",
+    "updatedAt": "2026-08-15T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Straight Leg Denim — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A mid rise with a slim-straight leg and enough give to sit comfortably all day. Hardware is antique-finished and the pocket bags are cotton. Made from selv"
+    }
+  },
+  {
+    "productId": "prod_034",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 3,
+    "barcode": "8908545905910",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-08T10:30:00.000Z",
+    "updatedAt": "2025-08-22T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Relaxed Tapered Jeans — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A mid rise with a slim-straight leg and enough give to sit comfortably all day. Hardware is antique-finished and the pocket bags are cotton. Made from stre"
+    }
+  },
+  {
+    "productId": "prod_035",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 4,
+    "barcode": "8909279561596",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-16T10:30:00.000Z",
+    "updatedAt": "2026-10-15T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Slim Fit Chinos — Meridian | Daily Choice Zone",
+      "metaDescription": "A flat-fronted chino with a clean line from hip to hem and a touch of stretch in the weave. Slanted side pockets, jetted back pockets. Made from linen blen"
+    }
+  },
+  {
+    "productId": "prod_036",
+    "status": "draft",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8907286023326",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-27T10:30:00.000Z",
+    "updatedAt": "2025-09-29T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Pleated Linen Trousers — Daily Choice Studio | Daily Choice Zone",
+      "metaDescription": "A flat-fronted chino with a clean line from hip to hem and a touch of stretch in the weave. Slanted side pockets, jetted back pockets. Made from linen blen"
+    }
+  },
+  {
+    "productId": "prod_037",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8907362780269",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-06T10:30:00.000Z",
+    "updatedAt": "2026-08-18T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Cargo Utility Pants — Meridian | Daily Choice Zone",
+      "metaDescription": "A flat-fronted chino with a clean line from hip to hem and a touch of stretch in the weave. Slanted side pockets, jetted back pockets. Made from performanc"
+    }
+  },
+  {
+    "productId": "prod_038",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8906532597993",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-11T10:30:00.000Z",
+    "updatedAt": "2026-05-07T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Cotton Bomber Jacket — Meridian | Daily Choice Zone",
+      "metaDescription": "Built as a real outer layer: wind-resistant face fabric, taped shoulder seams and a hem that sits below the hip. Zip closure with a storm flap. Made from c"
+    }
+  },
+  {
+    "productId": "prod_039",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8904219310984",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-28T10:30:00.000Z",
+    "updatedAt": "2026-04-01T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Hooded Puffer Jacket — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "Built as a real outer layer: wind-resistant face fabric, taped shoulder seams and a hem that sits below the hip. Zip closure with a storm flap. Made from w"
+    }
+  },
+  {
+    "productId": "prod_040",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 4,
+    "barcode": "8908794207149",
+    "taxRatePercent": 5,
+    "createdAt": "2025-10-20T10:30:00.000Z",
+    "updatedAt": "2025-12-12T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Field Jacket — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "Built as a real outer layer: wind-resistant face fabric, taped shoulder seams and a hem that sits below the hip. Zip closure with a storm flap. Made from r"
+    }
+  },
+  {
+    "productId": "prod_041",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8901908169035",
+    "taxRatePercent": 5,
+    "createdAt": "2026-05-13T10:30:00.000Z",
+    "updatedAt": "2026-05-26T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Merino Crew Sweater — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "A fine-gauge knit that layers under a jacket without bunching, with ribbed trims that hold their shape. Fully fashioned shoulders. Made from cotton knit."
+    }
+  },
+  {
+    "productId": "prod_042",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 0,
+    "barcode": "8902590561678",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-23T10:30:00.000Z",
+    "updatedAt": "2026-10-04T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Half Zip Knit — Meridian | Daily Choice Zone",
+      "metaDescription": "A fine-gauge knit that layers under a jacket without bunching, with ribbed trims that hold their shape. Fully fashioned shoulders. Made from merino wool."
+    }
+  },
+  {
+    "productId": "prod_043",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8906600166593",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-16T10:30:00.000Z",
+    "updatedAt": "2026-06-24T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Quarter Button Polo Knit — Meridian | Daily Choice Zone",
+      "metaDescription": "A fine-gauge knit that layers under a jacket without bunching, with ribbed trims that hold their shape. Fully fashioned shoulders. Made from lambswool blen"
+    }
+  },
+  {
+    "productId": "prod_044",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8902507964726",
+    "taxRatePercent": 5,
+    "createdAt": "2025-10-22T10:30:00.000Z",
+    "updatedAt": "2025-12-04T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Printed Cotton Frock — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Made for running about: soft brushed cotton, flat seams where they would otherwise rub, and an easy pull-on shape with no fiddly fastenings. Made from soft"
+    }
+  },
+  {
+    "productId": "prod_045",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8901251240192",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-10T10:30:00.000Z",
+    "updatedAt": "2026-06-30T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Ruffle Sleeve Top — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Made for running about: soft brushed cotton, flat seams where they would otherwise rub, and an easy pull-on shape with no fiddly fastenings. Made from soft"
+    }
+  },
+  {
+    "productId": "prod_046",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8907149795462",
+    "taxRatePercent": 5,
+    "createdAt": "2025-11-23T10:30:00.000Z",
+    "updatedAt": "2026-01-03T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Jersey Leggings Set — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Made for running about: soft brushed cotton, flat seams where they would otherwise rub, and an easy pull-on shape with no fiddly fastenings. Made from brus"
+    }
+  },
+  {
+    "productId": "prod_047",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8906127817614",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-19T10:30:00.000Z",
+    "updatedAt": "2025-10-22T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Denim Pinafore — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Made for running about: soft brushed cotton, flat seams where they would otherwise rub, and an easy pull-on shape with no fiddly fastenings. Made from cott"
+    }
+  },
+  {
+    "productId": "prod_048",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 4,
+    "barcode": "8901785857246",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-06T10:30:00.000Z",
+    "updatedAt": "2025-10-06T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Graphic Cotton Tee — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Reinforced at the knees and elbows where the wear actually happens, with an elasticated waist that survives the school run. Made from brushed fleece."
+    }
+  },
+  {
+    "productId": "prod_049",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 3,
+    "barcode": "8903551130076",
+    "taxRatePercent": 5,
+    "createdAt": "2025-06-20T10:30:00.000Z",
+    "updatedAt": "2025-08-13T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Pull On Jogger — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Reinforced at the knees and elbows where the wear actually happens, with an elasticated waist that survives the school run. Made from cotton twill."
+    }
+  },
+  {
+    "productId": "prod_050",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8904839589914",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-21T10:30:00.000Z",
+    "updatedAt": "2025-12-24T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Checked Cotton Shirt — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Reinforced at the knees and elbows where the wear actually happens, with an elasticated waist that survives the school run. Made from soft cotton jersey."
+    }
+  },
+  {
+    "productId": "prod_051",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8905947965538",
+    "taxRatePercent": 5,
+    "createdAt": "2025-08-25T10:30:00.000Z",
+    "updatedAt": "2025-10-05T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Hooded Sweatshirt — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Reinforced at the knees and elbows where the wear actually happens, with an elasticated waist that survives the school run. Made from soft cotton jersey."
+    }
+  },
+  {
+    "productId": "prod_052",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8909143426922",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-07T10:30:00.000Z",
+    "updatedAt": "2026-04-17T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Organic Cotton Bodysuit — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Cut from undyed organic cotton with envelope shoulders and press studs along the inseam, so changes take seconds. Tagless neck print. Made from bamboo cott"
+    }
+  },
+  {
+    "productId": "prod_053",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8901844376689",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-09T10:30:00.000Z",
+    "updatedAt": "2026-04-17T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Sleepsuit Two Pack — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Cut from undyed organic cotton with envelope shoulders and press studs along the inseam, so changes take seconds. Tagless neck print. Made from bamboo cott"
+    }
+  },
+  {
+    "productId": "prod_054",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8902844415857",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-20T10:30:00.000Z",
+    "updatedAt": "2026-08-02T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Muslin Swaddle Set — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Cut from undyed organic cotton with envelope shoulders and press studs along the inseam, so changes take seconds. Tagless neck print. Made from bamboo cott"
+    }
+  },
+  {
+    "productId": "prod_055",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 2,
+    "barcode": "8902040542221",
+    "taxRatePercent": 5,
+    "createdAt": "2025-10-07T10:30:00.000Z",
+    "updatedAt": "2025-11-20T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Washed Cotton Bedsheet Set — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Woven from long-staple cotton that softens with every wash rather than pilling. Includes a fitted sheet with deep corners and two pillow covers. Made from "
+    }
+  },
+  {
+    "productId": "prod_056",
+    "status": "out-of-stock",
+    "lowStockThreshold": 5,
+    "reservedStock": 0,
+    "barcode": "8907700208398",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-23T10:30:00.000Z",
+    "updatedAt": "2026-01-28T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Percale Duvet Cover — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Woven from long-staple cotton that softens with every wash rather than pilling. Includes a fitted sheet with deep corners and two pillow covers. Made from "
+    }
+  },
+  {
+    "productId": "prod_057",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8907538207269",
+    "taxRatePercent": 5,
+    "createdAt": "2025-11-04T10:30:00.000Z",
+    "updatedAt": "2025-12-05T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Linen Blend Quilt — Terra Living | Daily Choice Zone",
+      "metaDescription": "Woven from long-staple cotton that softens with every wash rather than pilling. Includes a fitted sheet with deep corners and two pillow covers. Made from "
+    }
+  },
+  {
+    "productId": "prod_058",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8905060139803",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-09T10:30:00.000Z",
+    "updatedAt": "2026-01-10T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Stoneware Vase — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Finished by hand, so the glaze and grain vary a little piece to piece. Felt pads on the base protect the surface underneath. Made from stoneware."
+    }
+  },
+  {
+    "productId": "prod_059",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8905909538169",
+    "taxRatePercent": 5,
+    "createdAt": "2026-02-11T10:30:00.000Z",
+    "updatedAt": "2026-03-09T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Carved Wood Bowl — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Finished by hand, so the glaze and grain vary a little piece to piece. Felt pads on the base protect the surface underneath. Made from brass."
+    }
+  },
+  {
+    "productId": "prod_060",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 1,
+    "barcode": "8909626433591",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-10T10:30:00.000Z",
+    "updatedAt": "2026-05-06T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Brass Candle Holder — Terra Living | Daily Choice Zone",
+      "metaDescription": "Finished by hand, so the glaze and grain vary a little piece to piece. Felt pads on the base protect the surface underneath. Made from stoneware."
+    }
+  },
+  {
+    "productId": "prod_061",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 4,
+    "barcode": "8908471823911",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-24T10:30:00.000Z",
+    "updatedAt": "2026-08-27T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Textured Ceramic Planter — Terra Living | Daily Choice Zone",
+      "metaDescription": "Finished by hand, so the glaze and grain vary a little piece to piece. Felt pads on the base protect the surface underneath. Made from hand-blown glass."
+    }
+  },
+  {
+    "productId": "prod_062",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 3,
+    "barcode": "8901091124277",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-04T10:30:00.000Z",
+    "updatedAt": "2026-07-21T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Speckled Dinner Plate Set — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Dishwasher and microwave safe, with a rim thick enough to survive daily use. Stacks neatly in a standard cabinet. Made from borosilicate glass."
+    }
+  },
+  {
+    "productId": "prod_063",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8902978607369",
+    "taxRatePercent": 5,
+    "createdAt": "2026-05-14T10:30:00.000Z",
+    "updatedAt": "2026-06-16T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Double Wall Glass Mugs — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Dishwasher and microwave safe, with a rim thick enough to survive daily use. Stacks neatly in a standard cabinet. Made from stainless steel."
+    }
+  },
+  {
+    "productId": "prod_064",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 1,
+    "barcode": "8901194702807",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-02T10:30:00.000Z",
+    "updatedAt": "2026-02-06T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Acacia Serving Board — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Dishwasher and microwave safe, with a rim thick enough to survive daily use. Stacks neatly in a standard cabinet. Made from stoneware."
+    }
+  },
+  {
+    "productId": "prod_065",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 4,
+    "barcode": "8907361138913",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-09T10:30:00.000Z",
+    "updatedAt": "2026-01-21T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Handwoven Jute Rug — Terra Living | Daily Choice Zone",
+      "metaDescription": "A tight weave that resists flattening underfoot or under cushions, with bound edges that will not fray. Spot clean or gentle machine wash. Made from jute."
+    }
+  },
+  {
+    "productId": "prod_066",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 3,
+    "barcode": "8909336628711",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-18T10:30:00.000Z",
+    "updatedAt": "2026-08-24T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Textured Cushion Cover Set — Terra Living | Daily Choice Zone",
+      "metaDescription": "A tight weave that resists flattening underfoot or under cushions, with bound edges that will not fray. Spot clean or gentle machine wash. Made from jute."
+    }
+  },
+  {
+    "productId": "prod_067",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 0,
+    "barcode": "8906175667492",
+    "taxRatePercent": 5,
+    "createdAt": "2026-09-03T10:30:00.000Z",
+    "updatedAt": "2026-09-20T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Cotton Throw Blanket — Terra Living | Daily Choice Zone",
+      "metaDescription": "A tight weave that resists flattening underfoot or under cushions, with bound edges that will not fray. Spot clean or gentle machine wash. Made from chenil"
+    }
+  },
+  {
+    "productId": "prod_068",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 4,
+    "barcode": "8905310398439",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-08T10:30:00.000Z",
+    "updatedAt": "2026-04-28T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Hydrating Face Serum — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A lightweight formula that absorbs without leaving a film, so it layers cleanly under sunscreen or makeup. Fragrance-free and non-comedogenic. Made from hy"
+    }
+  },
+  {
+    "productId": "prod_069",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 3,
+    "barcode": "8905987419605",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-04T10:30:00.000Z",
+    "updatedAt": "2026-07-29T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Gentle Foaming Cleanser — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "A lightweight formula that absorbs without leaving a film, so it layers cleanly under sunscreen or makeup. Fragrance-free and non-comedogenic. Made from ni"
+    }
+  },
+  {
+    "productId": "prod_070",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 3,
+    "barcode": "8901308997091",
+    "taxRatePercent": 5,
+    "createdAt": "2025-10-06T10:30:00.000Z",
+    "updatedAt": "2025-10-15T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Daily Moisturiser SPF 30 — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "A lightweight formula that absorbs without leaving a film, so it layers cleanly under sunscreen or makeup. Fragrance-free and non-comedogenic. Made from hy"
+    }
+  },
+  {
+    "productId": "prod_071",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 3,
+    "barcode": "8903348103121",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-11T10:30:00.000Z",
+    "updatedAt": "2025-07-16T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Overnight Repair Cream — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "A lightweight formula that absorbs without leaving a film, so it layers cleanly under sunscreen or makeup. Fragrance-free and non-comedogenic. Made from hy"
+    }
+  },
+  {
+    "productId": "prod_072",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8901291165401",
+    "taxRatePercent": 5,
+    "createdAt": "2025-11-14T10:30:00.000Z",
+    "updatedAt": "2025-12-12T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Satin Finish Lipstick — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "Blends out with a fingertip and builds from a wash of colour to full coverage without going patchy. Wears for a working day. Made from satin finish formula"
+    }
+  },
+  {
+    "productId": "prod_073",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8906437013311",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-04T10:30:00.000Z",
+    "updatedAt": "2025-08-07T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Cream Blush Stick — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "Blends out with a fingertip and builds from a wash of colour to full coverage without going patchy. Wears for a working day. Made from satin finish formula"
+    }
+  },
+  {
+    "productId": "prod_074",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 1,
+    "barcode": "8907018463816",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-25T10:30:00.000Z",
+    "updatedAt": "2026-01-23T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Brow Defining Pencil — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "Blends out with a fingertip and builds from a wash of colour to full coverage without going patchy. Wears for a working day. Made from satin finish formula"
+    }
+  },
+  {
+    "productId": "prod_075",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 4,
+    "barcode": "8908254554776",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-27T10:30:00.000Z",
+    "updatedAt": "2026-07-26T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Lengthening Mascara — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "Blends out with a fingertip and builds from a wash of colour to full coverage without going patchy. Wears for a working day. Made from buildable cream form"
+    }
+  },
+  {
+    "productId": "prod_076",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 3,
+    "barcode": "8906259155497",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-24T10:30:00.000Z",
+    "updatedAt": "2026-02-02T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Repair Shampoo — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "A sulphate-free wash that lathers enough to feel clean without stripping colour, followed by a conditioner that rinses out completely. Made from argan oil "
+    }
+  },
+  {
+    "productId": "prod_077",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 4,
+    "barcode": "8908009483668",
+    "taxRatePercent": 5,
+    "createdAt": "2026-05-18T10:30:00.000Z",
+    "updatedAt": "2026-06-24T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Deep Conditioning Mask — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "A sulphate-free wash that lathers enough to feel clean without stripping colour, followed by a conditioner that rinses out completely. Made from argan oil "
+    }
+  },
+  {
+    "productId": "prod_078",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 4,
+    "barcode": "8906658249612",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-21T10:30:00.000Z",
+    "updatedAt": "2025-11-06T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Lightweight Hair Oil — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "A sulphate-free wash that lathers enough to feel clean without stripping colour, followed by a conditioner that rinses out completely. Made from keratin co"
+    }
+  },
+  {
+    "productId": "prod_079",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 3,
+    "barcode": "8909705101625",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-24T10:30:00.000Z",
+    "updatedAt": "2025-10-18T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Amber Woods Eau de Parfum — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "Opens bright and settles into a warm, woody base over the first hour. Six to eight hours of wear on skin, longer on fabric. Made from eau de parfum 50ml."
+    }
+  },
+  {
+    "productId": "prod_080",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 4,
+    "barcode": "8907934562383",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-20T10:30:00.000Z",
+    "updatedAt": "2026-09-16T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Citrus Neroli Eau de Toilette — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Opens bright and settles into a warm, woody base over the first hour. Six to eight hours of wear on skin, longer on fabric. Made from eau de toilette 100ml"
+    }
+  },
+  {
+    "productId": "prod_081",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8909381486639",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-02T10:30:00.000Z",
+    "updatedAt": "2025-09-14T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Cedar and Vetiver Parfum — Kaya Beauty | Daily Choice Zone",
+      "metaDescription": "Opens bright and settles into a warm, woody base over the first hour. Six to eight hours of wear on skin, longer on fabric. Made from eau de toilette 100ml"
+    }
+  },
+  {
+    "productId": "prod_082",
+    "status": "out-of-stock",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8909233848310",
+    "taxRatePercent": 5,
+    "createdAt": "2026-05-18T10:30:00.000Z",
+    "updatedAt": "2026-06-09T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Court Canvas Sneakers — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A cushioned EVA midsole with a vulcanised rubber outsole that grips on wet pavement. Padded collar and a removable moulded insole. Made from leather upper."
+    }
+  },
+  {
+    "productId": "prod_083",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 4,
+    "barcode": "8902074653914",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-28T10:30:00.000Z",
+    "updatedAt": "2026-06-30T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Retro Runner Sneakers — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A cushioned EVA midsole with a vulcanised rubber outsole that grips on wet pavement. Padded collar and a removable moulded insole. Made from recycled knit "
+    }
+  },
+  {
+    "productId": "prod_084",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8903990833719",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-18T10:30:00.000Z",
+    "updatedAt": "2026-07-19T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Leather Low Top Sneakers — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A cushioned EVA midsole with a vulcanised rubber outsole that grips on wet pavement. Padded collar and a removable moulded insole. Made from leather upper."
+    }
+  },
+  {
+    "productId": "prod_085",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8908597187957",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-29T10:30:00.000Z",
+    "updatedAt": "2026-04-09T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Knit Slip On Sneakers — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A cushioned EVA midsole with a vulcanised rubber outsole that grips on wet pavement. Padded collar and a removable moulded insole. Made from recycled knit "
+    }
+  },
+  {
+    "productId": "prod_086",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 1,
+    "barcode": "8909673070228",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-18T10:30:00.000Z",
+    "updatedAt": "2026-02-08T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Block Heel Sandals — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "A 75mm block heel that carries weight better than a stiletto, with a lightly padded footbed and a leather-lined interior. Made from leather upper."
+    }
+  },
+  {
+    "productId": "prod_087",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 1,
+    "barcode": "8903339243625",
+    "taxRatePercent": 5,
+    "createdAt": "2025-05-14T10:30:00.000Z",
+    "updatedAt": "2025-06-28T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Pointed Court Heels — Nyra | Daily Choice Zone",
+      "metaDescription": "A 75mm block heel that carries weight better than a stiletto, with a lightly padded footbed and a leather-lined interior. Made from suede finish."
+    }
+  },
+  {
+    "productId": "prod_088",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 4,
+    "barcode": "8902829388268",
+    "taxRatePercent": 5,
+    "createdAt": "2025-06-08T10:30:00.000Z",
+    "updatedAt": "2025-07-23T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Slingback Kitten Heels — Nyra | Daily Choice Zone",
+      "metaDescription": "A 75mm block heel that carries weight better than a stiletto, with a lightly padded footbed and a leather-lined interior. Made from leather upper."
+    }
+  },
+  {
+    "productId": "prod_089",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 4,
+    "barcode": "8909710332333",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-11T10:30:00.000Z",
+    "updatedAt": "2025-12-20T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Double Strap Sandals — Stride | Daily Choice Zone",
+      "metaDescription": "A contoured footbed that supports the arch and adjustable buckles at the instep. The outsole is siped for grip on smooth floors. Made from cork footbed."
+    }
+  },
+  {
+    "productId": "prod_090",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 4,
+    "barcode": "8902540657800",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-27T10:30:00.000Z",
+    "updatedAt": "2026-02-12T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Cork Footbed Slides — Stride | Daily Choice Zone",
+      "metaDescription": "A contoured footbed that supports the arch and adjustable buckles at the instep. The outsole is siped for grip on smooth floors. Made from cork footbed."
+    }
+  },
+  {
+    "productId": "prod_091",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 3,
+    "barcode": "8906954559654",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-05T10:30:00.000Z",
+    "updatedAt": "2026-08-24T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Woven Flat Sandals — Stride | Daily Choice Zone",
+      "metaDescription": "A contoured footbed that supports the arch and adjustable buckles at the instep. The outsole is siped for grip on smooth floors. Made from leather upper."
+    }
+  },
+  {
+    "productId": "prod_092",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 0,
+    "barcode": "8904290957536",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-02T10:30:00.000Z",
+    "updatedAt": "2026-03-01T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Leather Derby Shoes — Meridian | Daily Choice Zone",
+      "metaDescription": "Cemented construction on a leather-look sole with a stacked heel. Breaks in over a week or two and takes polish well. Made from burnished leather."
+    }
+  },
+  {
+    "productId": "prod_093",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 1,
+    "barcode": "8908032794089",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-04T10:30:00.000Z",
+    "updatedAt": "2026-06-09T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Penny Loafers — Stride | Daily Choice Zone",
+      "metaDescription": "Cemented construction on a leather-look sole with a stacked heel. Breaks in over a week or two and takes polish well. Made from burnished leather."
+    }
+  },
+  {
+    "productId": "prod_094",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8908491391503",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-13T10:30:00.000Z",
+    "updatedAt": "2026-08-30T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Brogue Oxford Shoes — Stride | Daily Choice Zone",
+      "metaDescription": "Cemented construction on a leather-look sole with a stacked heel. Breaks in over a week or two and takes polish well. Made from full grain leather."
+    }
+  },
+  {
+    "productId": "prod_095",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8908557867191",
+    "taxRatePercent": 5,
+    "createdAt": "2026-06-17T10:30:00.000Z",
+    "updatedAt": "2026-08-03T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Structured Top Handle Bag — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Structured enough to stand on its own when set down. Lined interior with a zip pocket and two slip pockets; detachable crossbody strap. Made from full grai"
+    }
+  },
+  {
+    "productId": "prod_096",
+    "status": "out-of-stock",
+    "lowStockThreshold": 5,
+    "reservedStock": 0,
+    "barcode": "8908630176648",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-11T10:30:00.000Z",
+    "updatedAt": "2025-10-23T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Soft Hobo Shoulder Bag — Nyra | Daily Choice Zone",
+      "metaDescription": "Structured enough to stand on its own when set down. Lined interior with a zip pocket and two slip pockets; detachable crossbody strap. Made from canvas an"
+    }
+  },
+  {
+    "productId": "prod_097",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 4,
+    "barcode": "8908071573829",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-07T10:30:00.000Z",
+    "updatedAt": "2026-07-27T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Quilted Crossbody Bag — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Structured enough to stand on its own when set down. Lined interior with a zip pocket and two slip pockets; detachable crossbody strap. Made from full grai"
+    }
+  },
+  {
+    "productId": "prod_098",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8903824510829",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-09T10:30:00.000Z",
+    "updatedAt": "2026-01-11T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Everyday Laptop Backpack — Daily Choice | Daily Choice Zone",
+      "metaDescription": "A padded 15-inch laptop sleeve, an organiser panel and a water-resistant base. Shoulder straps are foam-padded with a sternum clip. Made from coated nylon."
+    }
+  },
+  {
+    "productId": "prod_099",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8901621472893",
+    "taxRatePercent": 5,
+    "createdAt": "2026-09-03T10:30:00.000Z",
+    "updatedAt": "2026-10-27T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Canvas Roll Top Backpack — Meridian | Daily Choice Zone",
+      "metaDescription": "A padded 15-inch laptop sleeve, an organiser panel and a water-resistant base. Shoulder straps are foam-padded with a sternum clip. Made from cotton canvas"
+    }
+  },
+  {
+    "productId": "prod_100",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 1,
+    "barcode": "8906206358658",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-14T10:30:00.000Z",
+    "updatedAt": "2026-09-15T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Commuter Backpack — Meridian | Daily Choice Zone",
+      "metaDescription": "A padded 15-inch laptop sleeve, an organiser panel and a water-resistant base. Shoulder straps are foam-padded with a sternum clip. Made from cotton canvas"
+    }
+  },
+  {
+    "productId": "prod_101",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8904336629885",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-27T10:30:00.000Z",
+    "updatedAt": "2026-01-16T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Heavy Canvas Tote — Terra Living | Daily Choice Zone",
+      "metaDescription": "Wide enough for a laptop and a water bottle, with reinforced strap joins that take the weight. Folds flat when it is not in use. Made from jute blend."
+    }
+  },
+  {
+    "productId": "prod_102",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 4,
+    "barcode": "8904289519555",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-10T10:30:00.000Z",
+    "updatedAt": "2026-08-08T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Woven Market Tote — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "Wide enough for a laptop and a water bottle, with reinforced strap joins that take the weight. Folds flat when it is not in use. Made from vegan leather."
+    }
+  },
+  {
+    "productId": "prod_103",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 4,
+    "barcode": "8905225599955",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-17T10:30:00.000Z",
+    "updatedAt": "2025-09-27T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Leather Trim Work Tote — Terra Living | Daily Choice Zone",
+      "metaDescription": "Wide enough for a laptop and a water bottle, with reinforced strap joins that take the weight. Folds flat when it is not in use. Made from vegan leather."
+    }
+  },
+  {
+    "productId": "prod_104",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 2,
+    "barcode": "8905196924148",
+    "taxRatePercent": 5,
+    "createdAt": "2026-02-14T10:30:00.000Z",
+    "updatedAt": "2026-03-30T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Gold Plated Hoop Earrings — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Light enough to forget you are wearing them, with hypoallergenic posts and secure butterfly backs. Plating is sealed against tarnish. Made from stainless s"
+    }
+  },
+  {
+    "productId": "prod_105",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8909234751841",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-11T10:30:00.000Z",
+    "updatedAt": "2026-08-11T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Pearl Drop Earrings — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Light enough to forget you are wearing them, with hypoallergenic posts and secure butterfly backs. Plating is sealed against tarnish. Made from stainless s"
+    }
+  },
+  {
+    "productId": "prod_106",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8909512620277",
+    "taxRatePercent": 5,
+    "createdAt": "2025-08-06T10:30:00.000Z",
+    "updatedAt": "2025-08-29T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Textured Stud Earrings — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Light enough to forget you are wearing them, with hypoallergenic posts and secure butterfly backs. Plating is sealed against tarnish. Made from stainless s"
+    }
+  },
+  {
+    "productId": "prod_107",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8906334568999",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-17T10:30:00.000Z",
+    "updatedAt": "2025-08-22T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Layered Chain Necklace — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "A fine chain with a lobster clasp and a 5cm extender, so it sits where you want it. Layers cleanly with other lengths. Made from 18k gold plated brass."
+    }
+  },
+  {
+    "productId": "prod_108",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8904197217962",
+    "taxRatePercent": 5,
+    "createdAt": "2026-09-18T10:30:00.000Z",
+    "updatedAt": "2026-11-16T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Pendant Drop Necklace — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "A fine chain with a lobster clasp and a 5cm extender, so it sits where you want it. Layers cleanly with other lengths. Made from 18k gold plated brass."
+    }
+  },
+  {
+    "productId": "prod_109",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 4,
+    "barcode": "8904480144552",
+    "taxRatePercent": 5,
+    "createdAt": "2026-02-03T10:30:00.000Z",
+    "updatedAt": "2026-03-20T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Beaded Charm Necklace — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "A fine chain with a lobster clasp and a 5cm extender, so it sits where you want it. Layers cleanly with other lengths. Made from 18k gold plated brass."
+    }
+  },
+  {
+    "productId": "prod_110",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8902472412959",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-19T10:30:00.000Z",
+    "updatedAt": "2026-10-02T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Minimal Dial Watch — Meridian | Daily Choice Zone",
+      "metaDescription": "A 38mm case with a mineral crystal face and quartz movement, water resistant to 3 ATM. Strap is interchangeable with any 20mm band. Made from leather strap"
+    }
+  },
+  {
+    "productId": "prod_111",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 2,
+    "barcode": "8902546183184",
+    "taxRatePercent": 5,
+    "createdAt": "2025-11-15T10:30:00.000Z",
+    "updatedAt": "2026-01-07T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Mesh Strap Watch — Meridian | Daily Choice Zone",
+      "metaDescription": "A 38mm case with a mineral crystal face and quartz movement, water resistant to 3 ATM. Strap is interchangeable with any 20mm band. Made from leather strap"
+    }
+  },
+  {
+    "productId": "prod_112",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8905744409245",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-22T10:30:00.000Z",
+    "updatedAt": "2025-10-26T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Leather Strap Chronograph — Meridian | Daily Choice Zone",
+      "metaDescription": "A 38mm case with a mineral crystal face and quartz movement, water resistant to 3 ATM. Strap is interchangeable with any 20mm band. Made from leather strap"
+    }
+  },
+  {
+    "productId": "prod_113",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 1,
+    "barcode": "8909823633315",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-04T10:30:00.000Z",
+    "updatedAt": "2026-01-25T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Polarised Square Sunglasses — Meridian | Daily Choice Zone",
+      "metaDescription": "Polarised lenses with full UV400 protection and spring hinges that take being pushed on and off a head all day. Comes with a hard case. Made from acetate f"
+    }
+  },
+  {
+    "productId": "prod_114",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 4,
+    "barcode": "8908743872727",
+    "taxRatePercent": 5,
+    "createdAt": "2025-06-08T10:30:00.000Z",
+    "updatedAt": "2025-07-04T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Round Metal Sunglasses — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Polarised lenses with full UV400 protection and spring hinges that take being pushed on and off a head all day. Comes with a hard case. Made from polarised"
+    }
+  },
+  {
+    "productId": "prod_115",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8904628620422",
+    "taxRatePercent": 5,
+    "createdAt": "2025-08-06T10:30:00.000Z",
+    "updatedAt": "2025-09-06T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Oversized Acetate Sunglasses — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Polarised lenses with full UV400 protection and spring hinges that take being pushed on and off a head all day. Comes with a hard case. Made from polarised"
+    }
+  },
+  {
+    "productId": "prod_116",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 2,
+    "barcode": "8907144959513",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-18T10:30:00.000Z",
+    "updatedAt": "2026-02-20T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Leather Reversible Belt — Meridian | Daily Choice Zone",
+      "metaDescription": "Cut from a single piece of hide rather than bonded layers, so it creases rather than cracks. Brushed metal hardware. Made from full grain leather."
+    }
+  },
+  {
+    "productId": "prod_117",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 1,
+    "barcode": "8902598089878",
+    "taxRatePercent": 5,
+    "createdAt": "2025-09-21T10:30:00.000Z",
+    "updatedAt": "2025-11-17T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Bifold Card Wallet — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "Cut from a single piece of hide rather than bonded layers, so it creases rather than cracks. Brushed metal hardware. Made from full grain leather."
+    }
+  },
+  {
+    "productId": "prod_118",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 1,
+    "barcode": "8906760488450",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-23T10:30:00.000Z",
+    "updatedAt": "2026-09-30T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Woven Webbing Belt — Meridian | Daily Choice Zone",
+      "metaDescription": "Cut from a single piece of hide rather than bonded layers, so it creases rather than cracks. Brushed metal hardware. Made from vegan leather."
+    }
+  },
+  {
+    "productId": "prod_119",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 2,
+    "barcode": "8906115564485",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-24T10:30:00.000Z",
+    "updatedAt": "2026-03-03T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Woven Wool Scarf — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "Soft against the neck with no scratch, and wide enough to double over. Holds its shape after a gentle hand wash. Made from cotton knit."
+    }
+  },
+  {
+    "productId": "prod_120",
+    "status": "out-of-stock",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8901704838810",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-01T10:30:00.000Z",
+    "updatedAt": "2026-05-02T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Ribbed Knit Beanie — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Soft against the neck with no scratch, and wide enough to double over. Holds its shape after a gentle hand wash. Made from modal blend."
+    }
+  },
+  {
+    "productId": "prod_121",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8908138501846",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-12T10:30:00.000Z",
+    "updatedAt": "2026-09-16T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Lightweight Modal Stole — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Soft against the neck with no scratch, and wide enough to double over. Holds its shape after a gentle hand wash. Made from merino wool."
+    }
+  },
+  {
+    "productId": "prod_122",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 3,
+    "barcode": "8903386710766",
+    "taxRatePercent": 5,
+    "createdAt": "2026-05-28T10:30:00.000Z",
+    "updatedAt": "2026-06-29T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Over Ear Wireless Headphones — Meridian Tech | Daily Choice Zone",
+      "metaDescription": "Up to 40 hours of playback with a 10-minute quick charge giving four more. Multipoint pairing holds two devices at once. Made from 40mm drivers."
+    }
+  },
+  {
+    "productId": "prod_123",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8902088535341",
+    "taxRatePercent": 5,
+    "createdAt": "2025-12-10T10:30:00.000Z",
+    "updatedAt": "2025-12-18T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "True Wireless Earbuds — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Up to 40 hours of playback with a 10-minute quick charge giving four more. Multipoint pairing holds two devices at once. Made from 40mm drivers."
+    }
+  },
+  {
+    "productId": "prod_124",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 3,
+    "barcode": "8902866009228",
+    "taxRatePercent": 5,
+    "createdAt": "2025-10-06T10:30:00.000Z",
+    "updatedAt": "2025-12-02T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Compact Bluetooth Speaker — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Up to 40 hours of playback with a 10-minute quick charge giving four more. Multipoint pairing holds two devices at once. Made from active noise cancelling."
+    }
+  },
+  {
+    "productId": "prod_125",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 1,
+    "barcode": "8902912667222",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-16T10:30:00.000Z",
+    "updatedAt": "2026-05-04T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Fitness Smartwatch — Meridian Tech | Daily Choice Zone",
+      "metaDescription": "A bright AMOLED face that stays readable outdoors, seven-day battery in normal use, and continuous heart rate and SpO2 tracking. Made from silicone strap."
+    }
+  },
+  {
+    "productId": "prod_126",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8905499832701",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-15T10:30:00.000Z",
+    "updatedAt": "2026-03-29T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Slim Activity Band — Meridian Tech | Daily Choice Zone",
+      "metaDescription": "A bright AMOLED face that stays readable outdoors, seven-day battery in normal use, and continuous heart rate and SpO2 tracking. Made from amoled display."
+    }
+  },
+  {
+    "productId": "prod_127",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 0,
+    "barcode": "8902876161913",
+    "taxRatePercent": 5,
+    "createdAt": "2026-02-19T10:30:00.000Z",
+    "updatedAt": "2026-03-25T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Sport GPS Watch — Meridian Tech | Daily Choice Zone",
+      "metaDescription": "A bright AMOLED face that stays readable outdoors, seven-day battery in normal use, and continuous heart rate and SpO2 tracking. Made from amoled display."
+    }
+  },
+  {
+    "productId": "prod_128",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 1,
+    "barcode": "8901485568070",
+    "taxRatePercent": 5,
+    "createdAt": "2025-10-27T10:30:00.000Z",
+    "updatedAt": "2025-12-22T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "65W GaN Fast Charger — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Fast charging with foldable pins and built-in over-current protection. The braided cable is rated for 20,000 bend cycles. Made from braided nylon."
+    }
+  },
+  {
+    "productId": "prod_129",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 2,
+    "barcode": "8908037517065",
+    "taxRatePercent": 5,
+    "createdAt": "2026-01-03T10:30:00.000Z",
+    "updatedAt": "2026-01-17T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Braided USB-C Cable — Meridian Tech | Daily Choice Zone",
+      "metaDescription": "Fast charging with foldable pins and built-in over-current protection. The braided cable is rated for 20,000 bend cycles. Made from braided nylon."
+    }
+  },
+  {
+    "productId": "prod_130",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 0,
+    "barcode": "8901448959131",
+    "taxRatePercent": 5,
+    "createdAt": "2026-07-24T10:30:00.000Z",
+    "updatedAt": "2026-08-25T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "10000mAh Slim Power Bank — Meridian Tech | Daily Choice Zone",
+      "metaDescription": "Fast charging with foldable pins and built-in over-current protection. The braided cable is rated for 20,000 bend cycles. Made from aluminium housing."
+    }
+  },
+  {
+    "productId": "prod_131",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 3,
+    "barcode": "8907674395711",
+    "taxRatePercent": 5,
+    "createdAt": "2025-08-22T10:30:00.000Z",
+    "updatedAt": "2025-09-06T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Cabin Hardshell Trolley — Meridian | Daily Choice Zone",
+      "metaDescription": "Four spinner wheels that roll quietly, a TSA-approved combination lock and a shell that flexes rather than cracks under a baggage handler. Made from polyca"
+    }
+  },
+  {
+    "productId": "prod_132",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 4,
+    "barcode": "8901962648283",
+    "taxRatePercent": 5,
+    "createdAt": "2026-05-13T10:30:00.000Z",
+    "updatedAt": "2026-06-13T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Weekender Duffle Bag — Meridian | Daily Choice Zone",
+      "metaDescription": "Four spinner wheels that roll quietly, a TSA-approved combination lock and a shell that flexes rather than cracks under a baggage handler. Made from alumin"
+    }
+  },
+  {
+    "productId": "prod_133",
+    "status": "active",
+    "lowStockThreshold": 12,
+    "reservedStock": 4,
+    "barcode": "8904519378412",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-14T10:30:00.000Z",
+    "updatedAt": "2025-07-22T10:30:00.000Z",
+    "updatedBy": "adm_003",
+    "seo": {
+      "metaTitle": "Packing Cube Set — Daily Choice | Daily Choice Zone",
+      "metaDescription": "Four spinner wheels that roll quietly, a TSA-approved combination lock and a shell that flexes rather than cracks under a baggage handler. Made from polyca"
+    }
+  },
+  {
+    "productId": "prod_134",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 1,
+    "barcode": "8905120474379",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-12T10:30:00.000Z",
+    "updatedAt": "2026-03-24T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Natural Rubber Yoga Mat — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Grippy even when damp, and it rolls up without curling at the edges. Wipe clean with a damp cloth after use. Made from natural rubber."
+    }
+  },
+  {
+    "productId": "prod_135",
+    "status": "out-of-stock",
+    "lowStockThreshold": 5,
+    "reservedStock": 0,
+    "barcode": "8906036237253",
+    "taxRatePercent": 5,
+    "createdAt": "2025-08-07T10:30:00.000Z",
+    "updatedAt": "2025-09-23T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Insulated Steel Bottle — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Grippy even when damp, and it rolls up without curling at the edges. Wipe clean with a damp cloth after use. Made from stainless steel."
+    }
+  },
+  {
+    "productId": "prod_136",
+    "status": "out-of-stock",
+    "lowStockThreshold": 8,
+    "reservedStock": 0,
+    "barcode": "8903886935224",
+    "taxRatePercent": 5,
+    "createdAt": "2026-08-27T10:30:00.000Z",
+    "updatedAt": "2026-09-29T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Soy Wax Candle Trio — Zone Essentials | Daily Choice Zone",
+      "metaDescription": "Grippy even when damp, and it rolls up without curling at the edges. Wipe clean with a damp cloth after use. Made from stainless steel."
+    }
+  },
+  {
+    "productId": "prod_137",
+    "status": "active",
+    "lowStockThreshold": 10,
+    "reservedStock": 3,
+    "barcode": "8907002053158",
+    "taxRatePercent": 5,
+    "createdAt": "2026-04-01T10:30:00.000Z",
+    "updatedAt": "2026-04-22T10:30:00.000Z",
+    "updatedBy": "adm_001",
+    "seo": {
+      "metaTitle": "Linen Bound Notebook — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "Lays flat when open thanks to a sewn binding, on paper heavy enough that fountain ink does not bleed through. Made from 100 gsm paper."
+    }
+  },
+  {
+    "productId": "prod_138",
+    "status": "active",
+    "lowStockThreshold": 5,
+    "reservedStock": 2,
+    "barcode": "8907402923634",
+    "taxRatePercent": 5,
+    "createdAt": "2025-07-16T10:30:00.000Z",
+    "updatedAt": "2025-09-06T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Undated Weekly Planner — Atelier Nine | Daily Choice Zone",
+      "metaDescription": "Lays flat when open thanks to a sewn binding, on paper heavy enough that fountain ink does not bleed through. Made from recycled board."
+    }
+  },
+  {
+    "productId": "prod_139",
+    "status": "active",
+    "lowStockThreshold": 8,
+    "reservedStock": 2,
+    "barcode": "8907996698324",
+    "taxRatePercent": 5,
+    "createdAt": "2026-03-29T10:30:00.000Z",
+    "updatedAt": "2026-04-01T10:30:00.000Z",
+    "updatedBy": "adm_002",
+    "seo": {
+      "metaTitle": "Desk Organiser Tray — Loom & Co. | Daily Choice Zone",
+      "metaDescription": "Lays flat when open thanks to a sewn binding, on paper heavy enough that fountain ink does not bleed through. Made from 100 gsm paper."
+    }
+  }
+]

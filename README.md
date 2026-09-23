@@ -1,6 +1,9 @@
-# Daily Choice Zone — storefront
+# Daily Choice Zone — storefront & admin portal
 
 The frontend for Daily Choice Zone. **Quality products, happier you.**
+
+Two applications in one codebase: the customer storefront at `/`, and an
+administration portal at `/admin` that manages the same catalogue.
 
 | | |
 |---|---|
@@ -15,6 +18,10 @@ copy comes from JSON in `src/data`, read through a service layer that is shaped
 like the REST API that will eventually replace it. Swapping to that API is a
 configuration change, not a rewrite — see
 [Connecting a backend](#connecting-a-backend).
+
+The admin portal writes through the same layer, keeping its changes in local
+storage. **It is a demonstration, not a secured application** — see
+[Admin portal](#admin-portal) before putting it anywhere public.
 
 ---
 
@@ -31,11 +38,12 @@ Then open <http://localhost:3000>.
 | Script | What it does |
 |---|---|
 | `npm run dev` | Development server |
-| `npm run build` | Static export to `out/` (prerenders all 182 pages) |
+| `npm run build` | Static export to `out/` (prerenders every page, storefront and admin) |
 | `npm run start` | Serve on Node — only if you drop `output: "export"` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm run data:generate` | Regenerate the dummy catalogue (see [Data](#data)) |
+| `npm run data:admin` | Regenerate the admin dummy data (orders, customers, analytics) |
 | `npm run data:check` | Validate `src/data` — run this after hand-editing the JSON |
 | `npm run brand:assets` | Regenerate sized logo assets from `assets/logo-original.png` |
 
@@ -138,15 +146,19 @@ src/
 │   ├── filters/          filter panel and active-filter chips
 │   ├── home/             the config-driven homepage section renderer
 │   ├── cart/  wishlist/  checkout/  account/
+│   └── admin/            the portal: layout, ui, charts, views
 ├── data/                 products, categories, collections, navigation, config
+│   └── admin/            orders, customers, analytics, product metadata, settings
 ├── services/             the data-access layer
 │   ├── data-source.ts            the contract
 │   ├── data-source.instance.ts   which adapter is active
-│   └── adapters/                 mock-adapter.ts, http-adapter.ts
+│   ├── adapters/                 mock-adapter.ts, http-adapter.ts
+│   └── admin/            the portal's own services + AdminDataSource contract
 ├── hooks/                useCart, useWishlist, useProducts, useProductQuery, …
 ├── store/                cart, wishlist, session, checkout, recently viewed, toasts
 ├── lib/                  filters, recommendations, formatting, storage
-└── types/                the domain model
+│   └── admin/            the shared catalogue join and the mock write store
+└── types/                the domain model (+ admin.ts)
 ```
 
 ### Things worth knowing before you change something
@@ -162,7 +174,13 @@ entirely by editing that file — `app/page.tsx` never changes. Adding a new *ki
 of section means adding a case to `components/home/HomeSectionRenderer.tsx`.
 
 **Navigation is data.** `src/data/navigation.json` drives the desktop mega menu
-and the mobile drawer from the same structure.
+and the mobile drawer from the same structure. The portal's sidebar works the
+same way, from `src/data/admin/navigation.json`.
+
+**Route groups keep the two applications apart.** `app/(storefront)/` carries
+the customer header, promo strip and footer; `app/admin/(portal)/` carries the
+portal's sidebar and top bar. Neither layout can leak into the other, and the
+URLs are unaffected. The root layout holds only the document itself.
 
 **The cart and wishlist store ids, never products.** Prices and stock are
 re-read from the catalogue on every render, so a bag that has sat in local
@@ -205,7 +223,24 @@ npm run data:generate
 | `homepage.json` | Homepage composition |
 | `site-config.json` | Brand, support details, delivery thresholds, footer |
 | `coupons.json` | Discount codes |
-| `banners.json` | The rotating promotional strip |
+
+The portal's data lives in `src/data/admin/`, produced by
+`scripts/generate-admin-data.mjs` (`npm run data:admin`). It is generated *after*
+the catalogue and references it, so every order line points at a product that
+exists:
+
+| File | Notes |
+|---|---|
+| `product-meta.json` | Management fields, joined to `products.json` by id |
+| `orders.json` | 168 orders with line items and an append-only timeline |
+| `customers.json` | 64 customers, their totals derived from those orders |
+| `analytics.json` | Pre-aggregated ranges for the dashboard and reports |
+| `reviews.json` | Moderation queue |
+| `banners.json` | The rotating promotional strip — read by the storefront too |
+| `homepage.json` | Which sections are live, and in what order |
+| `settings.json` | Store settings; overrides `site-config.json` at read time |
+| `navigation.json` | The portal sidebar |
+| `admin-users.json`, `coupons.json`, `dashboard.json`, `notifications.json` | |
 
 **To add one real product, edit `products.json` directly** — do not re-run the
 generator, which would overwrite it. Then run `npm run data:check`, which
@@ -267,6 +302,150 @@ it will need noted in its header comment:
 | Addresses | `services/accountService.ts` | `GET/POST/PUT/DELETE /addresses` |
 | Cart & wishlist | `store/cartStore.ts`, `store/wishlistStore.ts` | server-backed cart |
 
+### The admin API
+
+`services/admin/admin-data-source.ts` is the portal's equivalent contract, with
+the endpoint each method becomes named in its header — `GET /admin/products`,
+`PUT /admin/products/:id`, `PATCH /admin/orders/:id/status`,
+`POST /admin/inventory/:id/adjust`, and so on. `mock-admin-adapter.ts`
+implements it over the overlay store; an HTTP adapter implements it over the
+real thing. The portal's views and services do not change.
+
+Authentication is the exception and must not be adapted — it has to be replaced.
+See [This is not security](#this-is-not-security).
+
+---
+
+## Admin portal
+
+`/admin` — a portal for running the store: catalogue, inventory, orders,
+customers, coupons, reviews, merchandising and reports.
+
+```
+/admin/login          sign in
+/admin/dashboard      KPIs, sales charts, recent orders, low stock
+/admin/products       list · new · edit          /admin/categories
+/admin/inventory      stock levels + adjustments  /admin/collections
+/admin/orders         list · detail · status      /admin/customers
+/admin/coupons        /admin/reviews              /admin/homepage
+/admin/banners        /admin/reports              /admin/settings
+/admin/admin-users    /admin/settings/profile
+```
+
+### This is not security
+
+The demo credentials are **`admin@dailychoicezone.com` / `Admin@123`**, and they
+are in the JavaScript bundle. Anyone who opens the portal can read them.
+
+That is not a leak to be patched — it is what frontend-only authentication *is*.
+The check runs in the browser, so it can be stepped over in a console, and every
+record the portal can reach is already downloaded before the login form renders.
+The role system has the same shape: `can()` decides which buttons appear, which
+is a tidier interface, not a permission boundary. The portal says so on the
+admin users page rather than implying otherwise.
+
+Making it real means three things, none of which are frontend work:
+
+1. `POST /admin/auth/login` returns an **httpOnly, Secure, SameSite** session
+   cookie. The browser never holds a token it can read.
+2. Every admin route is authorised **on the server**, per request. A hidden
+   button is not a check.
+3. The admin API is a separate surface from the storefront API, and admin data
+   is never served to an unauthenticated caller.
+
+`services/admin/adminAuthService.ts` is written to be replaced wholesale: the
+credentials appear in that one module and nowhere else, and its header names the
+endpoints that will take over. **Do not deploy this portal publicly as it
+stands.** The storefront is fine to deploy; `/admin` is excluded from
+`robots.txt` and marked `noindex`, which keeps it out of search results but is
+not access control.
+
+### One catalogue, two views
+
+There is a single product record. `types/admin.ts` says so directly:
+
+```ts
+export type AdminProduct = Product & ProductManagement;
+```
+
+`products.json` holds the customer-facing fields, `admin/product-meta.json` holds
+the management fields (status, thresholds, reserved stock, SEO, audit dates), and
+`lib/admin/catalogue.ts` joins them by id. A real schema would be one table; this
+is the same shape arrived at by a join, and it keeps admin concerns out of the
+customer payload.
+
+The storefront then reads `storefrontProducts()` — the same catalogue, filtered
+to `active` and `out-of-stock`. Drafts and archived products are invisible to
+customers, which is the only thing that makes the Draft state mean anything.
+
+Orders store `productId` and a snapshot of what was bought, never a copy of the
+live product. Deleting a product does not rewrite history, and the dashboard's
+counts are recomputed from live data rather than read from a stored total — so
+deleting a product or restocking one moves the numbers immediately.
+
+### How writes are stored
+
+There is no server, so every change is an **overlay** on the committed JSON:
+records created, a map of edits by id, and a list of deleted ids, under
+`dcz:admin:*` in local storage (`lib/admin/mock-store.ts`). Reading resolves the
+three against the base data.
+
+This is deliberate. The committed JSON stays the source of truth, so
+`npm run data:admin` can regenerate it without destroying an admin's work; an
+edit records only what changed, which is the body a `PUT` will send; and
+clearing the overlay restores the demo in one action — **Settings → Reset demo
+data**.
+
+Every function in that module maps onto one HTTP verb, so
+`adapters/mock-admin-adapter.ts` can be swapped for an HTTP adapter without a
+caller noticing.
+
+### What reaches the storefront, and what waits for a build
+
+Admin changes flow back to the customer site through the same data source, so
+anything the browser reads at runtime updates immediately:
+
+| Change | Visible on the storefront |
+|---|---|
+| Price, stock, availability, product status | Immediately — shop, search, rails, the buy box and the cart all re-read |
+| Homepage sections shown, hidden, reordered | Immediately |
+| Promotional banners switched on/off or rescheduled | Immediately |
+| A review approved or rejected | Immediately — only approved reviews reach a product page |
+| Delivery thresholds, fees, returns window, contact details | Immediately in the cart; static pages and the footer after a rebuild |
+| A **new** product's own `/product/[slug]` page | **After a rebuild** |
+| Product copy, images and metadata on a prerendered page | **After a rebuild** |
+
+The reason is the static export: `/product/[slug]` pages are written at build
+time, one per slug the build knows about. Listing pages query the catalogue in
+the browser and so pick up anything; a detail page is a file on disk.
+
+Where that gap could mislead, the code closes it rather than hiding it. The buy
+box re-reads price and stock after hydration (`hooks/useLiveProduct.ts`), because
+a stale price there is a wrong charge and not a cosmetic lag — and the product
+page shows that price in exactly one place so two figures can never disagree. In
+the portal, a product with no built page shows a struck-through "view on
+storefront" control explaining why, instead of a link that would certainly 404.
+
+On a Node deployment with `output: "export"` removed and revalidation enabled,
+the rebuild column disappears.
+
+### Shared pieces
+
+**One table.** `components/admin/ui/DataTable.tsx` owns sorting, paging,
+selection, empty and loading states for every list in the portal. Pages supply
+columns and the already-filtered rows — filter controls differ on every page,
+table mechanics do not.
+
+**Charts are hand-built SVG** (`components/admin/charts/`), sized from a
+`ResizeObserver` so they render at real pixels. The palette in `globals.css` is
+validated for colour-vision deficiency rather than chosen by eye, categorical
+hues are assigned in fixed order, and there is deliberately no dual-axis chart
+anywhere — two measures of different scale get two charts.
+
+**The portal's visual language is its own.** Denser spacing, tighter radii, a
+neutral working surface, brand copper used only as an accent. It reads as a tool
+rather than a shopfront, while still belonging to the same brand.
+
 ---
 
 ## What is deliberately not real
@@ -282,6 +461,11 @@ This is a frontend. It is honest about that in the UI rather than pretending:
   storage so the account area has something true to show. Nothing is fulfilled.
 - **Forms do not send.** The contact form and newsletter confirm and clear;
   nothing leaves the browser.
+- **Admin sign-in is a demonstration.** Fixed credentials, checked in the
+  browser, with no authorisation behind them. Roles shape the interface only.
+  [Details](#this-is-not-security).
+- **Admin changes are local to one browser.** They live in that browser's local
+  storage, are invisible to anyone else, and reset with one button.
 
 ---
 

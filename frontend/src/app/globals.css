@@ -77,6 +77,64 @@
   /* --- Motion --- */
   --ease-brand: cubic-bezier(0.22, 0.61, 0.36, 1);
 
+
+  /* ==========================================================================
+     Admin portal
+     --------------------------------------------------------------------------
+     The admin is the same brand but a different job: dense, data-first and
+     read for hours, where the storefront is editorial and browsed. So it drops
+     the cream ground for a neutral one that lets tables and charts carry the
+     colour, and keeps copper only as an accent — active nav, focus, primary
+     action.
+     ========================================================================== */
+
+  --color-admin-plane: #f6f6f4;
+  --color-admin-surface: #ffffff;
+  --color-admin-raised: #fbfbfa;
+  --color-admin-border: #e6e5e0;
+  --color-admin-border-strong: #d4d3cc;
+  --color-admin-ink: #16161a;
+  --color-admin-muted: #6c6b66;
+  --color-admin-faint: #94938d;
+
+  /* --- Chart palette ------------------------------------------------------
+     Data colours are NOT the brand's storefront hues. Those sit at chroma
+     0.05–0.095, below the 0.10 floor a categorical scale needs, so they read
+     as grey against each other and stop doing identity work. These are the
+     validated categorical steps; copper stays for UI chrome.
+     Assigned in fixed order and never cycled — order is the CVD-safety
+     mechanism.
+     -------------------------------------------------------------------- */
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #eb6834;
+  --color-chart-3: #1baf7a;
+  --color-chart-4: #eda100;
+  --color-chart-5: #e87ba4;
+  --color-chart-6: #008300;
+  --color-chart-7: #4a3aa7;
+  --color-chart-8: #e34948;
+
+  /* Sequential ramp, one hue light to dark. Used for ordinal scales such as
+     the order funnel, where the sequence itself carries meaning. */
+  --color-seq-100: #cde2fb;
+  --color-seq-200: #9ec5f4;
+  --color-seq-300: #6da7ec;
+  --color-seq-400: #3987e5;
+  --color-seq-500: #256abf;
+  --color-seq-600: #184f95;
+  --color-seq-700: #0d366b;
+
+  /* Chart chrome. Recessive by design — the data is the content. */
+  --color-chart-grid: #e1e0d9;
+  --color-chart-axis: #c3c2b7;
+  --color-chart-label: #898781;
+
+  /* Status. Reserved meanings; never reused as "series 5". */
+  --color-status-good: #0ca30c;
+  --color-status-warning: #fab219;
+  --color-status-serious: #ec835a;
+  --color-status-critical: #d03b3b;
+
   /* --- Layout --- */
   --spacing-gutter: 1rem;
   --container-wide: 96rem;

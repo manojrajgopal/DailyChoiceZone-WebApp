@@ -1,0 +1,52 @@
+{
+  "general": {
+    "storeName": "Daily Choice Zone",
+    "tagline": "Quality products, happier you",
+    "description": "An everyday store for clothing, home, beauty and lifestyle — chosen for how things feel after a year, not a week.",
+    "logoUrl": "/brand/logo.png"
+  },
+  "contact": {
+    "email": "help@dailychoicezone.com",
+    "phone": "1800 200 4567",
+    "supportHours": "Mon–Sat, 9am – 7pm IST",
+    "addressLine": "Unit 4, Brigade Logistics Park, Whitefield",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "pincode": "560066",
+    "country": "India"
+  },
+  "currency": {
+    "code": "INR",
+    "symbol": "₹",
+    "locale": "en-IN"
+  },
+  "shipping": {
+    "freeDeliveryThreshold": 999,
+    "standardFee": 79,
+    "expressFee": 149,
+    "standardEstimate": "3–5 business days",
+    "expressEstimate": "1–2 business days"
+  },
+  "tax": {
+    "enabled": true,
+    "ratePercent": 5,
+    "pricesIncludeTax": true,
+    "gstin": "29AABCD1234E1Z5"
+  },
+  "notifications": {
+    "orderConfirmation": true,
+    "shippingUpdates": true,
+    "lowStockAlerts": true,
+    "reviewAlerts": true,
+    "marketingEmails": false
+  },
+  "social": {
+    "instagram": "https://instagram.com/dailychoicezone",
+    "facebook": "https://facebook.com/dailychoicezone",
+    "youtube": "https://youtube.com/@dailychoicezone"
+  },
+  "returns": {
+    "windowDays": 15,
+    "policyNote": "Unworn and with tags on. We arrange the pickup."
+  }
+}

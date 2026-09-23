@@ -14,6 +14,7 @@ import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { useCart } from "@/hooks/useCart";
 import { useHydrated } from "@/hooks/useHydrated";
+import { useLiveProduct } from "@/hooks/useLiveProduct";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
 import { deliveryEstimate, formatPrice, humanize } from "@/lib/utils/format";
@@ -28,7 +29,7 @@ import { toast } from "@/store/toastStore";
  * nothing — the most common frustration on a product page.
  */
 export function ProductPurchasePanel({
-  product,
+  product: prerendered,
   config,
 }: {
   product: Product;
@@ -36,6 +37,9 @@ export function ProductPurchasePanel({
 }) {
   const router = useRouter();
   const { add } = useCart();
+
+  // Price and stock come from the live catalogue, not the build. See the hook.
+  const product = useLiveProduct(prerendered);
 
   /**
    * The arrival date is computed in the browser, never at build time.

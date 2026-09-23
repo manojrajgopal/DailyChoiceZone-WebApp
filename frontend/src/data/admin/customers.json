@@ -1,0 +1,1900 @@
+[
+  {
+    "id": "cust_001",
+    "firstName": "Aditya",
+    "lastName": "Banerjee",
+    "email": "aditya.banerjee1@example.com",
+    "phone": "9626265133",
+    "status": "active",
+    "joinedAt": "2026-06-13T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 14455,
+    "lastOrderAt": "2026-09-16T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_001",
+        "fullName": "Aditya Banerjee",
+        "phone": "9237763110",
+        "line1": "215, Green Meadows",
+        "line2": "2nd Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110024",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_081",
+      "prod_077",
+      "prod_007"
+    ]
+  },
+  {
+    "id": "cust_002",
+    "firstName": "Gaurav",
+    "lastName": "Fernandes",
+    "email": "gaurav.fernandes2@example.com",
+    "phone": "9379978774",
+    "status": "active",
+    "joinedAt": "2026-08-22T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 8179,
+    "lastOrderAt": "2026-06-08T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_002",
+        "fullName": "Gaurav Fernandes",
+        "phone": "9336660876",
+        "line1": "582, Green Meadows",
+        "line2": "12th Main",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560046",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_019"
+    ]
+  },
+  {
+    "id": "cust_003",
+    "firstName": "Ishita",
+    "lastName": "Desai",
+    "email": "ishita.desai3@example.com",
+    "phone": "9336270167",
+    "status": "active",
+    "joinedAt": "2025-12-24T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 25762,
+    "lastOrderAt": "2026-06-20T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_003",
+        "fullName": "Ishita Desai",
+        "phone": "9267165161",
+        "line1": "645, Maple Court",
+        "line2": "1st Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700066",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_004",
+    "firstName": "Sameer",
+    "lastName": "Reddy",
+    "email": "sameer.reddy4@example.com",
+    "phone": "9529855079",
+    "status": "active",
+    "joinedAt": "2025-02-12T10:30:00.000Z",
+    "orderCount": 6,
+    "totalSpent": 18439,
+    "lastOrderAt": "2026-09-22T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_004",
+        "fullName": "Sameer Reddy",
+        "phone": "9349074690",
+        "line1": "426, Palm Grove Apartments",
+        "line2": "6th Main",
+        "city": "Pune",
+        "state": "Maharashtra",
+        "pincode": "411093",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_103",
+      "prod_023",
+      "prod_112"
+    ]
+  },
+  {
+    "id": "cust_005",
+    "firstName": "Shreya",
+    "lastName": "Sharma",
+    "email": "shreya.sharma5@example.com",
+    "phone": "9329613151",
+    "status": "active",
+    "joinedAt": "2026-07-27T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_005",
+        "fullName": "Shreya Sharma",
+        "phone": "9538939252",
+        "line1": "216, Palm Grove Apartments",
+        "line2": "1st Main",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "pincode": "500058",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_079",
+      "prod_047",
+      "prod_007",
+      "prod_092"
+    ]
+  },
+  {
+    "id": "cust_006",
+    "firstName": "Karthik",
+    "lastName": "Verma",
+    "email": "karthik.verma6@example.com",
+    "phone": "9599955632",
+    "status": "blocked",
+    "joinedAt": "2025-12-11T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 10783,
+    "lastOrderAt": "2026-07-22T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_006",
+        "fullName": "Karthik Verma",
+        "phone": "9672367037",
+        "line1": "137, Green Meadows",
+        "line2": "1st Main",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "pincode": "500068",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_042"
+    ]
+  },
+  {
+    "id": "cust_007",
+    "firstName": "Fatima",
+    "lastName": "Fernandes",
+    "email": "fatima.fernandes7@example.com",
+    "phone": "9736378102",
+    "status": "blocked",
+    "joinedAt": "2025-01-24T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_007",
+        "fullName": "Fatima Fernandes",
+        "phone": "9695928153",
+        "line1": "441, Lake View Enclave",
+        "line2": "12th Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682081",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_078"
+    ]
+  },
+  {
+    "id": "cust_008",
+    "firstName": "Karthik",
+    "lastName": "Iyer",
+    "email": "karthik.iyer8@example.com",
+    "phone": "9891756676",
+    "status": "active",
+    "joinedAt": "2024-11-18T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 14705,
+    "lastOrderAt": "2026-09-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_008",
+        "fullName": "Karthik Iyer",
+        "phone": "9394772366",
+        "line1": "487, Orchid Villa",
+        "line2": "3rd Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682037",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_051",
+      "prod_093",
+      "prod_131"
+    ]
+  },
+  {
+    "id": "cust_009",
+    "firstName": "Ishita",
+    "lastName": "Verma",
+    "email": "ishita.verma9@example.com",
+    "phone": "9517975792",
+    "status": "active",
+    "joinedAt": "2026-07-22T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 12295,
+    "lastOrderAt": "2026-09-19T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_009",
+        "fullName": "Ishita Verma",
+        "phone": "9373689459",
+        "line1": "608, Maple Court",
+        "line2": "10th Main",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560088",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_076",
+      "prod_043",
+      "prod_045"
+    ]
+  },
+  {
+    "id": "cust_010",
+    "firstName": "Ananya",
+    "lastName": "Patel",
+    "email": "ananya.patel10@example.com",
+    "phone": "9261036819",
+    "status": "active",
+    "joinedAt": "2025-05-15T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 25594,
+    "lastOrderAt": "2026-09-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_010",
+        "fullName": "Ananya Patel",
+        "phone": "9804695750",
+        "line1": "221, Orchid Villa",
+        "line2": "8th Main",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "pincode": "500067",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_123",
+      "prod_086"
+    ]
+  },
+  {
+    "id": "cust_011",
+    "firstName": "Ananya",
+    "lastName": "Iyer",
+    "email": "ananya.iyer11@example.com",
+    "phone": "9216216961",
+    "status": "active",
+    "joinedAt": "2025-03-22T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 29691,
+    "lastOrderAt": "2026-08-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_011",
+        "fullName": "Ananya Iyer",
+        "phone": "9279910185",
+        "line1": "181, Rosewood Residency",
+        "line2": "15th Main",
+        "city": "Chennai",
+        "state": "Tamil Nadu",
+        "pincode": "600022",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_072"
+    ]
+  },
+  {
+    "id": "cust_012",
+    "firstName": "Siddharth",
+    "lastName": "Sharma",
+    "email": "siddharth.sharma12@example.com",
+    "phone": "9142800206",
+    "status": "active",
+    "joinedAt": "2025-09-07T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 10192,
+    "lastOrderAt": "2026-09-20T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_012",
+        "fullName": "Siddharth Sharma",
+        "phone": "9779004799",
+        "line1": "797, Maple Court",
+        "line2": "13th Main",
+        "city": "Pune",
+        "state": "Maharashtra",
+        "pincode": "411036",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_101",
+      "prod_120",
+      "prod_110",
+      "prod_082"
+    ]
+  },
+  {
+    "id": "cust_013",
+    "firstName": "Varun",
+    "lastName": "Menon",
+    "email": "varun.menon13@example.com",
+    "phone": "9641952564",
+    "status": "active",
+    "joinedAt": "2025-05-26T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_013",
+        "fullName": "Varun Menon",
+        "phone": "9263195575",
+        "line1": "680, Rosewood Residency",
+        "line2": "12th Main",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400064",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_059",
+      "prod_123"
+    ]
+  },
+  {
+    "id": "cust_014",
+    "firstName": "Vikram",
+    "lastName": "Kumar",
+    "email": "vikram.kumar14@example.com",
+    "phone": "9785222647",
+    "status": "active",
+    "joinedAt": "2025-11-23T10:30:00.000Z",
+    "orderCount": 7,
+    "totalSpent": 62774,
+    "lastOrderAt": "2026-08-24T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_014",
+        "fullName": "Vikram Kumar",
+        "phone": "9822314162",
+        "line1": "128, Green Meadows",
+        "line2": "4th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110090",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_100",
+      "prod_028",
+      "prod_015"
+    ]
+  },
+  {
+    "id": "cust_015",
+    "firstName": "Shreya",
+    "lastName": "Shetty",
+    "email": "shreya.shetty15@example.com",
+    "phone": "9526232877",
+    "status": "active",
+    "joinedAt": "2026-04-08T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 16041,
+    "lastOrderAt": "2026-09-22T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_015",
+        "fullName": "Shreya Shetty",
+        "phone": "9662471952",
+        "line1": "441, Green Meadows",
+        "line2": "12th Main",
+        "city": "Pune",
+        "state": "Maharashtra",
+        "pincode": "411052",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_020"
+    ]
+  },
+  {
+    "id": "cust_016",
+    "firstName": "Rahul",
+    "lastName": "Mehta",
+    "email": "rahul.mehta16@example.com",
+    "phone": "9551004667",
+    "status": "active",
+    "joinedAt": "2026-02-14T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 12644,
+    "lastOrderAt": "2026-06-03T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_016",
+        "fullName": "Rahul Mehta",
+        "phone": "9611427742",
+        "line1": "331, Palm Grove Apartments",
+        "line2": "14th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110061",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_017",
+    "firstName": "Ishita",
+    "lastName": "Reddy",
+    "email": "ishita.reddy17@example.com",
+    "phone": "9711705908",
+    "status": "active",
+    "joinedAt": "2025-02-22T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 5571,
+    "lastOrderAt": "2026-09-17T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_017",
+        "fullName": "Ishita Reddy",
+        "phone": "9446648210",
+        "line1": "502, Brigade Heights",
+        "line2": "14th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700047",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_021",
+      "prod_077",
+      "prod_135"
+    ]
+  },
+  {
+    "id": "cust_018",
+    "firstName": "Aditya",
+    "lastName": "Desai",
+    "email": "aditya.desai18@example.com",
+    "phone": "9780265759",
+    "status": "active",
+    "joinedAt": "2026-02-13T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 19793,
+    "lastOrderAt": "2026-09-07T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_018",
+        "fullName": "Aditya Desai",
+        "phone": "9331027044",
+        "line1": "232, Sunrise Towers",
+        "line2": "3rd Main",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560090",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_005",
+      "prod_064"
+    ]
+  },
+  {
+    "id": "cust_019",
+    "firstName": "Harsh",
+    "lastName": "Reddy",
+    "email": "harsh.reddy19@example.com",
+    "phone": "9782189580",
+    "status": "active",
+    "joinedAt": "2026-08-23T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 8797,
+    "lastOrderAt": "2026-09-22T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_019",
+        "fullName": "Harsh Reddy",
+        "phone": "9737833796",
+        "line1": "187, Green Meadows",
+        "line2": "13th Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682017",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_077"
+    ]
+  },
+  {
+    "id": "cust_020",
+    "firstName": "Varun",
+    "lastName": "Iyer",
+    "email": "varun.iyer20@example.com",
+    "phone": "9719562245",
+    "status": "active",
+    "joinedAt": "2025-09-12T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 13995,
+    "lastOrderAt": "2026-08-04T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_020",
+        "fullName": "Varun Iyer",
+        "phone": "9735577134",
+        "line1": "172, Lake View Enclave",
+        "line2": "14th Main",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400091",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_021",
+    "firstName": "Harsh",
+    "lastName": "Reddy",
+    "email": "harsh.reddy21@example.com",
+    "phone": "9515814684",
+    "status": "active",
+    "joinedAt": "2025-01-22T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 21941,
+    "lastOrderAt": "2026-09-19T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_021",
+        "fullName": "Harsh Reddy",
+        "phone": "9411456851",
+        "line1": "408, Sunrise Towers",
+        "line2": "4th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110070",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_061",
+      "prod_112",
+      "prod_034"
+    ]
+  },
+  {
+    "id": "cust_022",
+    "firstName": "Kavya",
+    "lastName": "Pillai",
+    "email": "kavya.pillai22@example.com",
+    "phone": "9227592672",
+    "status": "active",
+    "joinedAt": "2026-03-13T10:30:00.000Z",
+    "orderCount": 1,
+    "totalSpent": 7197,
+    "lastOrderAt": "2026-06-15T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_022",
+        "fullName": "Kavya Pillai",
+        "phone": "9703829487",
+        "line1": "461, Green Meadows",
+        "line2": "13th Main",
+        "city": "Pune",
+        "state": "Maharashtra",
+        "pincode": "411083",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_076",
+      "prod_114"
+    ]
+  },
+  {
+    "id": "cust_023",
+    "firstName": "Gaurav",
+    "lastName": "Khan",
+    "email": "gaurav.khan23@example.com",
+    "phone": "9288925809",
+    "status": "active",
+    "joinedAt": "2026-08-14T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 9974,
+    "lastOrderAt": "2026-03-29T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_023",
+        "fullName": "Gaurav Khan",
+        "phone": "9376601161",
+        "line1": "666, Orchid Villa",
+        "line2": "13th Main",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400033",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_125",
+      "prod_023",
+      "prod_100",
+      "prod_036"
+    ]
+  },
+  {
+    "id": "cust_024",
+    "firstName": "Arjun",
+    "lastName": "Joshi",
+    "email": "arjun.joshi24@example.com",
+    "phone": "9841812364",
+    "status": "active",
+    "joinedAt": "2025-05-08T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 12547,
+    "lastOrderAt": "2026-03-06T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_024",
+        "fullName": "Arjun Joshi",
+        "phone": "9735497706",
+        "line1": "156, Rosewood Residency",
+        "line2": "9th Main",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "pincode": "500019",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_025",
+    "firstName": "Fatima",
+    "lastName": "Sharma",
+    "email": "fatima.sharma25@example.com",
+    "phone": "9779453011",
+    "status": "active",
+    "joinedAt": "2026-04-10T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 9994,
+    "lastOrderAt": "2026-08-06T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_025",
+        "fullName": "Fatima Sharma",
+        "phone": "9644923766",
+        "line1": "512, Maple Court",
+        "line2": "14th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700092",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_125"
+    ]
+  },
+  {
+    "id": "cust_026",
+    "firstName": "Aditi",
+    "lastName": "Chopra",
+    "email": "aditi.chopra26@example.com",
+    "phone": "9686960891",
+    "status": "active",
+    "joinedAt": "2025-11-19T10:30:00.000Z",
+    "orderCount": 5,
+    "totalSpent": 19262,
+    "lastOrderAt": "2026-09-18T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_026",
+        "fullName": "Aditi Chopra",
+        "phone": "9473651934",
+        "line1": "238, Palm Grove Apartments",
+        "line2": "18th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110066",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_027",
+    "firstName": "Aditi",
+    "lastName": "Pillai",
+    "email": "aditi.pillai27@example.com",
+    "phone": "9224046237",
+    "status": "active",
+    "joinedAt": "2025-11-18T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_027",
+        "fullName": "Aditi Pillai",
+        "phone": "9277591498",
+        "line1": "699, Green Meadows",
+        "line2": "18th Main",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "pincode": "380089",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_106",
+      "prod_002",
+      "prod_014",
+      "prod_136"
+    ]
+  },
+  {
+    "id": "cust_028",
+    "firstName": "Ishita",
+    "lastName": "Sharma",
+    "email": "ishita.sharma28@example.com",
+    "phone": "9202833632",
+    "status": "blocked",
+    "joinedAt": "2026-02-02T10:30:00.000Z",
+    "orderCount": 1,
+    "totalSpent": 678,
+    "lastOrderAt": "2026-07-30T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_028",
+        "fullName": "Ishita Sharma",
+        "phone": "9515150252",
+        "line1": "634, Sunrise Towers",
+        "line2": "18th Main",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400054",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_061",
+      "prod_103",
+      "prod_069"
+    ]
+  },
+  {
+    "id": "cust_029",
+    "firstName": "Rohit",
+    "lastName": "Rao",
+    "email": "rohit.rao29@example.com",
+    "phone": "9820441956",
+    "status": "active",
+    "joinedAt": "2026-02-25T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 17674,
+    "lastOrderAt": "2026-05-28T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_029",
+        "fullName": "Rohit Rao",
+        "phone": "9454095873",
+        "line1": "865, Palm Grove Apartments",
+        "line2": "8th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110075",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_030",
+    "firstName": "Priya",
+    "lastName": "Shetty",
+    "email": "priya.shetty30@example.com",
+    "phone": "9534678458",
+    "status": "active",
+    "joinedAt": "2025-12-25T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 6997,
+    "lastOrderAt": "2026-06-17T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_030",
+        "fullName": "Priya Shetty",
+        "phone": "9607383001",
+        "line1": "291, Maple Court",
+        "line2": "8th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700020",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_016",
+      "prod_114",
+      "prod_071",
+      "prod_027"
+    ]
+  },
+  {
+    "id": "cust_031",
+    "firstName": "Nikhil",
+    "lastName": "Pillai",
+    "email": "nikhil.pillai31@example.com",
+    "phone": "9392099521",
+    "status": "active",
+    "joinedAt": "2025-04-16T10:30:00.000Z",
+    "orderCount": 1,
+    "totalSpent": 2159,
+    "lastOrderAt": "2026-08-10T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_031",
+        "fullName": "Nikhil Pillai",
+        "phone": "9310874656",
+        "line1": "834, Rosewood Residency",
+        "line2": "13th Main",
+        "city": "Jaipur",
+        "state": "Rajasthan",
+        "pincode": "302098",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_038",
+      "prod_114",
+      "prod_015",
+      "prod_115"
+    ]
+  },
+  {
+    "id": "cust_032",
+    "firstName": "Meera",
+    "lastName": "Singh",
+    "email": "meera.singh32@example.com",
+    "phone": "9195141671",
+    "status": "active",
+    "joinedAt": "2025-03-31T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 21895,
+    "lastOrderAt": "2026-05-07T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_032",
+        "fullName": "Meera Singh",
+        "phone": "9752122072",
+        "line1": "396, Brigade Heights",
+        "line2": "4th Main",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "pincode": "500026",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_001",
+      "prod_044",
+      "prod_021"
+    ]
+  },
+  {
+    "id": "cust_033",
+    "firstName": "Imran",
+    "lastName": "Iyer",
+    "email": "imran.iyer33@example.com",
+    "phone": "9253126560",
+    "status": "active",
+    "joinedAt": "2025-12-29T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 23478,
+    "lastOrderAt": "2026-09-21T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_033",
+        "fullName": "Imran Iyer",
+        "phone": "9829463206",
+        "line1": "198, Brigade Heights",
+        "line2": "11th Main",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "pincode": "380020",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_138",
+      "prod_111",
+      "prod_099"
+    ]
+  },
+  {
+    "id": "cust_034",
+    "firstName": "Kavya",
+    "lastName": "Khan",
+    "email": "kavya.khan34@example.com",
+    "phone": "9345581719",
+    "status": "active",
+    "joinedAt": "2026-01-19T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 15094,
+    "lastOrderAt": "2026-09-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_034",
+        "fullName": "Kavya Khan",
+        "phone": "9367399752",
+        "line1": "425, Brigade Heights",
+        "line2": "13th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110082",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_035",
+    "firstName": "Divya",
+    "lastName": "Verma",
+    "email": "divya.verma35@example.com",
+    "phone": "9406568909",
+    "status": "active",
+    "joinedAt": "2026-05-30T10:30:00.000Z",
+    "orderCount": 1,
+    "totalSpent": 4399,
+    "lastOrderAt": "2026-08-04T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_035",
+        "fullName": "Divya Verma",
+        "phone": "9111815015",
+        "line1": "612, Green Meadows",
+        "line2": "8th Main",
+        "city": "Chennai",
+        "state": "Tamil Nadu",
+        "pincode": "600081",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_121"
+    ]
+  },
+  {
+    "id": "cust_036",
+    "firstName": "Rohit",
+    "lastName": "Singh",
+    "email": "rohit.singh36@example.com",
+    "phone": "9662208169",
+    "status": "active",
+    "joinedAt": "2025-11-02T10:30:00.000Z",
+    "orderCount": 7,
+    "totalSpent": 59330,
+    "lastOrderAt": "2026-09-12T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_036",
+        "fullName": "Rohit Singh",
+        "phone": "9642446878",
+        "line1": "851, Sunrise Towers",
+        "line2": "6th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700081",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_085",
+      "prod_115",
+      "prod_005"
+    ]
+  },
+  {
+    "id": "cust_037",
+    "firstName": "Tanvi",
+    "lastName": "Mehta",
+    "email": "tanvi.mehta37@example.com",
+    "phone": "9103196642",
+    "status": "active",
+    "joinedAt": "2025-12-21T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 20393,
+    "lastOrderAt": "2026-09-22T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_037",
+        "fullName": "Tanvi Mehta",
+        "phone": "9789834776",
+        "line1": "403, Sunrise Towers",
+        "line2": "14th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700076",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_018"
+    ]
+  },
+  {
+    "id": "cust_038",
+    "firstName": "Aarav",
+    "lastName": "Kumar",
+    "email": "aarav.kumar38@example.com",
+    "phone": "9749189852",
+    "status": "active",
+    "joinedAt": "2026-06-16T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 19021,
+    "lastOrderAt": "2026-08-17T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_038",
+        "fullName": "Aarav Kumar",
+        "phone": "9892478981",
+        "line1": "281, Sunrise Towers",
+        "line2": "1st Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682016",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_099",
+      "prod_047"
+    ]
+  },
+  {
+    "id": "cust_039",
+    "firstName": "Imran",
+    "lastName": "Shetty",
+    "email": "imran.shetty39@example.com",
+    "phone": "9426242061",
+    "status": "active",
+    "joinedAt": "2026-04-16T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 13225,
+    "lastOrderAt": "2026-09-01T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_039",
+        "fullName": "Imran Shetty",
+        "phone": "9145491848",
+        "line1": "716, Maple Court",
+        "line2": "1st Main",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "pincode": "500095",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_018",
+      "prod_027"
+    ]
+  },
+  {
+    "id": "cust_040",
+    "firstName": "Pooja",
+    "lastName": "Chopra",
+    "email": "pooja.chopra40@example.com",
+    "phone": "9339180905",
+    "status": "active",
+    "joinedAt": "2026-04-22T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_040",
+        "fullName": "Pooja Chopra",
+        "phone": "9775822129",
+        "line1": "839, Sunrise Towers",
+        "line2": "7th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700053",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_041",
+    "firstName": "Anita",
+    "lastName": "Shetty",
+    "email": "anita.shetty41@example.com",
+    "phone": "9364993718",
+    "status": "active",
+    "joinedAt": "2025-08-06T10:30:00.000Z",
+    "orderCount": 1,
+    "totalSpent": 2535,
+    "lastOrderAt": "2026-01-21T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_041",
+        "fullName": "Anita Shetty",
+        "phone": "9209726441",
+        "line1": "397, Green Meadows",
+        "line2": "9th Main",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400084",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_088",
+      "prod_071",
+      "prod_110"
+    ]
+  },
+  {
+    "id": "cust_042",
+    "firstName": "Sameer",
+    "lastName": "Banerjee",
+    "email": "sameer.banerjee42@example.com",
+    "phone": "9389050042",
+    "status": "active",
+    "joinedAt": "2025-05-30T10:30:00.000Z",
+    "orderCount": 5,
+    "totalSpent": 21020,
+    "lastOrderAt": "2026-09-19T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_042",
+        "fullName": "Sameer Banerjee",
+        "phone": "9588786435",
+        "line1": "147, Green Meadows",
+        "line2": "17th Main",
+        "city": "Jaipur",
+        "state": "Rajasthan",
+        "pincode": "302027",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_043",
+    "firstName": "Lakshmi",
+    "lastName": "Kumar",
+    "email": "lakshmi.kumar43@example.com",
+    "phone": "9370061299",
+    "status": "active",
+    "joinedAt": "2026-01-25T10:30:00.000Z",
+    "orderCount": 7,
+    "totalSpent": 35331,
+    "lastOrderAt": "2026-08-26T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_043",
+        "fullName": "Lakshmi Kumar",
+        "phone": "9417293143",
+        "line1": "844, Green Meadows",
+        "line2": "13th Main",
+        "city": "Chennai",
+        "state": "Tamil Nadu",
+        "pincode": "600080",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_044",
+    "firstName": "Rahul",
+    "lastName": "Khan",
+    "email": "rahul.khan44@example.com",
+    "phone": "9496999160",
+    "status": "active",
+    "joinedAt": "2024-12-22T10:30:00.000Z",
+    "orderCount": 5,
+    "totalSpent": 22098,
+    "lastOrderAt": "2026-08-01T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_044",
+        "fullName": "Rahul Khan",
+        "phone": "9464737000",
+        "line1": "582, Lake View Enclave",
+        "line2": "13th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700031",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_117"
+    ]
+  },
+  {
+    "id": "cust_045",
+    "firstName": "Shreya",
+    "lastName": "Banerjee",
+    "email": "shreya.banerjee45@example.com",
+    "phone": "9154476275",
+    "status": "active",
+    "joinedAt": "2026-04-19T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 26141,
+    "lastOrderAt": "2026-09-11T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_045",
+        "fullName": "Shreya Banerjee",
+        "phone": "9695336150",
+        "line1": "398, Maple Court",
+        "line2": "12th Main",
+        "city": "Jaipur",
+        "state": "Rajasthan",
+        "pincode": "302014",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_056",
+      "prod_060"
+    ]
+  },
+  {
+    "id": "cust_046",
+    "firstName": "Vikram",
+    "lastName": "Reddy",
+    "email": "vikram.reddy46@example.com",
+    "phone": "9545188002",
+    "status": "active",
+    "joinedAt": "2025-04-20T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_046",
+        "fullName": "Vikram Reddy",
+        "phone": "9210808118",
+        "line1": "115, Orchid Villa",
+        "line2": "2nd Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700099",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_030"
+    ]
+  },
+  {
+    "id": "cust_047",
+    "firstName": "Ananya",
+    "lastName": "Menon",
+    "email": "ananya.menon47@example.com",
+    "phone": "9228330213",
+    "status": "active",
+    "joinedAt": "2025-03-07T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 7797,
+    "lastOrderAt": "2026-08-29T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_047",
+        "fullName": "Ananya Menon",
+        "phone": "9329843627",
+        "line1": "750, Lake View Enclave",
+        "line2": "13th Main",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "pincode": "380075",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_112",
+      "prod_062",
+      "prod_128"
+    ]
+  },
+  {
+    "id": "cust_048",
+    "firstName": "Lakshmi",
+    "lastName": "Fernandes",
+    "email": "lakshmi.fernandes48@example.com",
+    "phone": "9484832852",
+    "status": "active",
+    "joinedAt": "2025-02-07T10:30:00.000Z",
+    "orderCount": 1,
+    "totalSpent": 10296,
+    "lastOrderAt": "2026-09-05T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_048",
+        "fullName": "Lakshmi Fernandes",
+        "phone": "9395662743",
+        "line1": "133, Orchid Villa",
+        "line2": "11th Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682072",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_049",
+    "firstName": "Aditi",
+    "lastName": "Pillai",
+    "email": "aditi.pillai49@example.com",
+    "phone": "9190821387",
+    "status": "active",
+    "joinedAt": "2025-11-02T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 17471,
+    "lastOrderAt": "2026-09-21T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_049",
+        "fullName": "Aditi Pillai",
+        "phone": "9892993267",
+        "line1": "242, Lake View Enclave",
+        "line2": "6th Main",
+        "city": "Chennai",
+        "state": "Tamil Nadu",
+        "pincode": "600040",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_009",
+      "prod_027"
+    ]
+  },
+  {
+    "id": "cust_050",
+    "firstName": "Kavya",
+    "lastName": "Pillai",
+    "email": "kavya.pillai50@example.com",
+    "phone": "9772419750",
+    "status": "active",
+    "joinedAt": "2026-08-24T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 17164,
+    "lastOrderAt": "2026-09-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_050",
+        "fullName": "Kavya Pillai",
+        "phone": "9455351799",
+        "line1": "842, Green Meadows",
+        "line2": "9th Main",
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "pincode": "380041",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_136",
+      "prod_112"
+    ]
+  },
+  {
+    "id": "cust_051",
+    "firstName": "Harsh",
+    "lastName": "Patel",
+    "email": "harsh.patel51@example.com",
+    "phone": "9159808656",
+    "status": "active",
+    "joinedAt": "2025-03-17T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_051",
+        "fullName": "Harsh Patel",
+        "phone": "9236058414",
+        "line1": "654, Lake View Enclave",
+        "line2": "18th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110038",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_137",
+      "prod_044"
+    ]
+  },
+  {
+    "id": "cust_052",
+    "firstName": "Priya",
+    "lastName": "Kumar",
+    "email": "priya.kumar52@example.com",
+    "phone": "9660525680",
+    "status": "active",
+    "joinedAt": "2025-12-16T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 13543,
+    "lastOrderAt": "2026-07-18T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_052",
+        "fullName": "Priya Kumar",
+        "phone": "9129874211",
+        "line1": "602, Green Meadows",
+        "line2": "14th Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682088",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_070"
+    ]
+  },
+  {
+    "id": "cust_053",
+    "firstName": "Joseph",
+    "lastName": "Singh",
+    "email": "joseph.singh53@example.com",
+    "phone": "9626804918",
+    "status": "active",
+    "joinedAt": "2025-04-04T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 5683,
+    "lastOrderAt": "2026-06-30T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_053",
+        "fullName": "Joseph Singh",
+        "phone": "9529884624",
+        "line1": "351, Lake View Enclave",
+        "line2": "12th Main",
+        "city": "Chennai",
+        "state": "Tamil Nadu",
+        "pincode": "600020",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_054",
+    "firstName": "Lakshmi",
+    "lastName": "Kumar",
+    "email": "lakshmi.kumar54@example.com",
+    "phone": "9881128215",
+    "status": "active",
+    "joinedAt": "2026-02-17T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 7245,
+    "lastOrderAt": "2026-08-03T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_054",
+        "fullName": "Lakshmi Kumar",
+        "phone": "9163615374",
+        "line1": "363, Sunrise Towers",
+        "line2": "1st Main",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "pincode": "400017",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_035",
+      "prod_045",
+      "prod_056"
+    ]
+  },
+  {
+    "id": "cust_055",
+    "firstName": "Tanvi",
+    "lastName": "Kumar",
+    "email": "tanvi.kumar55@example.com",
+    "phone": "9223365853",
+    "status": "active",
+    "joinedAt": "2026-06-26T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 23993,
+    "lastOrderAt": "2026-09-13T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_055",
+        "fullName": "Tanvi Kumar",
+        "phone": "9437262112",
+        "line1": "349, Sunrise Towers",
+        "line2": "16th Main",
+        "city": "Chennai",
+        "state": "Tamil Nadu",
+        "pincode": "600091",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_056",
+    "firstName": "Ananya",
+    "lastName": "Reddy",
+    "email": "ananya.reddy56@example.com",
+    "phone": "9112903034",
+    "status": "active",
+    "joinedAt": "2025-01-05T10:30:00.000Z",
+    "orderCount": 1,
+    "totalSpent": 13046,
+    "lastOrderAt": "2025-10-27T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_056",
+        "fullName": "Ananya Reddy",
+        "phone": "9819649920",
+        "line1": "751, Lake View Enclave",
+        "line2": "16th Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682047",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_137",
+      "prod_082"
+    ]
+  },
+  {
+    "id": "cust_057",
+    "firstName": "Varun",
+    "lastName": "Gupta",
+    "email": "varun.gupta57@example.com",
+    "phone": "9487655602",
+    "status": "active",
+    "joinedAt": "2025-01-10T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 10384,
+    "lastOrderAt": "2026-02-17T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_057",
+        "fullName": "Varun Gupta",
+        "phone": "9479200461",
+        "line1": "155, Rosewood Residency",
+        "line2": "3rd Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682030",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_103",
+      "prod_092",
+      "prod_068"
+    ]
+  },
+  {
+    "id": "cust_058",
+    "firstName": "Kavya",
+    "lastName": "Shetty",
+    "email": "kavya.shetty58@example.com",
+    "phone": "9477576407",
+    "status": "active",
+    "joinedAt": "2025-04-08T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 20545,
+    "lastOrderAt": "2026-04-28T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_058",
+        "fullName": "Kavya Shetty",
+        "phone": "9107863230",
+        "line1": "110, Rosewood Residency",
+        "line2": "12th Main",
+        "city": "Kolkata",
+        "state": "West Bengal",
+        "pincode": "700018",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_085",
+      "prod_127",
+      "prod_085"
+    ]
+  },
+  {
+    "id": "cust_059",
+    "firstName": "Varun",
+    "lastName": "Fernandes",
+    "email": "varun.fernandes59@example.com",
+    "phone": "9682087820",
+    "status": "active",
+    "joinedAt": "2025-09-04T10:30:00.000Z",
+    "orderCount": 2,
+    "totalSpent": 10645,
+    "lastOrderAt": "2026-09-17T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_059",
+        "fullName": "Varun Fernandes",
+        "phone": "9474272442",
+        "line1": "452, Brigade Heights",
+        "line2": "18th Main",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "pincode": "500040",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_090",
+      "prod_117"
+    ]
+  },
+  {
+    "id": "cust_060",
+    "firstName": "Ishita",
+    "lastName": "Iyer",
+    "email": "ishita.iyer60@example.com",
+    "phone": "9300973043",
+    "status": "active",
+    "joinedAt": "2025-09-28T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 25521,
+    "lastOrderAt": "2026-09-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_060",
+        "fullName": "Ishita Iyer",
+        "phone": "9642195230",
+        "line1": "458, Sunrise Towers",
+        "line2": "1st Main",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560083",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_098",
+      "prod_128",
+      "prod_099",
+      "prod_030"
+    ]
+  },
+  {
+    "id": "cust_061",
+    "firstName": "Gaurav",
+    "lastName": "Shetty",
+    "email": "gaurav.shetty61@example.com",
+    "phone": "9300808164",
+    "status": "active",
+    "joinedAt": "2025-07-26T10:30:00.000Z",
+    "orderCount": 4,
+    "totalSpent": 29628,
+    "lastOrderAt": "2026-09-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_061",
+        "fullName": "Gaurav Shetty",
+        "phone": "9441601440",
+        "line1": "573, Palm Grove Apartments",
+        "line2": "14th Main",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110048",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_079",
+      "prod_008",
+      "prod_066",
+      "prod_119"
+    ]
+  },
+  {
+    "id": "cust_062",
+    "firstName": "Priya",
+    "lastName": "Gupta",
+    "email": "priya.gupta62@example.com",
+    "phone": "9598019186",
+    "status": "active",
+    "joinedAt": "2025-02-11T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_062",
+        "fullName": "Priya Gupta",
+        "phone": "9617954527",
+        "line1": "608, Palm Grove Apartments",
+        "line2": "11th Main",
+        "city": "Kochi",
+        "state": "Kerala",
+        "pincode": "682061",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": []
+  },
+  {
+    "id": "cust_063",
+    "firstName": "Divya",
+    "lastName": "Singh",
+    "email": "divya.singh63@example.com",
+    "phone": "9359439147",
+    "status": "active",
+    "joinedAt": "2026-09-02T10:30:00.000Z",
+    "orderCount": 3,
+    "totalSpent": 13544,
+    "lastOrderAt": "2026-09-23T10:30:00.000Z",
+    "addresses": [
+      {
+        "id": "addr_cust_063",
+        "fullName": "Divya Singh",
+        "phone": "9479767576",
+        "line1": "409, Green Meadows",
+        "line2": "9th Main",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560097",
+        "type": "home",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_031"
+    ]
+  },
+  {
+    "id": "cust_064",
+    "firstName": "Pooja",
+    "lastName": "Pillai",
+    "email": "pooja.pillai64@example.com",
+    "phone": "9691268887",
+    "status": "active",
+    "joinedAt": "2026-08-06T10:30:00.000Z",
+    "orderCount": 0,
+    "totalSpent": 0,
+    "lastOrderAt": null,
+    "addresses": [
+      {
+        "id": "addr_cust_064",
+        "fullName": "Pooja Pillai",
+        "phone": "9344517978",
+        "line1": "241, Rosewood Residency",
+        "line2": "18th Main",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560028",
+        "type": "work",
+        "isDefault": true
+      }
+    ],
+    "wishlistProductIds": [
+      "prod_070",
+      "prod_077",
+      "prod_086"
+    ]
+  }
+]

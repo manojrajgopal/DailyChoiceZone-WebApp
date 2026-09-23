@@ -129,6 +129,18 @@ export interface HomepageConfig {
   sections: HomeSection[];
 }
 
+/**
+ * Whether a homepage section is live, and where it sits.
+ *
+ * Kept separate from `HomeSection` because it is editorial state an
+ * administrator changes, not part of what the section *is*. Joined to the
+ * sections by id.
+ */
+export interface HomeSectionLayout {
+  id: string;
+  active: boolean;
+}
+
 export interface Review {
   id: string;
   productId: string;

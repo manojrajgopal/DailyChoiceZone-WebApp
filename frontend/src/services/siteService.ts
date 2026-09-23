@@ -1,6 +1,12 @@
 import navigationJson from "@/data/navigation.json";
 
-import type { HomepageConfig, NavItem, PromoBanner, SiteConfig } from "@/types";
+import type {
+  HomepageConfig,
+  HomeSectionLayout,
+  NavItem,
+  PromoBanner,
+  SiteConfig,
+} from "@/types";
 
 import { dataSource } from "./data-source.instance";
 
@@ -23,6 +29,11 @@ export function getSiteConfig(): Promise<SiteConfig> {
 
 export function getHomepageConfig(): Promise<HomepageConfig> {
   return dataSource.getHomepageConfig();
+}
+
+/** Which homepage sections are live, in the order an administrator set. */
+export function getHomeSectionLayout(): Promise<HomeSectionLayout[]> {
+  return dataSource.getHomeSectionLayout();
 }
 
 export function getBanners(): Promise<PromoBanner[]> {

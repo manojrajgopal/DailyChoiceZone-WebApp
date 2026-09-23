@@ -1,0 +1,1174 @@
+{
+  "today": {
+    "range": "today",
+    "revenue": 41679,
+    "orders": 13,
+    "averageOrderValue": 3206,
+    "unitsSold": 21,
+    "customers": 11,
+    "revenueDelta": 51.7,
+    "ordersDelta": 333.3,
+    "series": [
+      {
+        "label": "00:00",
+        "revenue": 13493,
+        "orders": 5
+      },
+      {
+        "label": "02:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "04:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "06:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "08:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "10:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "12:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "14:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "16:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "18:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "20:00",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "22:00",
+        "revenue": 28186,
+        "orders": 8
+      }
+    ],
+    "byCategory": [
+      {
+        "category": "women",
+        "revenue": 9546,
+        "units": 4
+      },
+      {
+        "category": "men",
+        "revenue": 7645,
+        "units": 5
+      },
+      {
+        "category": "lifestyle",
+        "revenue": 5847,
+        "units": 3
+      },
+      {
+        "category": "footwear",
+        "revenue": 4399,
+        "units": 1
+      },
+      {
+        "category": "electronics",
+        "revenue": 4148,
+        "units": 2
+      },
+      {
+        "category": "bags",
+        "revenue": 3499,
+        "units": 1
+      },
+      {
+        "category": "beauty",
+        "revenue": 3049,
+        "units": 1
+      },
+      {
+        "category": "jewellery",
+        "revenue": 2448,
+        "units": 2
+      },
+      {
+        "category": "accessories",
+        "revenue": 1648,
+        "units": 2
+      }
+    ],
+    "topProducts": [
+      {
+        "productId": "prod_011",
+        "name": "Utility Overshirt",
+        "image": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 3,
+        "revenue": 6597,
+        "stock": 13
+      },
+      {
+        "productId": "prod_137",
+        "name": "Linen Bound Notebook",
+        "image": "https://images.unsplash.com/photo-1542435503-956c469947f6?auto=format&fit=crop&w=900&q=80",
+        "category": "lifestyle",
+        "unitsSold": 3,
+        "revenue": 5847,
+        "stock": 37
+      },
+      {
+        "productId": "prod_043",
+        "name": "Quarter Button Polo Knit",
+        "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=900&q=80",
+        "category": "men",
+        "unitsSold": 3,
+        "revenue": 4647,
+        "stock": 80
+      },
+      {
+        "productId": "prod_084",
+        "name": "Leather Low Top Sneakers",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 1,
+        "revenue": 4399,
+        "stock": 24
+      },
+      {
+        "productId": "prod_100",
+        "name": "Commuter Backpack",
+        "image": "https://images.unsplash.com/photo-1591561954557-26941169b49e?auto=format&fit=crop&w=900&q=80",
+        "category": "bags",
+        "unitsSold": 1,
+        "revenue": 3499,
+        "stock": 12
+      },
+      {
+        "productId": "prod_080",
+        "name": "Citrus Neroli Eau de Toilette",
+        "image": "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=900&q=80",
+        "category": "beauty",
+        "unitsSold": 1,
+        "revenue": 3049,
+        "stock": 45
+      },
+      {
+        "productId": "prod_127",
+        "name": "Sport GPS Watch",
+        "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80",
+        "category": "electronics",
+        "unitsSold": 1,
+        "revenue": 2949,
+        "stock": 25
+      },
+      {
+        "productId": "prod_020",
+        "name": "Wool Blend Overcoat",
+        "image": "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 1,
+        "revenue": 2949,
+        "stock": 35
+      }
+    ],
+    "byStatus": [
+      {
+        "status": "pending",
+        "count": 5
+      },
+      {
+        "status": "confirmed",
+        "count": 8
+      }
+    ]
+  },
+  "7d": {
+    "range": "7d",
+    "revenue": 119808,
+    "orders": 28,
+    "averageOrderValue": 4279,
+    "unitsSold": 51,
+    "customers": 21,
+    "revenueDelta": 31.8,
+    "ordersDelta": 133.3,
+    "series": [
+      {
+        "label": "2026-09-17",
+        "revenue": 4107,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-18",
+        "revenue": 5746,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-19",
+        "revenue": 11496,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-20",
+        "revenue": 23444,
+        "orders": 4
+      },
+      {
+        "label": "2026-09-21",
+        "revenue": 5856,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-22",
+        "revenue": 27480,
+        "orders": 3
+      },
+      {
+        "label": "2026-09-23",
+        "revenue": 41679,
+        "orders": 13
+      }
+    ],
+    "byCategory": [
+      {
+        "category": "women",
+        "revenue": 29340,
+        "units": 10
+      },
+      {
+        "category": "men",
+        "revenue": 21439,
+        "units": 11
+      },
+      {
+        "category": "electronics",
+        "revenue": 15096,
+        "units": 4
+      },
+      {
+        "category": "home",
+        "revenue": 9526,
+        "units": 4
+      },
+      {
+        "category": "jewellery",
+        "revenue": 9097,
+        "units": 3
+      },
+      {
+        "category": "footwear",
+        "revenue": 8347,
+        "units": 3
+      },
+      {
+        "category": "bags",
+        "revenue": 7498,
+        "units": 2
+      },
+      {
+        "category": "lifestyle",
+        "revenue": 7296,
+        "units": 4
+      },
+      {
+        "category": "accessories",
+        "revenue": 4946,
+        "units": 4
+      },
+      {
+        "category": "beauty",
+        "revenue": 4197,
+        "units": 3
+      },
+      {
+        "category": "kids",
+        "revenue": 3997,
+        "units": 3
+      }
+    ],
+    "topProducts": [
+      {
+        "productId": "prod_002",
+        "name": "Belted Shirt Dress",
+        "image": "https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 3,
+        "revenue": 9747,
+        "stock": 42
+      },
+      {
+        "productId": "prod_112",
+        "name": "Leather Strap Chronograph",
+        "image": "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=900&q=80",
+        "category": "jewellery",
+        "unitsSold": 1,
+        "revenue": 6649,
+        "stock": 64
+      },
+      {
+        "productId": "prod_011",
+        "name": "Utility Overshirt",
+        "image": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 3,
+        "revenue": 6597,
+        "stock": 13
+      },
+      {
+        "productId": "prod_126",
+        "name": "Slim Activity Band",
+        "image": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=900&q=80",
+        "category": "electronics",
+        "unitsSold": 1,
+        "revenue": 6249,
+        "stock": 44
+      },
+      {
+        "productId": "prod_137",
+        "name": "Linen Bound Notebook",
+        "image": "https://images.unsplash.com/photo-1542435503-956c469947f6?auto=format&fit=crop&w=900&q=80",
+        "category": "lifestyle",
+        "unitsSold": 3,
+        "revenue": 5847,
+        "stock": 37
+      },
+      {
+        "productId": "prod_018",
+        "name": "Cropped Denim Jacket",
+        "image": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 1,
+        "revenue": 5149,
+        "stock": 7
+      },
+      {
+        "productId": "prod_034",
+        "name": "Relaxed Tapered Jeans",
+        "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=900&q=80",
+        "category": "men",
+        "unitsSold": 2,
+        "revenue": 5098,
+        "stock": 38
+      },
+      {
+        "productId": "prod_123",
+        "name": "True Wireless Earbuds",
+        "image": "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?auto=format&fit=crop&w=900&q=80",
+        "category": "electronics",
+        "unitsSold": 1,
+        "revenue": 4699,
+        "stock": 55
+      }
+    ],
+    "byStatus": [
+      {
+        "status": "pending",
+        "count": 6
+      },
+      {
+        "status": "confirmed",
+        "count": 15
+      },
+      {
+        "status": "processing",
+        "count": 4
+      },
+      {
+        "status": "shipped",
+        "count": 3
+      }
+    ]
+  },
+  "30d": {
+    "range": "30d",
+    "revenue": 286915,
+    "orders": 52,
+    "averageOrderValue": 5518,
+    "unitsSold": 113,
+    "customers": 30,
+    "revenueDelta": 197.1,
+    "ordersDelta": 136.4,
+    "series": [
+      {
+        "label": "2026-08-25",
+        "revenue": 9096,
+        "orders": 1
+      },
+      {
+        "label": "2026-08-26",
+        "revenue": 11997,
+        "orders": 1
+      },
+      {
+        "label": "2026-08-27",
+        "revenue": 5286,
+        "orders": 1
+      },
+      {
+        "label": "2026-08-28",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-08-29",
+        "revenue": 5047,
+        "orders": 2
+      },
+      {
+        "label": "2026-08-30",
+        "revenue": 4949,
+        "orders": 1
+      },
+      {
+        "label": "2026-08-31",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-09-01",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-09-02",
+        "revenue": 3948,
+        "orders": 1
+      },
+      {
+        "label": "2026-09-03",
+        "revenue": 2578,
+        "orders": 1
+      },
+      {
+        "label": "2026-09-04",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-09-05",
+        "revenue": 10799,
+        "orders": 1
+      },
+      {
+        "label": "2026-09-06",
+        "revenue": 10296,
+        "orders": 1
+      },
+      {
+        "label": "2026-09-07",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-09-08",
+        "revenue": 12194,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-09",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-09-10",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-09-11",
+        "revenue": 0,
+        "orders": 0
+      },
+      {
+        "label": "2026-09-12",
+        "revenue": 19894,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-13",
+        "revenue": 22992,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-14",
+        "revenue": 29740,
+        "orders": 4
+      },
+      {
+        "label": "2026-09-15",
+        "revenue": 13793,
+        "orders": 3
+      },
+      {
+        "label": "2026-09-16",
+        "revenue": 4498,
+        "orders": 1
+      },
+      {
+        "label": "2026-09-17",
+        "revenue": 4107,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-18",
+        "revenue": 5746,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-19",
+        "revenue": 11496,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-20",
+        "revenue": 23444,
+        "orders": 4
+      },
+      {
+        "label": "2026-09-21",
+        "revenue": 5856,
+        "orders": 2
+      },
+      {
+        "label": "2026-09-22",
+        "revenue": 27480,
+        "orders": 3
+      },
+      {
+        "label": "2026-09-23",
+        "revenue": 41679,
+        "orders": 13
+      }
+    ],
+    "byCategory": [
+      {
+        "category": "footwear",
+        "revenue": 49936,
+        "units": 14
+      },
+      {
+        "category": "men",
+        "revenue": 43241,
+        "units": 19
+      },
+      {
+        "category": "home",
+        "revenue": 42733,
+        "units": 17
+      },
+      {
+        "category": "women",
+        "revenue": 40084,
+        "units": 16
+      },
+      {
+        "category": "electronics",
+        "revenue": 29344,
+        "units": 6
+      },
+      {
+        "category": "bags",
+        "revenue": 20445,
+        "units": 5
+      },
+      {
+        "category": "jewellery",
+        "revenue": 16945,
+        "units": 5
+      },
+      {
+        "category": "lifestyle",
+        "revenue": 14994,
+        "units": 6
+      },
+      {
+        "category": "kids",
+        "revenue": 14989,
+        "units": 11
+      },
+      {
+        "category": "accessories",
+        "revenue": 9142,
+        "units": 8
+      },
+      {
+        "category": "beauty",
+        "revenue": 8154,
+        "units": 6
+      }
+    ],
+    "topProducts": [
+      {
+        "productId": "prod_086",
+        "name": "Block Heel Sandals",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 4,
+        "revenue": 15996,
+        "stock": 75
+      },
+      {
+        "productId": "prod_093",
+        "name": "Penny Loafers",
+        "image": "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 3,
+        "revenue": 14547,
+        "stock": 3
+      },
+      {
+        "productId": "prod_038",
+        "name": "Cotton Bomber Jacket",
+        "image": "https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=900&q=80",
+        "category": "men",
+        "unitsSold": 3,
+        "revenue": 12147,
+        "stock": 18
+      },
+      {
+        "productId": "prod_058",
+        "name": "Stoneware Vase",
+        "image": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=80",
+        "category": "home",
+        "unitsSold": 4,
+        "revenue": 11396,
+        "stock": 13
+      },
+      {
+        "productId": "prod_125",
+        "name": "Fitness Smartwatch",
+        "image": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=80",
+        "category": "electronics",
+        "unitsSold": 1,
+        "revenue": 10799,
+        "stock": 18
+      },
+      {
+        "productId": "prod_100",
+        "name": "Commuter Backpack",
+        "image": "https://images.unsplash.com/photo-1591561954557-26941169b49e?auto=format&fit=crop&w=900&q=80",
+        "category": "bags",
+        "unitsSold": 3,
+        "revenue": 10497,
+        "stock": 12
+      },
+      {
+        "productId": "prod_002",
+        "name": "Belted Shirt Dress",
+        "image": "https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 3,
+        "revenue": 9747,
+        "stock": 42
+      },
+      {
+        "productId": "prod_084",
+        "name": "Leather Low Top Sneakers",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 2,
+        "revenue": 8798,
+        "stock": 24
+      }
+    ],
+    "byStatus": [
+      {
+        "status": "pending",
+        "count": 6
+      },
+      {
+        "status": "confirmed",
+        "count": 15
+      },
+      {
+        "status": "processing",
+        "count": 7
+      },
+      {
+        "status": "shipped",
+        "count": 8
+      },
+      {
+        "status": "delivered",
+        "count": 16
+      }
+    ]
+  },
+  "3m": {
+    "range": "3m",
+    "revenue": 488889,
+    "orders": 89,
+    "averageOrderValue": 5493,
+    "unitsSold": 198,
+    "customers": 42,
+    "revenueDelta": 172.2,
+    "ordersDelta": 196.7,
+    "series": [
+      {
+        "label": "2026-07-02",
+        "revenue": 29075,
+        "orders": 7
+      },
+      {
+        "label": "2026-07-09",
+        "revenue": 6648,
+        "orders": 1
+      },
+      {
+        "label": "2026-07-16",
+        "revenue": 18561,
+        "orders": 2
+      },
+      {
+        "label": "2026-07-23",
+        "revenue": 51102,
+        "orders": 5
+      },
+      {
+        "label": "2026-07-30",
+        "revenue": 9975,
+        "orders": 4
+      },
+      {
+        "label": "2026-08-06",
+        "revenue": 30436,
+        "orders": 7
+      },
+      {
+        "label": "2026-08-13",
+        "revenue": 7485,
+        "orders": 3
+      },
+      {
+        "label": "2026-08-20",
+        "revenue": 48692,
+        "orders": 8
+      },
+      {
+        "label": "2026-08-27",
+        "revenue": 36375,
+        "orders": 6
+      },
+      {
+        "label": "2026-09-03",
+        "revenue": 39815,
+        "orders": 6
+      },
+      {
+        "label": "2026-09-10",
+        "revenue": 90917,
+        "orders": 12
+      },
+      {
+        "label": "2026-09-17",
+        "revenue": 119808,
+        "orders": 28
+      }
+    ],
+    "byCategory": [
+      {
+        "category": "footwear",
+        "revenue": 86075,
+        "units": 25
+      },
+      {
+        "category": "men",
+        "revenue": 84077,
+        "units": 33
+      },
+      {
+        "category": "women",
+        "revenue": 81468,
+        "units": 32
+      },
+      {
+        "category": "home",
+        "revenue": 61875,
+        "units": 25
+      },
+      {
+        "category": "electronics",
+        "revenue": 37640,
+        "units": 10
+      },
+      {
+        "category": "bags",
+        "revenue": 32491,
+        "units": 9
+      },
+      {
+        "category": "jewellery",
+        "revenue": 26242,
+        "units": 8
+      },
+      {
+        "category": "beauty",
+        "revenue": 25380,
+        "units": 20
+      },
+      {
+        "category": "lifestyle",
+        "revenue": 24641,
+        "units": 9
+      },
+      {
+        "category": "accessories",
+        "revenue": 19035,
+        "units": 15
+      },
+      {
+        "category": "kids",
+        "revenue": 16188,
+        "units": 12
+      }
+    ],
+    "topProducts": [
+      {
+        "productId": "prod_018",
+        "name": "Cropped Denim Jacket",
+        "image": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 4,
+        "revenue": 20596,
+        "stock": 7
+      },
+      {
+        "productId": "prod_038",
+        "name": "Cotton Bomber Jacket",
+        "image": "https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=900&q=80",
+        "category": "men",
+        "unitsSold": 5,
+        "revenue": 20245,
+        "stock": 18
+      },
+      {
+        "productId": "prod_086",
+        "name": "Block Heel Sandals",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 5,
+        "revenue": 19995,
+        "stock": 75
+      },
+      {
+        "productId": "prod_093",
+        "name": "Penny Loafers",
+        "image": "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 3,
+        "revenue": 14547,
+        "stock": 3
+      },
+      {
+        "productId": "prod_100",
+        "name": "Commuter Backpack",
+        "image": "https://images.unsplash.com/photo-1591561954557-26941169b49e?auto=format&fit=crop&w=900&q=80",
+        "category": "bags",
+        "unitsSold": 4,
+        "revenue": 13996,
+        "stock": 12
+      },
+      {
+        "productId": "prod_084",
+        "name": "Leather Low Top Sneakers",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 3,
+        "revenue": 13197,
+        "stock": 24
+      },
+      {
+        "productId": "prod_002",
+        "name": "Belted Shirt Dress",
+        "image": "https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?auto=format&fit=crop&w=900&q=80",
+        "category": "women",
+        "unitsSold": 4,
+        "revenue": 12996,
+        "stock": 42
+      },
+      {
+        "productId": "prod_034",
+        "name": "Relaxed Tapered Jeans",
+        "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=900&q=80",
+        "category": "men",
+        "unitsSold": 5,
+        "revenue": 12745,
+        "stock": 38
+      }
+    ],
+    "byStatus": [
+      {
+        "status": "pending",
+        "count": 6
+      },
+      {
+        "status": "confirmed",
+        "count": 15
+      },
+      {
+        "status": "processing",
+        "count": 7
+      },
+      {
+        "status": "shipped",
+        "count": 8
+      },
+      {
+        "status": "delivered",
+        "count": 50
+      },
+      {
+        "status": "returned",
+        "count": 3
+      }
+    ]
+  },
+  "1y": {
+    "range": "1y",
+    "revenue": 928598,
+    "orders": 164,
+    "averageOrderValue": 5662,
+    "unitsSold": 378,
+    "customers": 55,
+    "revenueDelta": 100,
+    "ordersDelta": 100,
+    "series": [
+      {
+        "label": "2025-10",
+        "revenue": 12463,
+        "orders": 3
+      },
+      {
+        "label": "2025-11",
+        "revenue": 54055,
+        "orders": 8
+      },
+      {
+        "label": "2025-12",
+        "revenue": 30882,
+        "orders": 7
+      },
+      {
+        "label": "2026-01",
+        "revenue": 80951,
+        "orders": 12
+      },
+      {
+        "label": "2026-02",
+        "revenue": 20593,
+        "orders": 5
+      },
+      {
+        "label": "2026-03",
+        "revenue": 61131,
+        "orders": 10
+      },
+      {
+        "label": "2026-04",
+        "revenue": 68028,
+        "orders": 10
+      },
+      {
+        "label": "2026-05",
+        "revenue": 67422,
+        "orders": 10
+      },
+      {
+        "label": "2026-06",
+        "revenue": 44184,
+        "orders": 10
+      },
+      {
+        "label": "2026-07",
+        "revenue": 105386,
+        "orders": 15
+      },
+      {
+        "label": "2026-08",
+        "revenue": 96588,
+        "orders": 22
+      },
+      {
+        "label": "2026-09",
+        "revenue": 286915,
+        "orders": 52
+      }
+    ],
+    "byCategory": [
+      {
+        "category": "footwear",
+        "revenue": 172368,
+        "units": 52
+      },
+      {
+        "category": "women",
+        "revenue": 143040,
+        "units": 60
+      },
+      {
+        "category": "men",
+        "revenue": 125868,
+        "units": 52
+      },
+      {
+        "category": "electronics",
+        "revenue": 95129,
+        "units": 21
+      },
+      {
+        "category": "jewellery",
+        "revenue": 81268,
+        "units": 22
+      },
+      {
+        "category": "home",
+        "revenue": 78598,
+        "units": 32
+      },
+      {
+        "category": "bags",
+        "revenue": 63559,
+        "units": 21
+      },
+      {
+        "category": "beauty",
+        "revenue": 53117,
+        "units": 43
+      },
+      {
+        "category": "lifestyle",
+        "revenue": 51033,
+        "units": 17
+      },
+      {
+        "category": "accessories",
+        "revenue": 43069,
+        "units": 31
+      },
+      {
+        "category": "kids",
+        "revenue": 38173,
+        "units": 27
+      }
+    ],
+    "topProducts": [
+      {
+        "productId": "prod_093",
+        "name": "Penny Loafers",
+        "image": "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 8,
+        "revenue": 38792,
+        "stock": 3
+      },
+      {
+        "productId": "prod_086",
+        "name": "Block Heel Sandals",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 7,
+        "revenue": 27993,
+        "stock": 75
+      },
+      {
+        "productId": "prod_132",
+        "name": "Weekender Duffle Bag",
+        "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=900&q=80",
+        "category": "lifestyle",
+        "unitsSold": 5,
+        "revenue": 27245,
+        "stock": 44
+      },
+      {
+        "productId": "prod_088",
+        "name": "Slingback Kitten Heels",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 8,
+        "revenue": 26792,
+        "stock": 74
+      },
+      {
+        "productId": "prod_084",
+        "name": "Leather Low Top Sneakers",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80",
+        "category": "footwear",
+        "unitsSold": 6,
+        "revenue": 26394,
+        "stock": 24
+      },
+      {
+        "productId": "prod_126",
+        "name": "Slim Activity Band",
+        "image": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=900&q=80",
+        "category": "electronics",
+        "unitsSold": 4,
+        "revenue": 24996,
+        "stock": 44
+      },
+      {
+        "productId": "prod_099",
+        "name": "Canvas Roll Top Backpack",
+        "image": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=80",
+        "category": "bags",
+        "unitsSold": 6,
+        "revenue": 23994,
+        "stock": 53
+      },
+      {
+        "productId": "prod_034",
+        "name": "Relaxed Tapered Jeans",
+        "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=900&q=80",
+        "category": "men",
+        "unitsSold": 9,
+        "revenue": 22941,
+        "stock": 38
+      }
+    ],
+    "byStatus": [
+      {
+        "status": "pending",
+        "count": 6
+      },
+      {
+        "status": "confirmed",
+        "count": 15
+      },
+      {
+        "status": "processing",
+        "count": 7
+      },
+      {
+        "status": "shipped",
+        "count": 8
+      },
+      {
+        "status": "delivered",
+        "count": 123
+      },
+      {
+        "status": "returned",
+        "count": 5
+      }
+    ]
+  }
+}

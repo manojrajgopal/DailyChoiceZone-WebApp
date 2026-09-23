@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-09-23T10:30:00.000Z",
+  "stats": [
+    {
+      "id": "sales",
+      "label": "Total sales",
+      "value": 286915,
+      "format": "currency",
+      "delta": 197.1,
+      "href": "/admin/reports",
+      "icon": "sales"
+    },
+    {
+      "id": "orders",
+      "label": "Orders",
+      "value": 52,
+      "format": "number",
+      "delta": 136.4,
+      "href": "/admin/orders",
+      "icon": "orders"
+    },
+    {
+      "id": "customers",
+      "label": "Customers",
+      "value": 64,
+      "format": "number",
+      "delta": 4.8,
+      "href": "/admin/customers",
+      "icon": "customers"
+    },
+    {
+      "id": "products",
+      "label": "Products",
+      "value": 139,
+      "format": "number",
+      "delta": null,
+      "href": "/admin/products",
+      "icon": "products"
+    },
+    {
+      "id": "lowStock",
+      "label": "Low stock",
+      "value": 17,
+      "format": "number",
+      "delta": null,
+      "href": "/admin/inventory",
+      "icon": "alert"
+    }
+  ]
+}

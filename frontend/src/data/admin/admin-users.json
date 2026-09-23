@@ -1,0 +1,52 @@
+[
+  {
+    "id": "adm_001",
+    "name": "Manoj Rajan",
+    "email": "admin@dailychoicezone.com",
+    "role": "super-admin",
+    "status": "active",
+    "lastLoginAt": "2026-09-23T09:42:00.000Z",
+    "createdAt": "2025-04-02T06:00:00.000Z",
+    "avatarInitials": "MR"
+  },
+  {
+    "id": "adm_002",
+    "name": "Nandini Rao",
+    "email": "nandini@dailychoicezone.com",
+    "role": "admin",
+    "status": "active",
+    "lastLoginAt": "2026-09-22T16:10:00.000Z",
+    "createdAt": "2025-06-18T06:00:00.000Z",
+    "avatarInitials": "NR"
+  },
+  {
+    "id": "adm_003",
+    "name": "Karthik Menon",
+    "email": "karthik@dailychoicezone.com",
+    "role": "manager",
+    "status": "active",
+    "lastLoginAt": "2026-09-23T07:25:00.000Z",
+    "createdAt": "2025-09-01T06:00:00.000Z",
+    "avatarInitials": "KM"
+  },
+  {
+    "id": "adm_004",
+    "name": "Priya Sharma",
+    "email": "priya@dailychoicezone.com",
+    "role": "editor",
+    "status": "active",
+    "lastLoginAt": "2026-09-19T11:05:00.000Z",
+    "createdAt": "2026-01-12T06:00:00.000Z",
+    "avatarInitials": "PS"
+  },
+  {
+    "id": "adm_005",
+    "name": "Imran Sheikh",
+    "email": "imran@dailychoicezone.com",
+    "role": "manager",
+    "status": "disabled",
+    "lastLoginAt": "2026-05-30T13:40:00.000Z",
+    "createdAt": "2025-11-20T06:00:00.000Z",
+    "avatarInitials": "IS"
+  }
+]

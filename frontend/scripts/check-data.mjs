@@ -24,7 +24,8 @@ const reviews = read("reviews.json");
 const coupons = read("coupons.json");
 const navigation = read("navigation.json");
 const homepage = read("homepage.json");
-const banners = read("banners.json");
+// The promo strip is driven by the banners the portal manages.
+const banners = read("admin/banners.json");
 const siteConfig = read("site-config.json");
 
 const problems = [];
@@ -133,7 +134,7 @@ const hrefs = [
     ...(item.promo ? [item.promo.href] : []),
   ]),
   ...siteConfig.footer.flatMap((col) => col.links.map((l) => l.href)),
-  ...banners.map((b) => b.href).filter(Boolean),
+  ...banners.map((b) => b.buttonLink).filter(Boolean),
   ...homepage.sections.flatMap((s) => [s.viewAllHref, s.ctaHref].filter(Boolean)),
 ];
 

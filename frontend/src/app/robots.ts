@@ -5,9 +5,9 @@ import { getSiteConfig } from "@/services/siteService";
 /**
  * robots.txt.
  *
- * Cart, checkout and account are disallowed: they are personal, never useful
- * in search results, and crawling them wastes budget that should go to
- * products.
+ * The admin portal, cart, checkout and account are all disallowed: they are
+ * either private or personal, never useful in search results, and crawling
+ * them wastes budget that should go to products.
  */
 /**
  * Written once at build time.
@@ -25,7 +25,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/cart", "/checkout", "/account", "/order-success", "/search"],
+        disallow: ["/admin", "/cart", "/checkout", "/account", "/order-success", "/search"],
       },
     ],
     sitemap: `${config.url}/sitemap.xml`,

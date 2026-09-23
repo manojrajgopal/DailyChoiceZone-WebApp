@@ -1,0 +1,46 @@
+[
+  {
+    "id": "nav_overview",
+    "heading": "Overview",
+    "items": [
+      { "id": "dashboard", "label": "Dashboard", "href": "/admin/dashboard", "icon": "dashboard" },
+      { "id": "reports", "label": "Reports", "href": "/admin/reports", "icon": "reports" }
+    ]
+  },
+  {
+    "id": "nav_catalogue",
+    "heading": "Catalogue",
+    "items": [
+      { "id": "products", "label": "Products", "href": "/admin/products", "icon": "products" },
+      { "id": "categories", "label": "Categories", "href": "/admin/categories", "icon": "categories" },
+      { "id": "collections", "label": "Collections", "href": "/admin/collections", "icon": "collections" },
+      { "id": "inventory", "label": "Inventory", "href": "/admin/inventory", "icon": "inventory", "badge": "lowStock" }
+    ]
+  },
+  {
+    "id": "nav_sales",
+    "heading": "Sales",
+    "items": [
+      { "id": "orders", "label": "Orders", "href": "/admin/orders", "icon": "orders", "badge": "openOrders" },
+      { "id": "customers", "label": "Customers", "href": "/admin/customers", "icon": "customers" },
+      { "id": "coupons", "label": "Coupons", "href": "/admin/coupons", "icon": "coupons" },
+      { "id": "reviews", "label": "Reviews", "href": "/admin/reviews", "icon": "reviews", "badge": "pendingReviews" }
+    ]
+  },
+  {
+    "id": "nav_storefront",
+    "heading": "Storefront",
+    "items": [
+      { "id": "homepage", "label": "Homepage", "href": "/admin/homepage", "icon": "homepage" },
+      { "id": "banners", "label": "Banners", "href": "/admin/banners", "icon": "banners" }
+    ]
+  },
+  {
+    "id": "nav_admin",
+    "heading": "Administration",
+    "items": [
+      { "id": "settings", "label": "Store settings", "href": "/admin/settings", "icon": "settings" },
+      { "id": "admin-users", "label": "Admin users", "href": "/admin/admin-users", "icon": "adminUsers" }
+    ]
+  }
+]

@@ -3,6 +3,7 @@ import type {
   Collection,
   Coupon,
   HomepageConfig,
+  HomeSectionLayout,
   Paginated,
   Product,
   ProductFacets,
@@ -61,5 +62,13 @@ export interface DataSource {
 
   getSiteConfig(): Promise<SiteConfig>;
   getHomepageConfig(): Promise<HomepageConfig>;
+  /**
+   * Which homepage sections are live, and in what order.
+   *
+   * Separate from `getHomepageConfig` because it changes on a different clock:
+   * the section definitions are part of the build, the layout is editorial
+   * state an administrator changes at any time.
+   */
+  getHomeSectionLayout(): Promise<HomeSectionLayout[]>;
   listBanners(): Promise<PromoBanner[]>;
 }

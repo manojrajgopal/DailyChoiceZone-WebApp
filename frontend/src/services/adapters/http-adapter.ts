@@ -3,6 +3,7 @@ import type {
   Collection,
   Coupon,
   HomepageConfig,
+  HomeSectionLayout,
   Paginated,
   Product,
   ProductFacets,
@@ -119,6 +120,10 @@ export const httpAdapter: DataSource = {
 
   getHomepageConfig(): Promise<HomepageConfig> {
     return get<HomepageConfig>("/homepage");
+  },
+
+  getHomeSectionLayout(): Promise<HomeSectionLayout[]> {
+    return get<HomeSectionLayout[]>("/homepage/layout");
   },
 
   listBanners(): Promise<PromoBanner[]> {

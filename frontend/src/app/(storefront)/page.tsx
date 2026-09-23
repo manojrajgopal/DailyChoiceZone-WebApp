@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 
 import { HomeSectionRenderer } from "@/components/home/HomeSectionRenderer";
-import { getHomepageConfig, getSiteConfig } from "@/services/siteService";
+import { HomeSections } from "@/components/home/HomeSections";
+import {
+  getHomepageConfig,
+  getHomeSectionLayout,
+  getSiteConfig,
+} from "@/services/siteService";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getSiteConfig();
@@ -25,13 +30,18 @@ export async function generateMetadata(): Promise<Metadata> {
  * reordered, added or removed without touching this file.
  */
 export default async function HomePage() {
-  const { sections } = await getHomepageConfig();
+  const [{ sections }, layout] = await Promise.all([
+    getHomepageConfig(),
+    getHomeSectionLayout(),
+  ]);
 
   return (
-    <div className="flex flex-col gap-16 py-10 sm:gap-20 sm:py-12">
-      {sections.map((section) => (
-        <HomeSectionRenderer key={section.id} section={section} />
-      ))}
-    </div>
+    <HomeSections
+      initialLayout={layout}
+      sections={sections.map((section) => ({
+        id: section.id,
+        node: <HomeSectionRenderer section={section} />,
+      }))}
+    />
   );
 }

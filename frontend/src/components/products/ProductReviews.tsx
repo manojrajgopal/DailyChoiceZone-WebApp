@@ -1,8 +1,11 @@
+"use client";
+
 import { BadgeCheck } from "lucide-react";
 
 import type { Review, ReviewSummary } from "@/types";
 
 import { Rating } from "@/components/ui/Rating";
+import { useLiveReviews } from "@/hooks/useLiveReviews";
 import { formatDate } from "@/lib/utils/format";
 
 /**
@@ -12,12 +15,17 @@ import { formatDate } from "@/lib/utils/format";
  * set, so the summary can never disagree with what is shown underneath it.
  */
 export function ProductReviews({
-  reviews,
-  summary,
+  productId,
+  reviews: prerendered,
+  summary: prerenderedSummary,
 }: {
+  productId: string;
   reviews: Review[];
   summary: ReviewSummary;
 }) {
+  // Moderation decides what belongs here, and it changes after the build.
+  const { reviews, summary } = useLiveReviews(productId, prerendered, prerenderedSummary);
+
   if (summary.total === 0) {
     return (
       <p className="text-sm text-ink-500">

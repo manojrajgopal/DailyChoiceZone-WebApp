@@ -1,0 +1,92 @@
+[
+  {
+    "id": "home_new",
+    "type": "product-carousel",
+    "title": "New Arrivals",
+    "subtitle": "Just landed this week",
+    "source": "new-arrivals",
+    "limit": 6,
+    "active": true,
+    "displayOrder": 1
+  },
+  {
+    "id": "home_trending",
+    "type": "product-carousel",
+    "title": "Trending Now",
+    "subtitle": "Moving fastest across the store",
+    "source": "trending",
+    "limit": 6,
+    "active": true,
+    "displayOrder": 2
+  },
+  {
+    "id": "home_categories",
+    "type": "category-grid",
+    "title": "Shop by Category",
+    "subtitle": "Eleven departments, one checkout",
+    "source": null,
+    "limit": 0,
+    "active": true,
+    "displayOrder": 3
+  },
+  {
+    "id": "home_bestsellers",
+    "type": "product-carousel",
+    "title": "Best Sellers",
+    "subtitle": "Rated highly by thousands of customers",
+    "source": "bestsellers",
+    "limit": 6,
+    "active": true,
+    "displayOrder": 4
+  },
+  {
+    "id": "home_editorial",
+    "type": "promo-banner",
+    "title": "Chosen for the long run",
+    "subtitle": "",
+    "source": null,
+    "limit": 0,
+    "active": true,
+    "displayOrder": 5
+  },
+  {
+    "id": "home_collections",
+    "type": "collection-grid",
+    "title": "Featured Collections",
+    "subtitle": "Edits built around how you actually shop",
+    "source": null,
+    "limit": 3,
+    "active": true,
+    "displayOrder": 6
+  },
+  {
+    "id": "home_deals",
+    "type": "product-carousel",
+    "title": "Limited Picks",
+    "subtitle": "Best reductions on the floor right now",
+    "source": "deals",
+    "limit": 6,
+    "active": true,
+    "displayOrder": 7
+  },
+  {
+    "id": "home_trust",
+    "type": "promo-banner",
+    "title": "Trust strip",
+    "subtitle": "",
+    "source": null,
+    "limit": 0,
+    "active": true,
+    "displayOrder": 8
+  },
+  {
+    "id": "home_recommended",
+    "type": "product-carousel",
+    "title": "Recommended For You",
+    "subtitle": "Based on what you have been looking at",
+    "source": "recommended",
+    "limit": 6,
+    "active": true,
+    "displayOrder": 9
+  }
+]

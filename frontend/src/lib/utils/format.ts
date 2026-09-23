@@ -85,3 +85,46 @@ export function deliveryEstimate(businessDays: number, from: Date = new Date()):
     month: "short",
   }).format(date);
 }
+
+/**
+ * Compact rupees for chart axes and KPI tiles: 85,400 becomes "₹85.4k",
+ * 284,560 becomes "₹2.85L".
+ *
+ * Uses the Indian lakh/crore scale rather than millions, because that is how
+ * the figures will be read aloud by the people using this dashboard.
+ */
+export function formatCompactINR(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 10000000) return `₹${(value / 10000000).toFixed(2).replace(/\.00$/, "")}Cr`;
+  if (abs >= 100000) return `₹${(value / 100000).toFixed(2).replace(/\.00$/, "")}L`;
+  if (abs >= 1000) return `₹${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `₹${Math.round(value)}`;
+}
+
+/** Compact plain numbers on the same scale. */
+export function formatCompactNumber(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 10000000) return `${(value / 10000000).toFixed(2).replace(/\.00$/, "")}Cr`;
+  if (abs >= 100000) return `${(value / 100000).toFixed(2).replace(/\.00$/, "")}L`;
+  if (abs >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(Math.round(value));
+}
+
+/**
+ * A chart axis label for one of our series labels.
+ *
+ * Handles the three shapes the analytics data uses: an hour ("08:00"), a day
+ * ("2026-09-18") and a month ("2026-09").
+ */
+export function formatSeriesLabel(label: string): string {
+  if (/^\d{2}:\d{2}$/.test(label)) return label;
+
+  if (/^\d{4}-\d{2}$/.test(label)) {
+    const date = new Date(`${label}-01T00:00:00Z`);
+    return new Intl.DateTimeFormat("en-IN", { month: "short", timeZone: "UTC" }).format(date);
+  }
+
+  const date = new Date(`${label}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return label;
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(date);
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "banner_001",
+    "title": "Free delivery on orders above ₹999",
+    "subtitle": "Dispatched within 24 hours from Bengaluru",
+    "image": "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1400&q=80",
+    "buttonText": "Shop now",
+    "buttonLink": "/shop",
+    "startsAt": "2026-07-25T10:30:00.000Z",
+    "endsAt": null,
+    "active": true,
+    "displayOrder": 1
+  },
+  {
+    "id": "banner_002",
+    "title": "15-day easy returns on everything",
+    "subtitle": "We arrange the pickup, no questions asked",
+    "image": "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=1400&q=80",
+    "buttonText": "How returns work",
+    "buttonLink": "/returns",
+    "startsAt": "2026-08-09T10:30:00.000Z",
+    "endsAt": null,
+    "active": true,
+    "displayOrder": 2
+  },
+  {
+    "id": "banner_003",
+    "title": "New here? Use WELCOME10 for 10% off",
+    "subtitle": "Valid on your first order",
+    "image": "https://images.unsplash.com/photo-1495121605193-b116b5b9c5fe?auto=format&fit=crop&w=1400&q=80",
+    "buttonText": "Start shopping",
+    "buttonLink": "/shop",
+    "startsAt": "2026-08-24T10:30:00.000Z",
+    "endsAt": null,
+    "active": true,
+    "displayOrder": 3
+  },
+  {
+    "id": "banner_004",
+    "title": "Festive Edit is coming",
+    "subtitle": "Our biggest collection of the year, live next month",
+    "image": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1400&q=80",
+    "buttonText": "Preview the edit",
+    "buttonLink": "/collection/home-refresh",
+    "startsAt": "2026-10-13T10:30:00.000Z",
+    "endsAt": null,
+    "active": false,
+    "displayOrder": 4
+  }
+]

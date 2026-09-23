@@ -1,0 +1,47 @@
+[
+  {
+    "id": "ntf_001",
+    "kind": "stock",
+    "title": "17 products are low in stock",
+    "body": "Restock them before they sell out.",
+    "at": "2026-09-23T09:18:00.000Z",
+    "read": false,
+    "href": "/admin/inventory"
+  },
+  {
+    "id": "ntf_002",
+    "kind": "order",
+    "title": "28 orders need processing",
+    "body": "Pending, confirmed and processing orders awaiting action.",
+    "at": "2026-09-23T05:42:00.000Z",
+    "read": false,
+    "href": "/admin/orders"
+  },
+  {
+    "id": "ntf_003",
+    "kind": "review",
+    "title": "26 reviews awaiting approval",
+    "body": "Moderate them to publish on the storefront.",
+    "at": "2026-09-22T20:06:00.000Z",
+    "read": false,
+    "href": "/admin/reviews"
+  },
+  {
+    "id": "ntf_004",
+    "kind": "coupon",
+    "title": "FESTIVE15 goes live in 14 days",
+    "body": "Scheduled coupon — check the dates before launch.",
+    "at": "2026-09-22T05:42:00.000Z",
+    "read": true,
+    "href": "/admin/coupons"
+  },
+  {
+    "id": "ntf_005",
+    "kind": "system",
+    "title": "Homepage section order changed",
+    "body": "Limited Picks moved above Recommended For You.",
+    "at": "2026-09-21T10:30:00.000Z",
+    "read": true,
+    "href": "/admin/homepage"
+  }
+]
