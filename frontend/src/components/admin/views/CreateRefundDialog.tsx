@@ -162,7 +162,7 @@ export function CreateRefundDialog({
         </fieldset>
 
         {mode === "items" ? (
-          <ul className="flex max-h-56 flex-col divide-y divide-admin-border overflow-y-auto rounded-[3px] border border-admin-border">
+          <ul className="scroll-panel flex max-h-56 flex-col divide-y divide-admin-border overflow-y-auto rounded-[3px] border border-admin-border">
             {invoice.lines.map((line, index) => {
               const key = lineKey(index);
               return (

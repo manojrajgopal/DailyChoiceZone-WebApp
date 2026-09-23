@@ -308,7 +308,7 @@ export function AdminCollectionsView() {
                 />
               </div>
 
-              <ul className="max-h-64 overflow-y-auto rounded-[3px] border border-admin-border">
+              <ul className="scroll-panel max-h-64 overflow-y-auto rounded-[3px] border border-admin-border">
                 {pickerResults.length === 0 ? (
                   <li className="px-3 py-6 text-center text-xs text-admin-muted">
                     Nothing matches that search.

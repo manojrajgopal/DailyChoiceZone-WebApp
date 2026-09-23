@@ -198,6 +198,21 @@ storage for a month still shows today's prices. All money arithmetic lives in
 `services/cartService.ts` and is pure and synchronous, so totals update the
 instant a quantity changes.
 
+**Scrollbars are styled globally, in two dialects.** Chromium supports both the
+standard `scrollbar-width`/`scrollbar-color` *and* the `::-webkit-scrollbar`
+pseudo-elements — and when both are set, the standard properties win, silently
+discarding the rounding and insets. So `globals.css` splits them with
+`@supports … (not selector(::-webkit-scrollbar))`: Firefox gets the standard
+properties, everything else gets the richer version. Collapsing that into one
+block looks tidier and breaks the styling in Chrome.
+
+The portal's sidebar keeps its scrollbar rather than hiding it — with Billing
+expanded the navigation genuinely runs past the fold on a laptop, and a pane
+that scrolls without saying so hides half its own contents. It is made quiet
+instead: a translucent white thumb on the dark ground, brighter on hover.
+`.no-scrollbar` still wins on the product rails, which are swiped rather than
+scrolled and carry their own arrows.
+
 **Local storage is always guarded.** `lib/storage/local-storage.ts` wraps every
 access, because local storage throws in private browsing and when a user blocks
 site data. A storefront must not white-screen because someone tightened their

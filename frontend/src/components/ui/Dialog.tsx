@@ -79,7 +79,7 @@ export function Modal({
           {...describedByProps(description)}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-3xl",
-            "max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto",
+            "scroll-panel max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto",
             "rounded-card bg-shell shadow-overlay",
             "data-[state=open]:animate-[dcz-modal-in_240ms_var(--ease-brand)]",
             "data-[state=closed]:animate-[dcz-modal-out_160ms_var(--ease-brand)]",
@@ -182,7 +182,7 @@ export function Drawer({
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
+          <div className="scroll-panel min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
 
           {footer ? (
             <div className="border-t border-ink-200 bg-cream px-4 py-3">{footer}</div>

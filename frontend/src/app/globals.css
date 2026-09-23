@@ -383,6 +383,136 @@
   }
 }
 
+
+/* -------------------------------------------------------------- scrollbars */
+
+/*
+ * Custom scrollbars.
+ *
+ * A default Windows scrollbar is 17px of grey chrome that belongs to the
+ * operating system, not to this brand — and on the portal's near-black sidebar
+ * it reads as a mistake. These are slimmer, warm-toned, and inset so the thumb
+ * floats in its track instead of filling it.
+ *
+ * Two engines, deliberately not both at once. Chromium supports the standard
+ * `scrollbar-width`/`scrollbar-color` *and* the `::-webkit-scrollbar`
+ * pseudo-elements, and when both are set the standard properties win — which
+ * would silently throw away the rounding and insets below. So the `@supports`
+ * test splits them: Firefox, which has no `::-webkit-scrollbar`, gets the
+ * standard properties; everything else gets the richer pseudo-element version.
+ *
+ * Applied globally rather than through a class, because a scrollbar should look
+ * the same wherever it appears and opting twenty containers in individually is
+ * twenty chances to miss one. `.no-scrollbar` still wins where a rail is swiped
+ * rather than scrolled, and the sidebar overrides it for its dark ground.
+ */
+
+:root {
+  --scrollbar-size: 0.75rem;
+
+  /* Warm neutrals, so the bar belongs to the page rather than to Windows. */
+  --scrollbar-thumb: #cdc5bc;
+  --scrollbar-thumb-hover: #a89f95;
+  --scrollbar-thumb-active: #8a8078;
+  --scrollbar-track: transparent;
+}
+
+/* --- Firefox ------------------------------------------------------------ */
+@supports (scrollbar-width: thin) and (not selector(::-webkit-scrollbar)) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  /* The dark sidebar needs a light thumb to be visible at all. */
+  .scroll-dark {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+  }
+}
+
+/* --- Chromium, Safari, Edge --------------------------------------------- */
+@supports selector(::-webkit-scrollbar) {
+  /*
+   * One width everywhere, including the page's own bar — Chromium matches the
+   * viewport scrollbar against the bare selector rather than `html`, and a
+   * special case that silently does not apply is worse than no special case.
+   * The track is wider than the thumb it paints, which keeps it easy to grab
+   * while reading as slim.
+   */
+  ::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: var(--scrollbar-track);
+  }
+
+  /*
+   * A transparent border plus `background-clip: padding-box` is what insets the
+   * thumb: the element still fills the track for hit-testing, so it stays easy
+   * to grab, while only the padding box is painted.
+   */
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background-color: var(--scrollbar-thumb-active);
+  }
+
+  /* Never the stepper arrows; they are OS furniture and break the shape. */
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  /*
+   * The portal sidebar.
+   *
+   * Kept rather than hidden: with Billing expanded the navigation genuinely
+   * runs past the fold on a laptop, and a pane that scrolls without saying so
+   * hides half its own contents. So it is present but quiet — a translucent
+   * white thumb that is legible against the near-black ground and steps up on
+   * hover, which is the behaviour of a scrollbar you notice only when you need
+   * it.
+   */
+  .scroll-dark::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.18);
+    border-width: 3px;
+  }
+
+  .scroll-dark::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(255 255 255 / 0.34);
+  }
+
+  .scroll-dark::-webkit-scrollbar-thumb:active {
+    background-color: rgb(255 255 255 / 0.48);
+  }
+
+  /*
+   * Panels that scroll inside a bordered card — dropdowns, modals, the
+   * refund picker. A slimmer thumb, because the container is already small
+   * and a full-width bar eats into content that has little room to give.
+   */
+  .scroll-panel::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  .scroll-panel::-webkit-scrollbar-thumb {
+    border-width: 2px;
+  }
+}
+
 /* ---------------------------------------------------------------- printing */
 
 /*

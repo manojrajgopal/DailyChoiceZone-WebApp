@@ -169,7 +169,7 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         />
 
         {searchOpen && term.trim().length >= 2 ? (
-          <div className="absolute left-0 right-0 top-11 z-40 max-h-[70vh] overflow-y-auto rounded-[3px] border border-admin-border bg-admin-surface shadow-raised">
+          <div className="scroll-panel absolute left-0 right-0 top-11 z-40 max-h-[70vh] overflow-y-auto rounded-[3px] border border-admin-border bg-admin-surface shadow-raised">
             {results.total === 0 ? (
               <p className="px-3 py-6 text-center text-xs text-admin-muted">
                 Nothing matches &ldquo;{term.trim()}&rdquo;.
@@ -267,7 +267,7 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
               ) : null}
             </div>
 
-            <ul className="max-h-80 overflow-y-auto">
+            <ul className="scroll-panel max-h-80 overflow-y-auto">
               {notifications.length === 0 ? (
                 <li className="px-3 py-6 text-center text-xs text-admin-muted">
                   Nothing needs your attention.

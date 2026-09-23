@@ -80,7 +80,7 @@ export function FilterPanel({
           defaultOpen
           meta={<ActiveCount value={countFor("subcategory")} />}
         >
-          <div className="flex max-h-64 flex-col overflow-y-auto pr-1">
+          <div className="scroll-panel flex max-h-64 flex-col overflow-y-auto pr-1">
             {facets.subcategories.map((option) => (
               <Checkbox
                 key={option.value}
@@ -131,7 +131,7 @@ export function FilterPanel({
 
       {facets.colors.length > 0 ? (
         <Accordion title="Colour" meta={<ActiveCount value={countFor("color")} />}>
-          <div className="flex max-h-64 flex-col overflow-y-auto pr-1">
+          <div className="scroll-panel flex max-h-64 flex-col overflow-y-auto pr-1">
             {facets.colors.map((option) => (
               <Checkbox
                 key={option.value}
@@ -147,7 +147,7 @@ export function FilterPanel({
 
       {facets.brands.length > 1 ? (
         <Accordion title="Brand" meta={<ActiveCount value={countFor("brand")} />}>
-          <div className="flex max-h-64 flex-col overflow-y-auto pr-1">
+          <div className="scroll-panel flex max-h-64 flex-col overflow-y-auto pr-1">
             {facets.brands.map((option) => (
               <Checkbox
                 key={option.value}
