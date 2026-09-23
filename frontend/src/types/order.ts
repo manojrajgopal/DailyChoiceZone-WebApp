@@ -67,6 +67,17 @@ export interface Order {
   totals: CartTotals;
   /** Delivery estimate captured at checkout time. */
   expectedDelivery: string;
+  /**
+   * The billing records raised for this order.
+   *
+   * Ids, not embedded objects: the invoice is its own record with its own
+   * lifecycle, and copying it here would mean two versions of the same
+   * document disagreeing the first time one of them is edited.
+   */
+  invoiceId?: string | null;
+  paymentId?: string | null;
+  /** Denormalised for the order list, which shows it without a second read. */
+  invoiceNumber?: string | null;
 }
 
 /** What the checkout hands to `orderService.placeOrder`. */

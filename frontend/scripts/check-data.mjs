@@ -201,11 +201,195 @@ for (const section of homepage.sections) {
   }
 }
 
+
+/* ---------------------------------------------------------------- billing */
+
+/**
+ * Billing has to *reconcile*, not merely exist.
+ *
+ * Every check here re-derives a stored figure from its own components and fails
+ * if the two disagree. That is the only way to catch the failure mode that
+ * matters: the generator and `services/billing/` computing money differently and
+ * nobody noticing until an invoice does not add up.
+ */
+
+const invoices = read("billing/invoices.json");
+const payments = read("billing/payments.json");
+const refunds = read("billing/refunds.json");
+const creditNotes = read("billing/credit-notes.json");
+const adminOrders = read("admin/orders.json");
+const adminCustomers = read("admin/customers.json");
+
+const orderById = new Map(adminOrders.map((order) => [order.id, order]));
+const customerById = new Map(adminCustomers.map((customer) => [customer.id, customer]));
+const productById = new Map(products.map((product) => [product.id, product]));
+const invoiceById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
+const paymentById = new Map(payments.map((payment) => [payment.id, payment]));
+
+const money = (minor) => `INR ${(minor / 100).toFixed(2)}`;
+
+const invoiceNumbers = new Set();
+
+for (const invoice of invoices) {
+  // --- relationships
+  if (!orderById.has(invoice.orderId)) {
+    fail(`Invoice ${invoice.invoiceNumber} references missing order ${invoice.orderId}`);
+  }
+  if (!customerById.has(invoice.customerId)) {
+    fail(`Invoice ${invoice.invoiceNumber} references missing customer ${invoice.customerId}`);
+  }
+  if (invoice.paymentId && !paymentById.has(invoice.paymentId)) {
+    fail(`Invoice ${invoice.invoiceNumber} references missing payment ${invoice.paymentId}`);
+  }
+  for (const line of invoice.lines) {
+    if (!productById.has(line.productId)) {
+      fail(`Invoice ${invoice.invoiceNumber} line references missing product ${line.productId}`);
+    }
+  }
+
+  // --- numbering
+  if (invoiceNumbers.has(invoice.invoiceNumber)) {
+    fail(`Duplicate invoice number ${invoice.invoiceNumber}`);
+  }
+  invoiceNumbers.add(invoice.invoiceNumber);
+
+  // --- money is always whole minor units
+  const amounts = [
+    invoice.breakdown.subtotal, invoice.breakdown.couponDiscount, invoice.breakdown.shipping,
+    invoice.breakdown.grandTotal, invoice.breakdown.tax.totalTax, invoice.amountPaid,
+    ...invoice.lines.flatMap((line) => [line.lineSubtotal, line.discount, line.tax, line.lineTotal]),
+  ];
+  if (amounts.some((value) => !Number.isInteger(value))) {
+    fail(`Invoice ${invoice.invoiceNumber} holds a non-integer amount - money must be whole minor units`);
+  }
+
+  // --- the totals reconcile
+  const lineSum = invoice.lines.reduce((total, line) => total + line.lineSubtotal, 0);
+  if (lineSum !== invoice.breakdown.subtotal) {
+    fail(`Invoice ${invoice.invoiceNumber}: lines sum to ${money(lineSum)} but subtotal is ${money(invoice.breakdown.subtotal)}`);
+  }
+
+  const lineDiscounts = invoice.lines.reduce((total, line) => total + line.discount, 0);
+  if (lineDiscounts !== invoice.breakdown.couponDiscount) {
+    fail(`Invoice ${invoice.invoiceNumber}: apportioned discounts total ${money(lineDiscounts)} but the coupon gave ${money(invoice.breakdown.couponDiscount)}`);
+  }
+
+  const lineTax = invoice.lines.reduce((total, line) => total + line.tax, 0);
+  if (lineTax !== invoice.breakdown.tax.totalTax) {
+    fail(`Invoice ${invoice.invoiceNumber}: line tax sums to ${money(lineTax)} but the invoice says ${money(invoice.breakdown.tax.totalTax)}`);
+  }
+
+  const tax = invoice.breakdown.tax;
+  if (tax.cgst + tax.sgst + tax.igst !== tax.totalTax) {
+    fail(`Invoice ${invoice.invoiceNumber}: CGST + SGST + IGST does not equal the total tax`);
+  }
+  if (tax.cgst > 0 && tax.igst > 0) {
+    fail(`Invoice ${invoice.invoiceNumber} charges both CGST/SGST and IGST - a supply is one or the other`);
+  }
+
+  const goods = invoice.breakdown.subtotal - invoice.breakdown.couponDiscount;
+  const expected =
+    goods + invoice.breakdown.shipping + invoice.breakdown.otherCharges +
+    (invoice.breakdown.pricesIncludeTax ? 0 : tax.totalTax);
+  if (expected !== invoice.breakdown.grandTotal) {
+    fail(`Invoice ${invoice.invoiceNumber}: components give ${money(expected)} but the grand total says ${money(invoice.breakdown.grandTotal)}`);
+  }
+
+  if (invoice.amountPaid > invoice.breakdown.grandTotal) {
+    fail(`Invoice ${invoice.invoiceNumber} is paid more than it is worth`);
+  }
+  if (invoice.amountRefunded > invoice.breakdown.grandTotal) {
+    fail(`Invoice ${invoice.invoiceNumber} is refunded more than it is worth`);
+  }
+}
+
+for (const payment of payments) {
+  if (!invoiceById.has(payment.invoiceId)) {
+    fail(`Payment ${payment.transactionId} references missing invoice ${payment.invoiceId}`);
+  }
+  if (!orderById.has(payment.orderId)) {
+    fail(`Payment ${payment.transactionId} references missing order ${payment.orderId}`);
+  }
+  if (payment.refundedAmount > payment.amount) {
+    fail(`Payment ${payment.transactionId} has refunded more than it collected`);
+  }
+  if (payment.timeline.length === 0) {
+    fail(`Payment ${payment.transactionId} has no timeline`);
+  }
+  // Nothing resembling a real instrument may ever be stored.
+  if (/\d{12,}/.test(payment.instrumentHint)) {
+    fail(`Payment ${payment.transactionId} stores something that looks like a card number`);
+  }
+}
+
+// An invoice's payment must be for the amount the invoice asks for.
+for (const invoice of invoices) {
+  if (!invoice.paymentId) continue;
+  const payment = paymentById.get(invoice.paymentId);
+  if (payment && payment.amount !== invoice.breakdown.grandTotal) {
+    fail(`Invoice ${invoice.invoiceNumber} is for ${money(invoice.breakdown.grandTotal)} but its payment took ${money(payment.amount)}`);
+  }
+}
+
+const refundedByPayment = new Map();
+for (const refund of refunds) {
+  if (!invoiceById.has(refund.invoiceId)) {
+    fail(`Refund ${refund.refundNumber} references missing invoice ${refund.invoiceId}`);
+  }
+  if (!paymentById.has(refund.paymentId)) {
+    fail(`Refund ${refund.refundNumber} references missing payment ${refund.paymentId}`);
+  }
+  if (refund.status === "completed") {
+    refundedByPayment.set(refund.paymentId, (refundedByPayment.get(refund.paymentId) ?? 0) + refund.amount);
+  }
+  if (refund.lines.length > 0) {
+    const lineSum = refund.lines.reduce((total, line) => total + line.amount, 0);
+    if (lineSum !== refund.amount) {
+      fail(`Refund ${refund.refundNumber}: item amounts sum to ${money(lineSum)} but the refund is ${money(refund.amount)}`);
+    }
+  }
+}
+
+for (const [paymentId, refunded] of refundedByPayment) {
+  const payment = paymentById.get(paymentId);
+  if (payment && payment.refundedAmount !== refunded) {
+    fail(`Payment ${payment.transactionId} records ${money(payment.refundedAmount)} refunded but its refunds total ${money(refunded)}`);
+  }
+}
+
+const creditNoteNumbers = new Set();
+for (const note of creditNotes) {
+  if (!invoiceById.has(note.invoiceId)) {
+    fail(`Credit note ${note.creditNoteNumber} references missing invoice ${note.invoiceId}`);
+  }
+  if (creditNoteNumbers.has(note.creditNoteNumber)) {
+    fail(`Duplicate credit note number ${note.creditNoteNumber}`);
+  }
+  creditNoteNumbers.add(note.creditNoteNumber);
+  if (note.amount + note.tax !== note.total) {
+    fail(`Credit note ${note.creditNoteNumber}: taxable value plus tax does not equal its total`);
+  }
+}
+
+// Every billed order must point back at its invoice.
+for (const order of adminOrders) {
+  if (order.status === "cancelled") continue;
+  if (!order.invoiceId) {
+    fail(`Order ${order.orderNumber} has no invoiceId - run npm run data:billing`);
+  } else if (!invoiceById.has(order.invoiceId)) {
+    fail(`Order ${order.orderNumber} points at missing invoice ${order.invoiceId}`);
+  }
+}
+
 /* ----------------------------------------------------------------- report */
 
 console.log(
   `Checked ${products.length} products, ${categories.length} categories, ` +
     `${collections.length} collections, ${reviews.length} reviews, ${hrefs.length} internal links.`,
+);
+console.log(
+  `Checked ${invoices.length} invoices, ${payments.length} payments, ` +
+    `${refunds.length} refunds, ${creditNotes.length} credit notes - totals re-derived from components.`,
 );
 
 if (problems.length === 0) {

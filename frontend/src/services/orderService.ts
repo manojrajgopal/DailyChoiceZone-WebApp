@@ -96,6 +96,26 @@ export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
   return order;
 }
 
+/**
+ * Record which invoice and payment belong to an order.
+ *
+ * Ids only. Copying the invoice onto the order would give the same document
+ * two homes, and they would disagree the first time one was edited.
+ *
+ * Future: `POST /orders` returns an order that already carries these, and this
+ * function disappears — it exists because the client has to create the three
+ * records in sequence and cannot do it in one transaction.
+ */
+export async function attachBillingToOrder(
+  orderId: string,
+  billing: { invoiceId: string; invoiceNumber: string; paymentId: string },
+): Promise<void> {
+  const orders = readOrders().map((order) =>
+    order.id === orderId ? { ...order, ...billing } : order,
+  );
+  writeJson(STORAGE_KEYS.orders, orders);
+}
+
 export async function getOrders(): Promise<Order[]> {
   return readOrders();
 }

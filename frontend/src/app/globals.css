@@ -382,3 +382,63 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------------------------------------------------------- printing */
+
+/*
+ * Printing an invoice.
+ *
+ * A document people file has to come out of a printer looking like a document,
+ * not like a web page with the header cropped. Everything outside the invoice
+ * is removed rather than hidden behind a media query on each component: mark
+ * the page with `.printing-invoice` and only the document survives.
+ *
+ * `print-color-adjust` keeps the status badges and rules from being dropped by
+ * browsers that strip backgrounds to save ink — on an invoice those carry
+ * meaning, not decoration.
+ */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body.printing-invoice *,
+  body.printing-invoice *::before,
+  body.printing-invoice *::after {
+    visibility: hidden;
+  }
+
+  body.printing-invoice .invoice-document,
+  body.printing-invoice .invoice-document * {
+    visibility: visible;
+  }
+
+  body.printing-invoice .invoice-document {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    margin: 0;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+
+  .invoice-document {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Never break a line item across two sheets. */
+  .invoice-document tr,
+  .invoice-document section {
+    break-inside: avoid;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+}

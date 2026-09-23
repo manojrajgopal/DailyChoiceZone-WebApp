@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, LogOut, MapPin, Package, Settings, User } from "lucide-react";
+import { FileText, Heart, LogOut, MapPin, Package, Settings, User } from "lucide-react";
 
 import { AuthPanel } from "@/components/account/AuthPanel";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -14,6 +14,7 @@ import { formatDate } from "@/lib/utils/format";
 const NAV = [
   { href: "/account", label: "Profile", icon: User },
   { href: "/account/orders", label: "Orders", icon: Package },
+  { href: "/account/invoices", label: "Invoices", icon: FileText },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
   { href: "/account/settings", label: "Settings", icon: Settings },

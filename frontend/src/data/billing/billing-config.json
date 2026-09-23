@@ -1,0 +1,52 @@
+{
+  "business": {
+    "legalName": "Daily Choice Zone Retail Private Limited",
+    "storeName": "Daily Choice Zone",
+    "email": "billing@dailychoicezone.com",
+    "phone": "1800 200 4567",
+    "website": "www.dailychoicezone.com",
+    "addressLine1": "Unit 4, Brigade Logistics Park",
+    "addressLine2": "Whitefield",
+    "city": "Bengaluru",
+    "state": "Karnataka",
+    "postalCode": "560066",
+    "country": "India"
+  },
+  "currency": {
+    "code": "INR",
+    "symbol": "₹",
+    "locale": "en-IN",
+    "decimals": 2
+  },
+  "invoice": {
+    "prefix": "DCZ-INV",
+    "startNumber": 1,
+    "padding": 6,
+    "dueDays": 7,
+    "footer": "Thank you for shopping with Daily Choice Zone.",
+    "paymentTerms": "Payable on receipt. Prepaid orders are settled at checkout; cash on delivery is settled with the courier.",
+    "notes": "Goods once sold may be returned within the returns window stated on our website. This document is computer generated."
+  },
+  "creditNote": {
+    "prefix": "DCZ-CN",
+    "startNumber": 1,
+    "padding": 5
+  },
+  "refund": {
+    "windowDays": 15,
+    "refundShipping": false,
+    "reasons": [
+      "Item damaged in transit",
+      "Wrong item delivered",
+      "Size or fit issue",
+      "Item not as described",
+      "Order cancelled before dispatch",
+      "Delivery delayed beyond promise",
+      "Customer changed their mind"
+    ]
+  },
+  "payment": {
+    "enabledMethods": ["upi", "card", "debit-card", "netbanking", "wallet", "cod"],
+    "codFee": 0
+  }
+}

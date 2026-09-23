@@ -24,6 +24,7 @@ export function CartView() {
   const {
     lines,
     totals,
+    breakdown,
     coupon,
     isLoading,
     isEmpty,
@@ -105,7 +106,7 @@ export function CartView() {
               onRemove={removeCode}
             />
 
-            <OrderSummary totals={totals} />
+            <OrderSummary breakdown={breakdown} totals={totals} />
 
             {hasOutOfStock ? (
               <div className="rounded-card border border-danger/30 bg-danger-bg p-3.5">

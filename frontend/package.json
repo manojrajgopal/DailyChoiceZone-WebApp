@@ -2,7 +2,7 @@
   "name": "daily-choice-zone",
   "version": "0.1.0",
   "private": true,
-  "description": "Daily Choice Zone storefront — Quality Products, Happier You",
+  "description": "Daily Choice Zone storefront \u2014 Quality Products, Happier You",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,7 +13,8 @@
     "data:generate": "node scripts/generate-products.mjs",
     "data:admin": "node scripts/generate-admin-data.mjs",
     "data:check": "node scripts/check-data.mjs",
-    "brand:assets": "node scripts/generate-brand-assets.mjs"
+    "brand:assets": "node scripts/generate-brand-assets.mjs",
+    "data:billing": "node scripts/generate-billing-data.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.4",

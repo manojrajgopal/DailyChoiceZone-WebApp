@@ -1,16 +1,21 @@
 import {
   BadgePercent,
   Boxes,
+  CreditCard,
   FileBarChart,
+  FileMinus,
+  FileText,
   Image as ImageIcon,
   LayoutDashboard,
   LayoutTemplate,
   Package,
+  Receipt,
   Settings,
   ShieldCheck,
   ShoppingCart,
   Star,
   Tags,
+  Undo2,
   Users,
 } from "lucide-react";
 
@@ -37,6 +42,11 @@ const ICONS = {
   banners: ImageIcon,
   settings: Settings,
   adminUsers: ShieldCheck,
+  billing: Receipt,
+  invoices: FileText,
+  payments: CreditCard,
+  refunds: Undo2,
+  creditNotes: FileMinus,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

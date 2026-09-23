@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import type { Address, DeliveryMethodId, PaymentMethodId } from "@/types";
+import type { Address, BillingAddress, DeliveryMethodId, PaymentMethodId } from "@/types";
 
 import { STORAGE_KEYS } from "@/lib/storage/local-storage";
 
@@ -27,11 +27,22 @@ export interface CheckoutContact {
 interface CheckoutState {
   contact: CheckoutContact;
   address: Omit<Address, "id"> | null;
+  /**
+   * Whether the invoice goes to the delivery address.
+   *
+   * Ticked by default because it is true for almost every order, and the
+   * shortest correct path through a checkout is the one most people take.
+   */
+  billingSameAsShipping: boolean;
+  /** Only set when the box above is unticked. */
+  billingAddress: BillingAddress | null;
   deliveryMethodId: DeliveryMethodId;
   paymentMethodId: PaymentMethodId;
 
   setContact: (contact: CheckoutContact) => void;
   setAddress: (address: Omit<Address, "id">) => void;
+  setBillingSameAsShipping: (same: boolean) => void;
+  setBillingAddress: (address: BillingAddress | null) => void;
   setDeliveryMethod: (id: DeliveryMethodId) => void;
   setPaymentMethod: (id: PaymentMethodId) => void;
   reset: () => void;
@@ -44,11 +55,18 @@ export const useCheckoutStore = create<CheckoutState>()(
     (set) => ({
       contact: EMPTY_CONTACT,
       address: null,
+      billingSameAsShipping: true,
+      billingAddress: null,
       deliveryMethodId: "standard",
       paymentMethodId: "upi",
 
       setContact: (contact) => set({ contact }),
       setAddress: (address) => set({ address }),
+      setBillingSameAsShipping: (billingSameAsShipping) =>
+        // Clearing the separate address when the box is re-ticked stops a
+        // stale one being billed after someone changes their mind.
+        set(billingSameAsShipping ? { billingSameAsShipping, billingAddress: null } : { billingSameAsShipping }),
+      setBillingAddress: (billingAddress) => set({ billingAddress }),
       setDeliveryMethod: (deliveryMethodId) => set({ deliveryMethodId }),
       setPaymentMethod: (paymentMethodId) => set({ paymentMethodId }),
 
@@ -56,16 +74,20 @@ export const useCheckoutStore = create<CheckoutState>()(
         set({
           contact: EMPTY_CONTACT,
           address: null,
+          billingSameAsShipping: true,
+          billingAddress: null,
           deliveryMethodId: "standard",
           paymentMethodId: "upi",
         }),
     }),
     {
       name: STORAGE_KEYS.checkout,
-      version: 1,
+      version: 2,
       partialize: (state) => ({
         contact: state.contact,
         address: state.address,
+        billingSameAsShipping: state.billingSameAsShipping,
+        billingAddress: state.billingAddress,
         deliveryMethodId: state.deliveryMethodId,
         paymentMethodId: state.paymentMethodId,
       }),

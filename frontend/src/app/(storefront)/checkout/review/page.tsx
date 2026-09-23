@@ -13,10 +13,16 @@ import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
 import { formatPrice } from "@/lib/utils/format";
 import { saveAddress } from "@/services/accountService";
 import {
+  billingAddressFromShipping,
+  placeBilledOrder,
+} from "@/services/billing/checkoutBillingService";
+import {
+  attachBillingToOrder,
   getDeliveryMethod,
   getPaymentMethod,
   placeOrder,
 } from "@/services/orderService";
+import { useSession } from "@/hooks/useSession";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { toast } from "@/store/toastStore";
 
@@ -26,8 +32,12 @@ export default function CheckoutReviewPage() {
   const checkoutHydrated = useCheckoutHydrated();
   const { lines, totals, clear } = useCart();
 
+  const { user } = useSession();
+
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
+  const billingSame = useCheckoutStore((state) => state.billingSameAsShipping);
+  const storedBilling = useCheckoutStore((state) => state.billingAddress);
   const deliveryMethodId = useCheckoutStore((state) => state.deliveryMethodId);
   const paymentMethodId = useCheckoutStore((state) => state.paymentMethodId);
   const resetCheckout = useCheckoutStore((state) => state.reset);
@@ -56,13 +66,35 @@ export default function CheckoutReviewPage() {
 
     setIsPlacing(true);
     try {
-      const order = await placeOrder({
+      const shippingAddress = billingAddressFromShipping(address, contact.email);
+      const billingAddress =
+        billingSame || !storedBilling ? shippingAddress : storedBilling;
+
+      /**
+       * Order, billing, payment, invoice — in that order, in one call.
+       *
+       * The sequencing lives in `checkoutBillingService` rather than here, so
+       * this page cannot get it subtly wrong and neither can the next page
+       * that needs to place an order.
+       */
+      const { order, invoice } = await placeBilledOrder({
+        placeOrder,
+        attachBilling: attachBillingToOrder,
         lines,
         totals,
-        address: { ...address, id: `addr_${Date.now()}` },
+        billingAddress,
+        shippingAddress,
+        paymentMethodId,
         deliveryMethod,
-        paymentMethod,
-        email: contact.email,
+        customerId: user?.id ?? "guest",
+        orderInput: {
+          lines,
+          totals,
+          address: { ...address, id: `addr_${Date.now()}` },
+          deliveryMethod,
+          paymentMethod,
+          email: contact.email,
+        },
       });
 
       // Keep the address for next time, then clear the transient state.
@@ -70,7 +102,9 @@ export default function CheckoutReviewPage() {
       clear();
       resetCheckout();
 
-      router.push(`/order-success?order=${encodeURIComponent(order.orderNumber)}`);
+      router.push(
+        `/order-success?order=${encodeURIComponent(order.orderNumber)}&invoice=${encodeURIComponent(invoice.id)}`,
+      );
     } catch {
       toast.error("We could not place your order. Please try again.");
       setIsPlacing(false);
@@ -87,6 +121,8 @@ export default function CheckoutReviewPage() {
       // Placing the order empties the bag on purpose; without this the
       // empty-bag guard would redirect away from the confirmation page.
       suppressEmptyRedirect={isPlacing}
+      // About to commit: show how the tax splits.
+      detailedTax
     >
       <div className="flex max-w-2xl flex-col gap-4">
         <ReviewCard title="Contact" editHref="/checkout">
@@ -104,6 +140,24 @@ export default function CheckoutReviewPage() {
             {address.city}, {address.state} {address.pincode}
           </p>
           <p className="mt-0.5">+91 {address.phone}</p>
+        </ReviewCard>
+
+        <ReviewCard title="Billing address" editHref="/checkout/address">
+          {billingSame || !storedBilling ? (
+            <p>Same as the delivery address.</p>
+          ) : (
+            <>
+              <p className="font-medium text-ink">{storedBilling.fullName}</p>
+              <p className="mt-0.5">
+                {storedBilling.line1}
+                {storedBilling.line2 ? `, ${storedBilling.line2}` : ""}
+              </p>
+              <p className="mt-0.5">
+                {storedBilling.city}, {storedBilling.state} {storedBilling.postalCode}
+              </p>
+              <p className="mt-0.5">{storedBilling.email}</p>
+            </>
+          )}
         </ReviewCard>
 
         <ReviewCard title="Delivery method" editHref="/checkout/address">

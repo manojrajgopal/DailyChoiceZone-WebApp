@@ -1,0 +1,513 @@
+[
+  {
+    "id": "ref_0001",
+    "refundNumber": "DCZ-RF-2025-00001",
+    "orderId": "order_0027",
+    "orderNumber": "DCZ10027",
+    "invoiceId": "inv_0018",
+    "invoiceNumber": "DCZ-INV-2025-000018",
+    "paymentId": "pay_0018",
+    "customerId": "cust_044",
+    "customerName": "Rahul Khan",
+    "amount": 79900,
+    "reason": "Delivery delayed beyond promise",
+    "status": "completed",
+    "requestedAt": "2025-12-26T10:30:00.000Z",
+    "processedAt": "2025-12-28T10:30:00.000Z",
+    "lines": [],
+    "creditNoteId": "cn_0001",
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0002",
+    "refundNumber": "DCZ-RF-2026-00002",
+    "orderId": "order_0128",
+    "orderNumber": "DCZ10128",
+    "invoiceId": "inv_0069",
+    "invoiceNumber": "DCZ-INV-2026-000069",
+    "paymentId": "pay_0069",
+    "customerId": "cust_016",
+    "customerName": "Rahul Mehta",
+    "amount": 799800,
+    "reason": "Wrong item delivered",
+    "status": "completed",
+    "requestedAt": "2026-06-09T10:30:00.000Z",
+    "processedAt": "2026-06-11T10:30:00.000Z",
+    "lines": [],
+    "creditNoteId": "cn_0002",
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0003",
+    "refundNumber": "DCZ-RF-2026-00003",
+    "orderId": "order_0150",
+    "orderNumber": "DCZ10150",
+    "invoiceId": "inv_0081",
+    "invoiceNumber": "DCZ-INV-2026-000081",
+    "paymentId": "pay_0081",
+    "customerId": "cust_053",
+    "customerName": "Joseph Singh",
+    "amount": 294900,
+    "reason": "Delivery delayed beyond promise",
+    "status": "completed",
+    "requestedAt": "2026-07-06T10:30:00.000Z",
+    "processedAt": "2026-07-08T10:30:00.000Z",
+    "lines": [],
+    "creditNoteId": "cn_0003",
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0004",
+    "refundNumber": "DCZ-RF-2026-00004",
+    "orderId": "order_0032",
+    "orderNumber": "DCZ10032",
+    "invoiceId": "inv_0091",
+    "invoiceNumber": "DCZ-INV-2026-000091",
+    "paymentId": "pay_0091",
+    "customerId": "cust_011",
+    "customerName": "Ananya Iyer",
+    "amount": 389900,
+    "reason": "Wrong item delivered",
+    "status": "processing",
+    "requestedAt": "2026-07-31T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0005",
+    "refundNumber": "DCZ-RF-2026-00005",
+    "orderId": "order_0019",
+    "orderNumber": "DCZ10019",
+    "invoiceId": "inv_0097",
+    "invoiceNumber": "DCZ-INV-2026-000097",
+    "paymentId": "pay_0097",
+    "customerId": "cust_035",
+    "customerName": "Divya Verma",
+    "amount": 439900,
+    "reason": "Delivery delayed beyond promise",
+    "status": "completed",
+    "requestedAt": "2026-08-10T10:30:00.000Z",
+    "processedAt": "2026-08-12T10:30:00.000Z",
+    "lines": [],
+    "creditNoteId": "cn_0004",
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0006",
+    "refundNumber": "DCZ-RF-2025-00006",
+    "orderId": "order_0039",
+    "orderNumber": "DCZ10039",
+    "invoiceId": "inv_0005",
+    "invoiceNumber": "DCZ-INV-2025-000005",
+    "paymentId": "pay_0005",
+    "customerId": "cust_056",
+    "customerName": "Ananya Reddy",
+    "amount": 104900,
+    "reason": "Item damaged in transit",
+    "status": "processing",
+    "requestedAt": "2025-11-02T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_121",
+        "name": "Lightweight Modal Stole",
+        "quantity": 1,
+        "amount": 104900
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0007",
+    "refundNumber": "DCZ-RF-2025-00007",
+    "orderId": "order_0001",
+    "orderNumber": "DCZ10001",
+    "invoiceId": "inv_0006",
+    "invoiceNumber": "DCZ-INV-2025-000006",
+    "paymentId": "pay_0006",
+    "customerId": "cust_052",
+    "customerName": "Priya Kumar",
+    "amount": 668572,
+    "reason": "Delivery delayed beyond promise",
+    "status": "requested",
+    "requestedAt": "2025-11-09T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_034",
+        "name": "Relaxed Tapered Jeans",
+        "quantity": 3,
+        "amount": 668572
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0008",
+    "refundNumber": "DCZ-RF-2025-00008",
+    "orderId": "order_0061",
+    "orderNumber": "DCZ10061",
+    "invoiceId": "inv_0007",
+    "invoiceNumber": "DCZ-INV-2025-000007",
+    "paymentId": "pay_0007",
+    "customerId": "cust_020",
+    "customerName": "Varun Iyer",
+    "amount": 682371,
+    "reason": "Item damaged in transit",
+    "status": "requested",
+    "requestedAt": "2025-11-09T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_107",
+        "name": "Layered Chain Necklace",
+        "quantity": 3,
+        "amount": 682371
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0009",
+    "refundNumber": "DCZ-RF-2025-00009",
+    "orderId": "order_0011",
+    "orderNumber": "DCZ10011",
+    "invoiceId": "inv_0009",
+    "invoiceNumber": "DCZ-INV-2025-000009",
+    "paymentId": "pay_0009",
+    "customerId": "cust_057",
+    "customerName": "Varun Gupta",
+    "amount": 48900,
+    "reason": "Delivery delayed beyond promise",
+    "status": "requested",
+    "requestedAt": "2025-11-19T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_072",
+        "name": "Satin Finish Lipstick",
+        "quantity": 1,
+        "amount": 48900
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0010",
+    "refundNumber": "DCZ-RF-2025-00010",
+    "orderId": "order_0146",
+    "orderNumber": "DCZ10146",
+    "invoiceId": "inv_0010",
+    "invoiceNumber": "DCZ-INV-2025-000010",
+    "paymentId": "pay_0010",
+    "customerId": "cust_030",
+    "customerName": "Priya Shetty",
+    "amount": 324900,
+    "reason": "Delivery delayed beyond promise",
+    "status": "processing",
+    "requestedAt": "2025-11-21T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_002",
+        "name": "Belted Shirt Dress",
+        "quantity": 1,
+        "amount": 324900
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0011",
+    "refundNumber": "DCZ-RF-2025-00011",
+    "orderId": "order_0139",
+    "orderNumber": "DCZ10139",
+    "invoiceId": "inv_0011",
+    "invoiceNumber": "DCZ-INV-2025-000011",
+    "paymentId": "pay_0011",
+    "customerId": "cust_004",
+    "customerName": "Sameer Reddy",
+    "amount": 539700,
+    "reason": "Wrong item delivered",
+    "status": "requested",
+    "requestedAt": "2025-11-24T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_016",
+        "name": "Tapered Linen Pants",
+        "quantity": 3,
+        "amount": 539700
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0012",
+    "refundNumber": "DCZ-RF-2025-00012",
+    "orderId": "order_0024",
+    "orderNumber": "DCZ10024",
+    "invoiceId": "inv_0013",
+    "invoiceNumber": "DCZ-INV-2025-000013",
+    "paymentId": "pay_0013",
+    "customerId": "cust_059",
+    "customerName": "Varun Fernandes",
+    "amount": 569800,
+    "reason": "Item damaged in transit",
+    "status": "requested",
+    "requestedAt": "2025-12-02T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_001",
+        "name": "Tiered Midi Dress",
+        "quantity": 2,
+        "amount": 569800
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0013",
+    "refundNumber": "DCZ-RF-2025-00013",
+    "orderId": "order_0063",
+    "orderNumber": "DCZ10063",
+    "invoiceId": "inv_0014",
+    "invoiceNumber": "DCZ-INV-2025-000014",
+    "paymentId": "pay_0014",
+    "customerId": "cust_044",
+    "customerName": "Rahul Khan",
+    "amount": 434700,
+    "reason": "Wrong item delivered",
+    "status": "completed",
+    "requestedAt": "2025-12-04T10:30:00.000Z",
+    "processedAt": "2025-12-06T10:30:00.000Z",
+    "lines": [
+      {
+        "productId": "prod_139",
+        "name": "Desk Organiser Tray",
+        "quantity": 3,
+        "amount": 434700
+      }
+    ],
+    "creditNoteId": "cn_0005",
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0014",
+    "refundNumber": "DCZ-RF-2025-00014",
+    "orderId": "order_0092",
+    "orderNumber": "DCZ10092",
+    "invoiceId": "inv_0015",
+    "invoiceNumber": "DCZ-INV-2025-000015",
+    "paymentId": "pay_0015",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "amount": 239900,
+    "reason": "Customer changed their mind",
+    "status": "processing",
+    "requestedAt": "2025-12-10T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_062",
+        "name": "Speckled Dinner Plate Set",
+        "quantity": 1,
+        "amount": 239900
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0015",
+    "refundNumber": "DCZ-RF-2025-00015",
+    "orderId": "order_0113",
+    "orderNumber": "DCZ10113",
+    "invoiceId": "inv_0016",
+    "invoiceNumber": "DCZ-INV-2025-000016",
+    "paymentId": "pay_0016",
+    "customerId": "cust_009",
+    "customerName": "Ishita Verma",
+    "amount": 179900,
+    "reason": "Order cancelled before dispatch",
+    "status": "completed",
+    "requestedAt": "2025-12-15T10:30:00.000Z",
+    "processedAt": "2025-12-17T10:30:00.000Z",
+    "lines": [
+      {
+        "productId": "prod_016",
+        "name": "Tapered Linen Pants",
+        "quantity": 1,
+        "amount": 179900
+      }
+    ],
+    "creditNoteId": "cn_0006",
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0016",
+    "refundNumber": "DCZ-RF-2025-00016",
+    "orderId": "order_0052",
+    "orderNumber": "DCZ10052",
+    "invoiceId": "inv_0017",
+    "invoiceNumber": "DCZ-INV-2025-000017",
+    "paymentId": "pay_0017",
+    "customerId": "cust_026",
+    "customerName": "Aditi Chopra",
+    "amount": 161899,
+    "reason": "Order cancelled before dispatch",
+    "status": "requested",
+    "requestedAt": "2025-12-22T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_064",
+        "name": "Acacia Serving Board",
+        "quantity": 1,
+        "amount": 161899
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0017",
+    "refundNumber": "DCZ-RF-2025-00017",
+    "orderId": "order_0104",
+    "orderNumber": "DCZ10104",
+    "invoiceId": "inv_0021",
+    "invoiceNumber": "DCZ-INV-2025-000021",
+    "paymentId": "pay_0021",
+    "customerId": "cust_019",
+    "customerName": "Harsh Reddy",
+    "amount": 334900,
+    "reason": "Order cancelled before dispatch",
+    "status": "requested",
+    "requestedAt": "2026-01-02T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_088",
+        "name": "Slingback Kitten Heels",
+        "quantity": 1,
+        "amount": 334900
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0018",
+    "refundNumber": "DCZ-RF-2026-00018",
+    "orderId": "order_0033",
+    "orderNumber": "DCZ10033",
+    "invoiceId": "inv_0023",
+    "invoiceNumber": "DCZ-INV-2026-000023",
+    "paymentId": "pay_0023",
+    "customerId": "cust_017",
+    "customerName": "Ishita Reddy",
+    "amount": 174147,
+    "reason": "Wrong item delivered",
+    "status": "processing",
+    "requestedAt": "2026-01-12T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_091",
+        "name": "Woven Flat Sandals",
+        "quantity": 1,
+        "amount": 174147
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0019",
+    "refundNumber": "DCZ-RF-2026-00019",
+    "orderId": "order_0099",
+    "orderNumber": "DCZ10099",
+    "invoiceId": "inv_0024",
+    "invoiceNumber": "DCZ-INV-2026-000024",
+    "paymentId": "pay_0024",
+    "customerId": "cust_053",
+    "customerName": "Joseph Singh",
+    "amount": 57506,
+    "reason": "Order cancelled before dispatch",
+    "status": "processing",
+    "requestedAt": "2026-01-12T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_104",
+        "name": "Gold Plated Hoop Earrings",
+        "quantity": 1,
+        "amount": 57506
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  },
+  {
+    "id": "ref_0020",
+    "refundNumber": "DCZ-RF-2026-00020",
+    "orderId": "order_0096",
+    "orderNumber": "DCZ10096",
+    "invoiceId": "inv_0025",
+    "invoiceNumber": "DCZ-INV-2026-000025",
+    "paymentId": "pay_0025",
+    "customerId": "cust_011",
+    "customerName": "Ananya Iyer",
+    "amount": 159900,
+    "reason": "Delivery delayed beyond promise",
+    "status": "completed",
+    "requestedAt": "2026-01-13T10:30:00.000Z",
+    "processedAt": "2026-01-15T10:30:00.000Z",
+    "lines": [
+      {
+        "productId": "prod_051",
+        "name": "Hooded Sweatshirt",
+        "quantity": 1,
+        "amount": 159900
+      }
+    ],
+    "creditNoteId": "cn_0007",
+    "initiatedBy": "adm_002"
+  },
+  {
+    "id": "ref_0021",
+    "refundNumber": "DCZ-RF-2026-00021",
+    "orderId": "order_0101",
+    "orderNumber": "DCZ10101",
+    "invoiceId": "inv_0027",
+    "invoiceNumber": "DCZ-INV-2026-000027",
+    "paymentId": "pay_0027",
+    "customerId": "cust_001",
+    "customerName": "Aditya Banerjee",
+    "amount": 319464,
+    "reason": "Size or fit issue",
+    "status": "processing",
+    "requestedAt": "2026-01-19T10:30:00.000Z",
+    "processedAt": null,
+    "lines": [
+      {
+        "productId": "prod_088",
+        "name": "Slingback Kitten Heels",
+        "quantity": 1,
+        "amount": 319464
+      }
+    ],
+    "creditNoteId": null,
+    "initiatedBy": "customer"
+  }
+]

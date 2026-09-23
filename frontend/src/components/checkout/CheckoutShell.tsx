@@ -24,6 +24,7 @@ export function CheckoutShell({
   title,
   description,
   suppressEmptyRedirect = false,
+  detailedTax = false,
   children,
 }: {
   title: string;
@@ -36,10 +37,18 @@ export function CheckoutShell({
    * confirmation. The review step raises this for the duration of the submit.
    */
   suppressEmptyRedirect?: boolean;
+  /**
+   * Break the tax out into its CGST/SGST or IGST parts.
+   *
+   * Raised from the review step, where a shopper is about to commit and the
+   * composition is worth showing. Earlier steps keep the single tax line, since
+   * the place of supply is not settled until an address is entered.
+   */
+  detailedTax?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { lines, totals, isLoading, isEmpty } = useCart();
+  const { lines, totals, breakdown, isLoading, isEmpty } = useCart();
 
   useEffect(() => {
     if (isEmpty && !suppressEmptyRedirect) router.replace("/cart");
@@ -78,7 +87,7 @@ export function CheckoutShell({
           {isLoading ? (
             <Skeleton className="h-80 w-full" />
           ) : (
-            <OrderSummary totals={totals}>
+            <OrderSummary breakdown={breakdown} totals={totals} detailedTax={detailedTax}>
               <ul className="flex flex-col gap-3">
                 {lines.map((line) => (
                   <li key={line.lineId} className="flex items-center gap-3">

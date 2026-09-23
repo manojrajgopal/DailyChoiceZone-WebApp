@@ -1,17 +1,30 @@
 import type { AdminNotification } from "@/types/admin";
 
+import { formatMoney } from "@/lib/money";
+import { billingDataSource } from "@/services/billing/billing-data-source.instance";
+
 import { adminDataSource } from "./admin-data-source.instance";
 
 /**
  * Global admin search.
  *
- * One box across products, orders and customers, because an administrator
- * arrives with an identifier — an order number from an email, a product name
- * from a support call — and should not have to decide which list it lives in
- * first.
+ * One box across products, orders, customers and billing, because an
+ * administrator arrives with an identifier — an order number from an email, a
+ * transaction reference from a bank statement, an invoice number from an
+ * accountant — and should not have to decide which list it lives in first.
+ *
+ * Billing references are exactly the case that makes a global search worth
+ * having: nobody knows whether "TXN20260904…" is a payment or a refund until
+ * they have found it.
  */
 
-export type SearchResultKind = "product" | "order" | "customer";
+export type SearchResultKind =
+  | "product"
+  | "order"
+  | "customer"
+  | "invoice"
+  | "payment"
+  | "refund";
 
 export interface AdminSearchResult {
   kind: SearchResultKind;
@@ -25,10 +38,23 @@ export interface AdminSearchResults {
   products: AdminSearchResult[];
   orders: AdminSearchResult[];
   customers: AdminSearchResult[];
+  invoices: AdminSearchResult[];
+  payments: AdminSearchResult[];
+  refunds: AdminSearchResult[];
   total: number;
 }
 
-const EMPTY: AdminSearchResults = { products: [], orders: [], customers: [], total: 0 };
+export const EMPTY_SEARCH_RESULTS: AdminSearchResults = {
+  products: [],
+  orders: [],
+  customers: [],
+  invoices: [],
+  payments: [],
+  refunds: [],
+  total: 0,
+};
+
+const EMPTY = EMPTY_SEARCH_RESULTS;
 
 /** Every term must appear somewhere in the record, so more words narrow. */
 function matches(haystack: string, terms: string[]): boolean {
@@ -42,10 +68,13 @@ export async function search(term: string, perGroup = 5): Promise<AdminSearchRes
 
   const terms = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
 
-  const [products, orders, customers] = await Promise.all([
+  const [products, orders, customers, invoices, payments, refunds] = await Promise.all([
     adminDataSource.listProducts(),
     adminDataSource.listOrders(),
     adminDataSource.listCustomers(),
+    billingDataSource.listInvoices({ search: trimmed }),
+    billingDataSource.listPayments({ search: trimmed }),
+    billingDataSource.listRefunds({ search: trimmed }),
   ]);
 
   const productHits: AdminSearchResult[] = products
@@ -87,11 +116,46 @@ export async function search(term: string, perGroup = 5): Promise<AdminSearchRes
       href: `/admin/customers/detail?id=${customer.id}`,
     }));
 
+  // The billing adapter has already filtered these by the same term, so they
+  // only need capping and shaping.
+  const invoiceHits: AdminSearchResult[] = invoices.slice(0, perGroup).map((invoice) => ({
+    kind: "invoice" as const,
+    id: invoice.id,
+    title: invoice.invoiceNumber,
+    subtitle: `${invoice.customerName} · ${formatMoney(invoice.breakdown.grandTotal)}`,
+    href: `/admin/billing/invoices/detail?id=${invoice.id}`,
+  }));
+
+  const paymentHits: AdminSearchResult[] = payments.slice(0, perGroup).map((payment) => ({
+    kind: "payment" as const,
+    id: payment.id,
+    title: payment.transactionId,
+    subtitle: `${payment.customerName} · ${formatMoney(payment.amount)}`,
+    href: `/admin/billing/payments/detail?id=${payment.id}`,
+  }));
+
+  const refundHits: AdminSearchResult[] = refunds.slice(0, perGroup).map((refund) => ({
+    kind: "refund" as const,
+    id: refund.id,
+    title: refund.refundNumber,
+    subtitle: `${refund.customerName} · ${formatMoney(refund.amount)}`,
+    href: "/admin/billing/refunds",
+  }));
+
   return {
     products: productHits,
     orders: orderHits,
     customers: customerHits,
-    total: productHits.length + orderHits.length + customerHits.length,
+    invoices: invoiceHits,
+    payments: paymentHits,
+    refunds: refundHits,
+    total:
+      productHits.length +
+      orderHits.length +
+      customerHits.length +
+      invoiceHits.length +
+      paymentHits.length +
+      refundHits.length,
   };
 }
 

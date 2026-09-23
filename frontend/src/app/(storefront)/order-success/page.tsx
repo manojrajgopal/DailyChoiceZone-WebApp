@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Check, Package, Truck } from "lucide-react";
+import { Check, FileText, Package, Truck } from "lucide-react";
 
-import type { Order } from "@/types";
+import type { Invoice, Order } from "@/types";
 
 import { ProductImage } from "@/components/common/ProductImage";
 import { EmptyState } from "@/components/common/States";
 import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
+import { formatMoney } from "@/lib/money";
+import { getInvoiceById } from "@/services/billing/invoiceService";
 import { getOrder } from "@/services/orderService";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 
@@ -25,7 +28,10 @@ function OrderSuccess() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams?.get("order") ?? "";
 
+  const invoiceId = searchParams?.get("invoice") ?? "";
+
   const [order, setOrder] = useState<Order | null>(null);
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +56,28 @@ function OrderSuccess() {
       active = false;
     };
   }, [orderNumber]);
+
+  /**
+   * The invoice raised for this order.
+   *
+   * Looked up separately so a confirmation still renders if the invoice is
+   * missing — an order that exists without its invoice is a problem to fix,
+   * not a reason to show the shopper nothing.
+   */
+  useEffect(() => {
+    if (!invoiceId) return;
+    let active = true;
+    getInvoiceById(invoiceId)
+      .then((result) => {
+        if (active) setInvoice(result);
+      })
+      .catch(() => {
+        if (active) setInvoice(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [invoiceId]);
 
   if (isLoading) {
     return (
@@ -117,6 +145,37 @@ function OrderSuccess() {
           </div>
         </dl>
 
+        {/* ------------------------------------------------------ invoice */}
+        {invoice ? (
+          <div className="mt-4 rounded-card border border-ink-200 bg-shell p-4">
+            <h2 className="label-wide flex items-center gap-2 text-ink-500">
+              <FileText className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+              Invoice
+            </h2>
+
+            <dl className="mt-3 flex flex-wrap items-baseline gap-x-8 gap-y-3 text-sm">
+              <div>
+                <dt className="text-xs text-ink-400">Invoice number</dt>
+                <dd className="mt-0.5 font-medium tabular-nums text-ink">
+                  {invoice.invoiceNumber}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-ink-400">Amount</dt>
+                <dd className="mt-0.5 font-medium tabular-nums text-ink">
+                  {formatMoney(invoice.breakdown.grandTotal)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-ink-400">Payment status</dt>
+                <dd className="mt-1">
+                  <BillingStatusBadge domain="payment" status={invoice.paymentStatus} />
+                </dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
+
         {/* -------------------------------------------------------- items */}
         <div className="mt-4 rounded-card border border-ink-200 bg-shell p-4">
           <h2 className="label-wide text-ink">
@@ -174,8 +233,13 @@ function OrderSuccess() {
 
         <div className="mt-8 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
           <ButtonLink href={`/account/order?number=${order.orderNumber}`} variant="outline">
-            View order details
+            View order
           </ButtonLink>
+          {invoice ? (
+            <ButtonLink href={`/account/invoice?id=${invoice.id}`} variant="outline">
+              View invoice
+            </ButtonLink>
+          ) : null}
           <ButtonLink href="/shop">Continue shopping</ButtonLink>
         </div>
       </div>

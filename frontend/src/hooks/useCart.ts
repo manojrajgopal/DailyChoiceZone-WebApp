@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { CartTotals, Coupon, Product, ResolvedCartLine } from "@/types";
+import type { BillingBreakdown, CartTotals, Coupon, Product, ResolvedCartLine } from "@/types";
 
 import {
   applyCoupon as validateCoupon,
@@ -13,6 +13,7 @@ import {
 } from "@/services/cartService";
 import { getDeliveryMethod } from "@/services/orderService";
 import { getSiteConfig } from "@/services/siteService";
+import { breakdownForCart } from "@/services/billing/billingService";
 import { useCartStore } from "@/store/cartStore";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { toast } from "@/store/toastStore";
@@ -145,6 +146,30 @@ export function useCart() {
     return computeTotals(resolvedLines, coupon, delivery, { id: method.id, fee: method.fee });
   }, [resolvedLines, coupon, delivery, deliveryMethodId]);
 
+  /**
+   * The state tax is charged against.
+   *
+   * The billing address decides it, so it is only known once one has been
+   * entered. Before that the seller's own state stands in, which shows the
+   * intra-state split; entering an out-of-state address switches the labelling
+   * to IGST. The grand total is identical either way — same rate, different
+   * name — so nothing a shopper is quoted moves.
+   */
+  const billingState = useCheckoutStore((state) => state.billingAddress?.state ?? state.address?.state ?? "");
+
+  /**
+   * The full money picture, from the one billing calculation.
+   *
+   * Everything downstream — the bag, every checkout step, the confirmation and
+   * the invoice — renders this. `totals` is kept because the free-delivery
+   * nudge and the coupon plumbing are expressed in it, but no component does
+   * its own arithmetic on either.
+   */
+  const breakdown: BillingBreakdown = useMemo(
+    () => breakdownForCart(resolvedLines, totals, billingState),
+    [resolvedLines, totals, billingState],
+  );
+
   /** Add a product, with a toast and a link straight to the cart. */
   const add = useCallback(
     (
@@ -196,6 +221,8 @@ export function useCart() {
     /** Raw stored lines — use only when you need ids without products. */
     rawLines: lines,
     totals,
+    /** The billing breakdown for these lines. One calculation, shared. */
+    breakdown,
     coupon,
     /** True while ids are being joined against the catalogue. */
     isLoading: !hydrated || isResolving,

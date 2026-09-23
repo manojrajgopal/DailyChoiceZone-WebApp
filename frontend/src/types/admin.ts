@@ -415,6 +415,13 @@ export interface AdminNavItem {
   icon: string;
   /** Shown as a count chip, resolved at render time. */
   badge?: "pendingReviews" | "openOrders" | "lowStock";
+  /**
+   * Sub-sections, revealed while the parent section is open.
+   *
+   * One level only. A sidebar that nests further stops being navigable, and
+   * anything needing a third level belongs in tabs on the page itself.
+   */
+  children?: AdminNavItem[];
 }
 
 export interface AdminNavGroup {

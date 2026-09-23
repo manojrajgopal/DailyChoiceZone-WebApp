@@ -79,6 +79,16 @@ export function AdminSidebar({
 
                 const badgeCount = item.badge ? badges[item.badge] : 0;
 
+                /**
+                 * Sub-sections appear only while their parent is in use.
+                 *
+                 * Keeping them collapsed the rest of the time stops the
+                 * sidebar growing past a screenful, which is the point at
+                 * which a navigation stops helping anyone.
+                 */
+                const inSection =
+                  active || pathname === item.href || pathname.startsWith(`${item.href}/`);
+
                 return (
                   <li key={item.id}>
                     <Link
@@ -106,6 +116,32 @@ export function AdminSidebar({
                         </span>
                       ) : null}
                     </Link>
+
+                    {item.children && inSection ? (
+                      <ul className="mt-0.5 ml-[1.45rem] flex flex-col gap-0.5 border-l border-white/10 pl-2">
+                        {item.children.map((child) => {
+                          const childActive =
+                            pathname === child.href || pathname.startsWith(`${child.href}/`);
+                          return (
+                            <li key={child.id}>
+                              <Link
+                                href={child.href}
+                                onClick={onNavigate}
+                                aria-current={childActive ? "page" : undefined}
+                                className={cn(
+                                  "block truncate rounded-[3px] px-2 py-1 text-[0.75rem] transition-colors",
+                                  childActive
+                                    ? "bg-white/12 text-white"
+                                    : "text-white/55 hover:bg-white/8 hover:text-white",
+                                )}
+                              >
+                                {child.label}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
                   </li>
                 );
               })}

@@ -1,9 +1,10 @@
-# Daily Choice Zone — storefront & admin portal
+# Daily Choice Zone — storefront, admin portal & billing
 
 The frontend for Daily Choice Zone. **Quality products, happier you.**
 
-Two applications in one codebase: the customer storefront at `/`, and an
-administration portal at `/admin` that manages the same catalogue.
+One codebase, three surfaces over the same data: the customer storefront at `/`,
+an administration portal at `/admin`, and a billing system that runs through
+both — cart to checkout to invoice to refund.
 
 | | |
 |---|---|
@@ -44,6 +45,7 @@ Then open <http://localhost:3000>.
 | `npm run lint` | ESLint |
 | `npm run data:generate` | Regenerate the dummy catalogue (see [Data](#data)) |
 | `npm run data:admin` | Regenerate the admin dummy data (orders, customers, analytics) |
+| `npm run data:billing` | Regenerate invoices, payments, refunds and credit notes |
 | `npm run data:check` | Validate `src/data` — run this after hand-editing the JSON |
 | `npm run brand:assets` | Regenerate sized logo assets from `assets/logo-original.png` |
 
@@ -146,19 +148,27 @@ src/
 │   ├── filters/          filter panel and active-filter chips
 │   ├── home/             the config-driven homepage section renderer
 │   ├── cart/  wishlist/  checkout/  account/
-│   └── admin/            the portal: layout, ui, charts, views
+│   ├── admin/            the portal: layout, ui, charts, views
+│   └── billing/          invoice document, breakdown rows, status badges
 ├── data/                 products, categories, collections, navigation, config
-│   └── admin/            orders, customers, analytics, product metadata, settings
+│   ├── admin/            orders, customers, analytics, product metadata, settings
+│   └── billing/          invoices, payments, refunds, credit notes, tax config
 ├── services/             the data-access layer
 │   ├── data-source.ts            the contract
 │   ├── data-source.instance.ts   which adapter is active
 │   ├── adapters/                 mock-adapter.ts, http-adapter.ts
-│   └── admin/            the portal's own services + AdminDataSource contract
+│   ├── admin/            the portal's own services + AdminDataSource contract
+│   └── billing/          billing, invoice, payment, refund, credit note, tax
+│       ├── billing-data-source.ts   the contract
+│       ├── adapters/                mock-billing-adapter.ts
+│       └── providers/               PaymentProvider + the mock implementation
 ├── hooks/                useCart, useWishlist, useProducts, useProductQuery, …
 ├── store/                cart, wishlist, session, checkout, recently viewed, toasts
 ├── lib/                  filters, recommendations, formatting, storage
-│   └── admin/            the shared catalogue join and the mock write store
-└── types/                the domain model (+ admin.ts)
+│   ├── money.ts          integer minor-unit arithmetic — every amount goes through it
+│   ├── admin/            the shared catalogue join and the mock write store
+│   └── billing/          CSV export
+└── types/                the domain model (+ admin.ts, billing.ts)
 ```
 
 ### Things worth knowing before you change something
@@ -448,6 +458,231 @@ rather than a shopfront, while still belonging to the same brand.
 
 ---
 
+## Billing
+
+Cart to checkout to invoice to refund, through the same records the storefront
+and the portal already use. Not a bolted-on module: an order, its invoice, its
+payment and any refund are four rows related by id, and both applications read
+them.
+
+```
+customer  →  order  →  invoice  →  payment  →  refund  →  credit note
+                 ↘  order lines  →  products
+```
+
+### One calculation
+
+**`services/billing/billingService.ts` is the only place order money is worked
+out.** The bag, every checkout step, the placed order, the invoice, the admin
+order page and the reports all render the same `BillingBreakdown` it produces.
+
+That is not tidiness for its own sake. A checkout that quotes one total on the
+bag page and another on the confirmation has already lost the sale, and the way
+that happens is two components each doing their own subtraction.
+
+| Function | What it decides |
+|---|---|
+| `calculateSubtotal` | line values at selling price |
+| `calculateProductDiscount` | savings already inside those prices — shown, never subtracted twice |
+| `calculateCouponDiscount` | a code's value, capped at the subtotal |
+| `calculateShipping` | threshold against the *pre-coupon* subtotal; upgrades always charged |
+| `calculateTax` | per line, by category — see below |
+| `calculateGrandTotal` | the order of operations, in one place |
+| `calculateRefundAmount` | goods plus the tax collected on them |
+
+### Money is integers
+
+Every amount in the billing domain is an **integer in the currency's minor
+unit** — paise, not rupees, and never a float. `0.1 + 0.2` is not `0.3` in
+binary floating point, and a hundredth of a rupee lost per line becomes an
+invoice that does not add up. `lib/money.ts` is the only arithmetic:
+
+- `toMinor` / `toMajor` — the boundary with the catalogue's whole-rupee prices
+- `allocate` — splits an order-level coupon across lines so the parts sum
+  **exactly** back to the whole (largest remainder). Without it the line taxes
+  would not reconcile with the invoice total, which is the error an auditor
+  finds first
+- `taxIncludedIn` — derives tax as the remainder, so `net + tax === gross`
+- `formatMoney` — decimals on documents, whole rupees everywhere else
+
+Currency is configuration, not a hardcoded `₹`. `billing-config.json` holds the
+code, symbol, locale and decimal places; a second currency is an entry there.
+
+### Tax
+
+`services/billing/taxService.ts` makes every tax decision. Nothing else knows a
+rate, and nothing else chooses between CGST + SGST and IGST.
+
+Supply inside the seller's registered state is split between the centre and the
+state; supply across a state line is a single integrated tax. The place of
+supply comes from the **billing** address, which is why entering one in another
+state switches the invoice to IGST — and why the total does not move when it
+does, since the rate is the same and only its labelling changes.
+
+Catalogue prices **include** tax, so the tax is *extracted* rather than added:
+a customer pays what the shelf said and the invoice shows how that splits.
+`pricesIncludeTax` is a setting; turning it off adds tax on top instead, which
+changes what customers are charged.
+
+> **This is a configurable representation of GST, not a compliance
+> implementation.** Real treatment depends on HSN classification, exemptions,
+> reverse charge, composition schemes and place-of-supply rules that belong in a
+> backend maintained with professional advice. Do not file from these figures.
+> What this gives you is the right *shape*: the numbers an invoice must carry,
+> computed in one place, ready for a server to become the authority.
+
+### Invoices
+
+Every order that is not cancelled has one. Numbering is centralised in
+`invoiceService.nextInvoiceNumber` — a number minted in a component is a number
+that can be minted twice, on a re-render or a double-submitted form, and a
+duplicate invoice number outlives the session.
+
+The counter starts above whatever the committed data already used, so a fresh
+demo and a browser that has been ordering for a week continue one sequence
+rather than colliding.
+
+**A browser cannot actually guarantee this.** Two devices will mint the same
+number, because neither can see the other. Gapless sequential numbering is a
+property only a single authority can provide: `POST /billing/invoices` must
+return the number, and this function becomes a placeholder shown until the
+server answers. The shape does not change — only who decides.
+
+`components/billing/InvoiceDocument.tsx` renders the document for the customer
+and the administrator from the same component, because an invoice the two
+parties read differently is not a document of record. It is laid out for paper
+first; printing marks the body so the print stylesheet drops everything else.
+
+### Payments
+
+The UI never names a gateway. `services/billing/providers/payment-provider.ts`
+defines `createPayment`, `verifyPayment`, `getPayment` and `refundPayment`;
+`MockPaymentProvider` implements them and moves no money. Swapping in Razorpay
+or Stripe is that one file plus the provider's class.
+
+Verification deliberately has a comment rather than an implementation: a client
+saying "this succeeded" is a claim, not a fact. The signature check and the
+webhook that confirms it must happen somewhere the customer cannot reach.
+
+> **Nothing sensitive is stored, anywhere.** The only payment detail kept is
+> `instrumentHint` — a masked remnant like `•••• 4242` of the kind a gateway
+> returns *after* processing. No card number, expiry, CVV, UPI PIN, bank
+> credential or gateway secret is collected, stored or transmitted by this
+> application, and none may be added. Real card entry belongs in the provider's
+> own hosted fields, which never touch this DOM. `npm run data:check` fails the
+> build if anything resembling a card number appears in the data.
+
+### Refunds and credit notes
+
+A refund is a **request** first and a movement of money second, which is why it
+is its own record rather than a flag: it can be raised, sit in processing and be
+rejected without anything moving. Only a *completed* refund touches the payment
+and the invoice.
+
+Partial refunds are first class — whole order, or specific items. Over-refunding
+is refused against what the **payment** has left, not what the invoice was
+worth, because two partial refunds that each look reasonable can together exceed
+what was collected.
+
+A credit note documents the tax adjustment a refund implies. Its tax is
+recomputed from the credited amount rather than copied, so a partial credit
+carries the right proportion. Cancelling one keeps its number — a gap in a
+numbered sequence is harder to explain than a cancelled document.
+
+### Where it appears
+
+| Surface | What billing adds |
+|---|---|
+| Bag, every checkout step | the shared breakdown, with tax |
+| Checkout address step | billing address, with "same as delivery" ticked by default |
+| Checkout review | the CGST/SGST or IGST split, before committing |
+| Order confirmation | invoice number, amount, payment status, a link to the document |
+| `/account/invoices` | the customer's invoices, to view, print or download |
+| `/account/invoice?id=` | the printable document |
+| `/admin/billing` | revenue, collected, outstanding, refunded, tax, by range |
+| `/admin/billing/invoices` | list, filters, CSV export, and the detail page |
+| `/admin/billing/payments` | transactions, with a per-payment timeline |
+| `/admin/billing/refunds` | raise, complete or reject |
+| `/admin/billing/credit-notes` | draft, issue or cancel |
+| `/admin/settings/billing` | business details, numbering, tax, currency, payment, refunds |
+| `/admin/orders/detail` | a billing panel — invoice, payment, refunds, credit notes, actions |
+| `/admin/reports` | revenue, tax, payment and refund reports with CSV export |
+| Admin global search | invoice numbers, transaction ids and refund references |
+
+### Data
+
+`src/data/billing/` is produced by `scripts/generate-billing-data.mjs`, run
+*after* the catalogue and the admin data because everything hangs off an
+existing order. It also writes `invoiceId` and `paymentId` back onto each order,
+so the relationship is navigable from either end.
+
+```bash
+npm run data:generate   # catalogue
+npm run data:admin      # orders, customers, analytics
+npm run data:billing    # invoices, payments, refunds, credit notes
+npm run data:check      # validates all of it
+```
+
+| File | Notes |
+|---|---|
+| `billing-config.json` | business details, currency, numbering, refund and payment options |
+| `tax-config.json` | GST rates, registered state, category overrides |
+| `invoices.json` | 164 invoices, one per billable order. **Generated** |
+| `payments.json` | one per invoice, with a timeline. **Generated** |
+| `refunds.json` | 21, including 16 partial. **Generated** |
+| `credit-notes.json` | 7, against completed refunds. **Generated** |
+
+`npm run data:check` does not merely confirm the files parse. It **re-derives
+every stored total from its own components** and fails if they disagree: lines
+against subtotal, apportioned discounts against the coupon, line tax against
+invoice tax, CGST + SGST + IGST against the total, and the whole breakdown
+against the grand total. That is the check that catches the generator and
+`services/billing/` drifting apart, which is the failure nobody notices until an
+invoice is wrong.
+
+### Connecting a backend
+
+`services/billing/billing-data-source.ts` is the contract, with each method's
+future endpoint named in its header:
+
+| Method | Endpoint |
+|---|---|
+| `listInvoices` / `getInvoice` | `GET /billing/invoices`, `GET /billing/invoices/:id` |
+| `createInvoice` / `updateInvoice` | `POST` / `PUT /billing/invoices/:id` |
+| `listPayments` / `getPayment` | `GET /billing/payments`, `GET /billing/payments/:id` |
+| `createPayment` | `POST /billing/payments` |
+| `listRefunds` / `createRefund` | `GET /billing/refunds`, `POST /billing/payments/:id/refund` |
+| `listCreditNotes` / `createCreditNote` | `GET` / `POST /billing/credit-notes` |
+| `getStats` / `getTaxReport` | `GET /billing/reports` |
+
+Filtering and aggregation are the data source's job, not the UI's — today the
+mock adapter runs them over JSON, tomorrow the server runs them in SQL.
+
+**What must move server-side, not merely be adapted:** invoice numbering,
+payment verification, and the tax calculation itself. Each is a place where the
+client is currently trusted to decide something only a server can be trusted to
+decide. The interfaces are shaped so that moving them changes no caller.
+
+### Mapping to a database
+
+The models are written to map onto tables row for row:
+
+```
+customers ──< orders ──< order_items
+                │
+                ├──< invoices ──< invoice_items
+                │         │
+                │         ├──< payments ──< payment_events
+                │         └──< credit_notes
+                └──< refunds ──< refund_items
+```
+
+Relationships are ids, never embedded copies. An invoice is its own record with
+its own lifecycle; copying it onto the order would give one document two homes,
+and they would disagree the first time either was edited.
+
+---
+
 ## What is deliberately not real
 
 This is a frontend. It is honest about that in the UI rather than pretending:
@@ -466,6 +701,11 @@ This is a frontend. It is honest about that in the UI rather than pretending:
   [Details](#this-is-not-security).
 - **Admin changes are local to one browser.** They live in that browser's local
   storage, are invisible to anyone else, and reset with one button.
+- **No money moves.** `MockPaymentProvider` returns a plausible reference and
+  nothing else. Refunds adjust records; no funds are returned.
+- **Invoice numbering is not authoritative.** A browser cannot guarantee a
+  gapless sequence. [Details](#invoices).
+- **The tax figures are not a compliance calculation.** [Details](#tax).
 
 ---
 

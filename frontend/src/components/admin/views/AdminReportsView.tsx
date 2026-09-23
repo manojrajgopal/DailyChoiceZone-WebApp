@@ -7,6 +7,7 @@ import type { AnalyticsRange } from "@/types/admin";
 import { BarList } from "@/components/admin/charts/BarList";
 import { TimeSeriesChart } from "@/components/admin/charts/TimeSeriesChart";
 import { AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { BillingReports } from "@/components/admin/views/BillingReports";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatCompactINR, formatPrice, humanize } from "@/lib/utils/format";
@@ -210,6 +211,12 @@ export function AdminReportsView() {
           )}
         </AdminCard>
       </div>
+
+      {/* ----------------------------------------------------- billing */}
+      <h2 className="mt-8 text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-admin-muted">
+        Billing
+      </h2>
+      <BillingReports range={range} />
 
       <p className="mt-4 rounded-[3px] border border-admin-border bg-admin-surface px-3 py-2.5 text-[0.6875rem] leading-relaxed text-admin-muted">
         Figures are aggregated from the demo order history and exclude cancelled orders. Once a

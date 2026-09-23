@@ -1,0 +1,5891 @@
+[
+  {
+    "id": "pay_0001",
+    "transactionId": "TXN2025100728488",
+    "orderId": "order_0088",
+    "orderNumber": "DCZ10088",
+    "invoiceId": "inv_0001",
+    "invoiceNumber": "DCZ-INV-2025-000001",
+    "customerId": "cust_038",
+    "customerName": "Aarav Kumar",
+    "customerEmail": "aarav.kumar38@example.com",
+    "amount": 359700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-10-07T10:30:00.000Z",
+    "capturedAt": "2025-10-07T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-10-07T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-10-07T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-10-07T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 9006"
+  },
+  {
+    "id": "pay_0002",
+    "transactionId": "TXN2025101185155",
+    "orderId": "order_0081",
+    "orderNumber": "DCZ10081",
+    "invoiceId": "inv_0002",
+    "invoiceNumber": "DCZ-INV-2025-000002",
+    "customerId": "cust_024",
+    "customerName": "Arjun Joshi",
+    "customerEmail": "arjun.joshi24@example.com",
+    "amount": 634900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-10-11T10:30:00.000Z",
+    "capturedAt": "2025-10-11T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-10-11T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-10-11T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-10-11T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0003",
+    "transactionId": "TXN2025102220041",
+    "orderId": "order_0102",
+    "orderNumber": "DCZ10102",
+    "invoiceId": "inv_0003",
+    "invoiceNumber": "DCZ-INV-2025-000003",
+    "customerId": "cust_002",
+    "customerName": "Gaurav Fernandes",
+    "customerEmail": "gaurav.fernandes2@example.com",
+    "amount": 251700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-10-22T10:30:00.000Z",
+    "capturedAt": "2025-10-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-10-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-10-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-10-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0004",
+    "transactionId": "TXN2025102467107",
+    "orderId": "order_0045",
+    "orderNumber": "DCZ10045",
+    "invoiceId": "inv_0004",
+    "invoiceNumber": "DCZ-INV-2025-000004",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "customerEmail": "rohit.singh36@example.com",
+    "amount": 324900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-10-24T10:30:00.000Z",
+    "capturedAt": "2025-10-24T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-10-24T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-10-24T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-10-24T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0005",
+    "transactionId": "TXN2025102795256",
+    "orderId": "order_0039",
+    "orderNumber": "DCZ10039",
+    "invoiceId": "inv_0005",
+    "invoiceNumber": "DCZ-INV-2025-000005",
+    "customerId": "cust_056",
+    "customerName": "Ananya Reddy",
+    "customerEmail": "ananya.reddy56@example.com",
+    "amount": 1304600,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-10-27T10:30:00.000Z",
+    "capturedAt": "2025-10-27T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-10-27T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-10-27T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-10-27T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0006",
+    "transactionId": "TXN2025110306987",
+    "orderId": "order_0001",
+    "orderNumber": "DCZ10001",
+    "invoiceId": "inv_0006",
+    "invoiceNumber": "DCZ-INV-2025-000006",
+    "customerId": "cust_052",
+    "customerName": "Priya Kumar",
+    "customerEmail": "priya.kumar52@example.com",
+    "amount": 834600,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-03T10:30:00.000Z",
+    "capturedAt": "2025-11-07T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-03T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-03T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-07T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0007",
+    "transactionId": "TXN2025110335905",
+    "orderId": "order_0061",
+    "orderNumber": "DCZ10061",
+    "invoiceId": "inv_0007",
+    "invoiceNumber": "DCZ-INV-2025-000007",
+    "customerId": "cust_020",
+    "customerName": "Varun Iyer",
+    "customerEmail": "varun.iyer20@example.com",
+    "amount": 994600,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-03T10:30:00.000Z",
+    "capturedAt": "2025-11-07T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-03T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-03T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-07T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0008",
+    "transactionId": "TXN2025110658286",
+    "orderId": "order_0060",
+    "orderNumber": "DCZ10060",
+    "invoiceId": "inv_0008",
+    "invoiceNumber": "DCZ-INV-2025-000008",
+    "customerId": "cust_012",
+    "customerName": "Siddharth Sharma",
+    "customerEmail": "siddharth.sharma12@example.com",
+    "amount": 429700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-06T10:30:00.000Z",
+    "capturedAt": "2025-11-06T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-06T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-06T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-06T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0009",
+    "transactionId": "TXN2025111332494",
+    "orderId": "order_0011",
+    "orderNumber": "DCZ10011",
+    "invoiceId": "inv_0009",
+    "invoiceNumber": "DCZ-INV-2025-000009",
+    "customerId": "cust_057",
+    "customerName": "Varun Gupta",
+    "customerEmail": "varun.gupta57@example.com",
+    "amount": 218800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-13T10:30:00.000Z",
+    "capturedAt": "2025-11-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "HDFC Bank"
+  },
+  {
+    "id": "pay_0010",
+    "transactionId": "TXN2025111528737",
+    "orderId": "order_0146",
+    "orderNumber": "DCZ10146",
+    "invoiceId": "inv_0010",
+    "invoiceNumber": "DCZ-INV-2025-000010",
+    "customerId": "cust_030",
+    "customerName": "Priya Shetty",
+    "customerEmail": "priya.shetty30@example.com",
+    "amount": 564800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-15T10:30:00.000Z",
+    "capturedAt": "2025-11-15T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-15T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-15T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-15T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0011",
+    "transactionId": "TXN2025111831619",
+    "orderId": "order_0139",
+    "orderNumber": "DCZ10139",
+    "invoiceId": "inv_0011",
+    "invoiceNumber": "DCZ-INV-2025-000011",
+    "customerId": "cust_004",
+    "customerName": "Sameer Reddy",
+    "customerEmail": "sameer.reddy4@example.com",
+    "amount": 733500,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-18T10:30:00.000Z",
+    "capturedAt": "2025-11-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0012",
+    "transactionId": "TXN2025112485404",
+    "orderId": "order_0149",
+    "orderNumber": "DCZ10149",
+    "invoiceId": "inv_0012",
+    "invoiceNumber": "DCZ-INV-2025-000012",
+    "customerId": "cust_024",
+    "customerName": "Arjun Joshi",
+    "customerEmail": "arjun.joshi24@example.com",
+    "amount": 284900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-24T10:30:00.000Z",
+    "capturedAt": "2025-11-24T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-24T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-24T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-24T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0013",
+    "transactionId": "TXN2025112612446",
+    "orderId": "order_0024",
+    "orderNumber": "DCZ10024",
+    "invoiceId": "inv_0013",
+    "invoiceNumber": "DCZ-INV-2025-000013",
+    "customerId": "cust_059",
+    "customerName": "Varun Fernandes",
+    "customerEmail": "varun.fernandes59@example.com",
+    "amount": 749700,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-11-26T10:30:00.000Z",
+    "capturedAt": "2025-11-26T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-26T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-26T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-26T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0014",
+    "transactionId": "TXN2025112880667",
+    "orderId": "order_0063",
+    "orderNumber": "DCZ10063",
+    "invoiceId": "inv_0014",
+    "invoiceNumber": "DCZ-INV-2025-000014",
+    "customerId": "cust_044",
+    "customerName": "Rahul Khan",
+    "customerEmail": "rahul.khan44@example.com",
+    "amount": 569600,
+    "refundedAmount": 434700,
+    "method": "upi",
+    "status": "partially-refunded",
+    "provider": "mock",
+    "createdAt": "2025-11-28T10:30:00.000Z",
+    "capturedAt": "2025-11-28T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-11-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-11-28T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-11-28T10:31:00.000Z",
+        "note": "Authorised and captured."
+      },
+      {
+        "status": "refunded",
+        "at": "2025-12-06T10:30:00.000Z",
+        "note": "Partial refund issued."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0015",
+    "transactionId": "TXN2025120465107",
+    "orderId": "order_0092",
+    "orderNumber": "DCZ10092",
+    "invoiceId": "inv_0015",
+    "invoiceNumber": "DCZ-INV-2025-000015",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "customerEmail": "rohit.singh36@example.com",
+    "amount": 589700,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-12-04T10:30:00.000Z",
+    "capturedAt": "2025-12-04T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-12-04T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-12-04T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-12-04T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0016",
+    "transactionId": "TXN2025120922951",
+    "orderId": "order_0113",
+    "orderNumber": "DCZ10113",
+    "invoiceId": "inv_0016",
+    "invoiceNumber": "DCZ-INV-2025-000016",
+    "customerId": "cust_009",
+    "customerName": "Ishita Verma",
+    "customerEmail": "ishita.verma9@example.com",
+    "amount": 509700,
+    "refundedAmount": 179900,
+    "method": "card",
+    "status": "partially-refunded",
+    "provider": "mock",
+    "createdAt": "2025-12-09T10:30:00.000Z",
+    "capturedAt": "2025-12-09T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-12-09T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-12-09T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-12-09T10:31:00.000Z",
+        "note": "Authorised and captured."
+      },
+      {
+        "status": "refunded",
+        "at": "2025-12-17T10:30:00.000Z",
+        "note": "Partial refund issued."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0017",
+    "transactionId": "TXN2025121657535",
+    "orderId": "order_0052",
+    "orderNumber": "DCZ10052",
+    "invoiceId": "inv_0017",
+    "invoiceNumber": "DCZ-INV-2025-000017",
+    "customerId": "cust_026",
+    "customerName": "Aditi Chopra",
+    "customerEmail": "aditi.chopra26@example.com",
+    "amount": 296800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-12-16T10:30:00.000Z",
+    "capturedAt": "2025-12-16T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-12-16T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-12-16T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-12-16T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0018",
+    "transactionId": "TXN2025122034827",
+    "orderId": "order_0027",
+    "orderNumber": "DCZ10027",
+    "invoiceId": "inv_0018",
+    "invoiceNumber": "DCZ-INV-2025-000018",
+    "customerId": "cust_044",
+    "customerName": "Rahul Khan",
+    "customerEmail": "rahul.khan44@example.com",
+    "amount": 87800,
+    "refundedAmount": 79900,
+    "method": "card",
+    "status": "partially-refunded",
+    "provider": "mock",
+    "createdAt": "2025-12-20T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-12-20T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-12-20T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "refunded",
+        "at": "2025-12-28T10:30:00.000Z",
+        "note": "Full refund issued."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0019",
+    "transactionId": "TXN2025122408416",
+    "orderId": "order_0008",
+    "orderNumber": "DCZ10008",
+    "invoiceId": "inv_0019",
+    "invoiceNumber": "DCZ-INV-2025-000019",
+    "customerId": "cust_023",
+    "customerName": "Gaurav Khan",
+    "customerEmail": "gaurav.khan23@example.com",
+    "amount": 389900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-12-24T10:30:00.000Z",
+    "capturedAt": "2025-12-28T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-12-24T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-12-24T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-12-28T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0020",
+    "transactionId": "TXN2025122461594",
+    "orderId": "order_0143",
+    "orderNumber": "DCZ10143",
+    "invoiceId": "inv_0020",
+    "invoiceNumber": "DCZ-INV-2025-000020",
+    "customerId": "cust_063",
+    "customerName": "Divya Singh",
+    "customerEmail": "divya.singh63@example.com",
+    "amount": 164900,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-12-24T10:30:00.000Z",
+    "capturedAt": "2025-12-24T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-12-24T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-12-24T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-12-24T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0021",
+    "transactionId": "TXN2025122775279",
+    "orderId": "order_0104",
+    "orderNumber": "DCZ10104",
+    "invoiceId": "inv_0021",
+    "invoiceNumber": "DCZ-INV-2025-000021",
+    "customerId": "cust_019",
+    "customerName": "Harsh Reddy",
+    "customerEmail": "harsh.reddy19@example.com",
+    "amount": 724800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2025-12-27T10:30:00.000Z",
+    "capturedAt": "2025-12-27T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2025-12-27T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2025-12-27T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2025-12-27T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0022",
+    "transactionId": "TXN2026010262774",
+    "orderId": "order_0082",
+    "orderNumber": "DCZ10082",
+    "invoiceId": "inv_0022",
+    "invoiceNumber": "DCZ-INV-2026-000022",
+    "customerId": "cust_004",
+    "customerName": "Sameer Reddy",
+    "customerEmail": "sameer.reddy4@example.com",
+    "amount": 194900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-02T10:30:00.000Z",
+    "capturedAt": "2026-01-02T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-02T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-02T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-02T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0023",
+    "transactionId": "TXN2026010629542",
+    "orderId": "order_0033",
+    "orderNumber": "DCZ10033",
+    "invoiceId": "inv_0023",
+    "invoiceNumber": "DCZ-INV-2026-000023",
+    "customerId": "cust_017",
+    "customerName": "Ishita Reddy",
+    "customerEmail": "ishita.reddy17@example.com",
+    "amount": 297300,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-06T10:30:00.000Z",
+    "capturedAt": "2026-01-06T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-06T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-06T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-06T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0024",
+    "transactionId": "TXN2026010663678",
+    "orderId": "order_0099",
+    "orderNumber": "DCZ10099",
+    "invoiceId": "inv_0024",
+    "invoiceNumber": "DCZ-INV-2026-000024",
+    "customerId": "cust_053",
+    "customerName": "Joseph Singh",
+    "customerEmail": "joseph.singh53@example.com",
+    "amount": 273400,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-06T10:30:00.000Z",
+    "capturedAt": "2026-01-06T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-06T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-06T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-06T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 9006"
+  },
+  {
+    "id": "pay_0025",
+    "transactionId": "TXN2026010775583",
+    "orderId": "order_0096",
+    "orderNumber": "DCZ10096",
+    "invoiceId": "inv_0025",
+    "invoiceNumber": "DCZ-INV-2026-000025",
+    "customerId": "cust_011",
+    "customerName": "Ananya Iyer",
+    "customerEmail": "ananya.iyer11@example.com",
+    "amount": 1614600,
+    "refundedAmount": 159900,
+    "method": "cod",
+    "status": "partially-refunded",
+    "provider": "mock",
+    "createdAt": "2026-01-07T10:30:00.000Z",
+    "capturedAt": "2026-01-11T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-07T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-07T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-11T10:30:00.000Z",
+        "note": "Collected by the courier."
+      },
+      {
+        "status": "refunded",
+        "at": "2026-01-15T10:30:00.000Z",
+        "note": "Partial refund issued."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0026",
+    "transactionId": "TXN2026011393476",
+    "orderId": "order_0071",
+    "orderNumber": "DCZ10071",
+    "invoiceId": "inv_0026",
+    "invoiceNumber": "DCZ-INV-2026-000026",
+    "customerId": "cust_042",
+    "customerName": "Sameer Banerjee",
+    "customerEmail": "sameer.banerjee42@example.com",
+    "amount": 147800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-13T10:30:00.000Z",
+    "capturedAt": "2026-01-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0027",
+    "transactionId": "TXN2026011387184",
+    "orderId": "order_0101",
+    "orderNumber": "DCZ10101",
+    "invoiceId": "inv_0027",
+    "invoiceNumber": "DCZ-INV-2026-000027",
+    "customerId": "cust_001",
+    "customerName": "Aditya Banerjee",
+    "customerEmail": "aditya.banerjee1@example.com",
+    "amount": 1034800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-13T10:30:00.000Z",
+    "capturedAt": "2026-01-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0028",
+    "transactionId": "TXN2026011869440",
+    "orderId": "order_0057",
+    "orderNumber": "DCZ10057",
+    "invoiceId": "inv_0028",
+    "invoiceNumber": "DCZ-INV-2026-000028",
+    "customerId": "cust_010",
+    "customerName": "Ananya Patel",
+    "customerEmail": "ananya.patel10@example.com",
+    "amount": 884700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-18T10:30:00.000Z",
+    "capturedAt": "2026-01-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0029",
+    "transactionId": "TXN2026012089161",
+    "orderId": "order_0018",
+    "orderNumber": "DCZ10018",
+    "invoiceId": "inv_0029",
+    "invoiceNumber": "DCZ-INV-2026-000029",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "customerEmail": "rohit.singh36@example.com",
+    "amount": 2114500,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-20T10:30:00.000Z",
+    "capturedAt": "2026-01-20T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-20T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-20T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-20T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0030",
+    "transactionId": "TXN2026012199964",
+    "orderId": "order_0040",
+    "orderNumber": "DCZ10040",
+    "invoiceId": "inv_0030",
+    "invoiceNumber": "DCZ-INV-2026-000030",
+    "customerId": "cust_041",
+    "customerName": "Anita Shetty",
+    "customerEmail": "anita.shetty41@example.com",
+    "amount": 253500,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-21T10:30:00.000Z",
+    "capturedAt": "2026-01-21T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-21T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-21T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-21T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0031",
+    "transactionId": "TXN2026012598237",
+    "orderId": "order_0124",
+    "orderNumber": "DCZ10124",
+    "invoiceId": "inv_0031",
+    "invoiceNumber": "DCZ-INV-2026-000031",
+    "customerId": "cust_058",
+    "customerName": "Kavya Shetty",
+    "customerEmail": "kavya.shetty58@example.com",
+    "amount": 624900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-25T10:30:00.000Z",
+    "capturedAt": "2026-01-25T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-25T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-25T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-25T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0032",
+    "transactionId": "TXN2026012664803",
+    "orderId": "order_0100",
+    "orderNumber": "DCZ10100",
+    "invoiceId": "inv_0032",
+    "invoiceNumber": "DCZ-INV-2026-000032",
+    "customerId": "cust_057",
+    "customerName": "Varun Gupta",
+    "customerEmail": "varun.gupta57@example.com",
+    "amount": 364800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-01-26T10:30:00.000Z",
+    "capturedAt": "2026-01-30T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-01-26T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-01-26T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-01-30T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0033",
+    "transactionId": "TXN2026020397964",
+    "orderId": "order_0097",
+    "orderNumber": "DCZ10097",
+    "invoiceId": "inv_0033",
+    "invoiceNumber": "DCZ-INV-2026-000033",
+    "customerId": "cust_060",
+    "customerName": "Ishita Iyer",
+    "customerEmail": "ishita.iyer60@example.com",
+    "amount": 334900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-02-03T10:30:00.000Z",
+    "capturedAt": "2026-02-07T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-02-03T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-02-03T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-02-07T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0034",
+    "transactionId": "TXN2026021695880",
+    "orderId": "order_0145",
+    "orderNumber": "DCZ10145",
+    "invoiceId": "inv_0034",
+    "invoiceNumber": "DCZ-INV-2026-000034",
+    "customerId": "cust_014",
+    "customerName": "Vikram Kumar",
+    "customerEmail": "vikram.kumar14@example.com",
+    "amount": 279900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-02-16T10:30:00.000Z",
+    "capturedAt": "2026-02-20T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-02-16T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-02-16T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-02-20T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0035",
+    "transactionId": "TXN2026021787488",
+    "orderId": "order_0093",
+    "orderNumber": "DCZ10093",
+    "invoiceId": "inv_0035",
+    "invoiceNumber": "DCZ-INV-2026-000035",
+    "customerId": "cust_057",
+    "customerName": "Varun Gupta",
+    "customerEmail": "varun.gupta57@example.com",
+    "amount": 454800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-02-17T10:30:00.000Z",
+    "capturedAt": "2026-02-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-02-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-02-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-02-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0036",
+    "transactionId": "TXN2026022671095",
+    "orderId": "order_0070",
+    "orderNumber": "DCZ10070",
+    "invoiceId": "inv_0036",
+    "invoiceNumber": "DCZ-INV-2026-000036",
+    "customerId": "cust_044",
+    "customerName": "Rahul Khan",
+    "customerEmail": "rahul.khan44@example.com",
+    "amount": 399900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-02-26T10:30:00.000Z",
+    "capturedAt": "2026-02-26T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-02-26T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-02-26T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-02-26T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0037",
+    "transactionId": "TXN2026030332523",
+    "orderId": "order_0122",
+    "orderNumber": "DCZ10122",
+    "invoiceId": "inv_0037",
+    "invoiceNumber": "DCZ-INV-2026-000037",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "customerEmail": "rohit.singh36@example.com",
+    "amount": 554800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-03T10:30:00.000Z",
+    "capturedAt": "2026-03-03T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-03T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-03T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-03T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0038",
+    "transactionId": "TXN2026030697660",
+    "orderId": "order_0105",
+    "orderNumber": "DCZ10105",
+    "invoiceId": "inv_0038",
+    "invoiceNumber": "DCZ-INV-2026-000038",
+    "customerId": "cust_024",
+    "customerName": "Arjun Joshi",
+    "customerEmail": "arjun.joshi24@example.com",
+    "amount": 334900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-06T10:30:00.000Z",
+    "capturedAt": "2026-03-06T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-06T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-06T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-06T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0039",
+    "transactionId": "TXN2026030689190",
+    "orderId": "order_0129",
+    "orderNumber": "DCZ10129",
+    "invoiceId": "inv_0039",
+    "invoiceNumber": "DCZ-INV-2026-000039",
+    "customerId": "cust_039",
+    "customerName": "Imran Shetty",
+    "customerEmail": "imran.shetty39@example.com",
+    "amount": 177800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-06T10:30:00.000Z",
+    "capturedAt": "2026-03-06T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-06T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-06T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-06T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0040",
+    "transactionId": "TXN2026030905405",
+    "orderId": "order_0007",
+    "orderNumber": "DCZ10007",
+    "invoiceId": "inv_0040",
+    "invoiceNumber": "DCZ-INV-2026-000040",
+    "customerId": "cust_034",
+    "customerName": "Kavya Khan",
+    "customerEmail": "kavya.khan34@example.com",
+    "amount": 909700,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-09T10:30:00.000Z",
+    "capturedAt": "2026-03-13T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-09T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-09T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-13T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0041",
+    "transactionId": "TXN2026031086035",
+    "orderId": "order_0009",
+    "orderNumber": "DCZ10009",
+    "invoiceId": "inv_0041",
+    "invoiceNumber": "DCZ-INV-2026-000041",
+    "customerId": "cust_026",
+    "customerName": "Aditi Chopra",
+    "customerEmail": "aditi.chopra26@example.com",
+    "amount": 279900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-10T10:30:00.000Z",
+    "capturedAt": "2026-03-10T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-10T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-10T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-10T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0042",
+    "transactionId": "TXN2026031295631",
+    "orderId": "order_0085",
+    "orderNumber": "DCZ10085",
+    "invoiceId": "inv_0042",
+    "invoiceNumber": "DCZ-INV-2026-000042",
+    "customerId": "cust_029",
+    "customerName": "Rohit Rao",
+    "customerEmail": "rohit.rao29@example.com",
+    "amount": 1329800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-12T10:30:00.000Z",
+    "capturedAt": "2026-03-12T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-12T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-12T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-12T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0043",
+    "transactionId": "TXN2026031712773",
+    "orderId": "order_0050",
+    "orderNumber": "DCZ10050",
+    "invoiceId": "inv_0043",
+    "invoiceNumber": "DCZ-INV-2026-000043",
+    "customerId": "cust_025",
+    "customerName": "Fatima Sharma",
+    "customerEmail": "fatima.sharma25@example.com",
+    "amount": 264800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-17T10:30:00.000Z",
+    "capturedAt": "2026-03-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0044",
+    "transactionId": "TXN2026031773250",
+    "orderId": "order_0086",
+    "orderNumber": "DCZ10086",
+    "invoiceId": "inv_0044",
+    "invoiceNumber": "DCZ-INV-2026-000044",
+    "customerId": "cust_032",
+    "customerName": "Meera Singh",
+    "customerEmail": "meera.singh32@example.com",
+    "amount": 1779700,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-17T10:30:00.000Z",
+    "capturedAt": "2026-03-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0045",
+    "transactionId": "TXN2026032370344",
+    "orderId": "order_0062",
+    "orderNumber": "DCZ10062",
+    "invoiceId": "inv_0045",
+    "invoiceNumber": "DCZ-INV-2026-000045",
+    "customerId": "cust_006",
+    "customerName": "Karthik Verma",
+    "customerEmail": "karthik.verma6@example.com",
+    "amount": 81800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-23T10:30:00.000Z",
+    "capturedAt": "2026-03-23T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-23T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-23T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0046",
+    "transactionId": "TXN2026032715857",
+    "orderId": "order_0076",
+    "orderNumber": "DCZ10076",
+    "invoiceId": "inv_0046",
+    "invoiceNumber": "DCZ-INV-2026-000046",
+    "customerId": "cust_006",
+    "customerName": "Karthik Verma",
+    "customerEmail": "karthik.verma6@example.com",
+    "amount": 254900,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-27T10:30:00.000Z",
+    "capturedAt": "2026-03-27T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-27T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-27T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-27T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0047",
+    "transactionId": "TXN2026032739213",
+    "orderId": "order_0142",
+    "orderNumber": "DCZ10142",
+    "invoiceId": "inv_0047",
+    "invoiceNumber": "DCZ-INV-2026-000047",
+    "customerId": "cust_016",
+    "customerName": "Rahul Mehta",
+    "customerEmail": "rahul.mehta16@example.com",
+    "amount": 464600,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-27T10:30:00.000Z",
+    "capturedAt": "2026-03-31T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-27T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-27T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-31T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0048",
+    "transactionId": "TXN2026032936087",
+    "orderId": "order_0157",
+    "orderNumber": "DCZ10157",
+    "invoiceId": "inv_0048",
+    "invoiceNumber": "DCZ-INV-2026-000048",
+    "customerId": "cust_023",
+    "customerName": "Gaurav Khan",
+    "customerEmail": "gaurav.khan23@example.com",
+    "amount": 607500,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-03-29T10:30:00.000Z",
+    "capturedAt": "2026-03-29T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-03-29T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-03-29T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-03-29T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0049",
+    "transactionId": "TXN2026040184606",
+    "orderId": "order_0002",
+    "orderNumber": "DCZ10002",
+    "invoiceId": "inv_0049",
+    "invoiceNumber": "DCZ-INV-2026-000049",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "customerEmail": "rohit.singh36@example.com",
+    "amount": 129900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-01T10:30:00.000Z",
+    "capturedAt": "2026-04-05T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-01T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-01T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-05T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0050",
+    "transactionId": "TXN2026041473499",
+    "orderId": "order_0144",
+    "orderNumber": "DCZ10144",
+    "invoiceId": "inv_0050",
+    "invoiceNumber": "DCZ-INV-2026-000050",
+    "customerId": "cust_039",
+    "customerName": "Imran Shetty",
+    "customerEmail": "imran.shetty39@example.com",
+    "amount": 749900,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-14T10:30:00.000Z",
+    "capturedAt": "2026-04-14T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-14T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-14T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-14T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0051",
+    "transactionId": "TXN2026041574304",
+    "orderId": "order_0031",
+    "orderNumber": "DCZ10031",
+    "invoiceId": "inv_0051",
+    "invoiceNumber": "DCZ-INV-2026-000051",
+    "customerId": "cust_003",
+    "customerName": "Ishita Desai",
+    "customerEmail": "ishita.desai3@example.com",
+    "amount": 1099600,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-15T10:30:00.000Z",
+    "capturedAt": "2026-04-15T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-15T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-15T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-15T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0052",
+    "transactionId": "TXN2026041550869",
+    "orderId": "order_0087",
+    "orderNumber": "DCZ10087",
+    "invoiceId": "inv_0052",
+    "invoiceNumber": "DCZ-INV-2026-000052",
+    "customerId": "cust_044",
+    "customerName": "Rahul Khan",
+    "customerEmail": "rahul.khan44@example.com",
+    "amount": 747600,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-15T10:30:00.000Z",
+    "capturedAt": "2026-04-15T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-15T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-15T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-15T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "HDFC Bank"
+  },
+  {
+    "id": "pay_0053",
+    "transactionId": "TXN2026041940393",
+    "orderId": "order_0083",
+    "orderNumber": "DCZ10083",
+    "invoiceId": "inv_0053",
+    "invoiceNumber": "DCZ-INV-2026-000053",
+    "customerId": "cust_014",
+    "customerName": "Vikram Kumar",
+    "customerEmail": "vikram.kumar14@example.com",
+    "amount": 1039300,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-19T10:30:00.000Z",
+    "capturedAt": "2026-04-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-19T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-19T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-23T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0054",
+    "transactionId": "TXN2026041985755",
+    "orderId": "order_0108",
+    "orderNumber": "DCZ10108",
+    "invoiceId": "inv_0054",
+    "invoiceNumber": "DCZ-INV-2026-000054",
+    "customerId": "cust_033",
+    "customerName": "Imran Iyer",
+    "customerEmail": "imran.iyer33@example.com",
+    "amount": 574800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-19T10:30:00.000Z",
+    "capturedAt": "2026-04-19T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-19T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-19T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-19T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0055",
+    "transactionId": "TXN2026042190094",
+    "orderId": "order_0114",
+    "orderNumber": "DCZ10114",
+    "invoiceId": "inv_0055",
+    "invoiceNumber": "DCZ-INV-2026-000055",
+    "customerId": "cust_003",
+    "customerName": "Ishita Desai",
+    "customerEmail": "ishita.desai3@example.com",
+    "amount": 1134700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-21T10:30:00.000Z",
+    "capturedAt": "2026-04-21T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-21T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-21T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-21T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 9006"
+  },
+  {
+    "id": "pay_0056",
+    "transactionId": "TXN2026042635154",
+    "orderId": "order_0051",
+    "orderNumber": "DCZ10051",
+    "invoiceId": "inv_0056",
+    "invoiceNumber": "DCZ-INV-2026-000056",
+    "customerId": "cust_012",
+    "customerName": "Siddharth Sharma",
+    "customerEmail": "siddharth.sharma12@example.com",
+    "amount": 203900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-26T10:30:00.000Z",
+    "capturedAt": "2026-04-26T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-26T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-26T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-26T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0057",
+    "transactionId": "TXN2026042690421",
+    "orderId": "order_0160",
+    "orderNumber": "DCZ10160",
+    "invoiceId": "inv_0057",
+    "invoiceNumber": "DCZ-INV-2026-000057",
+    "customerId": "cust_014",
+    "customerName": "Vikram Kumar",
+    "customerEmail": "vikram.kumar14@example.com",
+    "amount": 974400,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-26T10:30:00.000Z",
+    "capturedAt": "2026-04-26T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-26T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-26T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-26T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 9006"
+  },
+  {
+    "id": "pay_0058",
+    "transactionId": "TXN2026042701970",
+    "orderId": "order_0028",
+    "orderNumber": "DCZ10028",
+    "invoiceId": "inv_0058",
+    "invoiceNumber": "DCZ-INV-2026-000058",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "customerEmail": "rohit.singh36@example.com",
+    "amount": 329800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-27T10:30:00.000Z",
+    "capturedAt": "2026-04-27T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-27T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-27T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-27T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0059",
+    "transactionId": "TXN2026042862399",
+    "orderId": "order_0034",
+    "orderNumber": "DCZ10034",
+    "invoiceId": "inv_0059",
+    "invoiceNumber": "DCZ-INV-2026-000059",
+    "customerId": "cust_045",
+    "customerName": "Shreya Banerjee",
+    "customerEmail": "shreya.banerjee45@example.com",
+    "amount": 524800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-28T10:30:00.000Z",
+    "capturedAt": "2026-04-28T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-28T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-04-28T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0060",
+    "transactionId": "TXN2026042817439",
+    "orderId": "order_0078",
+    "orderNumber": "DCZ10078",
+    "invoiceId": "inv_0060",
+    "invoiceNumber": "DCZ-INV-2026-000060",
+    "customerId": "cust_058",
+    "customerName": "Kavya Shetty",
+    "customerEmail": "kavya.shetty58@example.com",
+    "amount": 1429600,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-04-28T10:30:00.000Z",
+    "capturedAt": "2026-05-02T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-04-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-04-28T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-02T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0061",
+    "transactionId": "TXN2026050767684",
+    "orderId": "order_0022",
+    "orderNumber": "DCZ10022",
+    "invoiceId": "inv_0061",
+    "invoiceNumber": "DCZ-INV-2026-000061",
+    "customerId": "cust_032",
+    "customerName": "Meera Singh",
+    "customerEmail": "meera.singh32@example.com",
+    "amount": 409800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-07T10:30:00.000Z",
+    "capturedAt": "2026-05-07T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-05-07T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-05-07T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-07T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0062",
+    "transactionId": "TXN2026050788810",
+    "orderId": "order_0059",
+    "orderNumber": "DCZ10059",
+    "invoiceId": "inv_0062",
+    "invoiceNumber": "DCZ-INV-2026-000062",
+    "customerId": "cust_050",
+    "customerName": "Kavya Pillai",
+    "customerEmail": "kavya.pillai50@example.com",
+    "amount": 869800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-07T10:30:00.000Z",
+    "capturedAt": "2026-05-07T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-05-07T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-05-07T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-07T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0063",
+    "transactionId": "TXN2026051807809",
+    "orderId": "order_0133",
+    "orderNumber": "DCZ10133",
+    "invoiceId": "inv_0063",
+    "invoiceNumber": "DCZ-INV-2026-000063",
+    "customerId": "cust_054",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar54@example.com",
+    "amount": 409800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-18T10:30:00.000Z",
+    "capturedAt": "2026-05-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-05-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-05-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0064",
+    "transactionId": "TXN2026052311373",
+    "orderId": "order_0168",
+    "orderNumber": "DCZ10168",
+    "invoiceId": "inv_0064",
+    "invoiceNumber": "DCZ-INV-2026-000064",
+    "customerId": "cust_014",
+    "customerName": "Vikram Kumar",
+    "customerEmail": "vikram.kumar14@example.com",
+    "amount": 1209800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-23T10:30:00.000Z",
+    "capturedAt": "2026-05-27T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-05-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-05-23T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-27T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0065",
+    "transactionId": "TXN2026052420345",
+    "orderId": "order_0090",
+    "orderNumber": "DCZ10090",
+    "invoiceId": "inv_0065",
+    "invoiceNumber": "DCZ-INV-2026-000065",
+    "customerId": "cust_043",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar43@example.com",
+    "amount": 380500,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-24T10:30:00.000Z",
+    "capturedAt": "2026-05-24T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-05-24T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-05-24T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-24T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0066",
+    "transactionId": "TXN2026052802297",
+    "orderId": "order_0054",
+    "orderNumber": "DCZ10054",
+    "invoiceId": "inv_0066",
+    "invoiceNumber": "DCZ-INV-2026-000066",
+    "customerId": "cust_029",
+    "customerName": "Rohit Rao",
+    "customerEmail": "rohit.rao29@example.com",
+    "amount": 437600,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-28T10:30:00.000Z",
+    "capturedAt": "2026-05-28T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-05-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-05-28T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-28T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0067",
+    "transactionId": "TXN2026052904630",
+    "orderId": "order_0068",
+    "orderNumber": "DCZ10068",
+    "invoiceId": "inv_0067",
+    "invoiceNumber": "DCZ-INV-2026-000067",
+    "customerId": "cust_061",
+    "customerName": "Gaurav Shetty",
+    "customerEmail": "gaurav.shetty61@example.com",
+    "amount": 847700,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-05-29T10:30:00.000Z",
+    "capturedAt": "2026-05-29T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-05-29T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-05-29T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-05-29T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0068",
+    "transactionId": "TXN2026060172548",
+    "orderId": "order_0004",
+    "orderNumber": "DCZ10004",
+    "invoiceId": "inv_0068",
+    "invoiceNumber": "DCZ-INV-2026-000068",
+    "customerId": "cust_002",
+    "customerName": "Gaurav Fernandes",
+    "customerEmail": "gaurav.fernandes2@example.com",
+    "amount": 444800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-01T10:30:00.000Z",
+    "capturedAt": "2026-06-01T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-01T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-01T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-01T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0069",
+    "transactionId": "TXN2026060366809",
+    "orderId": "order_0128",
+    "orderNumber": "DCZ10128",
+    "invoiceId": "inv_0069",
+    "invoiceNumber": "DCZ-INV-2026-000069",
+    "customerId": "cust_016",
+    "customerName": "Rahul Mehta",
+    "customerEmail": "rahul.mehta16@example.com",
+    "amount": 799800,
+    "refundedAmount": 799800,
+    "method": "upi",
+    "status": "refunded",
+    "provider": "mock",
+    "createdAt": "2026-06-03T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-03T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-03T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "refunded",
+        "at": "2026-06-11T10:30:00.000Z",
+        "note": "Full refund issued."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0070",
+    "transactionId": "TXN2026060879618",
+    "orderId": "order_0118",
+    "orderNumber": "DCZ10118",
+    "invoiceId": "inv_0070",
+    "invoiceNumber": "DCZ-INV-2026-000070",
+    "customerId": "cust_002",
+    "customerName": "Gaurav Fernandes",
+    "customerEmail": "gaurav.fernandes2@example.com",
+    "amount": 121400,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-08T10:30:00.000Z",
+    "capturedAt": "2026-06-12T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-08T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-08T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-12T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0071",
+    "transactionId": "TXN2026061541297",
+    "orderId": "order_0098",
+    "orderNumber": "DCZ10098",
+    "invoiceId": "inv_0071",
+    "invoiceNumber": "DCZ-INV-2026-000071",
+    "customerId": "cust_022",
+    "customerName": "Kavya Pillai",
+    "customerEmail": "kavya.pillai22@example.com",
+    "amount": 719700,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-15T10:30:00.000Z",
+    "capturedAt": "2026-06-15T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-15T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-15T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-15T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "HDFC Bank"
+  },
+  {
+    "id": "pay_0072",
+    "transactionId": "TXN2026061502326",
+    "orderId": "order_0165",
+    "orderNumber": "DCZ10165",
+    "invoiceId": "inv_0072",
+    "invoiceNumber": "DCZ-INV-2026-000072",
+    "customerId": "cust_047",
+    "customerName": "Ananya Menon",
+    "customerEmail": "ananya.menon47@example.com",
+    "amount": 284800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-15T10:30:00.000Z",
+    "capturedAt": "2026-06-15T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-15T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-15T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-15T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0073",
+    "transactionId": "TXN2026061720589",
+    "orderId": "order_0014",
+    "orderNumber": "DCZ10014",
+    "invoiceId": "inv_0073",
+    "invoiceNumber": "DCZ-INV-2026-000073",
+    "customerId": "cust_030",
+    "customerName": "Priya Shetty",
+    "customerEmail": "priya.shetty30@example.com",
+    "amount": 134900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-17T10:30:00.000Z",
+    "capturedAt": "2026-06-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0074",
+    "transactionId": "TXN2026061747992",
+    "orderId": "order_0152",
+    "orderNumber": "DCZ10152",
+    "invoiceId": "inv_0074",
+    "invoiceNumber": "DCZ-INV-2026-000074",
+    "customerId": "cust_008",
+    "customerName": "Karthik Iyer",
+    "customerEmail": "karthik.iyer8@example.com",
+    "amount": 285800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-17T10:30:00.000Z",
+    "capturedAt": "2026-06-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0075",
+    "transactionId": "TXN2026062013524",
+    "orderId": "order_0066",
+    "orderNumber": "DCZ10066",
+    "invoiceId": "inv_0075",
+    "invoiceNumber": "DCZ-INV-2026-000075",
+    "customerId": "cust_003",
+    "customerName": "Ishita Desai",
+    "customerEmail": "ishita.desai3@example.com",
+    "amount": 341900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-20T10:30:00.000Z",
+    "capturedAt": "2026-06-20T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-20T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-20T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-20T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0076",
+    "transactionId": "TXN2026062565380",
+    "orderId": "order_0127",
+    "orderNumber": "DCZ10127",
+    "invoiceId": "inv_0076",
+    "invoiceNumber": "DCZ-INV-2026-000076",
+    "customerId": "cust_038",
+    "customerName": "Aarav Kumar",
+    "customerEmail": "aarav.kumar38@example.com",
+    "amount": 649800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-25T10:30:00.000Z",
+    "capturedAt": "2026-06-29T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-25T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-25T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-29T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0077",
+    "transactionId": "TXN2026062680849",
+    "orderId": "order_0151",
+    "orderNumber": "DCZ10151",
+    "invoiceId": "inv_0077",
+    "invoiceNumber": "DCZ-INV-2026-000077",
+    "customerId": "cust_033",
+    "customerName": "Imran Iyer",
+    "customerEmail": "imran.iyer33@example.com",
+    "amount": 118600,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-26T10:30:00.000Z",
+    "capturedAt": "2026-06-26T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-26T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-26T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-26T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0078",
+    "transactionId": "TXN2026062813706",
+    "orderId": "order_0154",
+    "orderNumber": "DCZ10154",
+    "invoiceId": "inv_0078",
+    "invoiceNumber": "DCZ-INV-2026-000078",
+    "customerId": "cust_011",
+    "customerName": "Ananya Iyer",
+    "customerEmail": "ananya.iyer11@example.com",
+    "amount": 334800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-28T10:30:00.000Z",
+    "capturedAt": "2026-06-28T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-28T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-28T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "HDFC Bank"
+  },
+  {
+    "id": "pay_0079",
+    "transactionId": "TXN2026062990065",
+    "orderId": "order_0025",
+    "orderNumber": "DCZ10025",
+    "invoiceId": "inv_0079",
+    "invoiceNumber": "DCZ-INV-2026-000079",
+    "customerId": "cust_026",
+    "customerName": "Aditi Chopra",
+    "customerEmail": "aditi.chopra26@example.com",
+    "amount": 174900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-29T10:30:00.000Z",
+    "capturedAt": "2026-06-29T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-29T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-29T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-29T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0080",
+    "transactionId": "TXN2026063078189",
+    "orderId": "order_0111",
+    "orderNumber": "DCZ10111",
+    "invoiceId": "inv_0080",
+    "invoiceNumber": "DCZ-INV-2026-000080",
+    "customerId": "cust_026",
+    "customerName": "Aditi Chopra",
+    "customerEmail": "aditi.chopra26@example.com",
+    "amount": 699800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-06-30T10:30:00.000Z",
+    "capturedAt": "2026-06-30T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-30T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-30T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-06-30T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0081",
+    "transactionId": "TXN2026063003230",
+    "orderId": "order_0150",
+    "orderNumber": "DCZ10150",
+    "invoiceId": "inv_0081",
+    "invoiceNumber": "DCZ-INV-2026-000081",
+    "customerId": "cust_053",
+    "customerName": "Joseph Singh",
+    "customerEmail": "joseph.singh53@example.com",
+    "amount": 294900,
+    "refundedAmount": 294900,
+    "method": "upi",
+    "status": "refunded",
+    "provider": "mock",
+    "createdAt": "2026-06-30T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-06-30T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-06-30T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "refunded",
+        "at": "2026-07-08T10:30:00.000Z",
+        "note": "Full refund issued."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0082",
+    "transactionId": "TXN2026070132821",
+    "orderId": "order_0043",
+    "orderNumber": "DCZ10043",
+    "invoiceId": "inv_0082",
+    "invoiceNumber": "DCZ-INV-2026-000082",
+    "customerId": "cust_049",
+    "customerName": "Aditi Pillai",
+    "customerEmail": "aditi.pillai49@example.com",
+    "amount": 634700,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-01T10:30:00.000Z",
+    "capturedAt": "2026-07-01T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-01T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-01T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-01T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0083",
+    "transactionId": "TXN2026070565351",
+    "orderId": "order_0016",
+    "orderNumber": "DCZ10016",
+    "invoiceId": "inv_0083",
+    "invoiceNumber": "DCZ-INV-2026-000083",
+    "customerId": "cust_043",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar43@example.com",
+    "amount": 664800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-05T10:30:00.000Z",
+    "capturedAt": "2026-07-05T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-05T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-05T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-05T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0084",
+    "transactionId": "TXN2026071667713",
+    "orderId": "order_0115",
+    "orderNumber": "DCZ10115",
+    "invoiceId": "inv_0084",
+    "invoiceNumber": "DCZ-INV-2026-000084",
+    "customerId": "cust_021",
+    "customerName": "Harsh Reddy",
+    "customerEmail": "harsh.reddy21@example.com",
+    "amount": 1604400,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-16T10:30:00.000Z",
+    "capturedAt": "2026-07-16T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-16T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-16T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-16T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0085",
+    "transactionId": "TXN2026071700570",
+    "orderId": "order_0110",
+    "orderNumber": "DCZ10110",
+    "invoiceId": "inv_0085",
+    "invoiceNumber": "DCZ-INV-2026-000085",
+    "customerId": "cust_042",
+    "customerName": "Sameer Banerjee",
+    "customerEmail": "sameer.banerjee42@example.com",
+    "amount": 251700,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-17T10:30:00.000Z",
+    "capturedAt": "2026-07-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0086",
+    "transactionId": "TXN2026071800541",
+    "orderId": "order_0021",
+    "orderNumber": "DCZ10021",
+    "invoiceId": "inv_0086",
+    "invoiceNumber": "DCZ-INV-2026-000086",
+    "customerId": "cust_052",
+    "customerName": "Priya Kumar",
+    "customerEmail": "priya.kumar52@example.com",
+    "amount": 519700,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-18T10:30:00.000Z",
+    "capturedAt": "2026-07-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0087",
+    "transactionId": "TXN2026071883000",
+    "orderId": "order_0075",
+    "orderNumber": "DCZ10075",
+    "invoiceId": "inv_0087",
+    "invoiceNumber": "DCZ-INV-2026-000087",
+    "customerId": "cust_008",
+    "customerName": "Karthik Iyer",
+    "customerEmail": "karthik.iyer8@example.com",
+    "amount": 1029800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-18T10:30:00.000Z",
+    "capturedAt": "2026-07-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0088",
+    "transactionId": "TXN2026072127786",
+    "orderId": "order_0006",
+    "orderNumber": "DCZ10006",
+    "invoiceId": "inv_0088",
+    "invoiceNumber": "DCZ-INV-2026-000088",
+    "customerId": "cust_060",
+    "customerName": "Ishita Iyer",
+    "customerEmail": "ishita.iyer60@example.com",
+    "amount": 1194600,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-21T10:30:00.000Z",
+    "capturedAt": "2026-07-25T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-21T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-21T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-25T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0089",
+    "transactionId": "TXN2026072255202",
+    "orderId": "order_0042",
+    "orderNumber": "DCZ10042",
+    "invoiceId": "inv_0089",
+    "invoiceNumber": "DCZ-INV-2026-000089",
+    "customerId": "cust_006",
+    "customerName": "Karthik Verma",
+    "customerEmail": "karthik.verma6@example.com",
+    "amount": 741600,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-22T10:30:00.000Z",
+    "capturedAt": "2026-07-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0090",
+    "transactionId": "TXN2026072440666",
+    "orderId": "order_0136",
+    "orderNumber": "DCZ10136",
+    "invoiceId": "inv_0090",
+    "invoiceNumber": "DCZ-INV-2026-000090",
+    "customerId": "cust_014",
+    "customerName": "Vikram Kumar",
+    "customerEmail": "vikram.kumar14@example.com",
+    "amount": 1624500,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-24T10:30:00.000Z",
+    "capturedAt": "2026-07-24T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-24T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-24T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-24T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0091",
+    "transactionId": "TXN2026072507161",
+    "orderId": "order_0032",
+    "orderNumber": "DCZ10032",
+    "invoiceId": "inv_0091",
+    "invoiceNumber": "DCZ-INV-2026-000091",
+    "customerId": "cust_011",
+    "customerName": "Ananya Iyer",
+    "customerEmail": "ananya.iyer11@example.com",
+    "amount": 389900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "refunded",
+    "provider": "mock",
+    "createdAt": "2026-07-25T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-25T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-25T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0092",
+    "transactionId": "TXN2026072887732",
+    "orderId": "order_0017",
+    "orderNumber": "DCZ10017",
+    "invoiceId": "inv_0092",
+    "invoiceNumber": "DCZ-INV-2026-000092",
+    "customerId": "cust_055",
+    "customerName": "Tanvi Kumar",
+    "customerEmail": "tanvi.kumar55@example.com",
+    "amount": 134900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-28T10:30:00.000Z",
+    "capturedAt": "2026-07-28T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-28T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-28T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0093",
+    "transactionId": "TXN2026073072875",
+    "orderId": "order_0038",
+    "orderNumber": "DCZ10038",
+    "invoiceId": "inv_0093",
+    "invoiceNumber": "DCZ-INV-2026-000093",
+    "customerId": "cust_028",
+    "customerName": "Ishita Sharma",
+    "customerEmail": "ishita.sharma28@example.com",
+    "amount": 67800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-07-30T10:30:00.000Z",
+    "capturedAt": "2026-07-30T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-07-30T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-07-30T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-07-30T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0094",
+    "transactionId": "TXN2026080185428",
+    "orderId": "order_0134",
+    "orderNumber": "DCZ10134",
+    "invoiceId": "inv_0094",
+    "invoiceNumber": "DCZ-INV-2026-000094",
+    "customerId": "cust_044",
+    "customerName": "Rahul Khan",
+    "customerEmail": "rahul.khan44@example.com",
+    "amount": 404900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-01T10:30:00.000Z",
+    "capturedAt": "2026-08-05T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-01T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-01T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-05T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0095",
+    "transactionId": "TXN2026080306107",
+    "orderId": "order_0089",
+    "orderNumber": "DCZ10089",
+    "invoiceId": "inv_0095",
+    "invoiceNumber": "DCZ-INV-2026-000095",
+    "customerId": "cust_043",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar43@example.com",
+    "amount": 374800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-03T10:30:00.000Z",
+    "capturedAt": "2026-08-03T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-03T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-03T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-03T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0096",
+    "transactionId": "TXN2026080351118",
+    "orderId": "order_0147",
+    "orderNumber": "DCZ10147",
+    "invoiceId": "inv_0096",
+    "invoiceNumber": "DCZ-INV-2026-000096",
+    "customerId": "cust_054",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar54@example.com",
+    "amount": 314700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-03T10:30:00.000Z",
+    "capturedAt": "2026-08-03T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-03T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-03T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-03T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0097",
+    "transactionId": "TXN2026080411542",
+    "orderId": "order_0019",
+    "orderNumber": "DCZ10019",
+    "invoiceId": "inv_0097",
+    "invoiceNumber": "DCZ-INV-2026-000097",
+    "customerId": "cust_035",
+    "customerName": "Divya Verma",
+    "customerEmail": "divya.verma35@example.com",
+    "amount": 439900,
+    "refundedAmount": 439900,
+    "method": "card",
+    "status": "refunded",
+    "provider": "mock",
+    "createdAt": "2026-08-04T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-04T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-04T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "refunded",
+        "at": "2026-08-12T10:30:00.000Z",
+        "note": "Full refund issued."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0098",
+    "transactionId": "TXN2026080463023",
+    "orderId": "order_0148",
+    "orderNumber": "DCZ10148",
+    "invoiceId": "inv_0098",
+    "invoiceNumber": "DCZ-INV-2026-000098",
+    "customerId": "cust_020",
+    "customerName": "Varun Iyer",
+    "customerEmail": "varun.iyer20@example.com",
+    "amount": 404900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-04T10:30:00.000Z",
+    "capturedAt": "2026-08-04T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-04T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-04T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-04T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0099",
+    "transactionId": "TXN2026080684780",
+    "orderId": "order_0035",
+    "orderNumber": "DCZ10035",
+    "invoiceId": "inv_0099",
+    "invoiceNumber": "DCZ-INV-2026-000099",
+    "customerId": "cust_025",
+    "customerName": "Fatima Sharma",
+    "customerEmail": "fatima.sharma25@example.com",
+    "amount": 734600,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-06T10:30:00.000Z",
+    "capturedAt": "2026-08-06T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-06T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-06T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-06T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0100",
+    "transactionId": "TXN2026080630517",
+    "orderId": "order_0106",
+    "orderNumber": "DCZ10106",
+    "invoiceId": "inv_0100",
+    "invoiceNumber": "DCZ-INV-2026-000100",
+    "customerId": "cust_014",
+    "customerName": "Vikram Kumar",
+    "customerEmail": "vikram.kumar14@example.com",
+    "amount": 239900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-06T10:30:00.000Z",
+    "capturedAt": "2026-08-06T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-06T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-06T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-06T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0101",
+    "transactionId": "TXN2026080863047",
+    "orderId": "order_0135",
+    "orderNumber": "DCZ10135",
+    "invoiceId": "inv_0101",
+    "invoiceNumber": "DCZ-INV-2026-000101",
+    "customerId": "cust_043",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar43@example.com",
+    "amount": 534800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-08T10:30:00.000Z",
+    "capturedAt": "2026-08-12T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-08T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-08T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-12T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0102",
+    "transactionId": "TXN2026081034856",
+    "orderId": "order_0116",
+    "orderNumber": "DCZ10116",
+    "invoiceId": "inv_0102",
+    "invoiceNumber": "DCZ-INV-2026-000102",
+    "customerId": "cust_031",
+    "customerName": "Nikhil Pillai",
+    "customerEmail": "nikhil.pillai31@example.com",
+    "amount": 215900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-10T10:30:00.000Z",
+    "capturedAt": "2026-08-10T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-10T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-10T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-10T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0103",
+    "transactionId": "TXN2026081335183",
+    "orderId": "order_0162",
+    "orderNumber": "DCZ10162",
+    "invoiceId": "inv_0103",
+    "invoiceNumber": "DCZ-INV-2026-000103",
+    "customerId": "cust_038",
+    "customerName": "Aarav Kumar",
+    "customerEmail": "aarav.kumar38@example.com",
+    "amount": 67800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-13T10:30:00.000Z",
+    "capturedAt": "2026-08-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0104",
+    "transactionId": "TXN2026081630821",
+    "orderId": "order_0094",
+    "orderNumber": "DCZ10094",
+    "invoiceId": "inv_0104",
+    "invoiceNumber": "DCZ-INV-2026-000104",
+    "customerId": "cust_033",
+    "customerName": "Imran Iyer",
+    "customerEmail": "imran.iyer33@example.com",
+    "amount": 464800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-16T10:30:00.000Z",
+    "capturedAt": "2026-08-20T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-16T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-16T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-20T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0105",
+    "transactionId": "TXN2026081742422",
+    "orderId": "order_0103",
+    "orderNumber": "DCZ10103",
+    "invoiceId": "inv_0105",
+    "invoiceNumber": "DCZ-INV-2026-000105",
+    "customerId": "cust_038",
+    "customerName": "Aarav Kumar",
+    "customerEmail": "aarav.kumar38@example.com",
+    "amount": 824800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-17T10:30:00.000Z",
+    "capturedAt": "2026-08-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0106",
+    "transactionId": "TXN2026081859897",
+    "orderId": "order_0159",
+    "orderNumber": "DCZ10159",
+    "invoiceId": "inv_0106",
+    "invoiceNumber": "DCZ-INV-2026-000106",
+    "customerId": "cust_043",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar43@example.com",
+    "amount": 224900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-18T10:30:00.000Z",
+    "capturedAt": "2026-08-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0107",
+    "transactionId": "TXN2026081991143",
+    "orderId": "order_0067",
+    "orderNumber": "DCZ10067",
+    "invoiceId": "inv_0107",
+    "invoiceNumber": "DCZ-INV-2026-000107",
+    "customerId": "cust_045",
+    "customerName": "Shreya Banerjee",
+    "customerEmail": "shreya.banerjee45@example.com",
+    "amount": 324900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-19T10:30:00.000Z",
+    "capturedAt": "2026-08-19T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-19T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-19T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-19T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0108",
+    "transactionId": "TXN2026082147059",
+    "orderId": "order_0056",
+    "orderNumber": "DCZ10056",
+    "invoiceId": "inv_0108",
+    "invoiceNumber": "DCZ-INV-2026-000108",
+    "customerId": "cust_043",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar43@example.com",
+    "amount": 824700,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-21T10:30:00.000Z",
+    "capturedAt": "2026-08-21T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-21T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-21T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-21T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "HDFC Bank"
+  },
+  {
+    "id": "pay_0109",
+    "transactionId": "TXN2026082222922",
+    "orderId": "order_0020",
+    "orderNumber": "DCZ10020",
+    "invoiceId": "inv_0109",
+    "invoiceNumber": "DCZ-INV-2026-000109",
+    "customerId": "cust_018",
+    "customerName": "Aditya Desai",
+    "customerEmail": "aditya.desai18@example.com",
+    "amount": 1039700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-22T10:30:00.000Z",
+    "capturedAt": "2026-08-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0110",
+    "transactionId": "TXN2026082260619",
+    "orderId": "order_0074",
+    "orderNumber": "DCZ10074",
+    "invoiceId": "inv_0110",
+    "invoiceNumber": "DCZ-INV-2026-000110",
+    "customerId": "cust_004",
+    "customerName": "Sameer Reddy",
+    "customerEmail": "sameer.reddy4@example.com",
+    "amount": 160800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-22T10:30:00.000Z",
+    "capturedAt": "2026-08-26T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-22T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-26T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0111",
+    "transactionId": "TXN2026082346381",
+    "orderId": "order_0065",
+    "orderNumber": "DCZ10065",
+    "invoiceId": "inv_0111",
+    "invoiceNumber": "DCZ-INV-2026-000111",
+    "customerId": "cust_011",
+    "customerName": "Ananya Iyer",
+    "customerEmail": "ananya.iyer11@example.com",
+    "amount": 629800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-23T10:30:00.000Z",
+    "capturedAt": "2026-08-27T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-23T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-27T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0112",
+    "transactionId": "TXN2026082383975",
+    "orderId": "order_0140",
+    "orderNumber": "DCZ10140",
+    "invoiceId": "inv_0112",
+    "invoiceNumber": "DCZ-INV-2026-000112",
+    "customerId": "cust_063",
+    "customerName": "Divya Singh",
+    "customerEmail": "divya.singh63@example.com",
+    "amount": 839600,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-23T10:30:00.000Z",
+    "capturedAt": "2026-08-23T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-23T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-23T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0113",
+    "transactionId": "TXN2026082458468",
+    "orderId": "order_0156",
+    "orderNumber": "DCZ10156",
+    "invoiceId": "inv_0113",
+    "invoiceNumber": "DCZ-INV-2026-000113",
+    "customerId": "cust_014",
+    "customerName": "Vikram Kumar",
+    "customerEmail": "vikram.kumar14@example.com",
+    "amount": 909600,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-24T10:30:00.000Z",
+    "capturedAt": "2026-08-24T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-24T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-24T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-24T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 9006"
+  },
+  {
+    "id": "pay_0114",
+    "transactionId": "TXN2026082553202",
+    "orderId": "order_0095",
+    "orderNumber": "DCZ10095",
+    "invoiceId": "inv_0114",
+    "invoiceNumber": "DCZ-INV-2026-000114",
+    "customerId": "cust_037",
+    "customerName": "Tanvi Mehta",
+    "customerEmail": "tanvi.mehta37@example.com",
+    "amount": 1199700,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-25T10:30:00.000Z",
+    "capturedAt": "2026-08-25T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-25T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-25T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-25T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0115",
+    "transactionId": "TXN2026082679945",
+    "orderId": "order_0164",
+    "orderNumber": "DCZ10164",
+    "invoiceId": "inv_0115",
+    "invoiceNumber": "DCZ-INV-2026-000115",
+    "customerId": "cust_043",
+    "customerName": "Lakshmi Kumar",
+    "customerEmail": "lakshmi.kumar43@example.com",
+    "amount": 528600,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-26T10:30:00.000Z",
+    "capturedAt": "2026-08-26T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-26T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-26T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-26T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0116",
+    "transactionId": "TXN2026082851923",
+    "orderId": "order_0030",
+    "orderNumber": "DCZ10030",
+    "invoiceId": "inv_0116",
+    "invoiceNumber": "DCZ-INV-2026-000116",
+    "customerId": "cust_015",
+    "customerName": "Shreya Shetty",
+    "customerEmail": "shreya.shetty15@example.com",
+    "amount": 144900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-28T10:30:00.000Z",
+    "capturedAt": "2026-08-28T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-28T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-28T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0117",
+    "transactionId": "TXN2026082842726",
+    "orderId": "order_0091",
+    "orderNumber": "DCZ10091",
+    "invoiceId": "inv_0117",
+    "invoiceNumber": "DCZ-INV-2026-000117",
+    "customerId": "cust_045",
+    "customerName": "Shreya Banerjee",
+    "customerEmail": "shreya.banerjee45@example.com",
+    "amount": 359800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-28T10:30:00.000Z",
+    "capturedAt": "2026-08-28T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-28T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-28T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-28T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0118",
+    "transactionId": "TXN2026082912475",
+    "orderId": "order_0117",
+    "orderNumber": "DCZ10117",
+    "invoiceId": "inv_0118",
+    "invoiceNumber": "DCZ-INV-2026-000118",
+    "customerId": "cust_047",
+    "customerName": "Ananya Menon",
+    "customerEmail": "ananya.menon47@example.com",
+    "amount": 494900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-08-29T10:30:00.000Z",
+    "capturedAt": "2026-08-29T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-08-29T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-08-29T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-08-29T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0119",
+    "transactionId": "TXN2026090110113",
+    "orderId": "order_0010",
+    "orderNumber": "DCZ10010",
+    "invoiceId": "inv_0119",
+    "invoiceNumber": "DCZ-INV-2026-000119",
+    "customerId": "cust_039",
+    "customerName": "Imran Shetty",
+    "customerEmail": "imran.shetty39@example.com",
+    "amount": 394800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-01T10:30:00.000Z",
+    "capturedAt": "2026-09-05T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-01T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-01T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-05T10:30:00.000Z",
+        "note": "Collected by the courier."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0120",
+    "transactionId": "TXN2026090247088",
+    "orderId": "order_0167",
+    "orderNumber": "DCZ10167",
+    "invoiceId": "inv_0120",
+    "invoiceNumber": "DCZ-INV-2026-000120",
+    "customerId": "cust_042",
+    "customerName": "Sameer Banerjee",
+    "customerEmail": "sameer.banerjee42@example.com",
+    "amount": 257800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-02T10:30:00.000Z",
+    "capturedAt": "2026-09-02T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-02T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-02T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-02T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0121",
+    "transactionId": "TXN2026090442999",
+    "orderId": "order_0126",
+    "orderNumber": "DCZ10126",
+    "invoiceId": "inv_0121",
+    "invoiceNumber": "DCZ-INV-2026-000121",
+    "customerId": "cust_010",
+    "customerName": "Ananya Patel",
+    "customerEmail": "ananya.patel10@example.com",
+    "amount": 1079900,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-04T10:30:00.000Z",
+    "capturedAt": "2026-09-04T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-04T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-04T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-04T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0122",
+    "transactionId": "TXN2026090545303",
+    "orderId": "order_0023",
+    "orderNumber": "DCZ10023",
+    "invoiceId": "inv_0122",
+    "invoiceNumber": "DCZ-INV-2026-000122",
+    "customerId": "cust_048",
+    "customerName": "Lakshmi Fernandes",
+    "customerEmail": "lakshmi.fernandes48@example.com",
+    "amount": 1029600,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-05T10:30:00.000Z",
+    "capturedAt": "2026-09-05T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-05T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-05T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-05T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0123",
+    "transactionId": "TXN2026090789488",
+    "orderId": "order_0044",
+    "orderNumber": "DCZ10044",
+    "invoiceId": "inv_0123",
+    "invoiceNumber": "DCZ-INV-2026-000123",
+    "customerId": "cust_018",
+    "customerName": "Aditya Desai",
+    "customerEmail": "aditya.desai18@example.com",
+    "amount": 939600,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-07T10:30:00.000Z",
+    "capturedAt": "2026-09-07T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-07T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-07T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-07T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 3310"
+  },
+  {
+    "id": "pay_0124",
+    "transactionId": "TXN2026090707536",
+    "orderId": "order_0080",
+    "orderNumber": "DCZ10080",
+    "invoiceId": "inv_0124",
+    "invoiceNumber": "DCZ-INV-2026-000124",
+    "customerId": "cust_012",
+    "customerName": "Siddharth Sharma",
+    "customerEmail": "siddharth.sharma12@example.com",
+    "amount": 279800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-07T10:30:00.000Z",
+    "capturedAt": "2026-09-07T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-07T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-07T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-07T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0125",
+    "transactionId": "TXN2026091120916",
+    "orderId": "order_0048",
+    "orderNumber": "DCZ10048",
+    "invoiceId": "inv_0125",
+    "invoiceNumber": "DCZ-INV-2026-000125",
+    "customerId": "cust_061",
+    "customerName": "Gaurav Shetty",
+    "customerEmail": "gaurav.shetty61@example.com",
+    "amount": 584800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-11T10:30:00.000Z",
+    "capturedAt": "2026-09-11T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-11T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-11T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-11T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0126",
+    "transactionId": "TXN2026091126333",
+    "orderId": "order_0072",
+    "orderNumber": "DCZ10072",
+    "invoiceId": "inv_0126",
+    "invoiceNumber": "DCZ-INV-2026-000126",
+    "customerId": "cust_045",
+    "customerName": "Shreya Banerjee",
+    "customerEmail": "shreya.banerjee45@example.com",
+    "amount": 1404600,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-11T10:30:00.000Z",
+    "capturedAt": "2026-09-11T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-11T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-11T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-11T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0127",
+    "transactionId": "TXN2026091294929",
+    "orderId": "order_0003",
+    "orderNumber": "DCZ10003",
+    "invoiceId": "inv_0127",
+    "invoiceNumber": "DCZ-INV-2026-000127",
+    "customerId": "cust_021",
+    "customerName": "Harsh Reddy",
+    "customerEmail": "harsh.reddy21@example.com",
+    "amount": 409800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-12T10:30:00.000Z",
+    "capturedAt": "2026-09-12T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-12T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-12T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-12T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0128",
+    "transactionId": "TXN2026091279916",
+    "orderId": "order_0053",
+    "orderNumber": "DCZ10053",
+    "invoiceId": "inv_0128",
+    "invoiceNumber": "DCZ-INV-2026-000128",
+    "customerId": "cust_036",
+    "customerName": "Rohit Singh",
+    "customerEmail": "rohit.singh36@example.com",
+    "amount": 1889400,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-12T10:30:00.000Z",
+    "capturedAt": "2026-09-12T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-12T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-12T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-12T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0129",
+    "transactionId": "TXN2026091377256",
+    "orderId": "order_0013",
+    "orderNumber": "DCZ10013",
+    "invoiceId": "inv_0129",
+    "invoiceNumber": "DCZ-INV-2026-000129",
+    "customerId": "cust_061",
+    "customerName": "Gaurav Shetty",
+    "customerEmail": "gaurav.shetty61@example.com",
+    "amount": 620800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-13T10:30:00.000Z",
+    "capturedAt": "2026-09-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0130",
+    "transactionId": "TXN2026091377583",
+    "orderId": "order_0041",
+    "orderNumber": "DCZ10041",
+    "invoiceId": "inv_0130",
+    "invoiceNumber": "DCZ-INV-2026-000130",
+    "customerId": "cust_055",
+    "customerName": "Tanvi Kumar",
+    "customerEmail": "tanvi.kumar55@example.com",
+    "amount": 809700,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-13T10:30:00.000Z",
+    "capturedAt": "2026-09-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0131",
+    "transactionId": "TXN2026091352898",
+    "orderId": "order_0107",
+    "orderNumber": "DCZ10107",
+    "invoiceId": "inv_0131",
+    "invoiceNumber": "DCZ-INV-2026-000131",
+    "customerId": "cust_049",
+    "customerName": "Aditi Pillai",
+    "customerEmail": "aditi.pillai49@example.com",
+    "amount": 88800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-13T10:30:00.000Z",
+    "capturedAt": "2026-09-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0132",
+    "transactionId": "TXN2026091354000",
+    "orderId": "order_0138",
+    "orderNumber": "DCZ10138",
+    "invoiceId": "inv_0132",
+    "invoiceNumber": "DCZ-INV-2026-000132",
+    "customerId": "cust_055",
+    "customerName": "Tanvi Kumar",
+    "customerEmail": "tanvi.kumar55@example.com",
+    "amount": 1454700,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-13T10:30:00.000Z",
+    "capturedAt": "2026-09-13T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-13T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-13T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-13T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0133",
+    "transactionId": "TXN2026091440018",
+    "orderId": "order_0037",
+    "orderNumber": "DCZ10037",
+    "invoiceId": "inv_0133",
+    "invoiceNumber": "DCZ-INV-2026-000133",
+    "customerId": "cust_004",
+    "customerName": "Sameer Reddy",
+    "customerEmail": "sameer.reddy4@example.com",
+    "amount": 164900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-14T10:30:00.000Z",
+    "capturedAt": "2026-09-14T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-14T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-14T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-14T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0134",
+    "transactionId": "TXN2026091487761",
+    "orderId": "order_0120",
+    "orderNumber": "DCZ10120",
+    "invoiceId": "inv_0134",
+    "invoiceNumber": "DCZ-INV-2026-000134",
+    "customerId": "cust_060",
+    "customerName": "Ishita Iyer",
+    "customerEmail": "ishita.iyer60@example.com",
+    "amount": 644800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-14T10:30:00.000Z",
+    "capturedAt": "2026-09-14T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-14T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-14T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-14T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0135",
+    "transactionId": "TXN2026091457564",
+    "orderId": "order_0163",
+    "orderNumber": "DCZ10163",
+    "invoiceId": "inv_0135",
+    "invoiceNumber": "DCZ-INV-2026-000135",
+    "customerId": "cust_015",
+    "customerName": "Shreya Shetty",
+    "customerEmail": "shreya.shetty15@example.com",
+    "amount": 569600,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-14T10:30:00.000Z",
+    "capturedAt": "2026-09-14T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-14T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-14T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-14T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0136",
+    "transactionId": "TXN2026091568762",
+    "orderId": "order_0064",
+    "orderNumber": "DCZ10064",
+    "invoiceId": "inv_0136",
+    "invoiceNumber": "DCZ-INV-2026-000136",
+    "customerId": "cust_037",
+    "customerName": "Tanvi Mehta",
+    "customerEmail": "tanvi.mehta37@example.com",
+    "amount": 449800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-15T10:30:00.000Z",
+    "capturedAt": "2026-09-15T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-15T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-15T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-15T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0137",
+    "transactionId": "TXN2026091639820",
+    "orderId": "order_0079",
+    "orderNumber": "DCZ10079",
+    "invoiceId": "inv_0137",
+    "invoiceNumber": "DCZ-INV-2026-000137",
+    "customerId": "cust_001",
+    "customerName": "Aditya Banerjee",
+    "customerEmail": "aditya.banerjee1@example.com",
+    "amount": 170800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-16T10:30:00.000Z",
+    "capturedAt": "2026-09-16T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-16T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-16T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-16T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 9006"
+  },
+  {
+    "id": "pay_0138",
+    "transactionId": "TXN2026091630190",
+    "orderId": "order_0132",
+    "orderNumber": "DCZ10132",
+    "invoiceId": "inv_0138",
+    "invoiceNumber": "DCZ-INV-2026-000138",
+    "customerId": "cust_001",
+    "customerName": "Aditya Banerjee",
+    "customerEmail": "aditya.banerjee1@example.com",
+    "amount": 239900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "pending",
+    "provider": "mock",
+    "createdAt": "2026-09-16T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-16T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-16T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0139",
+    "transactionId": "TXN2026091757208",
+    "orderId": "order_0026",
+    "orderNumber": "DCZ10026",
+    "invoiceId": "inv_0139",
+    "invoiceNumber": "DCZ-INV-2026-000139",
+    "customerId": "cust_059",
+    "customerName": "Varun Fernandes",
+    "customerEmail": "varun.fernandes59@example.com",
+    "amount": 314800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "pending",
+    "provider": "mock",
+    "createdAt": "2026-09-17T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-17T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0140",
+    "transactionId": "TXN2026091725611",
+    "orderId": "order_0153",
+    "orderNumber": "DCZ10153",
+    "invoiceId": "inv_0140",
+    "invoiceNumber": "DCZ-INV-2026-000140",
+    "customerId": "cust_017",
+    "customerName": "Ishita Reddy",
+    "customerEmail": "ishita.reddy17@example.com",
+    "amount": 259800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-17T10:30:00.000Z",
+    "capturedAt": "2026-09-17T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-17T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-17T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-17T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0141",
+    "transactionId": "TXN2026091818012",
+    "orderId": "order_0084",
+    "orderNumber": "DCZ10084",
+    "invoiceId": "inv_0141",
+    "invoiceNumber": "DCZ-INV-2026-000141",
+    "customerId": "cust_015",
+    "customerName": "Shreya Shetty",
+    "customerEmail": "shreya.shetty15@example.com",
+    "amount": 674800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-18T10:30:00.000Z",
+    "capturedAt": "2026-09-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0142",
+    "transactionId": "TXN2026091854904",
+    "orderId": "order_0123",
+    "orderNumber": "DCZ10123",
+    "invoiceId": "inv_0142",
+    "invoiceNumber": "DCZ-INV-2026-000142",
+    "customerId": "cust_026",
+    "customerName": "Aditi Chopra",
+    "customerEmail": "aditi.chopra26@example.com",
+    "amount": 474800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-18T10:30:00.000Z",
+    "capturedAt": "2026-09-18T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-18T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-18T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-18T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0143",
+    "transactionId": "TXN2026091954875",
+    "orderId": "order_0012",
+    "orderNumber": "DCZ10012",
+    "invoiceId": "inv_0143",
+    "invoiceNumber": "DCZ-INV-2026-000143",
+    "customerId": "cust_042",
+    "customerName": "Sameer Banerjee",
+    "customerEmail": "sameer.banerjee42@example.com",
+    "amount": 469900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "pending",
+    "provider": "mock",
+    "createdAt": "2026-09-19T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-19T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-19T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0144",
+    "transactionId": "TXN2026091998535",
+    "orderId": "order_0049",
+    "orderNumber": "DCZ10049",
+    "invoiceId": "inv_0144",
+    "invoiceNumber": "DCZ-INV-2026-000144",
+    "customerId": "cust_021",
+    "customerName": "Harsh Reddy",
+    "customerEmail": "harsh.reddy21@example.com",
+    "amount": 179900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-19T10:30:00.000Z",
+    "capturedAt": "2026-09-19T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-19T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-19T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-19T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0145",
+    "transactionId": "TXN2026091924678",
+    "orderId": "order_0055",
+    "orderNumber": "DCZ10055",
+    "invoiceId": "inv_0145",
+    "invoiceNumber": "DCZ-INV-2026-000145",
+    "customerId": "cust_042",
+    "customerName": "Sameer Banerjee",
+    "customerEmail": "sameer.banerjee42@example.com",
+    "amount": 974800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-19T10:30:00.000Z",
+    "capturedAt": "2026-09-19T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-19T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-19T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-19T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 4242"
+  },
+  {
+    "id": "pay_0146",
+    "transactionId": "TXN2026091966429",
+    "orderId": "order_0058",
+    "orderNumber": "DCZ10058",
+    "invoiceId": "inv_0146",
+    "invoiceNumber": "DCZ-INV-2026-000146",
+    "customerId": "cust_009",
+    "customerName": "Ishita Verma",
+    "customerEmail": "ishita.verma9@example.com",
+    "amount": 719800,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "pending",
+    "provider": "mock",
+    "createdAt": "2026-09-19T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-19T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-19T10:30:20.000Z",
+        "note": "Awaiting collection on delivery."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0147",
+    "transactionId": "TXN2026092048714",
+    "orderId": "order_0073",
+    "orderNumber": "DCZ10073",
+    "invoiceId": "inv_0147",
+    "invoiceNumber": "DCZ-INV-2026-000147",
+    "customerId": "cust_034",
+    "customerName": "Kavya Khan",
+    "customerEmail": "kavya.khan34@example.com",
+    "amount": 479800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-20T10:30:00.000Z",
+    "capturedAt": "2026-09-20T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-20T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-20T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-20T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0148",
+    "transactionId": "TXN2026092038238",
+    "orderId": "order_0077",
+    "orderNumber": "DCZ10077",
+    "invoiceId": "inv_0148",
+    "invoiceNumber": "DCZ-INV-2026-000148",
+    "customerId": "cust_012",
+    "customerName": "Siddharth Sharma",
+    "customerEmail": "siddharth.sharma12@example.com",
+    "amount": 105800,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-20T10:30:00.000Z",
+    "capturedAt": "2026-09-20T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-20T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-20T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-20T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "ICICI Bank"
+  },
+  {
+    "id": "pay_0149",
+    "transactionId": "TXN2026092182249",
+    "orderId": "order_0069",
+    "orderNumber": "DCZ10069",
+    "invoiceId": "inv_0149",
+    "invoiceNumber": "DCZ-INV-2026-000149",
+    "customerId": "cust_049",
+    "customerName": "Aditi Pillai",
+    "customerEmail": "aditi.pillai49@example.com",
+    "amount": 1023600,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-21T10:30:00.000Z",
+    "capturedAt": "2026-09-21T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-21T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-21T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-21T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0150",
+    "transactionId": "TXN2026092152571",
+    "orderId": "order_0131",
+    "orderNumber": "DCZ10131",
+    "invoiceId": "inv_0150",
+    "invoiceNumber": "DCZ-INV-2026-000150",
+    "customerId": "cust_033",
+    "customerName": "Imran Iyer",
+    "customerEmail": "imran.iyer33@example.com",
+    "amount": 1189600,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-21T10:30:00.000Z",
+    "capturedAt": "2026-09-21T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-21T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-21T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-21T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0151",
+    "transactionId": "TXN2026092112802",
+    "orderId": "order_0161",
+    "orderNumber": "DCZ10161",
+    "invoiceId": "inv_0151",
+    "invoiceNumber": "DCZ-INV-2026-000151",
+    "customerId": "cust_050",
+    "customerName": "Kavya Pillai",
+    "customerEmail": "kavya.pillai50@example.com",
+    "amount": 534800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-21T10:30:00.000Z",
+    "capturedAt": "2026-09-21T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-21T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-21T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-21T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0152",
+    "transactionId": "TXN2026092242970",
+    "orderId": "order_0015",
+    "orderNumber": "DCZ10015",
+    "invoiceId": "inv_0152",
+    "invoiceNumber": "DCZ-INV-2026-000152",
+    "customerId": "cust_004",
+    "customerName": "Sameer Reddy",
+    "customerEmail": "sameer.reddy4@example.com",
+    "amount": 294900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-22T10:30:00.000Z",
+    "capturedAt": "2026-09-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@paytm"
+  },
+  {
+    "id": "pay_0153",
+    "transactionId": "TXN2026092217637",
+    "orderId": "order_0036",
+    "orderNumber": "DCZ10036",
+    "invoiceId": "inv_0153",
+    "invoiceNumber": "DCZ-INV-2026-000153",
+    "customerId": "cust_037",
+    "customerName": "Tanvi Mehta",
+    "customerEmail": "tanvi.mehta37@example.com",
+    "amount": 389800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-22T10:30:00.000Z",
+    "capturedAt": "2026-09-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0154",
+    "transactionId": "TXN2026092244726",
+    "orderId": "order_0046",
+    "orderNumber": "DCZ10046",
+    "invoiceId": "inv_0154",
+    "invoiceNumber": "DCZ-INV-2026-000154",
+    "customerId": "cust_019",
+    "customerName": "Harsh Reddy",
+    "customerEmail": "harsh.reddy19@example.com",
+    "amount": 154900,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-22T10:30:00.000Z",
+    "capturedAt": "2026-09-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 1881"
+  },
+  {
+    "id": "pay_0155",
+    "transactionId": "TXN2026092245332",
+    "orderId": "order_0112",
+    "orderNumber": "DCZ10112",
+    "invoiceId": "inv_0155",
+    "invoiceNumber": "DCZ-INV-2026-000155",
+    "customerId": "cust_004",
+    "customerName": "Sameer Reddy",
+    "customerEmail": "sameer.reddy4@example.com",
+    "amount": 294900,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-22T10:30:00.000Z",
+    "capturedAt": "2026-09-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "Axis Bank"
+  },
+  {
+    "id": "pay_0156",
+    "transactionId": "TXN2026092224707",
+    "orderId": "order_0166",
+    "orderNumber": "DCZ10166",
+    "invoiceId": "inv_0156",
+    "invoiceNumber": "DCZ-INV-2026-000156",
+    "customerId": "cust_015",
+    "customerName": "Shreya Shetty",
+    "customerEmail": "shreya.shetty15@example.com",
+    "amount": 214800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-22T10:30:00.000Z",
+    "capturedAt": "2026-09-22T10:31:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-22T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-22T10:30:20.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-22T10:31:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okaxis"
+  },
+  {
+    "id": "pay_0157",
+    "transactionId": "TXN2026092350167",
+    "orderId": "order_0005",
+    "orderNumber": "DCZ10005",
+    "invoiceId": "inv_0157",
+    "invoiceNumber": "DCZ-INV-2026-000157",
+    "customerId": "cust_008",
+    "customerName": "Karthik Iyer",
+    "customerEmail": "karthik.iyer8@example.com",
+    "amount": 154900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": "2026-09-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@okhdfc"
+  },
+  {
+    "id": "pay_0158",
+    "transactionId": "TXN2026092322345",
+    "orderId": "order_0047",
+    "orderNumber": "DCZ10047",
+    "invoiceId": "inv_0158",
+    "invoiceNumber": "DCZ-INV-2026-000158",
+    "customerId": "cust_034",
+    "customerName": "Kavya Khan",
+    "customerEmail": "kavya.khan34@example.com",
+    "amount": 119900,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": "2026-09-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0159",
+    "transactionId": "TXN2026092310142",
+    "orderId": "order_0121",
+    "orderNumber": "DCZ10121",
+    "invoiceId": "inv_0159",
+    "invoiceNumber": "DCZ-INV-2026-000159",
+    "customerId": "cust_060",
+    "customerName": "Ishita Iyer",
+    "customerEmail": "ishita.iyer60@example.com",
+    "amount": 377800,
+    "refundedAmount": 0,
+    "method": "card",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": "2026-09-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••• 7712"
+  },
+  {
+    "id": "pay_0160",
+    "transactionId": "TXN2026092320618",
+    "orderId": "order_0125",
+    "orderNumber": "DCZ10125",
+    "invoiceId": "inv_0160",
+    "invoiceNumber": "DCZ-INV-2026-000160",
+    "customerId": "cust_063",
+    "customerName": "Divya Singh",
+    "customerEmail": "divya.singh63@example.com",
+    "amount": 349900,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": "2026-09-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "State Bank of India"
+  },
+  {
+    "id": "pay_0161",
+    "transactionId": "TXN2026092374952",
+    "orderId": "order_0130",
+    "orderNumber": "DCZ10130",
+    "invoiceId": "inv_0161",
+    "invoiceNumber": "DCZ-INV-2026-000161",
+    "customerId": "cust_050",
+    "customerName": "Kavya Pillai",
+    "customerEmail": "kavya.pillai50@example.com",
+    "amount": 116900,
+    "refundedAmount": 0,
+    "method": "netbanking",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": "2026-09-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "HDFC Bank"
+  },
+  {
+    "id": "pay_0162",
+    "transactionId": "TXN2026092318285",
+    "orderId": "order_0137",
+    "orderNumber": "DCZ10137",
+    "invoiceId": "inv_0162",
+    "invoiceNumber": "DCZ-INV-2026-000162",
+    "customerId": "cust_061",
+    "customerName": "Gaurav Shetty",
+    "customerEmail": "gaurav.shetty61@example.com",
+    "amount": 909500,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": "2026-09-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  },
+  {
+    "id": "pay_0163",
+    "transactionId": "TXN2026092306356",
+    "orderId": "order_0141",
+    "orderNumber": "DCZ10141",
+    "invoiceId": "inv_0163",
+    "invoiceNumber": "DCZ-INV-2026-000163",
+    "customerId": "cust_050",
+    "customerName": "Kavya Pillai",
+    "customerEmail": "kavya.pillai50@example.com",
+    "amount": 194900,
+    "refundedAmount": 0,
+    "method": "cod",
+    "status": "pending",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": null,
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Awaiting collection on delivery."
+      }
+    ],
+    "instrumentHint": "Collect on delivery"
+  },
+  {
+    "id": "pay_0164",
+    "transactionId": "TXN2026092382278",
+    "orderId": "order_0158",
+    "orderNumber": "DCZ10158",
+    "invoiceId": "inv_0164",
+    "invoiceNumber": "DCZ-INV-2026-000164",
+    "customerId": "cust_010",
+    "customerName": "Ananya Patel",
+    "customerEmail": "ananya.patel10@example.com",
+    "amount": 594800,
+    "refundedAmount": 0,
+    "method": "upi",
+    "status": "paid",
+    "provider": "mock",
+    "createdAt": "2026-09-23T10:30:00.000Z",
+    "capturedAt": "2026-09-23T10:30:00.000Z",
+    "timeline": [
+      {
+        "status": "initiated",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Payment initiated at checkout."
+      },
+      {
+        "status": "processing",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Sent to the payment provider."
+      },
+      {
+        "status": "succeeded",
+        "at": "2026-09-23T10:30:00.000Z",
+        "note": "Authorised and captured."
+      }
+    ],
+    "instrumentHint": "•••••@ybl"
+  }
+]

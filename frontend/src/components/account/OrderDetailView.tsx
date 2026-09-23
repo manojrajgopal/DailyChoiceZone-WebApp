@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, FileText } from "lucide-react";
 
 import type { Order } from "@/types";
 
@@ -261,6 +261,21 @@ export function OrderDetailView() {
                 Paid by {order.paymentMethod.name.toLowerCase()}. This is a sample order — no
                 payment was taken.
               </p>
+
+              {/*
+                The invoice raised for this order.
+                Shown only when there is one: orders placed before billing
+                existed have none, and a link to nothing is worse than no link.
+              */}
+              {order.invoiceId ? (
+                <Link
+                  href={`/account/invoice?id=${order.invoiceId}`}
+                  className="mt-4 inline-flex items-center gap-2 border-b border-copper-500 pb-0.5 text-xs text-copper-700 transition-colors hover:border-ink hover:text-ink"
+                >
+                  <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                  View invoice{order.invoiceNumber ? ` ${order.invoiceNumber}` : ""}
+                </Link>
+              ) : null}
             </section>
           </div>
         </div>

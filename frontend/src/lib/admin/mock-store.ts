@@ -37,6 +37,17 @@ export const OVERLAY_KEYS = {
   stockLog: `${PREFIX}stock-log`,
   session: `${PREFIX}session`,
   notifications: `${PREFIX}notifications`,
+
+  // Billing. Kept under the same prefix so "reset demo data" clears billing
+  // too — a catalogue restored without its invoices would not reconcile.
+  invoices: `${PREFIX}invoices`,
+  payments: `${PREFIX}payments`,
+  refunds: `${PREFIX}refunds`,
+  creditNotes: `${PREFIX}credit-notes`,
+  billingConfig: `${PREFIX}billing-config`,
+  taxConfig: `${PREFIX}tax-config`,
+  /** The invoice and credit-note counters. See `invoiceService`. */
+  billingSequences: `${PREFIX}billing-sequences`,
 } as const;
 
 /**
@@ -46,7 +57,13 @@ export const OVERLAY_KEYS = {
  * create or delete — they are stored entire. Everything that walks the key
  * list has to know the difference.
  */
-const DOCUMENT_KEYS: string[] = [OVERLAY_KEYS.settings, OVERLAY_KEYS.homepage];
+const DOCUMENT_KEYS: string[] = [
+  OVERLAY_KEYS.settings,
+  OVERLAY_KEYS.homepage,
+  OVERLAY_KEYS.billingConfig,
+  OVERLAY_KEYS.taxConfig,
+  OVERLAY_KEYS.billingSequences,
+];
 
 export interface Overlay<T> {
   /** Records added since the base data was generated. */

@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/ui/AdminChrome";
 import { AdminSelect, AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { DomainStatus, humanStatus } from "@/components/admin/ui/StatusBadge";
+import { OrderBillingPanel } from "@/components/admin/views/OrderBillingPanel";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice } from "@/lib/utils/format";
@@ -256,6 +257,9 @@ export function AdminOrderDetailView() {
               </div>
             </dl>
           </AdminCard>
+
+          {/* ------------------------------------------------------- billing */}
+          <OrderBillingPanel orderId={order.id} />
 
           {/* ------------------------------------------------------ timeline */}
           <AdminCard title="Timeline" description="Append-only history of this order.">

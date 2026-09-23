@@ -3,17 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import {
-  Bell,
-  Check,
-  LogOut,
-  Menu,
-  Package,
-  Search,
-  ShoppingCart,
-  User,
-  Users,
-} from "lucide-react";
+import { Bell, Check, CreditCard, FileText, LogOut, Menu, Package, Search, ShoppingCart, Undo2, User, Users } from "lucide-react";
 
 import type { AdminNotification } from "@/types/admin";
 
@@ -25,28 +15,28 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   search,
+  EMPTY_SEARCH_RESULTS,
   type AdminSearchResults,
 } from "@/services/admin/adminSearchService";
 
-const EMPTY_RESULTS: AdminSearchResults = {
-  products: [],
-  orders: [],
-  customers: [],
-  total: 0,
-};
+const EMPTY_RESULTS: AdminSearchResults = EMPTY_SEARCH_RESULTS;
 
 const RESULT_ICONS = {
   product: Package,
   order: ShoppingCart,
   customer: Users,
+  invoice: FileText,
+  payment: CreditCard,
+  refund: Undo2,
 } as const;
 
 /**
  * The admin top bar: menu toggle, global search, notifications and profile.
  *
- * Search spans products, orders and customers, because an administrator
- * arrives holding an identifier — an order number from an email, a SKU from a
- * supplier — and should not have to work out which list owns it first.
+ * Search spans products, orders, customers and billing, because an
+ * administrator arrives holding an identifier — an order number from an email,
+ * a SKU from a supplier, a transaction reference from a bank statement — and
+ * should not have to work out which list owns it first.
  */
 export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const router = useRouter();
@@ -191,6 +181,9 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                     ["Products", results.products],
                     ["Orders", results.orders],
                     ["Customers", results.customers],
+                    ["Invoices", results.invoices],
+                    ["Payments", results.payments],
+                    ["Refunds", results.refunds],
                   ] as const
                 ).map(([heading, group]) =>
                   group.length === 0 ? null : (
