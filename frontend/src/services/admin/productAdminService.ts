@@ -1,7 +1,6 @@
 import type { AdminProduct, AdminResult, ProductDraft, ProductStatus } from "@/types/admin";
 
-import { nextProductId, uniqueSlug } from "@/lib/admin/catalogue";
-import { discountPercent, slugify } from "@/lib/utils/format";
+import { discountPercent } from "@/lib/utils/format";
 
 import { adminDataSource } from "./admin-data-source.instance";
 
@@ -22,12 +21,6 @@ export function getProduct(id: string): Promise<AdminProduct | null> {
 }
 
 /* ------------------------------------------------------------------ helpers */
-
-/** `DCZ-WO0141` — department prefix plus a zero-padded sequence. */
-function buildSku(category: string, id: string): string {
-  const digits = id.replace(/\D/g, "").padStart(4, "0");
-  return `DCZ-${category.slice(0, 2).toUpperCase()}${digits}`;
-}
 
 /**
  * Validation.
@@ -89,16 +82,14 @@ export async function createProduct(
     return { ok: false, reason: Object.values(errors)[0] ?? "Check the form for errors." };
   }
 
-  const id = nextProductId();
-  const product = finalise(
-    {
-      ...draft,
-      id,
-      slug: uniqueSlug(draft.slug.trim() || slugify(draft.name)),
-      sku: draft.sku.trim() || buildSku(draft.category, id),
-    },
-    by,
-  );
+  /**
+   * The id, the slug and the SKU are the server's to issue.
+   *
+   * They have to be unique across the catalogue, and only one writer can
+   * guarantee that. A browser picking the next id is a browser that picks the
+   * same one as another browser.
+   */
+  const product = finalise({ ...draft, id: "", slug: draft.slug.trim(), sku: draft.sku.trim() }, by);
 
   return { ok: true, data: await adminDataSource.createProduct(product) };
 }
@@ -117,13 +108,9 @@ export async function updateProduct(
   const existing = await adminDataSource.getProduct(draft.id);
   if (!existing) return { ok: false, reason: "That product no longer exists." };
 
-  const product = finalise(
-    {
-      ...draft,
-      slug: uniqueSlug(draft.slug.trim() || slugify(draft.name), draft.id),
-    },
-    by,
-  );
+  // An empty slug means "derive it from the name" — the server does that, and
+  // makes it unique, because only the server can see every other slug.
+  const product = finalise({ ...draft, slug: draft.slug.trim() }, by);
 
   // Preserve the original creation date through an edit.
   return {
@@ -155,15 +142,15 @@ export async function duplicateProduct(
   const source = await adminDataSource.getProduct(id);
   if (!source) return { ok: false, reason: "That product no longer exists." };
 
-  const newId = nextProductId();
   const now = new Date().toISOString();
 
   const copy: AdminProduct = {
     ...source,
-    id: newId,
+    // Blank, so the server issues them — see `createProduct`.
+    id: "",
     name: `${source.name} (copy)`,
-    slug: uniqueSlug(`${source.slug}-copy`),
-    sku: buildSku(source.category, newId),
+    slug: "",
+    sku: "",
     status: "draft",
     // Merchandising flags are earned, not inherited.
     isNew: false,

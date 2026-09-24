@@ -1,29 +1,27 @@
 import type {
   DeliveryMethod,
   Order,
-  OrderLine,
   PaymentMethod,
   PlaceOrderInput,
 } from "@/types";
 
-import { STORAGE_KEYS, readJson, writeJson } from "@/lib/storage/local-storage";
-import { deliveryEstimate } from "@/lib/utils/format";
+import { apiGet, apiGetOrNull, apiPost } from "@/services/api/client";
 
 /**
  * Orders.
  *
- * There is no payment gateway and no backend here: `placeOrder` builds a
- * realistic order record and keeps it in local storage so the account area has
- * something true to show. Everything a real implementation would need is
- * already in the signature, so the swap is confined to this file:
+ * Placing one is a single call. The server creates the order, takes the stock,
+ * records the payment and issues the invoice **in one transaction** — which is
+ * exactly what a browser cannot do, because a failure halfway through leaves
+ * an order nobody was charged for or stock consumed by an order that does not
+ * exist.
  *
- *   placeOrder  →  POST /orders
- *   getOrders   →  GET  /orders
- *   getOrder    →  GET  /orders/:orderNumber
- *
- * Nothing here should ever be mistaken for a real transaction — no card data
- * is collected, stored or transmitted anywhere.
+ * Nothing about money is sent. Prices, discounts, tax and the total are all
+ * recalculated server-side from the cart and the catalogue: a client that
+ * could name its own total would eventually name a smaller one.
  */
+
+const AUTH = { auth: "customer" } as const;
 
 export const DELIVERY_METHODS: DeliveryMethod[] = [
   {
@@ -49,79 +47,183 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
   { id: "cod", name: "Cash on delivery", description: "Pay the courier when it arrives" },
 ];
 
-/** Six hex characters is short enough to read aloud on a support call. */
-function generateOrderNumber(): string {
-  const random = Math.floor(Math.random() * 0xffffff)
-    .toString(16)
-    .toUpperCase()
-    .padStart(6, "0");
-  return `DCZ-${random}`;
-}
-
-function readOrders(): Order[] {
-  return readJson<Order[]>(STORAGE_KEYS.orders, []);
-}
-
-export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
-  const lines: OrderLine[] = input.lines.map((line) => ({
-    productId: line.product.id,
-    name: line.product.name,
-    slug: line.product.slug,
-    image: line.product.images[0] ?? "",
-    brand: line.product.brand,
-    size: line.size,
-    color: line.color,
-    quantity: line.quantity,
-    unitPrice: line.product.price,
-    lineTotal: line.lineTotal,
-  }));
-
-  const businessDays = input.deliveryMethod.id === "express" ? 2 : 5;
-
-  const order: Order = {
-    id: `ord_${Date.now()}`,
-    orderNumber: generateOrderNumber(),
-    placedAt: new Date().toISOString(),
-    status: "confirmed",
-    lines,
-    address: input.address,
-    deliveryMethod: input.deliveryMethod,
-    paymentMethod: input.paymentMethod,
-    totals: input.totals,
-    expectedDelivery: deliveryEstimate(businessDays),
+/** What the API returns for an order. */
+interface ApiOrder {
+  id: string;
+  orderNumber: string;
+  placedAt: string;
+  status: Order["status"];
+  paymentStatus: string;
+  paymentMethod: string;
+  deliveryMethod: string;
+  expectedDelivery: string;
+  items: {
+    productId: string;
+    name: string;
+    slug: string;
+    image: string;
+    brand: string;
+    size: string | null;
+    color: string | null;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }[];
+  totals: {
+    itemCount: number;
+    subtotal: number;
+    catalogueSavings: number;
+    couponDiscount: number;
+    deliveryFee: number;
+    taxAmount: number;
+    total: number;
   };
+  shippingAddress: {
+    fullName: string;
+    phone: string;
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+  };
+  couponCode: string | null;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+}
 
-  // Newest first, so the account page needs no sorting.
-  writeJson(STORAGE_KEYS.orders, [order, ...readOrders()]);
-  return order;
+export interface PlacedOrder {
+  order: Order;
+  invoiceId: string;
+  invoiceNumber: string;
+  paymentId: string;
+  paymentStatus: string;
+}
+
+function toOrder(payload: ApiOrder): Order {
+  const delivery = getDeliveryMethod(payload.deliveryMethod);
+  const payment = getPaymentMethod(payload.paymentMethod);
+
+  return {
+    id: payload.id,
+    orderNumber: payload.orderNumber,
+    placedAt: payload.placedAt,
+    status: payload.status,
+    lines: payload.items.map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      slug: item.slug,
+      image: item.image,
+      brand: item.brand,
+      size: item.size,
+      color: item.color,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal,
+    })),
+    address: {
+      id: "",
+      fullName: payload.shippingAddress.fullName,
+      phone: payload.shippingAddress.phone,
+      line1: payload.shippingAddress.line1,
+      line2: payload.shippingAddress.line2,
+      city: payload.shippingAddress.city,
+      state: payload.shippingAddress.state,
+      pincode: payload.shippingAddress.pincode,
+      type: "home",
+      isDefault: false,
+    },
+    deliveryMethod: { ...delivery, fee: payload.totals.deliveryFee },
+    paymentMethod: payment,
+    totals: {
+      itemCount: payload.totals.itemCount,
+      subtotal: payload.totals.subtotal,
+      catalogueSavings: payload.totals.catalogueSavings,
+      couponDiscount: payload.totals.couponDiscount,
+      deliveryFee: payload.totals.deliveryFee,
+      total: payload.totals.total,
+      freeDeliveryShortfall: 0,
+      appliedCoupon: null,
+    },
+    expectedDelivery: payload.expectedDelivery,
+    invoiceId: payload.invoiceId,
+    invoiceNumber: payload.invoiceNumber,
+  };
 }
 
 /**
- * Record which invoice and payment belong to an order.
+ * Place the order.
  *
- * Ids only. Copying the invoice onto the order would give the same document
- * two homes, and they would disagree the first time one was edited.
- *
- * Future: `POST /orders` returns an order that already carries these, and this
- * function disappears — it exists because the client has to create the three
- * records in sequence and cannot do it in one transaction.
+ * `PlaceOrderInput` still carries the lines and totals the checkout was
+ * showing, and they are deliberately **not** sent: the server prices the cart
+ * it holds. They stay in the signature because the checkout builds them for
+ * display, and removing them would mean changing every caller for no gain.
  */
-export async function attachBillingToOrder(
-  orderId: string,
-  billing: { invoiceId: string; invoiceNumber: string; paymentId: string },
-): Promise<void> {
-  const orders = readOrders().map((order) =>
-    order.id === orderId ? { ...order, ...billing } : order,
+export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
+  const payload = await apiPost<{
+    order: ApiOrder;
+    invoiceId: string;
+    invoiceNumber: string;
+    paymentId: string;
+    paymentStatus: string;
+  }>(
+    "/orders",
+    {
+      shippingAddress: {
+        fullName: input.address.fullName,
+        phone: input.address.phone,
+        line1: input.address.line1,
+        line2: input.address.line2,
+        city: input.address.city,
+        state: input.address.state,
+        pincode: input.address.pincode,
+        country: "India",
+        email: input.email,
+      },
+      billingAddress: input.billingAddress ?? null,
+      deliveryMethod: input.deliveryMethod.id,
+      paymentMethod: input.paymentMethod.id,
+      couponCode: input.totals.appliedCoupon?.code ?? null,
+      email: input.email,
+      saveAddress: true,
+    },
+    AUTH,
   );
-  writeJson(STORAGE_KEYS.orders, orders);
+
+  return toOrder(payload.order);
 }
 
 export async function getOrders(): Promise<Order[]> {
-  return readOrders();
+  try {
+    const orders = await apiGet<ApiOrder[]>("/orders", AUTH);
+    return orders.map(toOrder);
+  } catch {
+    return [];
+  }
 }
 
-export async function getOrder(orderNumber: string): Promise<Order | null> {
-  return readOrders().find((order) => order.orderNumber === orderNumber) ?? null;
+export async function getOrder(identifier: string): Promise<Order | null> {
+  const payload = await apiGetOrNull<ApiOrder>(
+    `/orders/${encodeURIComponent(identifier)}`,
+    AUTH,
+  );
+  return payload ? toOrder(payload) : null;
+}
+
+/**
+ * Cancel an order.
+ *
+ * Refused by the server once the parcel has been dispatched — at that point it
+ * is a return, which is a different process.
+ */
+export async function cancelOrder(identifier: string, reason = ""): Promise<Order> {
+  const payload = await apiPost<ApiOrder>(
+    `/orders/${encodeURIComponent(identifier)}/cancel`,
+    { reason },
+    AUTH,
+  );
+  return toOrder(payload);
 }
 
 export function getDeliveryMethod(id: string): DeliveryMethod {

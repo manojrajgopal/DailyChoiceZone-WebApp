@@ -1,143 +1,133 @@
 # Daily Choice Zone — storefront, admin portal & billing
 
-The frontend for Daily Choice Zone. **Quality products, happier you.**
+**Quality products, happier you.**
 
-One codebase, three surfaces over the same data: the customer storefront at `/`,
-an administration portal at `/admin`, and a billing system that runs through
-both — cart to checkout to invoice to refund.
+A working e-commerce application in two parts: a Next.js frontend with three
+surfaces over the same data — the customer storefront at `/`, an administration
+portal at `/admin`, and a billing system that runs through both — and a FastAPI
+backend on MySQL that owns every one of them.
 
 | | |
 |---|---|
-| Framework | Next.js 16 (App Router) · React 19 · TypeScript (strict) |
-| Styling | Tailwind CSS v4, CSS-first tokens |
-| State | Zustand (+ `persist` for local storage) |
-| Data | Local JSON behind a service layer — **no backend yet** |
-| Output | Fully static (`output: "export"`) — deploys to any static host |
+| Frontend | Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind v4 · Zustand |
+| Backend | FastAPI · SQLAlchemy 2 · MySQL · Alembic · Pydantic v2 · JWT |
+| Data | MySQL, through a REST API — nothing business-related ships in the bundle |
 
-There is no backend. Every product, category, collection, coupon and page of
-copy comes from JSON in `src/data`, read through a service layer that is shaped
-like the REST API that will eventually replace it. Swapping to that API is a
-configuration change, not a rewrite — see
-[Connecting a backend](#connecting-a-backend).
+The split is the point. The browser renders; the server decides. Prices,
+discounts, coupons, tax, delivery, stock, totals, invoice numbers and who is
+allowed to do what are all worked out in one place, by the same code that
+charges the card and writes the invoice.
 
-The admin portal writes through the same layer, keeping its changes in local
-storage. **It is a demonstration, not a secured application** — see
-[Admin portal](#admin-portal) before putting it anywhere public.
+- **Backend documentation** — [`backend/README.md`](backend/README.md)
 
 ---
 
 ## Getting started
 
+Two processes. Start the API first; the frontend renders on the server and asks
+it for everything.
+
+You need **Python 3.11+**, **Node 20+**, and a **MySQL 8+** server running.
+
 ```bash
+# 1 — the API
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+copy .env.example .env          # macOS/Linux: cp .env.example .env
+python -m uvicorn app.main:app --reload
+```
+
+```bash
+# 2 — the site
 cd frontend
 npm install
 npm run dev
 ```
 
-Then open <http://localhost:3000>.
+The API creates its database, migrates it and loads the demo data on first
+start — 139 products, 64 customers, 168 orders with their invoices, payments,
+refunds and credit notes. Nothing to import by hand.
 
-| Script | What it does |
+| | |
+|---|---|
+| Storefront | <http://localhost:3000> |
+| Admin portal | <http://localhost:3000/admin> |
+| API | <http://localhost:8000/api> |
+| API documentation | <http://localhost:8000/docs> |
+
+### Demo accounts
+
+| | Email | Password |
+|---|---|---|
+| Administrator | `admin@dailychoicezone.com` | `Admin@123` |
+| Customer | any seeded customer, e.g. `aditya.banerjee1@example.com` | `Customer@123` |
+
+Hashed with bcrypt like any other account. Change them before this is in front
+of anybody.
+
+### Scripts
+
+| Frontend | |
 |---|---|
 | `npm run dev` | Development server |
-| `npm run build` | Static export to `out/` (prerenders every page, storefront and admin) |
-| `npm run start` | Serve on Node — only if you drop `output: "export"` |
+| `npm run build` | Production build |
+| `npm run start` | Serve the build on Node |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
-| `npm run data:generate` | Regenerate the dummy catalogue (see [Data](#data)) |
-| `npm run data:admin` | Regenerate the admin dummy data (orders, customers, analytics) |
-| `npm run data:billing` | Regenerate invoices, payments, refunds and credit notes |
-| `npm run data:check` | Validate `src/data` — run this after hand-editing the JSON |
-| `npm run brand:assets` | Regenerate sized logo assets from `assets/logo-original.png` |
+| `npm run brand:assets` | Regenerate sized logo assets |
 
-### Environment variables
-
-All optional. Nothing is required to run the store.
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `NEXT_PUBLIC_DATA_SOURCE` | `mock` | `http` switches the whole store onto the REST API |
-| `NEXT_PUBLIC_API_URL` | — | Base URL for that API |
-| `NEXT_PUBLIC_MOCK_LATENCY` | `0` | Artificial delay in ms, to make loading skeletons visible while working on them |
-
----
-
-## Deploying
-
-The build is a static export, so it needs no server at request time.
-
-### Render (Static Site)
-
-| Field | Value |
+| Backend | |
 |---|---|
-| Root Directory | `frontend` |
-| Build Command | `npm ci && npm run build` |
-| Publish Directory | `out` |
+| `uvicorn app.main:app --reload` | Development server |
+| `pytest` | The whole suite (258 tests) |
+| `python -m app.seed.reset --yes` | Rebuild the development database from the seed |
+| `alembic revision --autogenerate -m "…"` | New migration |
 
-Environment variables are optional — `mock` is already the default data source.
-`NEXT_PUBLIC_*` values are inlined at **build** time, so changing one needs a
-redeploy rather than a restart.
+### Environment
 
-### What `output: "export"` costs, and how the code pays for it
+The frontend needs one variable, and has a sensible default:
 
-Static hosting means nothing runs per request. Four consequences are handled
-explicitly, and are worth knowing before adding a feature that assumes a
-server:
+| Variable | Default | |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api` | Where the API is |
 
-- **Nothing can read a request.** `/search` and `/account/order` take their
-  input from the query string *in the browser* (`useSearchParams`), not from
-  server-side `searchParams`. An order number is `?number=` rather than a path
-  segment, because a dynamic segment needs every possible value known at build
-  time.
-- **No image optimizer.** `images.unoptimized` is required, so `next/image`
-  serves the source file untouched. That is why `npm run brand:assets` exists:
-  the master logo is 1.3MB and the header renders it at 44px. Product
-  photography is already sized through Unsplash URL parameters.
-- **Nothing is per-request, including the clock.** Anything date-dependent runs
-  in the browser — see `CopyrightYear` and the arrival estimate in
-  `ProductPurchasePanel`. A date computed during render would freeze at build
-  time and mismatch on hydration.
-- **Prefetch filenames need reconciling.** Next 16 writes route-segment
-  prefetch payloads as nested directories but requests them with dot-joined
-  names, which 404s on a static host. `scripts/flatten-prefetch.mjs` renames
-  them and runs automatically as `postbuild`. Delete it if a future Next
-  release fixes the mismatch.
-
-`out/` is roughly 96MB, mostly the 139 prerendered product pages and their
-prefetch payloads. That is deploy weight only; hosts serve these compressed.
-
-### Moving to a Node deployment
-
-To get image optimization and server rendering back, remove `output: "export"`,
-`trailingSlash` and `images.unoptimized` from `next.config.ts`, then deploy as
-a Render **Web Service** with build `npm ci && npm run build` and start
-`npm start`. The query-param routes keep working unchanged.
+The backend's are in [`backend/.env.example`](backend/.env.example) and
+documented in its README. **None of them reach the browser** — no database
+password, no JWT secret, no payment key.
 
 ---
 
 ## Architecture
 
-Data flows one way, and each layer only knows about the one below it:
+Data flows one way, and each layer only knows about the one below it.
 
 ```
-src/data/*.json          ← today's source of truth
-        ↓
-services/adapters/       ← the ONLY place that knows where data comes from
-        ↓
-services/*Service.ts     ← named business intentions (getNewArrivals, applyCoupon)
-        ↓
-hooks/                   ← React state, loading and error handling
-        ↓
-components/              ← presentation
-        ↓
-app/                     ← routes and metadata
+MySQL
+  ↓
+FastAPI                    services decide; routes only speak HTTP
+  ↓   REST, one envelope
+services/api/client.ts     the only place that knows the base URL and the token
+  ↓
+services/adapters/         the only place that knows where data comes from
+  ↓
+services/*Service.ts       named business intentions (getNewArrivals, applyCoupon)
+  ↓
+hooks/                     React state, loading and error handling
+  ↓
+components/                presentation
+  ↓
+app/                       routes and metadata
 ```
 
-The rule that keeps this honest: **no component imports JSON, and no component
-imports an adapter.** Components call services (or hooks that call services).
-That is what makes the backend swap a one-file change.
+The rule that keeps it honest: **no component imports business data, and no
+component imports an adapter.** Components call services, or hooks that call
+services. That is why moving from bundled JSON to a real database changed the
+adapters and nothing above them.
 
 ```
-src/
+frontend/src/
 ├── app/                  routes, metadata, sitemap, robots
 ├── components/
 │   ├── ui/               design system (Button, Price, Rating, Dialog, …)
@@ -150,57 +140,105 @@ src/
 │   ├── cart/  wishlist/  checkout/  account/
 │   ├── admin/            the portal: layout, ui, charts, views
 │   └── billing/          invoice document, breakdown rows, status badges
-├── data/                 products, categories, collections, navigation, config
-│   ├── admin/            orders, customers, analytics, product metadata, settings
-│   └── billing/          invoices, payments, refunds, credit notes, tax config
-├── services/             the data-access layer
-│   ├── data-source.ts            the contract
-│   ├── data-source.instance.ts   which adapter is active
-│   ├── adapters/                 mock-adapter.ts, http-adapter.ts
-│   ├── admin/            the portal's own services + AdminDataSource contract
-│   └── billing/          billing, invoice, payment, refund, credit note, tax
-│       ├── billing-data-source.ts   the contract
-│       ├── adapters/                mock-billing-adapter.ts
-│       └── providers/               PaymentProvider + the mock implementation
+├── config/               menu structure — frontend configuration, not business data
+├── services/
+│   ├── api/client.ts             base URL, token, envelope, errors — one place each
+│   ├── data-source.ts            the storefront contract
+│   ├── adapters/http-adapter.ts  it, over the API
+│   ├── admin/                    the portal's contract and its services
+│   └── billing/                  invoices, payments, refunds, credit notes, config
 ├── hooks/                useCart, useWishlist, useProducts, useProductQuery, …
 ├── store/                cart, wishlist, session, checkout, recently viewed, toasts
-├── lib/                  filters, recommendations, formatting, storage
-│   ├── money.ts          integer minor-unit arithmetic — every amount goes through it
-│   ├── admin/            the shared catalogue join and the mock write store
-│   └── billing/          CSV export
+├── lib/                  filters, recommendations, formatting, storage, money
 └── types/                the domain model (+ admin.ts, billing.ts)
 ```
 
-### Things worth knowing before you change something
+```
+backend/app/
+├── main.py               routers, CORS, error handlers
+├── core/                 config, database, security, errors, startup
+├── models/               32 tables
+├── schemas/              Pydantic in and out — camelCase on the wire
+├── repositories/         the SQL complex enough to deserve a name
+├── services/             the business rules
+├── api/routes/           HTTP only
+├── dependencies/         who is calling, and what they may do
+└── seed/                 the demo data and its id translation
+```
+
+### The seam between them
+
+The API emits **camelCase**, because a Pydantic alias generator is cheaper than
+a mapping layer nobody maintains. `ProductOut` serialises to exactly the shape
+`types/product.ts` already described, so the adapters are mostly one line per
+method.
+
+Every response uses the same envelope, including failures:
+
+```jsonc
+{ "success": true,  "data": { }, "message": "Signed in." }
+{ "success": true,  "data": [ ], "pagination": { "page": 1, "page_size": 24, "total": 139, "total_pages": 6 } }
+{ "success": false, "message": "That coupon has expired.", "error_code": "COUPON_INVALID" }
+```
+
+`client.ts` unwraps it, turns a failure into an `ApiError` carrying a stable
+`error_code`, and attaches the right bearer token. Components see data or an
+error; nothing in between.
+
+---
+
+## Things worth knowing before you change something
+
+**Filtering, sorting and paging happen in SQL.** `GET /api/products` takes the
+category, the search term, the price range, the flags, the sort and the page.
+The browser does not download a catalogue to filter it — that stops working at
+the first catalogue that does not fit in memory, and stops being fast well
+before that. A page size is capped server-side, so no single request can ask it
+to serialise everything.
 
 **Filters live in the URL, not in component state.** `useProductQuery` reads and
 writes the query string, so a filtered view is shareable, bookmarkable and
-correctly undone by the browser back button. `/shop`, every category page and
-search are all the same `ProductListing` component with a different `basePath`.
+correctly undone by the back button. `/shop`, every category page and search are
+the same `ProductListing` component with a different `basePath`.
 
-**The homepage is data.** `src/data/homepage.json` lists its sections in order.
-Reorder a rail, retitle it, change how many products it shows or drop it
-entirely by editing that file — `app/page.tsx` never changes. Adding a new *kind*
-of section means adding a case to `components/home/HomeSectionRenderer.tsx`.
+**The homepage is data.** Its sections, their order and their titles are rows an
+administrator edits. `app/page.tsx` renders whatever the API describes. Adding a
+new *kind* of section means adding a case to `HomeSectionRenderer.tsx`.
 
-**Navigation is data.** `src/data/navigation.json` drives the desktop mega menu
-and the mobile drawer from the same structure. The portal's sidebar works the
-same way, from `src/data/admin/navigation.json`.
+**Navigation is the one thing still in the repository**, in `src/config/`. Every
+entry names a route that has to exist in `src/app`, and the header renders on
+the first paint before any request has been made.
+[`src/config/README.md`](frontend/src/config/README.md) says why, and what would
+change if menus ever became something a non-developer edits.
 
 **Route groups keep the two applications apart.** `app/(storefront)/` carries
 the customer header, promo strip and footer; `app/admin/(portal)/` carries the
 portal's sidebar and top bar. Neither layout can leak into the other, and the
-URLs are unaffected. The root layout holds only the document itself.
+URLs are unaffected.
 
-**The cart and wishlist store ids, never products.** Prices and stock are
-re-read from the catalogue on every render, so a bag that has sat in local
-storage for a month still shows today's prices. All money arithmetic lives in
-`services/cartService.ts` and is pure and synchronous, so totals update the
-instant a quantity changes.
+**The cart is the server's.** Signed in, the lines *and* every figure on them
+come from `GET /api/cart`. Signed out, the bag is staged in local storage as ids
+and quantities only, priced as a subtotal and nothing else — delivery, coupons
+and tax are the server's to decide, and quoting a guest a total the checkout
+then disagrees with is worse than quoting none. `mergeGuestCart` posts the bag
+up on sign-in. The wishlist works the same way.
+
+**Local storage holds a token and a staging bag. Nothing else.** No prices, no
+orders, no customer records — and never a card number, CVV, UPI PIN, bank
+credential or gateway secret. `lib/storage/local-storage.ts` wraps every access,
+because local storage throws in private browsing and when a user blocks site
+data; a storefront must not white-screen because someone tightened their browser
+settings.
+
+**Anything driven by local storage waits for hydration.** The cart badge,
+wishlist hearts and recently viewed render their empty state on the server and
+fill in on the next paint, via `useHydrated`. Checkout's step guards use
+`useCheckoutHydrated`, which waits for zustand to actually rehydrate — otherwise
+refreshing the payment step would bounce you back to step one.
 
 **Scrollbars are styled globally, in two dialects.** Chromium supports both the
 standard `scrollbar-width`/`scrollbar-color` *and* the `::-webkit-scrollbar`
-pseudo-elements — and when both are set, the standard properties win, silently
+pseudo-elements — and when both are set the standard properties win, silently
 discarding the rounding and insets. So `globals.css` splits them with
 `@supports … (not selector(::-webkit-scrollbar))`: Firefox gets the standard
 properties, everything else gets the richer version. Collapsing that into one
@@ -213,138 +251,36 @@ instead: a translucent white thumb on the dark ground, brighter on hover.
 `.no-scrollbar` still wins on the product rails, which are swiped rather than
 scrolled and carry their own arrows.
 
-**Local storage is always guarded.** `lib/storage/local-storage.ts` wraps every
-access, because local storage throws in private browsing and when a user blocks
-site data. A storefront must not white-screen because someone tightened their
-browser settings.
-
-**Anything driven by local storage waits for hydration.** The cart badge,
-wishlist hearts and recently viewed all render their empty state on the server
-and fill in on the next paint, via `useHydrated`. Checkout's step guards use
-`useCheckoutHydrated` instead, which waits for zustand to actually rehydrate —
-otherwise refreshing the payment step would bounce you back to step one.
-
 ---
 
-## Data
+## Rendering
 
-`src/data/` is the source of truth. The catalogue and reviews are produced by
-`scripts/generate-products.mjs`, which exists so ids and slugs are unique,
-derived fields stay consistent, and collections can never reference a product
-that does not exist. Output is deterministic — every value is seeded from a hash
-of the product slug, so re-running it produces no diff churn.
+Every page is rendered per request on Node.
 
-```bash
-npm run data:generate
-```
+It used to be a static export — plain HTML written to `out/`, servable by any
+host with no process behind it. That worked while every figure was baked into
+the bundle at build time. It stopped working the moment the data moved to
+MySQL: a static export can only render what was true when it was built, so an
+administrator changing a price would have needed a redeploy before anyone saw
+it, and pages that depend on who is asking would have had nothing to render on
+the server at all.
 
-| File | Notes |
-|---|---|
-| `products.json` | 139 products across 11 categories. **Generated** |
-| `reviews.json` | ~430 reviews. **Generated** |
-| `collections.json` | Curated membership lists. **Generated**, then hand-edit |
-| `categories.json` | Departments and their subcategories |
-| `navigation.json` | Header mega menu and mobile drawer |
-| `homepage.json` | Homepage composition |
-| `site-config.json` | Brand, support details, delivery thresholds, footer |
-| `coupons.json` | Discount codes |
+So `/product/[slug]`, `/category/[slug]` and `/collection/[slug]` are rendered
+on demand rather than enumerated at build time. A product published this morning
+works this morning, and `notFound()` still returns a genuine 404 for a slug that
+does not exist — which is what stops unknown URLs becoming indexable soft-404s.
+The sitemap is generated per request for the same reason.
 
-The portal's data lives in `src/data/admin/`, produced by
-`scripts/generate-admin-data.mjs` (`npm run data:admin`). It is generated *after*
-the catalogue and references it, so every order line points at a product that
-exists:
-
-| File | Notes |
-|---|---|
-| `product-meta.json` | Management fields, joined to `products.json` by id |
-| `orders.json` | 168 orders with line items and an append-only timeline |
-| `customers.json` | 64 customers, their totals derived from those orders |
-| `analytics.json` | Pre-aggregated ranges for the dashboard and reports |
-| `reviews.json` | Moderation queue |
-| `banners.json` | The rotating promotional strip — read by the storefront too |
-| `homepage.json` | Which sections are live, and in what order |
-| `settings.json` | Store settings; overrides `site-config.json` at read time |
-| `navigation.json` | The portal sidebar |
-| `admin-users.json`, `coupons.json`, `dashboard.json`, `notifications.json` | |
-
-**To add one real product, edit `products.json` directly** — do not re-run the
-generator, which would overwrite it. Then run `npm run data:check`, which
-verifies slugs are unique, discount badges match the prices, categories and
-subcategories exist, and no collection or navigation link points at something
-that is not there. A new entry appears automatically in
-search, its category, the relevant homepage rails (based on its flags), the
-sitemap and the recommendation engine. No component changes.
-
-### Dummy images
-
-Product photography is currently Unsplash URLs held in `products.json`. To move
-to a real CDN: change the URLs and add the host to `remotePatterns` in
-`next.config.ts`. Nothing else references them, and `ProductImage` falls back to
-an on-brand placeholder if a URL ever fails to load.
-
----
-
-## Connecting a backend
-
-`services/data-source.ts` defines the contract. Every method is deliberately
-shaped like the endpoint that will back it:
-
-| Method | Endpoint |
-|---|---|
-| `queryProducts` | `GET /products?category=&sort=&page=` |
-| `getProductBySlug` | `GET /products/:slug` |
-| `getProductsByIds` | `GET /products?ids=a,b,c` |
-| `getRelatedProducts` | `GET /products/:id/related` |
-| `getFacets` | `GET /products/facets` |
-| `listCategories` | `GET /categories` |
-| `listCollections` | `GET /collections` |
-| `listReviews` | `GET /products/:id/reviews` |
-
-Note that filtering, sorting and pagination are the *data source's* job, not the
-UI's. Today `mock-adapter` runs them locally over JSON; tomorrow the server runs
-them in SQL. Either way the services ask the same question.
-
-`adapters/http-adapter.ts` is already written against that contract. To switch:
-
-```bash
-NEXT_PUBLIC_API_URL=https://api.dailychoicezone.com
-NEXT_PUBLIC_DATA_SOURCE=http
-```
-
-No component, hook or service changes. **One thing to do first:** validate
-responses in `http-adapter.ts` (zod or similar) instead of casting. A network
-payload is untrusted input in a way local JSON we generate ourselves is not.
-
-### Not yet abstracted behind the data source
-
-These are local-only and each is confined to a single file, with the endpoints
-it will need noted in its header comment:
-
-| Concern | File | Becomes |
-|---|---|---|
-| Orders | `services/orderService.ts` | `POST /orders`, `GET /orders` |
-| Auth | `services/authService.ts` | `POST /auth/login`, `/register`, `/logout` |
-| Addresses | `services/accountService.ts` | `GET/POST/PUT/DELETE /addresses` |
-| Cart & wishlist | `store/cartStore.ts`, `store/wishlistStore.ts` | server-backed cart |
-
-### The admin API
-
-`services/admin/admin-data-source.ts` is the portal's equivalent contract, with
-the endpoint each method becomes named in its header — `GET /admin/products`,
-`PUT /admin/products/:id`, `PATCH /admin/orders/:id/status`,
-`POST /admin/inventory/:id/adjust`, and so on. `mock-admin-adapter.ts`
-implements it over the overlay store; an HTTP adapter implements it over the
-real thing. The portal's views and services do not change.
-
-Authentication is the exception and must not be adapted — it has to be replaced.
-See [This is not security](#this-is-not-security).
+**Deployment:** two services. A Node host running `next build && next start` for
+the frontend, and a Python host running Uvicorn for the API, with
+`NEXT_PUBLIC_API_URL` pointing at it and `CORS_ORIGINS` pointing back.
 
 ---
 
 ## Admin portal
 
 `/admin` — a portal for running the store: catalogue, inventory, orders,
-customers, coupons, reviews, merchandising and reports.
+customers, coupons, reviews, merchandising, billing and reports.
 
 ```
 /admin/login          sign in
@@ -354,373 +290,222 @@ customers, coupons, reviews, merchandising and reports.
 /admin/orders         list · detail · status      /admin/customers
 /admin/coupons        /admin/reviews              /admin/homepage
 /admin/banners        /admin/reports              /admin/settings
-/admin/admin-users    /admin/settings/profile
+/admin/billing/*      invoices · payments · refunds · credit notes
 ```
 
-### This is not security
+### Authentication and authorisation
 
-The demo credentials are **`admin@dailychoicezone.com` / `Admin@123`**, and they
-are in the JavaScript bundle. Anyone who opens the portal can read them.
+The password is verified on the server against a bcrypt hash. The token that
+comes back carries an `actor: "admin"` claim, and every admin endpoint checks
+it — a customer's token is a perfectly valid token and will not do.
 
-That is not a leak to be patched — it is what frontend-only authentication *is*.
-The check runs in the browser, so it can be stepped over in a console, and every
-record the portal can reach is already downloaded before the login form renders.
-The role system has the same shape: `can()` decides which buttons appear, which
-is a tidier interface, not a permission boundary. The portal says so on the
-admin users page rather than implying otherwise.
+**Authorisation is enforced by the API**, per request, by `require_permission`.
+The portal's `can()` decides which buttons to draw, which is a courtesy to the
+person using it and not a boundary. The route guard in `AdminShell` is the same:
+it stops a signed-out visitor seeing a broken shell, and bypassing it reaches a
+portal with nothing in it, because every figure on every screen comes from a
+call that validates a token.
 
-Making it real means three things, none of which are frontend work:
+The demo credentials are shown on the login page deliberately — the seeded
+database ships with one administrator, and a login form whose password nobody
+can discover is a locked door with no key. Change them before this is public.
 
-1. `POST /admin/auth/login` returns an **httpOnly, Secure, SameSite** session
-   cookie. The browser never holds a token it can read.
-2. Every admin route is authorised **on the server**, per request. A hidden
-   button is not a check.
-3. The admin API is a separate surface from the storefront API, and admin data
-   is never served to an unauthenticated caller.
-
-`services/admin/adminAuthService.ts` is written to be replaced wholesale: the
-credentials appear in that one module and nowhere else, and its header names the
-endpoints that will take over. **Do not deploy this portal publicly as it
-stands.** The storefront is fine to deploy; `/admin` is excluded from
-`robots.txt` and marked `noindex`, which keeps it out of search results but is
-not access control.
+`/admin` is excluded from `robots.txt` and marked `noindex`, which keeps it out
+of search results. That is hygiene, not access control; the access control is
+the token.
 
 ### One catalogue, two views
 
-There is a single product record. `types/admin.ts` says so directly:
+There is a single product record — one table, not two.
 
 ```ts
 export type AdminProduct = Product & ProductManagement;
 ```
 
-`products.json` holds the customer-facing fields, `admin/product-meta.json` holds
-the management fields (status, thresholds, reserved stock, SEO, audit dates), and
-`lib/admin/catalogue.ts` joins them by id. A real schema would be one table; this
-is the same shape arrived at by a join, and it keeps admin concerns out of the
-customer payload.
+The customer-facing fields and the management fields (status, thresholds,
+reserved stock, SEO, audit dates) are columns on the same row. The storefront
+reads the subset filtered to `active` and `out-of-stock`; drafts and archived
+products are invisible to customers, which is the only thing that makes the
+Draft state mean anything.
 
-The storefront then reads `storefrontProducts()` — the same catalogue, filtered
-to `active` and `out-of-stock`. Drafts and archived products are invisible to
-customers, which is the only thing that makes the Draft state mean anything.
+**Stock lives on the product**, not in a separate inventory table — a second
+copy of the quantity is two numbers that can disagree. The *ledger* of changes
+earns its own table, so every movement, whether a stock count or a sale, has a
+row explaining it.
 
-Orders store `productId` and a snapshot of what was bought, never a copy of the
-live product. Deleting a product does not rewrite history, and the dashboard's
-counts are recomputed from live data rather than read from a stored total — so
-deleting a product or restocking one moves the numbers immediately.
+Orders store `product_id` and a snapshot of what was bought, never a reference
+to the live product. An order's value must never be recomputed from the current
+catalogue: a repriced product would silently rewrite last month's revenue, and a
+deleted one would erase the line entirely.
 
-### How writes are stored
+### What reaches the storefront
 
-There is no server, so every change is an **overlay** on the committed JSON:
-records created, a map of edits by id, and a list of deleted ids, under
-`dcz:admin:*` in local storage (`lib/admin/mock-store.ts`). Reading resolves the
-three against the base data.
-
-This is deliberate. The committed JSON stays the source of truth, so
-`npm run data:admin` can regenerate it without destroying an admin's work; an
-edit records only what changed, which is the body a `PUT` will send; and
-clearing the overlay restores the demo in one action — **Settings → Reset demo
-data**.
-
-Every function in that module maps onto one HTTP verb, so
-`adapters/mock-admin-adapter.ts` can be swapped for an HTTP adapter without a
-caller noticing.
-
-### What reaches the storefront, and what waits for a build
-
-Admin changes flow back to the customer site through the same data source, so
-anything the browser reads at runtime updates immediately:
-
-| Change | Visible on the storefront |
-|---|---|
-| Price, stock, availability, product status | Immediately — shop, search, rails, the buy box and the cart all re-read |
-| Homepage sections shown, hidden, reordered | Immediately |
-| Promotional banners switched on/off or rescheduled | Immediately |
-| A review approved or rejected | Immediately — only approved reviews reach a product page |
-| Delivery thresholds, fees, returns window, contact details | Immediately in the cart; static pages and the footer after a rebuild |
-| A **new** product's own `/product/[slug]` page | **After a rebuild** |
-| Product copy, images and metadata on a prerendered page | **After a rebuild** |
-
-The reason is the static export: `/product/[slug]` pages are written at build
-time, one per slug the build knows about. Listing pages query the catalogue in
-the browser and so pick up anything; a detail page is a file on disk.
-
-Where that gap could mislead, the code closes it rather than hiding it. The buy
-box re-reads price and stock after hydration (`hooks/useLiveProduct.ts`), because
-a stale price there is a wrong charge and not a cosmetic lag — and the product
-page shows that price in exactly one place so two figures can never disagree. In
-the portal, a product with no built page shows a struck-through "view on
-storefront" control explaining why, instead of a link that would certainly 404.
-
-On a Node deployment with `output: "export"` removed and revalidation enabled,
-the rebuild column disappears.
-
-### Shared pieces
-
-**One table.** `components/admin/ui/DataTable.tsx` owns sorting, paging,
-selection, empty and loading states for every list in the portal. Pages supply
-columns and the already-filtered rows — filter controls differ on every page,
-table mechanics do not.
-
-**Charts are hand-built SVG** (`components/admin/charts/`), sized from a
-`ResizeObserver` so they render at real pixels. The palette in `globals.css` is
-validated for colour-vision deficiency rather than chosen by eye, categorical
-hues are assigned in fixed order, and there is deliberately no dual-axis chart
-anywhere — two measures of different scale get two charts.
-
-**The portal's visual language is its own.** Denser spacing, tighter radii, a
-neutral working surface, brand copper used only as an accent. It reads as a tool
-rather than a shopfront, while still belonging to the same brand.
+All of it, immediately. There is no build-time gap any more: a price change, a
+new product, a reordered homepage, an approved review and a rescheduled banner
+are all visible on the next request, because the next request asks the database.
 
 ---
 
 ## Billing
 
 Cart to checkout to invoice to refund, through the same records the storefront
-and the portal already use. Not a bolted-on module: an order, its invoice, its
-payment and any refund are four rows related by id, and both applications read
-them.
+and the portal already use. An order, its invoice, its payment and any refund
+are rows related by id, and both applications read the same ones.
 
-```
-customer  →  order  →  invoice  →  payment  →  refund  →  credit note
-                 ↘  order lines  →  products
-```
+### One calculation, one place
 
-### One calculation
+`app/services/billing.py` produces the breakdown. The bag, every checkout step,
+the placed order, the invoice, the admin order page and the reports all render
+what it returns. A component that did its own subtraction would eventually
+disagree with one that did not, and a checkout that quotes two different totals
+has already lost the sale.
 
-**`services/billing/billingService.ts` is the only place order money is worked
-out.** The bag, every checkout step, the placed order, the invoice, the admin
-order page and the reports all render the same `BillingBreakdown` it produces.
-
-That is not tidiness for its own sake. A checkout that quotes one total on the
-bag page and another on the confirmation has already lost the sale, and the way
-that happens is two components each doing their own subtraction.
-
-| Function | What it decides |
-|---|---|
-| `calculateSubtotal` | line values at selling price |
-| `calculateProductDiscount` | savings already inside those prices — shown, never subtracted twice |
-| `calculateCouponDiscount` | a code's value, capped at the subtotal |
-| `calculateShipping` | threshold against the *pre-coupon* subtotal; upgrades always charged |
-| `calculateTax` | per line, by category — see below |
-| `calculateGrandTotal` | the order of operations, in one place |
-| `calculateRefundAmount` | goods plus the tax collected on them |
+The frontend used to have its own copy of this arithmetic. It does not any more
+— two implementations of the same sum is exactly how a cart comes to quote a
+total the checkout disagrees with.
 
 ### Money is integers
 
-Every amount in the billing domain is an **integer in the currency's minor
-unit** — paise, not rupees, and never a float. `0.1 + 0.2` is not `0.3` in
-binary floating point, and a hundredth of a rupee lost per line becomes an
-invoice that does not add up. `lib/money.ts` is the only arithmetic:
-
-- `toMinor` / `toMajor` — the boundary with the catalogue's whole-rupee prices
-- `allocate` — splits an order-level coupon across lines so the parts sum
-  **exactly** back to the whole (largest remainder). Without it the line taxes
-  would not reconcile with the invoice total, which is the error an auditor
-  finds first
-- `taxIncludedIn` — derives tax as the remainder, so `net + tax === gross`
-- `formatMoney` — decimals on documents, whole rupees everywhere else
-
-Currency is configuration, not a hardcoded `₹`. `billing-config.json` holds the
-code, symbol, locale and decimal places; a second currency is an entry there.
+Every billing amount is an integer in the currency's minor unit — paise. Never a
+float. `0.1 + 0.2` is not `0.3` in binary floating point, and a rounding error of
+a hundredth of a rupee per line becomes an invoice that does not add up.
 
 ### Tax
 
-`services/billing/taxService.ts` makes every tax decision. Nothing else knows a
-rate, and nothing else chooses between CGST + SGST and IGST.
+Indian GST, configurable from the portal. Supply inside the seller's own state
+splits into CGST and SGST; supply across a state line is a single integrated
+tax. Which applies is decided by the **billing** address, per line, because
+rates vary by category and an invoice has to show the tax against each item.
 
-Supply inside the seller's registered state is split between the centre and the
-state; supply across a state line is a single integrated tax. The place of
-supply comes from the **billing** address, which is why entering one in another
-state switches the invoice to IGST — and why the total does not move when it
-does, since the rate is the same and only its labelling changes.
+Prices are tax-inclusive, so the tax is *extracted* rather than added — the
+customer pays what the shelf said and the invoice shows how that splits. CGST
+and SGST are each half of the *total*, not half of the rate, so the two halves
+always reconcile.
 
-Catalogue prices **include** tax, so the tax is *extracted* rather than added:
-a customer pays what the shelf said and the invoice shows how that splits.
-`pricesIncludeTax` is a setting; turning it off adds tax on top instead, which
-changes what customers are charged.
+An order-level coupon is apportioned across lines before tax, by value, using a
+largest-remainder allocation that sums back exactly. Without it the line taxes
+would not reconcile with the invoice total — the error an auditor finds first.
 
-> **This is a configurable representation of GST, not a compliance
-> implementation.** Real treatment depends on HSN classification, exemptions,
-> reverse charge, composition schemes and place-of-supply rules that belong in a
-> backend maintained with professional advice. Do not file from these figures.
-> What this gives you is the right *shape*: the numbers an invoice must carry,
-> computed in one place, ready for a server to become the authority.
+**It is a configurable representation of GST, not a compliance implementation.**
+Real treatment depends on HSN classification, exemptions, reverse charge and
+place-of-supply rules that belong with professional advice.
 
-### Invoices
+### Invoices, payments, refunds
 
-Every order that is not cancelled has one. Numbering is centralised in
-`invoiceService.nextInvoiceNumber` — a number minted in a component is a number
-that can be minted twice, on a re-render or a double-submitted form, and a
-duplicate invoice number outlives the session.
+An order, its stock movement, its invoice, its payment and its coupon usage are
+written **in one transaction**. All of it or none of it — the browser can be
+closed between any two steps, and the frontend used to be orchestrating four
+separate writes.
 
-The counter starts above whatever the committed data already used, so a fresh
-demo and a browser that has been ordering for a week continue one sequence
-rather than colliding.
+Invoice and credit-note numbering is the server's. A number minted in a browser
+is a number two tabs can mint twice, and a duplicate invoice number is not a
+display bug; it is a bookkeeping problem that outlives the session.
 
-**A browser cannot actually guarantee this.** Two devices will mint the same
-number, because neither can see the other. Gapless sequential numbering is a
-property only a single authority can provide: `POST /billing/invoices` must
-return the number, and this function becomes a placeholder shown until the
-server answers. The shape does not change — only who decides.
-
-`components/billing/InvoiceDocument.tsx` renders the document for the customer
-and the administrator from the same component, because an invoice the two
-parties read differently is not a document of record. It is laid out for paper
-first; printing marks the body so the print stylesheet drops everything else.
+A refund is a request first and a movement of money second, which is why it has
+its own record rather than being a flag on the payment. Only a *completed*
+refund touches the payment and the invoice, and the over-refund check runs
+against what the **payment** has left rather than what the invoice was worth —
+two partial refunds that each look reasonable can together exceed what was
+actually collected.
 
 ### Payments
 
-The UI never names a gateway. `services/billing/providers/payment-provider.ts`
-defines `createPayment`, `verifyPayment`, `getPayment` and `refundPayment`;
-`MockPaymentProvider` implements them and moves no money. Swapping in Razorpay
-or Stripe is that one file plus the provider's class.
+`PaymentProvider` is an interface — create, verify, fetch, refund — and
+`PAYMENT_PROVIDER` picks the implementation. The one that ships moves no money
+and returns believable transaction ids, which is what lets the whole order flow
+be exercised without an account anywhere.
 
-Verification deliberately has a comment rather than an implementation: a client
-saying "this succeeded" is a claim, not a fact. The signature check and the
-webhook that confirms it must happen somewhere the customer cannot reach.
+Adding Razorpay, Cashfree, PayU or Stripe is one class in
+`backend/app/services/payments/` and one environment variable. **It is all
+server-side**, because creating a payment, verifying a signature and handling a
+webhook are secret-key operations, and a secret key in a browser bundle is not a
+secret. Nothing in the frontend names a gateway.
 
-> **Nothing sensitive is stored, anywhere.** The only payment detail kept is
-> `instrumentHint` — a masked remnant like `•••• 4242` of the kind a gateway
-> returns *after* processing. No card number, expiry, CVV, UPI PIN, bank
-> credential or gateway secret is collected, stored or transmitted by this
-> application, and none may be added. Real card entry belongs in the provider's
-> own hosted fields, which never touch this DOM. `npm run data:check` fails the
-> build if anything resembling a card number appears in the data.
+---
 
-### Refunds and credit notes
+## Security
 
-A refund is a **request** first and a movement of money second, which is why it
-is its own record rather than a flag: it can be raised, sit in processing and be
-rejected without anything moving. Only a *completed* refund touches the payment
-and the invoice.
+The properties, and where each is enforced. The backend README has the detail.
 
-Partial refunds are first class — whole order, or specific items. Over-refunding
-is refused against what the **payment** has left, not what the invoice was
-worth, because two partial refunds that each look reasonable can together exceed
-what was collected.
-
-A credit note documents the tax adjustment a refund implies. Its tax is
-recomputed from the credited amount rather than copied, so a partial credit
-carries the right proportion. Cancelling one keeps its number — a gap in a
-numbered sequence is harder to explain than a cancelled document.
-
-### Where it appears
-
-| Surface | What billing adds |
+| | |
 |---|---|
-| Bag, every checkout step | the shared breakdown, with tax |
-| Checkout address step | billing address, with "same as delivery" ticked by default |
-| Checkout review | the CGST/SGST or IGST split, before committing |
-| Order confirmation | invoice number, amount, payment status, a link to the document |
-| `/account/invoices` | the customer's invoices, to view, print or download |
-| `/account/invoice?id=` | the printable document |
-| `/admin/billing` | revenue, collected, outstanding, refunded, tax, by range |
-| `/admin/billing/invoices` | list, filters, CSV export, and the detail page |
-| `/admin/billing/payments` | transactions, with a per-payment timeline |
-| `/admin/billing/refunds` | raise, complete or reject |
-| `/admin/billing/credit-notes` | draft, issue or cancel |
-| `/admin/settings/billing` | business details, numbering, tax, currency, payment, refunds |
-| `/admin/orders/detail` | a billing panel — invoice, payment, refunds, credit notes, actions |
-| `/admin/reports` | revenue, tax, payment and refund reports with CSV export |
-| Admin global search | invoice numbers, transaction ids and refund references |
+| Passwords | bcrypt, per-hash salt, no plaintext column anywhere |
+| Sessions | JWT with an `actor` claim — a customer token cannot open an admin endpoint, or the reverse |
+| Authorisation | `require_permission` in the API. Hidden buttons are a courtesy, not a check |
+| Money | Price, discount, coupon, tax, shipping, total and payment status are recalculated server-side at order time. A payload naming its own total changes nothing |
+| Card data | Never collected, stored or transmitted. The only payment detail kept is a masked hint a gateway returns *after* processing |
+| Gateway keys | Backend only. The frontend does not know which provider is in use |
+| Secrets | `.env`, never the bundle. No database password or JWT secret reaches the browser |
+| Errors | Driver messages and stack traces are logged, never returned — they describe your schema to whoever asked |
+| Production | Refuses to start with a default JWT secret, `DEBUG` on, wildcard CORS, or seeding enabled |
+| Migrations | Upgrade only. Nothing drops a table automatically |
 
-### Data
+---
 
-`src/data/billing/` is produced by `scripts/generate-billing-data.mjs`, run
-*after* the catalogue and the admin data because everything hangs off an
-existing order. It also writes `invoiceId` and `paymentId` back onto each order,
-so the relationship is navigable from either end.
+## Tests
 
 ```bash
-npm run data:generate   # catalogue
-npm run data:admin      # orders, customers, analytics
-npm run data:billing    # invoices, payments, refunds, credit notes
-npm run data:check      # validates all of it
+cd backend && pytest
 ```
 
-| File | Notes |
-|---|---|
-| `billing-config.json` | business details, currency, numbering, refund and payment options |
-| `tax-config.json` | GST rates, registered state, category overrides |
-| `invoices.json` | 164 invoices, one per billable order. **Generated** |
-| `payments.json` | one per invoice, with a timeline. **Generated** |
-| `refunds.json` | 21, including 16 partial. **Generated** |
-| `credit-notes.json` | 7, against completed refunds. **Generated** |
+258 tests against MySQL, in a database of their own. Money and tax arithmetic
+against worked examples, password hashing and token forgery, registration and
+sign-in, catalogue filtering and paging, the cart and its pricing, the
+wishlist's uniqueness, the order transaction and what the client is not allowed
+to decide, coupons, inventory and its ledger, refunds and credit notes, and —
+endpoint by endpoint — who is allowed to call what.
 
-`npm run data:check` does not merely confirm the files parse. It **re-derives
-every stored total from its own components** and fails if they disagree: lines
-against subtotal, apportioned discounts against the coupon, line tax against
-invoice tax, CGST + SGST + IGST against the total, and the whole breakdown
-against the grand total. That is the check that catches the generator and
-`services/billing/` drifting apart, which is the failure nobody notices until an
-invoice is wrong.
+The frontend is checked with `npm run typecheck` and `npm run lint`.
 
-### Connecting a backend
+---
 
-`services/billing/billing-data-source.ts` is the contract, with each method's
-future endpoint named in its header:
+## The demo data
 
-| Method | Endpoint |
-|---|---|
-| `listInvoices` / `getInvoice` | `GET /billing/invoices`, `GET /billing/invoices/:id` |
-| `createInvoice` / `updateInvoice` | `POST` / `PUT /billing/invoices/:id` |
-| `listPayments` / `getPayment` | `GET /billing/payments`, `GET /billing/payments/:id` |
-| `createPayment` | `POST /billing/payments` |
-| `listRefunds` / `createRefund` | `GET /billing/refunds`, `POST /billing/payments/:id/refund` |
-| `listCreditNotes` / `createCreditNote` | `GET` / `POST /billing/credit-notes` |
-| `getStats` / `getTaxReport` | `GET /billing/reports` |
+`backend/app/seed/data/` holds the JSON the database is seeded from. It used to
+live in the frontend bundle; it lives there now because it is *seed* data, and
+the browser has no business shipping it.
 
-Filtering and aggregation are the data source's job, not the UI's — today the
-mock adapter runs them over JSON, tomorrow the server runs them in SQL.
+The generators are in `backend/app/seed/generators/`:
 
-**What must move server-side, not merely be adapted:** invoice numbering,
-payment verification, and the tax calculation itself. Each is a place where the
-client is currently trusted to decide something only a server can be trusted to
-decide. The interfaces are shaped so that moving them changes no caller.
-
-### Mapping to a database
-
-The models are written to map onto tables row for row:
-
-```
-customers ──< orders ──< order_items
-                │
-                ├──< invoices ──< invoice_items
-                │         │
-                │         ├──< payments ──< payment_events
-                │         └──< credit_notes
-                └──< refunds ──< refund_items
+```bash
+node app/seed/generators/generate-products.mjs      # catalogue and reviews
+node app/seed/generators/generate-admin-data.mjs    # orders, customers, analytics
+node app/seed/generators/generate-billing-data.mjs  # invoices, payments, refunds
+node app/seed/generators/check-data.mjs             # validate all of it
 ```
 
-Relationships are ids, never embedded copies. An invoice is its own record with
-its own lifecycle; copying it onto the order would give one document two homes,
-and they would disagree the first time either was edited.
+`check-data.mjs` does not merely confirm the files parse. It **re-derives every
+stored total from its own components** and fails if they disagree: lines against
+subtotal, apportioned discounts against the coupon, line tax against invoice
+tax, CGST + SGST + IGST against the total, and the whole breakdown against the
+grand total.
+
+Seeding is idempotent by primary key, so a restart neither duplicates anything
+nor overwrites a change made through the portal.
+
+### Dummy images
+
+Product photography is Unsplash URLs held on the product rows. To move to a real
+CDN: change the URLs and add the host to `remotePatterns` in `next.config.ts`.
+`ProductImage` falls back to an on-brand placeholder if a URL fails to load.
 
 ---
 
 ## What is deliberately not real
 
-This is a frontend. It is honest about that in the UI rather than pretending:
+Honest about it in the UI rather than pretending:
 
 - **No payment gateway.** Checkout collects a payment *method*, never a card
   number, CVV or UPI ID. A real integration hands off to the provider's own
-  hosted fields, which is also how it should work in production.
-- **Mock authentication.** Any valid email with a six-character password signs
-  you in. No password is stored anywhere, hashed or otherwise.
-- **Orders are local.** Placing an order writes a realistic record to local
-  storage so the account area has something true to show. Nothing is fulfilled.
-- **Forms do not send.** The contact form and newsletter confirm and clear;
-  nothing leaves the browser.
-- **Admin sign-in is a demonstration.** Fixed credentials, checked in the
-  browser, with no authorisation behind them. Roles shape the interface only.
-  [Details](#this-is-not-security).
-- **Admin changes are local to one browser.** They live in that browser's local
-  storage, are invisible to anyone else, and reset with one button.
-- **No money moves.** `MockPaymentProvider` returns a plausible reference and
+  hosted fields — which is also how it should work in production.
+- **No money moves.** The mock provider returns a plausible reference and
   nothing else. Refunds adjust records; no funds are returned.
-- **Invoice numbering is not authoritative.** A browser cannot guarantee a
-  gapless sequence. [Details](#invoices).
+- **Nothing is fulfilled.** Orders are real records with real stock movements
+  and real invoices. No parcel leaves anywhere.
+- **Forms do not send.** The contact form and newsletter confirm and clear.
 - **The tax figures are not a compliance calculation.** [Details](#tax).
+- **The demo credentials are public**, on purpose, and are the first thing to
+  change.
 
 ---
 
@@ -735,9 +520,16 @@ Components should reach for a token rather than introducing a new value. The
 palette is intentionally narrow: warm neutrals and one accent, so product
 photography carries the colour.
 
-Typography pairs a high-contrast serif (Playfair Display) with a quiet
-grotesque (Inter), which is the same relationship the logo strikes between
-"Daily Choice" and the wide-tracked "ZONE".
+Typography pairs a high-contrast serif (Playfair Display) with a quiet grotesque
+(Inter), which is the same relationship the logo strikes between "Daily Choice"
+and the wide-tracked "ZONE".
+
+The portal has its own visual language: denser spacing, tighter radii, a neutral
+working surface, brand copper used only as an accent. It reads as a tool rather
+than a shopfront, while still belonging to the same brand. Its charts are
+hand-built SVG, sized from a `ResizeObserver`, with a palette validated for
+colour-vision deficiency rather than chosen by eye — and deliberately no
+dual-axis chart anywhere, because two measures of different scale get two charts.
 
 ---
 

@@ -11,18 +11,11 @@ import { Button } from "@/components/ui/Button";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
 import { formatPrice } from "@/lib/utils/format";
-import { saveAddress } from "@/services/accountService";
 import {
-  billingAddressFromShipping,
-  placeBilledOrder,
-} from "@/services/billing/checkoutBillingService";
-import {
-  attachBillingToOrder,
   getDeliveryMethod,
   getPaymentMethod,
   placeOrder,
 } from "@/services/orderService";
-import { useSession } from "@/hooks/useSession";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { toast } from "@/store/toastStore";
 
@@ -31,8 +24,6 @@ export default function CheckoutReviewPage() {
   const router = useRouter();
   const checkoutHydrated = useCheckoutHydrated();
   const { lines, totals, clear } = useCart();
-
-  const { user } = useSession();
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
@@ -66,47 +57,42 @@ export default function CheckoutReviewPage() {
 
     setIsPlacing(true);
     try {
-      const shippingAddress = billingAddressFromShipping(address, contact.email);
-      const billingAddress =
-        billingSame || !storedBilling ? shippingAddress : storedBilling;
-
       /**
-       * Order, billing, payment, invoice — in that order, in one call.
+       * One call.
        *
-       * The sequencing lives in `checkoutBillingService` rather than here, so
-       * this page cannot get it subtly wrong and neither can the next page
-       * that needs to place an order.
+       * The server creates the order, takes the stock, records the payment and
+       * issues the invoice inside a single transaction — which is precisely
+       * what this page could not do when it was orchestrating four steps in a
+       * browser that might be closed between any two of them.
        */
-      const { order, invoice } = await placeBilledOrder({
-        placeOrder,
-        attachBilling: attachBillingToOrder,
+      const order = await placeOrder({
         lines,
         totals,
-        billingAddress,
-        shippingAddress,
-        paymentMethodId,
+        address: { ...address, id: "" },
+        billingAddress: billingSame ? null : storedBilling,
         deliveryMethod,
-        customerId: user?.id ?? "guest",
-        orderInput: {
-          lines,
-          totals,
-          address: { ...address, id: `addr_${Date.now()}` },
-          deliveryMethod,
-          paymentMethod,
-          email: contact.email,
-        },
+        paymentMethod,
+        email: contact.email,
       });
 
-      // Keep the address for next time, then clear the transient state.
-      await saveAddress(address);
+      // The address is saved by the same request, so there is nothing to do
+      // here but clear what the checkout was holding.
       clear();
       resetCheckout();
 
       router.push(
-        `/order-success?order=${encodeURIComponent(order.orderNumber)}&invoice=${encodeURIComponent(invoice.id)}`,
+        `/order-success?order=${encodeURIComponent(order.orderNumber)}` +
+          (order.invoiceId ? `&invoice=${encodeURIComponent(order.invoiceId)}` : ""),
       );
-    } catch {
-      toast.error("We could not place your order. Please try again.");
+    } catch (error) {
+      // The API's message says what actually went wrong — an item that sold
+      // out, a coupon that stopped applying — which is far more use than
+      // "please try again".
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "We could not place your order. Please try again.",
+      );
       setIsPlacing(false);
     }
   };

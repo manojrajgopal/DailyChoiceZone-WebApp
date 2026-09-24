@@ -1,253 +1,362 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { BillingBreakdown, CartTotals, Coupon, Product, ResolvedCartLine } from "@/types";
+import type { BillingBreakdown, CartTotals, Product, ResolvedCartLine } from "@/types";
 
-import {
-  applyCoupon as validateCoupon,
-  computeTotals,
-  resolveCartLines,
-  type DeliverySettings,
-  DEFAULT_DELIVERY,
-} from "@/services/cartService";
-import { getDeliveryMethod } from "@/services/orderService";
-import { getSiteConfig } from "@/services/siteService";
-import { breakdownForCart } from "@/services/billing/billingService";
+import * as cartService from "@/services/cartService";
 import { useCartStore } from "@/store/cartStore";
 import { useCheckoutStore } from "@/store/checkoutStore";
+import { useSessionStore } from "@/store/sessionStore";
 import { toast } from "@/store/toastStore";
 
 import { useHydrated } from "./useHydrated";
 
 /**
- * The cart, joined against the catalogue and priced.
+ * The cart, priced by the server.
  *
- * This is the only cart API components should use. It owns the awkward parts:
- * resolving stored ids to products, re-validating the saved coupon against the
- * current subtotal, and not rendering persisted state until after hydration.
+ * Two modes, one interface. **Signed in**, everything lives on the server: the
+ * lines, the coupon, and every figure in the breakdown. **Signed out**, the
+ * lines are staged in local storage and priced only as a subtotal, because
+ * delivery, coupons and tax are the server's to decide and quoting a guest a
+ * total the checkout then disagrees with is worse than quoting none.
+ *
+ * Components see the same shape either way, which is why none of them changed
+ * when the backend arrived.
  */
+
+const EMPTY_BREAKDOWN: BillingBreakdown = {
+  currency: "INR",
+  itemCount: 0,
+  subtotal: 0,
+  productDiscount: 0,
+  couponDiscount: 0,
+  couponCode: null,
+  shipping: 0,
+  otherCharges: 0,
+  taxableAmount: 0,
+  tax: { mode: "none", taxableAmount: 0, cgst: 0, sgst: 0, igst: 0, totalTax: 0, ratePercent: 0 },
+  grandTotal: 0,
+  pricesIncludeTax: true,
+};
+
+const EMPTY_TOTALS: CartTotals = {
+  itemCount: 0,
+  subtotal: 0,
+  catalogueSavings: 0,
+  couponDiscount: 0,
+  deliveryFee: 0,
+  total: 0,
+  freeDeliveryShortfall: 0,
+  appliedCoupon: null,
+};
+
 export function useCart() {
   const hydrated = useHydrated();
 
-  const lines = useCartStore((state) => state.lines);
-  const couponCode = useCartStore((state) => state.couponCode);
-  const addItem = useCartStore((state) => state.addItem);
-  const removeLine = useCartStore((state) => state.removeLine);
-  const setQuantity = useCartStore((state) => state.setQuantity);
-  const incrementLine = useCartStore((state) => state.incrementLine);
-  const decrementLine = useCartStore((state) => state.decrementLine);
-  const applyCouponCode = useCartStore((state) => state.applyCouponCode);
-  const clearCart = useCartStore((state) => state.clearCart);
+  const session = useSessionStore((state) => state.session);
+  const isSignedIn = hydrated && session !== null;
 
-  const [resolved, setResolved] = useState<ResolvedCartLine[]>([]);
-  const [validatedCoupon, setValidatedCoupon] = useState<Coupon | null>(null);
-  const [delivery, setDelivery] = useState<DeliverySettings>(DEFAULT_DELIVERY);
-  const [isResolving, setIsResolving] = useState(false);
+  // The guest bag. Also the staging area that `mergeGuestCart` drains.
+  const guestLines = useCartStore((state) => state.lines);
+  const guestCoupon = useCartStore((state) => state.couponCode);
+  const addGuestItem = useCartStore((state) => state.addItem);
+  const removeGuestLine = useCartStore((state) => state.removeLine);
+  const setGuestQuantity = useCartStore((state) => state.setQuantity);
+  const applyGuestCoupon = useCartStore((state) => state.applyCouponCode);
+  const clearGuestCart = useCartStore((state) => state.clearCart);
 
-  // Delivery thresholds come from site config, so pricing rules stay in data.
+  const deliveryMethodId = useCheckoutStore((state) => state.deliveryMethodId);
+  const billingState = useCheckoutStore(
+    (state) => state.billingAddress?.state ?? state.address?.state ?? null,
+  );
+
+  const [view, setView] = useState<cartService.CartView | null>(null);
+  const [guestResolved, setGuestResolved] = useState<ResolvedCartLine[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [version, setVersion] = useState(0);
+
+  /** Force a re-read after a mutation. */
+  const refresh = useCallback(() => setVersion((current) => current + 1), []);
+
+  /* --------------------------------------------------------- server cart */
+
   useEffect(() => {
+    if (!hydrated || !isSignedIn) return;
+
     let active = true;
-    getSiteConfig()
-      .then((config) => {
-        if (!active) return;
-        setDelivery({
-          freeDeliveryThreshold: config.freeDeliveryThreshold,
-          standardDeliveryFee: config.standardDeliveryFee,
-        });
+    cartService
+      .fetchCart({
+        couponCode: guestCoupon,
+        deliveryMethod: deliveryMethodId,
+        placeOfSupply: billingState,
       })
-      .catch(() => {
-        // Keep the defaults; a missing config should not break the cart.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    // Nothing to resolve. The empty case is derived below rather than written
-    // into state, which keeps this effect free of synchronous setState.
-    if (!hydrated || lines.length === 0) return;
-
-    let active = true;
-    setIsResolving(true);
-
-    resolveCartLines(lines)
       .then((result) => {
-        if (active) setResolved(result);
+        if (active) setView(result);
       })
       .catch(() => {
-        if (active) setResolved([]);
+        if (active) setView(null);
       })
       .finally(() => {
-        if (active) setIsResolving(false);
+        if (active) setIsLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [lines, hydrated]);
+  }, [hydrated, isSignedIn, guestCoupon, deliveryMethodId, billingState, version]);
 
-  /**
-   * Derived, not stored.
-   *
-   * Clearing the bag takes effect on the very next render rather than waiting
-   * for an effect — which matters at checkout, where a stale line would mean a
-   * stale total.
-   *
-   * Memoised so the identity is stable: the totals calculation below depends
-   * on it, and a fresh array each render would recompute the money on every
-   * keystroke elsewhere in the tree.
-   */
-  const resolvedLines = useMemo(
-    () => (hydrated && lines.length > 0 ? resolved : []),
-    [hydrated, lines.length, resolved],
-  );
+  /* ---------------------------------------------------------- guest cart */
 
-  const subtotal = useMemo(
-    () => resolvedLines.reduce((sum, line) => sum + line.lineTotal, 0),
-    [resolvedLines],
-  );
-
-  // Re-validate the stored code whenever the subtotal moves: removing an item
-  // can drop the cart below a coupon's minimum, and the total must reflect that.
   useEffect(() => {
-    if (!couponCode) return;
+    if (!hydrated || isSignedIn) return;
 
     let active = true;
-    validateCoupon(couponCode, subtotal)
-      .then((result) => {
-        if (!active) return;
-        setValidatedCoupon(result.ok ? result.coupon : null);
+    cartService
+      .resolveGuestCart(guestLines)
+      .then((lines) => {
+        if (active) setGuestResolved(lines);
       })
       .catch(() => {
-        if (active) setValidatedCoupon(null);
+        if (active) setGuestResolved([]);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [couponCode, subtotal]);
+  }, [hydrated, isSignedIn, guestLines]);
 
-  /** No code means no coupon, without waiting for an effect to clear it. */
-  const coupon = couponCode ? validatedCoupon : null;
+  /* -------------------------------------------------- merge on sign-in */
 
-  /**
-   * The delivery method chosen at checkout, if any.
-   *
-   * Read here so the figures in the bag, in every checkout step and on the
-   * confirmation all come from one calculation — picking express must change
-   * the total everywhere at once, not just on the step that set it.
-   */
-  const deliveryMethodId = useCheckoutStore((state) => state.deliveryMethodId);
+  const merged = useRef(false);
+
+  useEffect(() => {
+    if (!hydrated || !isSignedIn || merged.current) return;
+    if (guestLines.length === 0) {
+      merged.current = true;
+      return;
+    }
+
+    merged.current = true;
+    const staged = [...guestLines];
+    clearGuestCart();
+
+    void cartService.mergeGuestCart(staged).then(refresh);
+  }, [hydrated, isSignedIn, guestLines, clearGuestCart, refresh]);
+
+  /* ------------------------------------------------------------- derived */
+
+  const lines: ResolvedCartLine[] = isSignedIn ? (view?.lines ?? []) : guestResolved;
+
+  const breakdown: BillingBreakdown = useMemo(() => {
+    if (isSignedIn) return view?.breakdown ?? EMPTY_BREAKDOWN;
+
+    // A guest sees the goods value and nothing else, for the reason in the
+    // hook's own docstring.
+    const subtotal = guestResolved.reduce((sum, line) => sum + line.lineTotal, 0);
+    const listTotal = guestResolved.reduce((sum, line) => sum + line.lineOriginalTotal, 0);
+
+    return {
+      ...EMPTY_BREAKDOWN,
+      itemCount: guestResolved.reduce((count, line) => count + line.quantity, 0),
+      subtotal: Math.round(subtotal * 100),
+      productDiscount: Math.round(Math.max(0, listTotal - subtotal) * 100),
+      grandTotal: Math.round(subtotal * 100),
+    };
+  }, [isSignedIn, view, guestResolved]);
 
   const totals: CartTotals = useMemo(() => {
-    const method = getDeliveryMethod(deliveryMethodId);
-    return computeTotals(resolvedLines, coupon, delivery, { id: method.id, fee: method.fee });
-  }, [resolvedLines, coupon, delivery, deliveryMethodId]);
+    if (isSignedIn) return view?.totals ?? EMPTY_TOTALS;
 
-  /**
-   * The state tax is charged against.
-   *
-   * The billing address decides it, so it is only known once one has been
-   * entered. Before that the seller's own state stands in, which shows the
-   * intra-state split; entering an out-of-state address switches the labelling
-   * to IGST. The grand total is identical either way — same rate, different
-   * name — so nothing a shopper is quoted moves.
-   */
-  const billingState = useCheckoutStore((state) => state.billingAddress?.state ?? state.address?.state ?? "");
+    const subtotal = guestResolved.reduce((sum, line) => sum + line.lineTotal, 0);
+    const listTotal = guestResolved.reduce((sum, line) => sum + line.lineOriginalTotal, 0);
 
-  /**
-   * The full money picture, from the one billing calculation.
-   *
-   * Everything downstream — the bag, every checkout step, the confirmation and
-   * the invoice — renders this. `totals` is kept because the free-delivery
-   * nudge and the coupon plumbing are expressed in it, but no component does
-   * its own arithmetic on either.
-   */
-  const breakdown: BillingBreakdown = useMemo(
-    () => breakdownForCart(resolvedLines, totals, billingState),
-    [resolvedLines, totals, billingState],
-  );
+    return {
+      ...EMPTY_TOTALS,
+      itemCount: guestResolved.reduce((count, line) => count + line.quantity, 0),
+      subtotal,
+      catalogueSavings: Math.max(0, listTotal - subtotal),
+      total: subtotal,
+    };
+  }, [isSignedIn, view, guestResolved]);
 
-  /** Add a product, with a toast and a link straight to the cart. */
+  /* ------------------------------------------------------------- actions */
+
   const add = useCallback(
-    (
+    async (
       product: Product,
       options: { size?: string | null; color?: string | null; quantity?: number } = {},
     ) => {
-      addItem({
-        productId: product.id,
-        size: options.size ?? null,
-        color: options.color ?? null,
-        quantity: options.quantity ?? 1,
-        maxQuantity: product.stock,
-      });
+      if (isSignedIn) {
+        try {
+          const result = await cartService.addToCart({
+            productId: product.id,
+            size: options.size ?? null,
+            color: options.color ?? null,
+            quantity: options.quantity ?? 1,
+          });
+          setView(result);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Could not add that to your bag.");
+          return;
+        }
+      } else {
+        addGuestItem({
+          productId: product.id,
+          size: options.size ?? null,
+          color: options.color ?? null,
+          quantity: options.quantity ?? 1,
+          maxQuantity: product.stock,
+        });
+      }
+
       toast.success(`${product.name} added to bag`, { label: "View bag", href: "/cart" });
     },
-    [addItem],
+    [isSignedIn, addGuestItem],
   );
 
   const remove = useCallback(
-    (lineId: string, productName?: string) => {
-      removeLine(lineId);
+    async (lineId: string, productName?: string) => {
+      if (isSignedIn) {
+        try {
+          setView(await cartService.removeFromCart(lineId));
+        } catch {
+          toast.error("Could not remove that item.");
+          return;
+        }
+      } else {
+        removeGuestLine(lineId);
+      }
+
       toast.info(productName ? `${productName} removed` : "Item removed from bag");
     },
-    [removeLine],
+    [isSignedIn, removeGuestLine],
+  );
+
+  const setQuantity = useCallback(
+    async (lineId: string, quantity: number, maxQuantity?: number) => {
+      if (isSignedIn) {
+        try {
+          setView(await cartService.setCartQuantity(lineId, quantity));
+        } catch {
+          toast.error("Could not change that quantity.");
+        }
+        return;
+      }
+      setGuestQuantity(lineId, quantity, maxQuantity);
+    },
+    [isSignedIn, setGuestQuantity],
+  );
+
+  const increment = useCallback(
+    (lineId: string, maxQuantity?: number) => {
+      const line = lines.find((entry) => entry.lineId === lineId);
+      return setQuantity(lineId, (line?.quantity ?? 0) + 1, maxQuantity);
+    },
+    [lines, setQuantity],
+  );
+
+  const decrement = useCallback(
+    (lineId: string) => {
+      const line = lines.find((entry) => entry.lineId === lineId);
+      return setQuantity(lineId, Math.max(0, (line?.quantity ?? 1) - 1));
+    },
+    [lines, setQuantity],
   );
 
   const applyCode = useCallback(
     async (code: string) => {
-      const result = await validateCoupon(code, subtotal);
+      const result = await cartService.applyCoupon(code, totals.subtotal);
+
       if (result.ok) {
-        applyCouponCode(result.coupon.code);
+        applyGuestCoupon(result.coupon.code);
+        refresh();
         toast.success(`Coupon ${result.coupon.code} applied`);
       } else {
         toast.error(result.reason);
       }
+
       return result;
     },
-    [applyCouponCode, subtotal],
+    [totals.subtotal, applyGuestCoupon, refresh],
   );
 
   const removeCode = useCallback(() => {
-    applyCouponCode(null);
+    applyGuestCoupon(null);
+    refresh();
     toast.info("Coupon removed");
-  }, [applyCouponCode]);
+  }, [applyGuestCoupon, refresh]);
+
+  const clear = useCallback(async () => {
+    if (isSignedIn) {
+      try {
+        setView(await cartService.clearCart());
+      } catch {
+        /* the order that emptied it has already succeeded */
+      }
+    }
+    clearGuestCart();
+  }, [isSignedIn, clearGuestCart]);
 
   return {
-    /** Render-ready lines. Empty until hydration completes. */
-    lines: resolvedLines,
-    /** Raw stored lines — use only when you need ids without products. */
-    rawLines: lines,
+    lines,
+    /** Raw stored lines — the guest staging area. */
+    rawLines: guestLines,
     totals,
-    /** The billing breakdown for these lines. One calculation, shared. */
+    /** The billing breakdown, in minor units. Calculated by the server. */
     breakdown,
-    coupon,
-    /** True while ids are being joined against the catalogue. */
-    isLoading: !hydrated || isResolving,
-    isEmpty: hydrated && lines.length === 0,
+    coupon: totals.appliedCoupon,
+    isLoading: !hydrated || isLoading,
+    isEmpty: hydrated && !isLoading && lines.length === 0,
     hydrated,
 
     add,
     remove,
     setQuantity,
-    increment: incrementLine,
-    decrement: decrementLine,
+    increment,
+    decrement,
     applyCode,
     removeCode,
-    clear: clearCart,
+    clear,
   };
 }
 
 /**
- * Just the badge count, so the header does not resolve the whole cart.
+ * Just the badge count.
  *
- * Returns 0 until hydrated to keep server and client markup identical.
+ * Reads whichever bag is live. Zero until hydration so the server and client
+ * markup agree.
  */
 export function useCartCount(): number {
   const hydrated = useHydrated();
-  const lines = useCartStore((state) => state.lines);
+  const session = useSessionStore((state) => state.session);
+  const guestLines = useCartStore((state) => state.lines);
+  const [serverCount, setServerCount] = useState(0);
+
+  const isSignedIn = hydrated && session !== null;
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    let active = true;
+    cartService
+      .fetchCart({})
+      .then((cart) => {
+        if (active) setServerCount(cart.breakdown.itemCount);
+      })
+      .catch(() => {
+        if (active) setServerCount(0);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isSignedIn]);
+
   if (!hydrated) return 0;
-  return lines.reduce((sum, line) => sum + line.quantity, 0);
+  if (isSignedIn) return serverCount;
+  return guestLines.reduce((sum, line) => sum + line.quantity, 0);
 }

@@ -1,3 +1,4 @@
+import type { BillingAddress } from "./billing";
 import type { CartTotals, ResolvedCartLine } from "./cart";
 
 export interface Address {
@@ -80,11 +81,20 @@ export interface Order {
   invoiceNumber?: string | null;
 }
 
-/** What the checkout hands to `orderService.placeOrder`. */
+/**
+ * What the checkout hands to `orderService.placeOrder`.
+ *
+ * `lines` and `totals` are what the page was *showing*. They are not sent:
+ * the server prices the cart it holds, because a client that could name its
+ * own total would eventually name a smaller one. They stay here because the
+ * checkout builds them to render, and the guard below reads them.
+ */
 export interface PlaceOrderInput {
   lines: ResolvedCartLine[];
   totals: CartTotals;
   address: Address;
+  /** Only when it differs from the delivery address. Decides the tax treatment. */
+  billingAddress?: BillingAddress | null;
   deliveryMethod: DeliveryMethod;
   paymentMethod: PaymentMethod;
   email: string;

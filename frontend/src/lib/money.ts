@@ -1,6 +1,4 @@
-import billingConfigJson from "@/data/billing/billing-config.json";
-
-import type { BillingConfig, CurrencyConfig, Money } from "@/types";
+import type { CurrencyConfig, Money } from "@/types";
 
 /**
  * Money arithmetic.
@@ -18,15 +16,33 @@ import type { BillingConfig, CurrencyConfig, Money } from "@/types";
  * `toMinor` is the boundary between the two, and it is exact: a whole rupee is
  * always a whole number of paise.
  *
- * Nothing here is currency-specific beyond the configuration it reads, so
- * supporting a second currency means adding an entry to `billing-config.json`,
- * not editing this file.
+ * Nothing here is currency-specific beyond the configuration it is given, so
+ * supporting a second currency is a settings change, not an edit to this file.
  */
 
-const CONFIG = billingConfigJson as BillingConfig;
+/**
+ * The currency amounts are formatted in.
+ *
+ * `formatMoney` is called from render functions all over the application and
+ * has to answer synchronously, so this is a module-level value rather than a
+ * fetch. It starts as the store's own currency and `billingService` overwrites
+ * it with the configured one as soon as that arrives — which for this store is
+ * the same thing, so nothing visibly changes when it lands.
+ */
+let CURRENCY: CurrencyConfig = {
+  code: "INR",
+  symbol: "₹",
+  locale: "en-IN",
+  decimals: 2,
+};
 
 export function currency(): CurrencyConfig {
-  return CONFIG.currency;
+  return CURRENCY;
+}
+
+/** Adopt the configured currency. Called once, by `billingService`. */
+export function setCurrency(config: CurrencyConfig): void {
+  CURRENCY = config;
 }
 
 /** Rupees (or any major unit) to minor units. `1299` → `129900`. */

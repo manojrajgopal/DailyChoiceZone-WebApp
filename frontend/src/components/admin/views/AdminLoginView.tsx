@@ -19,10 +19,10 @@ import logoMark from "../../../../public/brand/logo.png";
  * Outside the portal layout, so it has no sidebar and is not behind the guard
  * that would otherwise redirect it to itself.
  *
- * The demo credentials are shown on the page deliberately: this is a
- * frontend-only portal with no auth backend, and a login form whose password
- * nobody can discover is just a locked door with no key. The notice below says
- * plainly what that means.
+ * The demo credentials are shown on the page deliberately: the seeded database
+ * ships with one administrator, and a login form whose password nobody can
+ * discover is just a locked door with no key. The notice below says plainly
+ * what that means for anything other than a demo.
  */
 export function AdminLoginView() {
   const router = useRouter();
@@ -159,9 +159,9 @@ export function AdminLoginView() {
               aria-hidden="true"
             />
             <p className="text-[0.625rem] leading-relaxed text-admin-muted">
-              This check runs in your browser, so it is not security — it gives the portal the
-              shape of an authenticated app while there is no backend. Do not put real customer
-              data behind it.
+              The password is checked on the server against a hash, and every admin request
+              carries the token it returns. These credentials are seeded demo data, though —
+              change them before this portal sits in front of real customers.
             </p>
           </div>
 

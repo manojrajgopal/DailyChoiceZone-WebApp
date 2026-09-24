@@ -1,7 +1,5 @@
 import Image from "next/image";
 
-import taxConfigJson from "@/data/billing/tax-config.json";
-
 import type { BillingAddress, BillingConfig, Invoice } from "@/types";
 
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
@@ -10,9 +8,6 @@ import { formatDate } from "@/lib/utils/format";
 import { paymentMethodLabel } from "@/services/billing/paymentService";
 
 import logo from "@/../public/brand/logo.png";
-
-/** The registration number printed on the document. */
-const GSTIN = (taxConfigJson as { gstin: string }).gstin;
 
 /**
  * The invoice document.
@@ -37,9 +32,12 @@ const GSTIN = (taxConfigJson as { gstin: string }).gstin;
 export function InvoiceDocument({
   invoice,
   config,
+  gstin = "",
 }: {
   invoice: Invoice;
   config: BillingConfig;
+  /** The supplier's GST registration number, printed in the header. */
+  gstin?: string;
 }) {
   const { breakdown, lines } = invoice;
   const tax = breakdown.tax;
@@ -99,7 +97,7 @@ export function InvoiceDocument({
         <div>
           <h2 className="label-wide text-ink-400">Tax details</h2>
           <dl className="mt-2.5 flex flex-col gap-1 text-xs text-ink-700">
-            <DocMeta label="GSTIN" value={GSTIN} mono />
+            {gstin ? <DocMeta label="GSTIN" value={gstin} mono /> : null}
             <DocMeta label="Place of supply" value={invoice.placeOfSupply} />
             <DocMeta label="Tax treatment" value={intraState ? "Intra-state (CGST + SGST)" : "Inter-state (IGST)"} />
           </dl>

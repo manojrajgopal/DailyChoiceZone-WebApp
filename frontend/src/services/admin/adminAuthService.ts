@@ -1,53 +1,71 @@
-import adminUsersJson from "@/data/admin/admin-users.json";
-
 import type { AdminResult, AdminRole, AdminSession, AdminUser } from "@/types/admin";
 
+import { ApiError, apiGet, apiPost, setToken } from "@/services/api/client";
 import { useAdminAuthStore } from "@/store/adminAuthStore";
 
 /**
- * Mock admin authentication.
+ * Admin authentication.
  *
- * ## This is not security
+ * The check happens on the server. The password is verified against a bcrypt
+ * hash, the token that comes back carries an `actor: "admin"` claim, and every
+ * admin endpoint validates it — a customer's token will not do, and neither
+ * will a session written into local storage by hand, because the portal's own
+ * belief about who is signed in buys nothing from the API.
  *
- * The credential check below runs **in the browser**, which means the expected
- * password is in the JavaScript bundle and anyone can read it or skip the check
- * entirely by writing a session into local storage by hand. Nothing here keeps
- * an unauthorised person out, and nothing here should ever be relied on to.
+ * That is the important difference from what this file used to be. The old
+ * version compared a password in the browser against a constant in the bundle;
+ * it gave the portal the *shape* of an authenticated app and no security at
+ * all. What is left here is the shape — a session, a signed-in user, a role —
+ * now backed by something real.
  *
- * It exists for one reason: to give the admin portal the *shape* of an
- * authenticated app — a login screen, a session, a signed-in user, a role — so
- * that swapping in a real backend is a change to this file and not a
- * re-architecture of every page.
- *
- * ## What real authentication needs
- *
- * `signIn` becomes `POST /admin/auth/login`, which sets an **httpOnly** cookie
- * the browser cannot read. The route guard moves to middleware or a server
- * component so an unauthenticated request never receives admin HTML at all.
- * Permission checks move to the API, because a check the client performs is a
- * convenience for the UI, never an authorisation boundary.
- *
- * Until then, treat this portal as a local demo and do not deploy it with real
- * customer data behind it.
+ * `can()` below is still only a UI convenience: it decides which buttons to
+ * draw. The boundary is `require_permission` in the backend, which checks the
+ * same vocabulary on every write.
  */
 
-/**
- * Demo credentials.
- *
- * Deliberately confined to this module so they appear only in the admin bundle
- * and are never referenced from a customer-facing page. They are still
- * readable in built JavaScript — see the warning above.
- */
-const DEMO_EMAIL = "admin@dailychoicezone.com";
-const DEMO_PASSWORD = "Admin@123";
+const AUTH = { auth: "admin" } as const;
 
-export const DEMO_CREDENTIALS = { email: DEMO_EMAIL, password: DEMO_PASSWORD };
-
-const USERS = adminUsersJson as AdminUser[];
+/** Demo credentials for the seeded portal. Shown on the sign-in screen. */
+export const DEMO_CREDENTIALS = {
+  email: "admin@dailychoicezone.com",
+  password: "Admin@123",
+};
 
 export interface AdminCredentials {
   email: string;
   password: string;
+}
+
+/** What `/admin/auth/login` returns. */
+interface ApiAdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: AdminRole;
+  status: AdminUser["status"];
+  permissions: string[];
+  lastLoginAt: string | null;
+  createdAt: string;
+  avatarInitials: string;
+}
+
+interface ApiAdminAuthPayload {
+  token: { accessToken: string; tokenType: string; expiresIn: number };
+  admin: ApiAdminUser;
+}
+
+function toUser(payload: ApiAdminUser): AdminUser {
+  return {
+    id: payload.id,
+    name: payload.name,
+    email: payload.email,
+    role: payload.role,
+    status: payload.status,
+    permissions: payload.permissions,
+    lastLoginAt: payload.lastLoginAt,
+    createdAt: payload.createdAt,
+    avatarInitials: payload.avatarInitials,
+  };
 }
 
 /* ---------------------------------------------------------------- sign in */
@@ -60,40 +78,61 @@ export async function signIn(
   if (!email) return { ok: false, reason: "Enter your email address." };
   if (!credentials.password) return { ok: false, reason: "Enter your password." };
 
-  const user = USERS.find((entry) => entry.email.toLowerCase() === email);
+  try {
+    const payload = await apiPost<ApiAdminAuthPayload>("/admin/auth/login", {
+      email,
+      password: credentials.password,
+    });
 
-  // One message for both a wrong address and a wrong password — the habit is
-  // worth keeping even in a mock, since distinguishing them tells an attacker
-  // which accounts exist.
-  if (!user || credentials.password !== DEMO_PASSWORD) {
-    return { ok: false, reason: "That email and password do not match." };
+    setToken(payload.token.accessToken, "admin");
+
+    return {
+      ok: true,
+      data: {
+        user: toUser(payload.admin),
+        token: payload.token.accessToken,
+        issuedAt: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    // The API gives one message for a wrong address and a wrong password, and
+    // it is already written to be read — pass it through rather than inventing
+    // a second vocabulary for the same failures.
+    if (error instanceof ApiError) return { ok: false, reason: error.message };
+    return { ok: false, reason: "Something went wrong. Please try again." };
   }
-
-  if (user.status === "disabled") {
-    return { ok: false, reason: "This account has been disabled. Contact a super admin." };
-  }
-
-  const session: AdminSession = {
-    user: { ...user, lastLoginAt: new Date().toISOString() },
-    // Obviously not a credential. A real backend issues an httpOnly cookie.
-    token: `mock-admin-session-${user.id}`,
-    issuedAt: new Date().toISOString(),
-  };
-
-  // The store owns persistence — see `adminAuthStore`. Writing it here as well
-  // would put two different shapes under the same key.
-  return { ok: true, data: session };
 }
 
 /**
  * Sign out.
  *
- * Nothing to revoke in a mock; the store clears the session. Kept as an async
- * function because a real implementation calls `POST /admin/auth/logout` to
- * invalidate the cookie server-side, and callers should already be awaiting it.
+ * Told to the server as well as forgotten locally. There is nothing to revoke
+ * today — a JWT is valid until it expires — but this is where a denylist would
+ * hook in, and the local clear happens either way.
  */
 export async function signOut(): Promise<void> {
+  try {
+    await apiPost("/admin/auth/logout", {}, AUTH);
+  } catch {
+    /* signing out has to succeed even when the request does not */
+  }
+  setToken(null, "admin");
   useAdminAuthStore.getState().signOut();
+}
+
+/**
+ * Re-read the signed-in administrator from the server.
+ *
+ * A persisted session says who *was* signed in. This says whether that is
+ * still true — the account may since have been disabled, its role changed, or
+ * the token expired. The guard calls it on mount.
+ */
+export async function refreshSession(): Promise<AdminUser | null> {
+  try {
+    return toUser(await apiGet<ApiAdminUser>("/admin/auth/me", AUTH));
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -108,7 +147,7 @@ export function getSession(): AdminSession | null {
 
 /** The acting admin's id, for `updatedBy` fields. */
 export function currentActorId(): string {
-  return getSession()?.user.id ?? "adm_001";
+  return getSession()?.user.id ?? "";
 }
 
 /* ------------------------------------------------------------ permissions */
@@ -116,10 +155,9 @@ export function currentActorId(): string {
 /**
  * Permission names the UI asks about.
  *
- * A placeholder, not a permission engine. It exists so pages express intent —
- * `can(user, "manage:adminUsers")` rather than `user.role === "super-admin"` —
- * which is the part that would otherwise be scattered everywhere and painful to
- * replace once the backend owns authorisation.
+ * Pages express intent — `can(user, "manage:adminUsers")` rather than
+ * `user.role === "super-admin"` — so the rule lives in one place instead of
+ * being scattered through every view.
  */
 export type Permission =
   | "view:dashboard"
@@ -131,6 +169,31 @@ export type Permission =
   | "manage:settings"
   | "manage:adminUsers";
 
+/**
+ * The portal's names, in the backend's vocabulary.
+ *
+ * Two vocabularies because they answer different questions: the UI asks about
+ * a screen ("may I show the storefront editor?"), the API about a resource
+ * ("may you write content?"). `null` means every active administrator has it.
+ */
+const SERVER_PERMISSION: Record<Permission, string | null> = {
+  "view:dashboard": null,
+  "manage:catalogue": "products",
+  "manage:orders": "orders",
+  "manage:customers": "customers",
+  "manage:marketing": "coupons",
+  "manage:storefront": "content",
+  "manage:settings": "settings",
+  "manage:adminUsers": "admins",
+};
+
+/**
+ * What each role may do, when the server has not said.
+ *
+ * Only reached for a user assembled locally — a row in the admin-users table
+ * that was listed rather than signed in as. A signed-in user always carries
+ * the server's own list.
+ */
 const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   "super-admin": [
     "view:dashboard", "manage:catalogue", "manage:orders", "manage:customers",
@@ -147,13 +210,23 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
 };
 
 /**
- * Whether a role carries a permission.
+ * Whether a user carries a permission.
  *
  * **UI convenience only.** Hiding a button does not protect the action behind
- * it; the API must enforce the same rule once it exists.
+ * it — the API enforces the same rule on every write, and that is the boundary.
  */
 export function can(user: AdminUser | null, permission: Permission): boolean {
   if (!user || user.status !== "active") return false;
+
+  // A super admin is not enumerated in every list; the role carries it, the
+  // same way the backend's `require_permission` treats it.
+  if (user.role === "super-admin") return true;
+
+  if (user.permissions) {
+    const key = SERVER_PERMISSION[permission];
+    return key === null || user.permissions.includes(key);
+  }
+
   return ROLE_PERMISSIONS[user.role]?.includes(permission) ?? false;
 }
 

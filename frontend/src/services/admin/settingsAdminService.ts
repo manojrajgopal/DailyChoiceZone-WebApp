@@ -1,7 +1,5 @@
 import type { AdminResult, AdminUser, StoreSettings } from "@/types/admin";
 
-import { countLocalChanges, resetAll } from "@/lib/admin/mock-store";
-
 import { adminDataSource } from "./admin-data-source.instance";
 
 /** Store settings and admin user management. */
@@ -114,16 +112,4 @@ export function emptyAdminUser(): AdminUser {
     createdAt: new Date().toISOString(),
     avatarInitials: "",
   };
-}
-
-/* -------------------------------------------------------------- demo data */
-
-/** How many unsaved local changes exist, for the settings page indicator. */
-export function localChangeCount(): number {
-  return countLocalChanges();
-}
-
-/** Throw away every local change and return to the committed demo data. */
-export function resetDemoData(): void {
-  resetAll();
 }

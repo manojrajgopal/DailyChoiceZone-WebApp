@@ -10,16 +10,15 @@ import { InvoiceActions } from "@/components/billing/InvoiceActions";
 import { InvoiceDocument } from "@/components/billing/InvoiceDocument";
 import { EmptyState } from "@/components/common/States";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getBillingConfig } from "@/services/billing/billingService";
-import { getInvoiceById } from "@/services/billing/invoiceService";
+import { useBillingConfig, useTaxConfig } from "@/hooks/useBillingConfig";
+import { getMyInvoice } from "@/services/billing/invoiceService";
 
 /**
  * One invoice, as a document.
  *
- * Reached by query parameter rather than a path segment, because the storefront
- * is a static export: an invoice raised five minutes ago has no prerendered
- * page, and a route that only works for invoices that existed at build time is
- * worse than no route. The portal's detail pages use the same convention.
+ * Reached by query parameter rather than a path segment: an invoice raised
+ * five minutes ago has no prerendered page, and the document is read on the
+ * client anyway. The portal's detail pages use the same convention.
  */
 function InvoiceDetail() {
   const searchParams = useSearchParams();
@@ -27,6 +26,8 @@ function InvoiceDetail() {
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const config = useBillingConfig();
+  const taxConfig = useTaxConfig();
 
   useEffect(() => {
     if (!id) {
@@ -35,7 +36,7 @@ function InvoiceDetail() {
     }
 
     let active = true;
-    getInvoiceById(id)
+    getMyInvoice(id)
       .then((result) => {
         if (active) setInvoice(result);
       })
@@ -51,7 +52,7 @@ function InvoiceDetail() {
     };
   }, [id]);
 
-  if (isLoading) {
+  if (isLoading || !config) {
     return (
       <AccountShell title="Invoice" breadcrumb={[{ label: "Invoices", href: "/account/invoices" }]}>
         <Skeleton className="h-[40rem] w-full" />
@@ -82,12 +83,12 @@ function InvoiceDetail() {
     >
       <InvoiceActions
         invoice={invoice}
-        config={getBillingConfig()}
+        config={config}
         className="print-hidden mb-5 flex flex-wrap gap-2.5"
       />
 
       <div className="overflow-hidden rounded-card border border-ink-200 print:rounded-none print:border-0">
-        <InvoiceDocument invoice={invoice} config={getBillingConfig()} />
+        <InvoiceDocument invoice={invoice} config={config} gstin={taxConfig?.gstin ?? ""} />
       </div>
     </AccountShell>
   );

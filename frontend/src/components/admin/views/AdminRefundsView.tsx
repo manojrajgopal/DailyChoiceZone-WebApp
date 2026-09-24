@@ -13,8 +13,6 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { datedFilename, downloadCsv, toCsv } from "@/lib/billing/csv";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
-import { getInvoiceById } from "@/services/billing/invoiceService";
-import { getPaymentById } from "@/services/billing/paymentService";
 import { getRefunds, setRefundStatus } from "@/services/billing/refundService";
 import { toast } from "@/store/toastStore";
 
@@ -71,21 +69,17 @@ export function AdminRefundsView() {
   /**
    * Move a refund on.
    *
-   * The invoice and payment are fetched here rather than held in the row,
-   * because completing a refund has to adjust records the table never loaded —
-   * and reading them fresh is what stops a stale copy being written back.
+   * Completing one adjusts the payment, the invoice and the order — records
+   * this table never loaded. All of that happens in one transaction on the
+   * server, so nothing here has to fetch them, and no stale copy can be
+   * written back.
    */
   const applyStatus = useCallback(async () => {
     if (!pending) return;
     const { refund, next } = pending;
 
     setBusy(true);
-    const [invoice, payment] = await Promise.all([
-      getInvoiceById(refund.invoiceId),
-      getPaymentById(refund.paymentId),
-    ]);
-
-    const result = await setRefundStatus(refund, next, invoice, payment);
+    const result = await setRefundStatus(refund, next);
     setBusy(false);
     setPending(null);
 

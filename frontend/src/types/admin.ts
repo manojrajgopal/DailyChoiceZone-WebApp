@@ -257,15 +257,24 @@ export interface AdminUser {
   email: string;
   role: AdminRole;
   status: AdminUserStatus;
+  /**
+   * What the server says this account may write, in the API's own vocabulary.
+   *
+   * Present on the signed-in administrator and on anyone listed by the admin
+   * users endpoint; absent on a user assembled locally, where `can()` falls
+   * back to the role. It decides which controls are drawn, never whether a
+   * write succeeds — the API checks the same list.
+   */
+  permissions?: string[];
   lastLoginAt: string | null;
   createdAt: string;
   avatarInitials: string;
 }
 
-/** An authenticated admin session. Mock-only — see `adminAuthService`. */
+/** An authenticated admin session. */
 export interface AdminSession {
   user: AdminUser;
-  /** Opaque placeholder. A real backend issues an httpOnly cookie instead. */
+  /** The bearer token every admin endpoint validates. */
   token: string;
   issuedAt: string;
 }

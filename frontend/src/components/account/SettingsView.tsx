@@ -15,10 +15,11 @@ import { toast } from "@/store/toastStore";
 /**
  * Account settings.
  *
- * The preference toggles are local-only today — there is no backend to store
- * them against, and the page says so rather than implying they persist
- * server-side. The data controls underneath are real: they clear exactly what
- * this site has stored in this browser.
+ * The preference toggles are local to this browser. Notification preferences
+ * need somewhere to send notifications from, and there is no mail service
+ * behind this store — so the page says so rather than implying they follow the
+ * account. The data controls underneath are real: they clear exactly what this
+ * site has stored in this browser, and leave the account untouched.
  */
 export function SettingsView() {
   const clearCart = useCartStore((state) => state.clearCart);

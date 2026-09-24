@@ -1,0 +1,14 @@
+Migrations for Daily Choice Zone.
+
+The database URL comes from the application settings (see env.py), so these
+commands need no arguments beyond the message:
+
+    alembic revision --autogenerate -m "add something"
+    alembic upgrade head
+    alembic downgrade -1
+    alembic current
+    alembic history
+
+The application applies `upgrade head` itself at startup when AUTO_MIGRATE is
+on. It never downgrades and never drops: a startup routine that can delete a
+table is one that eventually will.

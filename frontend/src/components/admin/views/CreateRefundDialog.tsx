@@ -8,8 +8,8 @@ import { AdminButton } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect } from "@/components/admin/ui/AdminForm";
 import { Modal } from "@/components/ui/Dialog";
 import { formatMoney, toMinor } from "@/lib/money";
-import { currentActorId } from "@/services/admin/adminAuthService";
-import { createRefund, refundReasons } from "@/services/billing/refundService";
+import { useRefundReasons } from "@/hooks/useBillingConfig";
+import { createRefund } from "@/services/billing/refundService";
 import { refundableAmount } from "@/services/billing/paymentService";
 import { toast } from "@/store/toastStore";
 
@@ -23,8 +23,9 @@ import { toast } from "@/store/toastStore";
  *
  * The amount is capped at what the *payment* has left rather than what the
  * invoice was worth, because two partial refunds that each look reasonable can
- * together exceed what was actually collected. The service refuses that too;
- * the cap here is so the administrator finds out before they submit.
+ * together exceed what was actually collected. The server refuses that as
+ * well — and who raised it is taken from the token, not sent from here. The
+ * cap on this form is so the administrator finds out before they submit.
  */
 export function CreateRefundDialog({
   open,
@@ -47,7 +48,7 @@ export function CreateRefundDialog({
   const [error, setError] = useState<string | null>(null);
 
   const available = payment ? refundableAmount(payment) : 0;
-  const reasons = refundReasons();
+  const reasons = useRefundReasons();
 
   const lineKey = (index: number) => `${invoice.lines[index]?.productId ?? ""}-${index}`;
 
@@ -67,11 +68,16 @@ export function CreateRefundDialog({
     if (!open) return;
     setMode("full");
     setSelected(new Set());
-    setReason(reasons[0] ?? "");
     setAmountInput(String(Math.round(available / 100)));
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // The reasons are fetched, so the default is chosen when they arrive rather
+  // than when the dialog opens — otherwise the select starts blank.
+  useEffect(() => {
+    if (open && !reason) setReason(reasons[0] ?? "");
+  }, [open, reason, reasons]);
 
   useEffect(() => {
     if (mode === "items") setAmountInput(String(Math.round(itemsTotal / 100)));
@@ -104,14 +110,7 @@ export function CreateRefundDialog({
     }
 
     setBusy(true);
-    const result = await createRefund({
-      invoice,
-      payment,
-      amount,
-      reason,
-      lines,
-      initiatedBy: currentActorId(),
-    });
+    const result = await createRefund({ invoiceId: invoice.id, amount, reason, lines });
     setBusy(false);
 
     if (!result.ok) {

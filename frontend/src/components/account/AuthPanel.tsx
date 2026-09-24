@@ -10,9 +10,10 @@ import { useSession } from "@/hooks/useSession";
 /**
  * Sign in and register, on one panel.
  *
- * Mock authentication — any valid-looking email with a six-character password
- * is accepted, and no password is ever stored. The notice makes that explicit
- * so nobody types a real password expecting real security.
+ * Both go to the API. The password is verified against a bcrypt hash on the
+ * server and is never held in the browser — what comes back is a token. The
+ * notice below says so, and says plainly that the seeded accounts are sample
+ * data, so nobody reuses a real password on a demonstration store.
  */
 export function AuthPanel() {
   const { signIn, register } = useSession();
@@ -114,11 +115,11 @@ export function AuthPanel() {
       <div className="mt-8 flex items-start gap-3 rounded-card border border-copper-200 bg-copper-50 p-4">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-copper-700" strokeWidth={1.75} aria-hidden="true" />
         <div className="text-xs leading-relaxed text-ink-700">
-          <p className="font-medium text-ink">Demo sign-in</p>
+          <p className="font-medium text-ink">Demo store</p>
           <p className="mt-1">
-            There is no authentication backend yet, so any valid email and a password of six or
-            more characters will sign you in. Nothing is sent anywhere and no password is stored —
-            please do not use a real one.
+            Your password is checked on the server against a hash, and nothing you type is stored
+            in your browser. The accounts here are seeded sample data, though, and no order is
+            ever fulfilled — so please do not use a password you use anywhere else.
           </p>
         </div>
       </div>

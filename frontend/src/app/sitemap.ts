@@ -1,29 +1,25 @@
 import type { MetadataRoute } from "next";
 
 import { getCategories, getCollections } from "@/services/categoryService";
-import { getProducts } from "@/services/productService";
+import { getAllProducts } from "@/services/productService";
 import { getSiteConfig } from "@/services/siteService";
 
 /**
  * The sitemap, generated from the catalogue rather than hand-maintained.
  *
- * Adding a product to products.json puts it in the sitemap automatically —
- * which is the same principle as everywhere else in this app.
+ * Read from the database per request, so a product published this afternoon is
+ * in it this afternoon. A build-time sitemap would have listed whatever the
+ * catalogue held on the day of the last deploy, which for a live shop is the
+ * one thing a sitemap must not do.
  */
-/**
- * Written once at build time.
- *
- * `output: "export"` has no server to generate this per request, so Next
- * requires the route to declare itself static explicitly.
- */
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [config, categories, collections, products] = await Promise.all([
     getSiteConfig(),
     getCategories(),
     getCollections(),
-    getProducts({ pageSize: 1000, page: 1 }),
+    getAllProducts(),
   ]);
 
   const base = config.url;
@@ -60,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
-    ...products.items.map((product) => ({
+    ...products.map((product) => ({
       url: `${base}/product/${product.slug}`,
       lastModified: now,
       changeFrequency: "weekly" as const,

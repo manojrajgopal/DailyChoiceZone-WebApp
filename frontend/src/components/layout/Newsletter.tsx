@@ -8,8 +8,10 @@ import { toast } from "@/store/toastStore";
 /**
  * Newsletter sign-up.
  *
- * No backend, so a valid address simply confirms. The email is not stored or
- * transmitted anywhere — when a real endpoint exists, only `onSubmit` changes.
+ * The one form with nothing behind it: a valid address simply confirms, and
+ * the email is not stored or transmitted anywhere. A mailing list is a
+ * third-party service rather than a table in this database, so when one is
+ * chosen, only `onSubmit` changes.
  */
 export function Newsletter() {
   const [email, setEmail] = useState("");

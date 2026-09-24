@@ -1,25 +1,28 @@
-import type { Invoice, Money, Payment, Refund, RefundLine, RefundStatus } from "@/types";
+import type { Money, Refund, RefundLine, RefundStatus } from "@/types";
+
+import { ApiError } from "@/services/api/client";
 
 import { billingDataSource } from "./billing-data-source.instance";
 import type { RefundQuery } from "./billing-data-source";
 import { getBillingConfig } from "./billingService";
-import { updateInvoice } from "./invoiceService";
-import { refundPayment, refundableAmount } from "./paymentService";
 
 /**
  * Refunds.
  *
  * A refund is a request first and a movement of money second, which is why it
- * has its own record rather than being a flag on the payment: it can be raised,
- * sit in processing, and be rejected without any money ever moving. Only a
- * *completed* refund touches the payment and the invoice.
+ * has its own record rather than being a flag on the payment: it can be
+ * raised, sit in processing, and be rejected without any money ever moving.
  *
- * Partial refunds are first class. `lines` is empty for a whole-order refund
- * and populated for a per-item one; the amount is authoritative either way, so
- * the rest of the system never has to re-derive it.
+ * **Every rule about it is enforced on the server** — the over-refund check
+ * against what the payment has left, the provider call, the adjustment to the
+ * payment, the invoice and the order. This file used to do that sequence in
+ * the browser across four separate writes, any of which could be the last one
+ * before the tab closed. Now it is one request and one transaction, and what
+ * comes back is the record as stored.
  *
- * Future: `GET /billing/refunds`, `GET /billing/refunds/:id`,
- * `POST /billing/payments/:id/refund`.
+ *   GET  /admin/billing/refunds
+ *   POST /admin/billing/refunds
+ *   PUT  /admin/billing/refunds/:id
  */
 
 export type { RefundQuery };
@@ -36,154 +39,66 @@ export function getRefundsForOrder(orderId: string): Promise<Refund[]> {
   return billingDataSource.listRefunds({ orderId });
 }
 
-export function refundReasons(): string[] {
-  return getBillingConfig().refund.reasons;
+/** The reasons offered in the refund and credit-note dialogs. Configuration. */
+export async function refundReasons(): Promise<string[]> {
+  return (await getBillingConfig()).refund.reasons;
 }
 
 export interface CreateRefundInput {
-  invoice: Invoice;
-  payment: Payment;
+  invoiceId: string;
   amount: Money;
   reason: string;
   lines?: RefundLine[];
-  initiatedBy: string;
-  /** Skip the provider call and leave it awaiting action. */
+  /** Leave it awaiting action instead of settling it now. */
   status?: RefundStatus;
 }
 
-export type RefundResult =
-  | { ok: true; refund: Refund }
-  | { ok: false; reason: string };
+export type RefundResult = { ok: true; refund: Refund } | { ok: false; reason: string };
 
 /**
  * Raise a refund.
  *
- * Refusing to over-refund is the important rule here, and it is checked against
- * what the *payment* has left rather than what the invoice was worth — two
- * partial refunds that each look reasonable can together exceed the amount
- * actually collected.
+ * The checks that matter happen on the server, so the ones here are only the
+ * two that save a round trip on an obviously empty form. Everything else —
+ * whether there is anything left to refund, whether the provider accepts it —
+ * comes back as a message written to be shown.
  */
 export async function createRefund(input: CreateRefundInput): Promise<RefundResult> {
-  const { invoice, payment, amount, reason } = input;
+  if (input.amount <= 0) return { ok: false, reason: "Enter a refund amount above zero." };
+  if (!input.reason.trim()) return { ok: false, reason: "Choose a reason for the refund." };
 
-  if (amount <= 0) {
-    return { ok: false, reason: "Enter a refund amount above zero." };
-  }
-
-  const available = refundableAmount(payment);
-  if (available <= 0) {
-    return {
-      ok: false,
-      reason:
-        payment.status === "pending"
-          ? "Nothing has been collected on this order yet, so there is nothing to refund."
-          : "This payment has already been refunded in full.",
-    };
-  }
-
-  if (amount > available) {
-    return { ok: false, reason: "That is more than is left to refund on this payment." };
-  }
-
-  if (!reason.trim()) {
-    return { ok: false, reason: "Choose a reason for the refund." };
-  }
-
-  const now = new Date();
-  const existing = await billingDataSource.listRefunds({});
-  const sequence = existing.length + 1;
-
-  const status = input.status ?? "completed";
-
-  const refund: Refund = {
-    id: `ref_${String(sequence).padStart(4, "0")}`,
-    refundNumber: `DCZ-RF-${now.getFullYear()}-${String(sequence).padStart(5, "0")}`,
-    orderId: invoice.orderId,
-    orderNumber: invoice.orderNumber,
-    invoiceId: invoice.id,
-    invoiceNumber: invoice.invoiceNumber,
-    paymentId: payment.id,
-    customerId: invoice.customerId,
-    customerName: invoice.customerName,
-    amount,
-    reason: reason.trim(),
-    status,
-    requestedAt: now.toISOString(),
-    processedAt: status === "completed" ? now.toISOString() : null,
-    lines: input.lines ?? [],
-    creditNoteId: null,
-    initiatedBy: input.initiatedBy,
-  };
-
-  await billingDataSource.createRefund(refund);
-
-  // Only a completed refund has actually moved money, so only a completed
-  // refund adjusts the payment and the invoice.
-  if (status === "completed") {
-    const updatedPayment = await refundPayment(payment, amount, refund.reason);
-    if (!updatedPayment) {
-      await billingDataSource.updateRefund({ ...refund, status: "rejected", processedAt: null });
-      return { ok: false, reason: "The payment provider refused the refund." };
-    }
-
-    await updateInvoice({
-      ...invoice,
-      amountRefunded: invoice.amountRefunded + amount,
-      paymentStatus: updatedPayment.status,
+  try {
+    const refund = await billingDataSource.createRefund({
+      invoiceId: input.invoiceId,
+      amount: input.amount,
+      reason: input.reason.trim(),
+      lines: input.lines,
+      status: input.status,
     });
+    return { ok: true, refund };
+  } catch (error) {
+    return { ok: false, reason: message(error, "The refund could not be raised.") };
   }
-
-  return { ok: true, refund };
 }
 
 /**
  * Move a refund along.
  *
- * Completing one here does what `createRefund` would have done at the time:
- * calls the provider and adjusts the payment and invoice. Rejecting one leaves
+ * Completing one settles it: the provider is called and the payment, invoice
+ * and order are adjusted, all inside the same transaction. Rejecting leaves
  * the money where it is.
  */
 export async function setRefundStatus(
   refund: Refund,
   status: RefundStatus,
-  invoice: Invoice | null,
-  payment: Payment | null,
 ): Promise<RefundResult> {
-  if (refund.status === "completed") {
-    return { ok: false, reason: "This refund is already complete." };
+  try {
+    return { ok: true, refund: await billingDataSource.updateRefund({ ...refund, status }) };
+  } catch (error) {
+    return { ok: false, reason: message(error, "The refund could not be updated.") };
   }
-
-  const now = new Date().toISOString();
-
-  if (status === "completed") {
-    if (!invoice || !payment) {
-      return { ok: false, reason: "The invoice or payment for this refund is missing." };
-    }
-    if (refund.amount > refundableAmount(payment)) {
-      return { ok: false, reason: "That is more than is left to refund on this payment." };
-    }
-
-    const updatedPayment = await refundPayment(payment, refund.amount, refund.reason);
-    if (!updatedPayment) {
-      return { ok: false, reason: "The payment provider refused the refund." };
-    }
-
-    await updateInvoice({
-      ...invoice,
-      amountRefunded: invoice.amountRefunded + refund.amount,
-      paymentStatus: updatedPayment.status,
-    });
-  }
-
-  const updated = await billingDataSource.updateRefund({
-    ...refund,
-    status,
-    processedAt: status === "completed" ? now : refund.processedAt,
-  });
-
-  return { ok: true, refund: updated };
 }
 
-export function linkCreditNote(refund: Refund, creditNoteId: string): Promise<Refund> {
-  return billingDataSource.updateRefund({ ...refund, creditNoteId });
+function message(error: unknown, fallback: string): string {
+  return error instanceof ApiError && error.message ? error.message : fallback;
 }

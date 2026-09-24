@@ -10,6 +10,7 @@ import type {
   ProductQuery,
   PromoBanner,
   Review,
+  ReviewSummary,
   SiteConfig,
 } from "@/types";
 
@@ -27,7 +28,8 @@ import type {
  *   getFacets          →  GET  /products/facets
  *   listCategories     →  GET  /categories
  *   listCollections    →  GET  /collections
- *   listReviews        →  GET  /products/:id/reviews
+ *   listReviews        →  GET  /reviews?productId=
+ *   getReviewSummary   →  GET  /reviews/summary?productId=
  *
  * Note that filtering, sorting and pagination are the *data source's* job, not
  * the UI's. Today the mock adapter runs them locally over JSON; tomorrow the
@@ -58,6 +60,7 @@ export interface DataSource {
   getCollectionBySlug(slug: string): Promise<Collection | null>;
 
   listReviews(productId: string): Promise<Review[]>;
+  getReviewSummary(productId: string): Promise<ReviewSummary>;
   listCoupons(): Promise<Coupon[]>;
 
   getSiteConfig(): Promise<SiteConfig>;

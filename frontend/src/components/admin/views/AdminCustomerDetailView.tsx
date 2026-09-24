@@ -159,7 +159,17 @@ export function AdminCustomerDetailView() {
         {/* ------------------------------------------------- order history */}
         <AdminCard
           title="Order history"
-          description={`${list.length} order${list.length === 1 ? "" : "s"}, newest first`}
+          /*
+           * The cancelled count is spelt out because the tile above counts
+           * only the billable ones — it has to, or it would disagree with the
+           * spend beside it — and two different order counts on one screen
+           * with no explanation reads as a bug.
+           */
+          description={
+            list.length - billable.length > 0
+              ? `${list.length} order${list.length === 1 ? "" : "s"}, newest first · ${list.length - billable.length} cancelled`
+              : `${list.length} order${list.length === 1 ? "" : "s"}, newest first`
+          }
         >
           {orders.isLoading ? (
             <div className="flex flex-col gap-2">

@@ -12,21 +12,16 @@ import { EmptyState } from "@/components/common/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
-import { getInvoiceById } from "@/services/billing/invoiceService";
-import { getOrders } from "@/services/orderService";
+import { getMyInvoices } from "@/services/billing/invoiceService";
 import { toast } from "@/store/toastStore";
 
 /**
  * A customer's invoices.
  *
- * Derived from the orders this browser has placed rather than queried by
- * customer id, for the same reason the orders page is: there is no backend, so
- * "my orders" means the ones in this browser's storage. An invoice is reached
- * through the order that produced it, which is also the relationship a real
- * `GET /account/invoices` would walk.
- *
- * Orders placed before billing existed have no invoice. They are skipped rather
- * than rendered as a broken row — there is genuinely nothing to show.
+ * `GET /invoices` — whose they are is decided by the token, not by a customer
+ * id this page could name. It used to walk the orders in this browser's
+ * storage and look each invoice up, which is two requests per row and an
+ * answer that changed with the device.
  */
 export function InvoicesView() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -35,20 +30,9 @@ export function InvoicesView() {
   useEffect(() => {
     let active = true;
 
-    getOrders()
-      .then(async (orders) => {
-        const ids = orders
-          .map((order) => order.invoiceId)
-          .filter((id): id is string => Boolean(id));
-
-        const resolved = await Promise.all(ids.map((id) => getInvoiceById(id)));
-        if (!active) return;
-
-        setInvoices(
-          resolved
-            .filter((invoice): invoice is Invoice => invoice !== null)
-            .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)),
-        );
+    getMyInvoices()
+      .then((result) => {
+        if (active) setInvoices(result);
       })
       .catch(() => {
         if (active) setInvoices([]);

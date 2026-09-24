@@ -1,0 +1,34 @@
+# Daily Choice Zone — backend
+#
+# Pinned to minor versions: the API surface of these libraries moves, and a
+# backend that builds differently on two machines is a backend nobody trusts.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# ORM and migrations
+SQLAlchemy==2.0.36
+alembic==1.14.0
+
+# MySQL driver. PyMySQL is pure Python, so there is no build toolchain to
+# install on Windows — which is what most of the friction with mysqlclient is.
+PyMySQL==1.1.1
+cryptography==44.0.0
+
+# Validation and settings
+pydantic==2.10.4
+pydantic-settings==2.7.0
+email-validator==2.2.0
+
+# Auth. bcrypt is pinned below 4.1 because passlib 1.7.4 reads
+# `bcrypt.__about__.__version__`, which 4.1 removed — the pairing warns
+# noisily otherwise.
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.20
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx==0.28.1

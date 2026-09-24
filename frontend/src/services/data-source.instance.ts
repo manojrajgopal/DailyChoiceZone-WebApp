@@ -1,12 +1,11 @@
 import { httpAdapter } from "./adapters/http-adapter";
-import { mockAdapter } from "./adapters/mock-adapter";
 import type { DataSource } from "./data-source";
 
 /**
- * Chooses the active data source.
+ * The active storefront data source.
  *
- * This is the whole switch. `NEXT_PUBLIC_DATA_SOURCE=http` moves the entire
- * storefront onto the REST API; anything else keeps it on local JSON.
+ * One adapter now: the REST API. The contract it implements is the same one
+ * the local-JSON adapter implemented, which is what made the switch a change
+ * to this file rather than to every component.
  */
-export const dataSource: DataSource =
-  process.env.NEXT_PUBLIC_DATA_SOURCE === "http" ? httpAdapter : mockAdapter;
+export const dataSource: DataSource = httpAdapter;

@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, RotateCcw } from "lucide-react";
+import { Database, Loader2 } from "lucide-react";
 
 import type { StoreSettings } from "@/types/admin";
 
-import {
-  AdminButton,
-  AdminPageHeader,
-  ConfirmDialog,
-} from "@/components/admin/ui/AdminChrome";
+import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import {
   AdminInput,
   AdminSelect,
@@ -19,12 +15,7 @@ import {
   FormSection,
 } from "@/components/admin/ui/AdminForm";
 import { useAdminResource } from "@/hooks/useAdminResource";
-import {
-  getSettings,
-  localChangeCount,
-  resetDemoData,
-  saveSettings,
-} from "@/services/admin/settingsAdminService";
+import { getSettings, saveSettings } from "@/services/admin/settingsAdminService";
 import { toast } from "@/store/toastStore";
 
 /**
@@ -39,8 +30,6 @@ export function AdminSettingsView() {
 
   const [draft, setDraft] = useState<StoreSettings | null>(null);
   const [saving, setSaving] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [changes, setChanges] = useState(0);
 
   /**
    * Seed the form whenever the settings are (re)loaded.
@@ -58,9 +47,6 @@ export function AdminSettingsView() {
     if (data) setDraft(data);
   }, [data]);
 
-  useEffect(() => {
-    setChanges(localChangeCount());
-  }, [data]);
 
   const onSave = async () => {
     if (!draft) return;
@@ -75,16 +61,6 @@ export function AdminSettingsView() {
 
     toast.success("Store settings saved");
     await reload();
-    setChanges(localChangeCount());
-  };
-
-  const onReset = () => {
-    resetDemoData();
-    setResetting(false);
-    setDraft(null);
-    toast.success("Demo data restored");
-    void reload();
-    setChanges(0);
   };
 
   if (isLoading || !draft) {
@@ -349,27 +325,29 @@ export function AdminSettingsView() {
           </FormGrid>
         </FormSection>
 
-        {/* ----------------------------------------------------- demo data */}
+        {/* ---------------------------------------------- where this lives */}
         <FormSection
-          title="Demo data"
-          description="Everything you change in this portal is stored in this browser."
+          title="Where this data lives"
+          description="Saved to the database, for everybody."
           className="xl:col-span-2"
         >
-          <p className="max-w-prose text-xs leading-relaxed text-admin-muted">
-            There is no backend, so admin changes are kept as an overlay on top of the committed
-            demo data in your browser&rsquo;s local storage. They are visible only to you, on this
-            device, and resetting restores the original catalogue and orders.
-          </p>
-
-          <p className="mt-3 text-xs text-admin-ink">
-            <strong className="tabular-nums">{changes}</strong> local change
-            {changes === 1 ? "" : "s"} recorded.
-          </p>
-
-          <AdminButton variant="secondary" className="mt-4" onClick={() => setResetting(true)}>
-            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-            Reset demo data
-          </AdminButton>
+          <div className="flex max-w-prose items-start gap-2.5 rounded-[3px] border border-admin-border bg-admin-surface p-3.5">
+            <Database
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-admin-faint"
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+            <p className="text-xs leading-relaxed text-admin-muted">
+              Every change made in this portal is written to the store&rsquo;s database and takes
+              effect on the storefront&rsquo;s next request — for every visitor, not just this
+              browser. There is no local copy to reset. To rebuild the sample catalogue and orders
+              during development, run{" "}
+              <code className="rounded-[2px] bg-admin-plane px-1 py-0.5 font-mono text-[0.6875rem] text-admin-ink">
+                python -m app.seed.reset --yes
+              </code>{" "}
+              against the backend.
+            </p>
+          </div>
         </FormSection>
       </div>
 
@@ -385,20 +363,6 @@ export function AdminSettingsView() {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={resetting}
-        onOpenChange={setResetting}
-        title="Reset demo data?"
-        confirmLabel="Reset everything"
-        message={
-          <>
-            This discards every change made in this admin portal — products added or edited, order
-            statuses, settings, homepage sections and banners — and restores the original demo
-            data. You stay signed in. This cannot be undone.
-          </>
-        }
-        onConfirm={onReset}
-      />
     </div>
   );
 }

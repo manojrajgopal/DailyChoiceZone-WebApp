@@ -1,39 +1,41 @@
-import taxConfigJson from "@/data/billing/tax-config.json";
-
 import type { Money, TaxBreakdown, TaxConfig, TaxMode } from "@/types";
 
-import { OVERLAY_KEYS, readDocument, writeDocument } from "@/lib/admin/mock-store";
 import { percentOf, taxIncludedIn } from "@/lib/money";
+import { apiGet, apiPut } from "@/services/api/client";
 
 /**
- * Tax.
+ * Tax configuration, and one preview calculation.
  *
- * Every tax decision in the application is made here. Nothing else knows a
- * rate, and nothing else decides between CGST+SGST and IGST — a rate written
- * into a component is a rate nobody can find when it changes.
+ * **The tax that gets charged is computed on the server**, in
+ * `services/billing.py`, per line, at the moment an order is placed — and
+ * again, from the stored invoice, whenever a refund or a credit note is
+ * raised. Nothing a browser works out is trusted, and nothing here is filed.
  *
- * **Scope, stated plainly:** this is a configurable *representation* of Indian
- * GST for a frontend demonstration. It is not a compliance implementation and
- * must not be relied on for filing. Real treatment depends on HSN
- * classification, exemptions and thresholds, reverse charge, composition
- * schemes and place-of-supply rules that belong in a backend maintained with
- * professional advice. What this gives you is the right *shape*: the numbers an
- * invoice must carry, computed in one place, ready for a server to become the
- * authority.
+ * What is left is the configuration, read from the API, plus `calculateTax`
+ * for the one screen that needs to show a split *before* it commits: the
+ * credit-note dialog, where whoever is issuing it wants to see what the
+ * amount they typed breaks down into. The server recomputes it on submit and
+ * its answer is the one that is stored — this is a preview, and is documented
+ * as one so nobody reaches for it as an authority.
  *
- * Future: `GET /billing/tax-config`, `PUT /billing/tax-config`, and the
- * calculation itself moves server-side so the client cannot disagree with the
- * document that gets filed.
+ * **Scope, stated plainly:** a configurable representation of Indian GST, not
+ * a compliance implementation. Real treatment depends on HSN classification,
+ * exemptions and thresholds, reverse charge and place-of-supply rules that
+ * belong with professional advice.
  */
 
-const BASE: TaxConfig = taxConfigJson as TaxConfig;
+/** Read once per page load; `saveTaxConfig` refreshes it. */
+let cached: Promise<TaxConfig> | null = null;
 
-export function getTaxConfig(): TaxConfig {
-  return readDocument(OVERLAY_KEYS.taxConfig, BASE);
+export function getTaxConfig(): Promise<TaxConfig> {
+  cached ??= apiGet<TaxConfig>("/site/tax-config");
+  return cached;
 }
 
-export function saveTaxConfig(config: TaxConfig): TaxConfig {
-  return writeDocument(OVERLAY_KEYS.taxConfig, config);
+export async function saveTaxConfig(config: TaxConfig): Promise<TaxConfig> {
+  const saved = await apiPut<TaxConfig>("/admin/settings/tax", config, { auth: "admin" });
+  cached = Promise.resolve(saved);
+  return saved;
 }
 
 /**
@@ -43,7 +45,7 @@ export function saveTaxConfig(config: TaxConfig): TaxConfig {
  * state; supply across a state line is a single integrated tax. Comparison is
  * case- and space-insensitive because addresses are typed by people.
  */
-export function taxModeFor(placeOfSupply: string, config: TaxConfig = getTaxConfig()): TaxMode {
+export function taxModeFor(placeOfSupply: string, config: TaxConfig): TaxMode {
   if (!config.enabled || config.taxType === "NONE") return "none";
   const normalise = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
   return normalise(placeOfSupply) === normalise(config.originState)
@@ -52,7 +54,7 @@ export function taxModeFor(placeOfSupply: string, config: TaxConfig = getTaxConf
 }
 
 /** The rates for a category, falling back to the default set. */
-export function ratesFor(category: string | null, config: TaxConfig = getTaxConfig()) {
+export function ratesFor(category: string | null, config: TaxConfig) {
   if (category && config.categoryRates?.[category]) return config.categoryRates[category];
   return config.rates;
 }
@@ -60,8 +62,8 @@ export function ratesFor(category: string | null, config: TaxConfig = getTaxConf
 /** The single combined percentage that applies, for labels and the IGST case. */
 export function combinedRate(
   mode: TaxMode,
-  category: string | null = null,
-  config: TaxConfig = getTaxConfig(),
+  category: string | null,
+  config: TaxConfig,
 ): number {
   if (mode === "none") return 0;
   const rates = ratesFor(category, config);
@@ -69,39 +71,28 @@ export function combinedRate(
 }
 
 /**
- * Work out the tax on an amount.
+ * Preview the tax on an amount.
  *
- * `amount` is the gross consideration for the goods — the line values after
- * discounts. Whether that figure already contains the tax is configuration, not
- * an argument, because the whole catalogue has to agree on it.
+ * Mirrors `calculate_tax` in the backend deliberately — same extraction, same
+ * halving, same rounding — so a preview and the stored document agree. It is
+ * still a preview: the server does not read this, and if the two ever diverge
+ * the server is right.
  *
  * When prices are tax-inclusive the tax is *extracted*: the customer pays what
- * the shelf said, and the invoice shows how that splits. When they are
- * exclusive the tax is *added* on top. Both are common; the store's current
- * setting is inclusive, which is why applying tax does not change what anyone
- * is charged today — it only makes the composition visible.
- *
- * CGST and SGST are derived by halving the total rather than computed
- * separately, so the two halves always sum to the whole with no stray paisa.
+ * the shelf said, and the document shows how that splits. CGST and SGST are
+ * derived by halving the *total*, not the rate, so the two parts always sum
+ * back to the whole with no stray paisa.
  */
 export function calculateTax(
   amount: Money,
   placeOfSupply: string,
-  category: string | null = null,
-  config: TaxConfig = getTaxConfig(),
+  category: string | null,
+  config: TaxConfig,
 ): TaxBreakdown {
   const mode = taxModeFor(placeOfSupply, config);
 
   if (mode === "none" || amount <= 0) {
-    return {
-      mode: "none",
-      taxableAmount: Math.max(0, amount),
-      cgst: 0,
-      sgst: 0,
-      igst: 0,
-      totalTax: 0,
-      ratePercent: 0,
-    };
+    return { ...EMPTY_TAX, taxableAmount: Math.max(0, amount) };
   }
 
   const ratePercent = combinedRate(mode, category, config);
@@ -117,7 +108,6 @@ export function calculateTax(
     return { mode, taxableAmount, cgst: 0, sgst: 0, igst: totalTax, totalTax, ratePercent };
   }
 
-  // Halve the *total*, not the rate, so the parts reconcile exactly.
   const cgst = Math.round(totalTax / 2);
   return {
     mode,
@@ -127,21 +117,6 @@ export function calculateTax(
     igst: 0,
     totalTax,
     ratePercent,
-  };
-}
-
-/** Add two breakdowns — used to total per-line tax into an invoice's. */
-export function addTax(a: TaxBreakdown, b: TaxBreakdown): TaxBreakdown {
-  return {
-    // A mixed-mode invoice is impossible (one place of supply), so either
-    // mode is correct; prefer the one that is actually charging something.
-    mode: a.totalTax > 0 ? a.mode : b.mode,
-    taxableAmount: a.taxableAmount + b.taxableAmount,
-    cgst: a.cgst + b.cgst,
-    sgst: a.sgst + b.sgst,
-    igst: a.igst + b.igst,
-    totalTax: a.totalTax + b.totalTax,
-    ratePercent: a.totalTax >= b.totalTax ? a.ratePercent : b.ratePercent,
   };
 }
 

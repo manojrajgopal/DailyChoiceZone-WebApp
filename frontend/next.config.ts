@@ -1,43 +1,33 @@
 import type { NextConfig } from "next";
 
 /**
- * Built as a fully static site.
+ * Built to run on Node.
  *
- * `output: "export"` writes plain HTML, CSS and JS to `out/`, which any static
- * host can serve with no Node process — that is what lets this deploy as a
- * Render Static Site (free, no cold starts) rather than a Web Service.
+ * This used to be `output: "export"` — plain HTML written to `out/`, servable
+ * by any static host with no process behind it. That worked while every figure
+ * on every page was baked into the bundle at build time.
  *
- * The trade-offs this choice imposes, all of which the code now accounts for:
+ * It stopped working the moment the data moved to MySQL. A static export can
+ * only render what was true when it was built, so an administrator changing a
+ * price would have needed a redeploy before anybody saw it, and pages that
+ * depend on who is asking — the cart, the account, the portal — would have had
+ * nothing to render on the server at all. A Node server renders per request,
+ * which is what a storefront backed by a live database needs.
  *
- * - **No server**, so nothing can read `searchParams` or route params during
- *   rendering. `/search` and `/account/order` read them in the browser
- *   instead, and every catalogue route is enumerated by
- *   `generateStaticParams`.
- * - **No image optimizer.** `unoptimized` makes `next/image` emit the source
- *   URL directly. Product photography already comes from Unsplash sized via
- *   URL parameters, so little is lost; swap this off if you ever move to a
- *   Node deployment.
- * - **Nothing is computed per request.** Anything date-dependent has to run in
- *   the browser, or it would be frozen at build time.
+ * Deployment moves with it: a Render Web Service (or any Node host) running
+ * `next build && next start`, rather than a Static Site.
  */
 const nextConfig: NextConfig = {
-  output: "export",
-
-  /**
-   * Emit `shop/index.html` rather than `shop.html`.
-   *
-   * Static hosts resolve a directory to its `index.html` natively, so this is
-   * what makes deep links like `/shop` work without host-specific rewrite
-   * rules. Internal links all gain a trailing slash to match.
-   */
-  trailingSlash: true,
-
   reactStrictMode: true,
 
   images: {
-    // Required by `output: "export"` — there is no server to optimize through.
+    /**
+     * The optimizer is available again now there is a server, but product
+     * photography already comes from Unsplash sized through URL parameters, so
+     * it would be re-fetching and re-encoding images that are already the right
+     * size. `remotePatterns` still bounds where images may come from.
+     */
     unoptimized: true,
-    // Kept for documentation, and enforced again if this ever runs on Node.
     remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
   },
 };

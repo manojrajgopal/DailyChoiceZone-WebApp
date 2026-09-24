@@ -1,24 +1,25 @@
-import type { CreditNote, CreditNoteStatus, Invoice, Money, Refund } from "@/types";
+import type { CreditNote, CreditNoteStatus, Money } from "@/types";
+
+import { ApiError } from "@/services/api/client";
 
 import { billingDataSource } from "./billing-data-source.instance";
-import { nextCreditNoteNumber } from "./invoiceService";
-import { linkCreditNote } from "./refundService";
-import { calculateTax } from "./taxService";
 
 /**
  * Credit notes.
  *
- * A refund returns money; a credit note is the document that says an invoice's
- * value has been reduced, and carries the tax adjustment that goes with it. They
- * are separate records because they are separate events — money can go back
- * without a note being raised yet, and a note can be drafted before it is
- * issued.
+ * A refund returns money; a credit note is the document saying an invoice's
+ * value has been reduced, and carries the tax adjustment that goes with it.
+ * They are separate records because they are separate events — money can go
+ * back before a note is raised, and a note can be drafted before it is issued.
  *
- * Its tax is recomputed from the credited amount rather than copied off the
- * invoice, so a partial credit carries the right proportion of tax and the note
- * reconciles with the invoice it offsets.
+ * The number and the tax are the server's. Its tax is recomputed from the
+ * credited amount rather than copied off the invoice, so a partial credit
+ * carries the right proportion and the note reconciles with the document it
+ * offsets — and it is recomputed by the same code that wrote that document.
  *
- * Future: `GET /billing/credit-notes`, `POST /billing/credit-notes`.
+ *   GET  /admin/billing/credit-notes
+ *   POST /admin/billing/credit-notes
+ *   PUT  /admin/billing/credit-notes/:id
  */
 
 export function getCreditNotes(): Promise<CreditNote[]> {
@@ -35,11 +36,11 @@ export async function getCreditNotesForOrder(orderId: string): Promise<CreditNot
 }
 
 export interface CreateCreditNoteInput {
-  invoice: Invoice;
+  invoiceId: string;
   /** The gross amount being credited. */
   total: Money;
   reason: string;
-  refund?: Refund | null;
+  refundId?: string | null;
   status?: CreditNoteStatus;
 }
 
@@ -48,46 +49,27 @@ export type CreditNoteResult =
   | { ok: false; reason: string };
 
 export async function createCreditNote(input: CreateCreditNoteInput): Promise<CreditNoteResult> {
-  const { invoice, total, reason } = input;
+  if (input.total <= 0) return { ok: false, reason: "Enter an amount above zero." };
+  if (!input.reason.trim()) return { ok: false, reason: "Give a reason for the credit note." };
 
-  if (total <= 0) {
-    return { ok: false, reason: "Enter an amount above zero." };
+  try {
+    const creditNote = await billingDataSource.createCreditNote({
+      invoiceId: input.invoiceId,
+      total: input.total,
+      reason: input.reason.trim(),
+      refundId: input.refundId,
+      status: input.status,
+    });
+    return { ok: true, creditNote };
+  } catch (error) {
+    return {
+      ok: false,
+      reason:
+        error instanceof ApiError && error.message
+          ? error.message
+          : "The credit note could not be issued.",
+    };
   }
-  if (total > invoice.breakdown.grandTotal) {
-    return { ok: false, reason: "A credit note cannot exceed the invoice it offsets." };
-  }
-  if (!reason.trim()) {
-    return { ok: false, reason: "Give a reason for the credit note." };
-  }
-
-  const now = new Date();
-  const { id, creditNoteNumber } = nextCreditNoteNumber(now);
-  const tax = calculateTax(total, invoice.placeOfSupply, null);
-
-  const note: CreditNote = {
-    id,
-    creditNoteNumber,
-    invoiceId: invoice.id,
-    invoiceNumber: invoice.invoiceNumber,
-    orderId: invoice.orderId,
-    orderNumber: invoice.orderNumber,
-    customerId: invoice.customerId,
-    customerName: invoice.customerName,
-    refundId: input.refund?.id ?? null,
-    reason: reason.trim(),
-    amount: tax.taxableAmount,
-    tax: tax.totalTax,
-    total,
-    issuedAt: now.toISOString(),
-    status: input.status ?? "issued",
-  };
-
-  await billingDataSource.createCreditNote(note);
-
-  // Keep the refund pointing at its note, so either record leads to the other.
-  if (input.refund) await linkCreditNote(input.refund, note.id);
-
-  return { ok: true, creditNote: note };
 }
 
 export function setCreditNoteStatus(

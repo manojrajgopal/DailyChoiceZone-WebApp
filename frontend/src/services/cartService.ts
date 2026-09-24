@@ -1,39 +1,198 @@
 import type { CartLine, CartTotals, Coupon, Product, ResolvedCartLine } from "@/types";
+import type { BillingBreakdown } from "@/types";
+
+import { apiDelete, apiGet, apiPost, apiPut, query } from "@/services/api/client";
 
 import { dataSource } from "./data-source.instance";
 
 /**
- * Cart pricing.
+ * The cart.
  *
- * All of it is pure and synchronous, deliberately: the numbers a shopper sees
- * must update the instant they change a quantity, with no request in between.
- * The one async part — resolving ids to products — is separated out.
+ * **The server owns it, and the server prices it.** A signed-in customer's bag
+ * follows them between devices, and every figure on it — subtotal, discount,
+ * delivery, tax, total — is calculated once, in one place, by the same code
+ * that will charge them. The browser renders what it is told.
  *
- * When a real cart API exists, `POST /cart` becomes the source of truth for
- * these totals and this file becomes the optimistic local estimate. The shapes
- * already match, so the UI will not need to change.
+ * A signed-out visitor still has a bag, kept locally, because forcing someone
+ * to create an account before they can look at what they have chosen is a
+ * worse shop. That local bag is explicitly **staging, not truth**: it holds
+ * ids and quantities only, it is never priced here, and `mergeGuestCart` posts
+ * it to the server the moment somebody signs in.
  */
 
-export interface DeliverySettings {
-  freeDeliveryThreshold: number;
-  standardDeliveryFee: number;
+const AUTH = { auth: "customer" } as const;
+
+/* ---------------------------------------------------------------- the shape */
+
+interface ApiCartItem {
+  id: number;
+  productId: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
+  product: Product;
+  lineTotal: number;
 }
 
-export const DEFAULT_DELIVERY: DeliverySettings = {
-  freeDeliveryThreshold: 999,
-  standardDeliveryFee: 79,
-};
+export interface ServerCart {
+  items: ApiCartItem[];
+  breakdown: BillingBreakdown;
+  freeDeliveryShortfall: number;
+  appliedCoupon: (Coupon & { discount: number }) | null;
+}
 
-/* ------------------------------------------------------------ line resolution */
+export interface CartView {
+  lines: ResolvedCartLine[];
+  breakdown: BillingBreakdown;
+  totals: CartTotals;
+  coupon: Coupon | null;
+}
+
+/* -------------------------------------------------------------- conversion */
 
 /**
- * Join stored cart lines against the live catalogue.
+ * Minor units back to rupees, for the parts of the UI that still speak them.
  *
- * Lines whose product no longer exists are dropped rather than rendered as a
- * broken row — a product can be delisted while it sits in someone's cart.
- * Quantity is clamped to available stock for the same reason.
+ * The breakdown is passed through untouched — `formatMoney` reads paise — but
+ * `CartTotals` is the shape the cart page and the order record have always
+ * used, and changing its units would be a silent bug in every component that
+ * reads it.
  */
-export async function resolveCartLines(lines: CartLine[]): Promise<ResolvedCartLine[]> {
+const toMajor = (minor: number): number => minor / 100;
+
+function toTotals(cart: ServerCart): CartTotals {
+  const { breakdown } = cart;
+
+  return {
+    itemCount: breakdown.itemCount,
+    subtotal: toMajor(breakdown.subtotal),
+    catalogueSavings: toMajor(breakdown.productDiscount),
+    couponDiscount: toMajor(breakdown.couponDiscount),
+    deliveryFee: toMajor(breakdown.shipping),
+    total: toMajor(breakdown.grandTotal),
+    freeDeliveryShortfall: toMajor(cart.freeDeliveryShortfall),
+    appliedCoupon: cart.appliedCoupon
+      ? {
+          code: cart.appliedCoupon.code,
+          description: cart.appliedCoupon.description,
+          type: cart.appliedCoupon.type,
+          value: cart.appliedCoupon.value,
+          minSubtotal: cart.appliedCoupon.minSubtotal,
+          maxDiscount: cart.appliedCoupon.maxDiscount ?? undefined,
+        }
+      : null,
+  };
+}
+
+function toView(cart: ServerCart): CartView {
+  return {
+    lines: cart.items.map((item) => ({
+      lineId: String(item.id),
+      productId: item.productId,
+      size: item.size,
+      color: item.color,
+      quantity: item.quantity,
+      addedAt: 0,
+      product: item.product,
+      lineTotal: toMajor(item.lineTotal),
+      lineOriginalTotal: item.product.originalPrice * item.quantity,
+    })),
+    breakdown: cart.breakdown,
+    totals: toTotals(cart),
+    coupon: toTotals(cart).appliedCoupon,
+  };
+}
+
+/* ------------------------------------------------------------ server cart */
+
+export async function fetchCart(options: {
+  couponCode?: string | null;
+  deliveryMethod?: string;
+  placeOfSupply?: string | null;
+}): Promise<CartView> {
+  const cart = await apiGet<ServerCart>(
+    `/cart${query({
+      coupon: options.couponCode ?? undefined,
+      deliveryMethod: options.deliveryMethod,
+      placeOfSupply: options.placeOfSupply ?? undefined,
+    })}`,
+    AUTH,
+  );
+  return toView(cart);
+}
+
+export async function addToCart(input: {
+  productId: string;
+  size?: string | null;
+  color?: string | null;
+  quantity?: number;
+}): Promise<CartView> {
+  const cart = await apiPost<ServerCart>(
+    "/cart/items",
+    {
+      productId: input.productId,
+      size: input.size ?? null,
+      color: input.color ?? null,
+      quantity: input.quantity ?? 1,
+    },
+    AUTH,
+  );
+  return toView(cart);
+}
+
+export async function setCartQuantity(lineId: string, quantity: number): Promise<CartView> {
+  const cart = await apiPut<ServerCart>(`/cart/items/${lineId}`, { quantity }, AUTH);
+  return toView(cart);
+}
+
+export async function removeFromCart(lineId: string): Promise<CartView> {
+  const cart = await apiDelete<ServerCart>(`/cart/items/${lineId}`, AUTH);
+  return toView(cart);
+}
+
+export async function clearCart(): Promise<CartView> {
+  const cart = await apiDelete<ServerCart>("/cart", AUTH);
+  return toView(cart);
+}
+
+/**
+ * Move a guest's bag onto their account.
+ *
+ * Called once, immediately after signing in. Each line is posted separately
+ * because the server merges by variant — adding the same shirt in the same
+ * size twice is one line with quantity two, which is exactly the behaviour
+ * wanted when a guest bag meets an account that already had something in it.
+ *
+ * A line that fails (sold out since, product withdrawn) is skipped rather than
+ * failing the whole merge: losing one item quietly is better than losing the
+ * bag and the sign-in together.
+ */
+export async function mergeGuestCart(lines: CartLine[]): Promise<void> {
+  for (const line of lines) {
+    try {
+      await addToCart({
+        productId: line.productId,
+        size: line.size,
+        color: line.color,
+        quantity: line.quantity,
+      });
+    } catch {
+      /* skip what can no longer be bought */
+    }
+  }
+}
+
+/* -------------------------------------------------------------- guest bag */
+
+/**
+ * Price a signed-out bag, for display only.
+ *
+ * Resolves ids against the catalogue and sums the lines. It deliberately does
+ * **not** apply coupons, delivery or tax: those are the server's to decide,
+ * and showing a guest a total the checkout then disagrees with is worse than
+ * showing them a subtotal and asking them to sign in.
+ */
+export async function resolveGuestCart(lines: CartLine[]): Promise<ResolvedCartLine[]> {
   if (lines.length === 0) return [];
 
   const products = await dataSource.getProductsByIds(lines.map((line) => line.productId));
@@ -43,6 +202,7 @@ export async function resolveCartLines(lines: CartLine[]): Promise<ResolvedCartL
     .map((line) => {
       const product = byId.get(line.productId);
       if (!product) return null;
+
       const quantity = Math.max(1, Math.min(line.quantity, Math.max(product.stock, 1)));
       return {
         ...line,
@@ -56,137 +216,72 @@ export async function resolveCartLines(lines: CartLine[]): Promise<ResolvedCartL
     .sort((a, b) => a.addedAt - b.addedAt);
 }
 
-/* -------------------------------------------------------------------- pricing */
-
-/** What a coupon is worth against a given subtotal. Never exceeds it. */
-export function couponDiscountFor(coupon: Coupon | null, subtotal: number): number {
-  if (!coupon) return 0;
-  if (subtotal < coupon.minSubtotal) return 0;
-
-  if (coupon.type === "percent") {
-    const raw = (subtotal * coupon.value) / 100;
-    const capped = typeof coupon.maxDiscount === "number" ? Math.min(raw, coupon.maxDiscount) : raw;
-    return Math.min(Math.round(capped), subtotal);
-  }
-
-  if (coupon.type === "flat") {
-    return Math.min(coupon.value, subtotal);
-  }
-
-  // free-shipping waives delivery instead of reducing the subtotal.
-  return 0;
-}
-
-/**
- * The full money picture.
- *
- * Two rules worth stating, because both are easy to get subtly wrong:
- *
- * 1. The free-delivery threshold is tested against the *pre-coupon* subtotal.
- *    Applying a coupon should never quietly add a delivery fee back — that
- *    reads as a bug to a shopper even when the arithmetic is defensible.
- *
- * 2. The threshold waives *standard* delivery only. Express is a paid
- *    upgrade, so its fee stands whatever the basket is worth; spending more
- *    should not silently turn a paid upgrade into a free one.
- *
- * `selectedDelivery` is omitted on the bag page, where no method has been
- * chosen yet and standard is the honest default.
- */
-export function computeTotals(
-  lines: ResolvedCartLine[],
-  coupon: Coupon | null = null,
-  settings: DeliverySettings = DEFAULT_DELIVERY,
-  selectedDelivery?: { id: string; fee: number },
-): CartTotals {
-  const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
-  const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
-  const originalTotal = lines.reduce((sum, line) => sum + line.lineOriginalTotal, 0);
-  const catalogueSavings = Math.max(0, originalTotal - subtotal);
-
-  const appliedCoupon = coupon && subtotal >= coupon.minSubtotal ? coupon : null;
-  const couponDiscount = couponDiscountFor(appliedCoupon, subtotal);
-
-  const earnedFreeDelivery =
-    subtotal >= settings.freeDeliveryThreshold || appliedCoupon?.type === "free-shipping";
-
-  // An upgrade is any method other than the standard one. Standard pricing
-  // stays config-driven; an upgrade carries the fee quoted for that method.
-  const isUpgrade = selectedDelivery !== undefined && selectedDelivery.id !== "standard";
-
-  const deliveryFee =
-    itemCount === 0
-      ? 0
-      : isUpgrade
-        ? selectedDelivery.fee
-        : earnedFreeDelivery
-          ? 0
-          : settings.standardDeliveryFee;
-
-  return {
-    itemCount,
-    subtotal,
-    catalogueSavings,
-    couponDiscount,
-    deliveryFee,
-    total: Math.max(0, subtotal - couponDiscount + deliveryFee),
-    freeDeliveryShortfall: Math.max(0, settings.freeDeliveryThreshold - subtotal),
-    appliedCoupon,
-  };
-}
-
-/* -------------------------------------------------------------------- coupons */
+/* -------------------------------------------------------------- coupons */
 
 export type CouponResult =
   | { ok: true; coupon: Coupon; discount: number }
   | { ok: false; reason: string };
 
 /**
- * Validate a typed coupon code against the cart.
+ * Validate a code.
  *
- * Returns a reason rather than throwing, because "this code needs ₹500 more in
- * your bag" is useful information and not an error condition.
+ * Checked by the server, always. A discount the browser works out is a
+ * discount the browser can change, and the order recalculates it regardless —
+ * so asking here is the only way the answer shown matches the one charged.
  */
 export async function applyCoupon(code: string, subtotal: number): Promise<CouponResult> {
   const trimmed = code.trim().toUpperCase();
   if (!trimmed) return { ok: false, reason: "Enter a coupon code." };
 
-  const coupons = await dataSource.listCoupons();
-  const coupon = coupons.find((entry) => entry.code.toUpperCase() === trimmed);
+  try {
+    const result = await apiPost<{
+      valid: boolean;
+      reason?: string;
+      code?: string;
+      description?: string;
+      type?: Coupon["type"];
+      value?: number;
+      minSubtotal?: number;
+      maxDiscount?: number | null;
+      discount?: number;
+    }>("/coupons/validate", { code: trimmed, subtotal: Math.round(subtotal * 100) });
 
-  if (!coupon) {
-    return { ok: false, reason: `"${trimmed}" is not a valid code.` };
-  }
+    if (!result.valid) {
+      return { ok: false, reason: result.reason ?? "That code cannot be used." };
+    }
 
-  if (subtotal < coupon.minSubtotal) {
-    const shortfall = coupon.minSubtotal - subtotal;
     return {
-      ok: false,
-      reason: `Add ₹${shortfall.toLocaleString("en-IN")} more to use ${coupon.code}.`,
+      ok: true,
+      coupon: {
+        code: result.code!,
+        description: result.description ?? "",
+        type: result.type ?? "percent",
+        value: result.value ?? 0,
+        minSubtotal: result.minSubtotal ?? 0,
+        maxDiscount: result.maxDiscount ?? undefined,
+      },
+      discount: toMajor(result.discount ?? 0),
     };
+  } catch {
+    return { ok: false, reason: "We could not check that code. Please try again." };
   }
-
-  return { ok: true, coupon, discount: couponDiscountFor(coupon, subtotal) };
 }
 
 export function getCoupons(): Promise<Coupon[]> {
   return dataSource.listCoupons();
 }
 
-/* --------------------------------------------------------------------- helpers */
+/* --------------------------------------------------------------- helpers */
 
 /**
- * A stable identity for a cart line.
+ * A stable identity for a guest cart line.
  *
- * The same product in two sizes is two lines; the same product in the same size
- * added twice is one line with quantity two. Encoding the variant in the id is
- * what makes "add to cart" idempotent per variant.
+ * Only the local bag needs this — a server line is identified by its row id.
  */
 export function buildLineId(productId: string, size: string | null, color: string | null): string {
   return [productId, size ?? "_", color ?? "_"].join("::");
 }
 
-/** Is this product orderable at all? Used to disable "Add to cart". */
 export function isPurchasable(product: Product): boolean {
   return product.stock > 0;
 }

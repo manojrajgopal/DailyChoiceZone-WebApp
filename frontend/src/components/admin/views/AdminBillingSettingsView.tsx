@@ -28,10 +28,11 @@ import { toast } from "@/store/toastStore";
  * year. A value that has to be edited in a source file is a value nobody without
  * the repository can fix.
  *
- * Two configs are saved together — `billing-config.json` and `tax-config.json`.
- * They are separate documents because they change for different reasons and a
- * real system would have different people responsible for each, but they are
- * one form because nobody thinks of them separately while setting up a store.
+ * Two documents are saved together — the billing configuration and the tax
+ * configuration. They are separate records because they change for different
+ * reasons and a real business would have different people responsible for
+ * each, but they are one form because nobody thinks of them separately while
+ * setting up a store.
  */
 
 const STATES = [
@@ -47,10 +48,16 @@ export function AdminBillingSettingsView() {
   const [tax, setTax] = useState<TaxConfig | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Read once on mount. Both are synchronous document reads, not fetches.
   useEffect(() => {
-    setBilling(getBillingConfig());
-    setTax(getTaxConfig());
+    let active = true;
+    void Promise.all([getBillingConfig(), getTaxConfig()]).then(([nextBilling, nextTax]) => {
+      if (!active) return;
+      setBilling(nextBilling);
+      setTax(nextTax);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!billing || !tax) {
@@ -91,10 +98,16 @@ export function AdminBillingSettingsView() {
     }
 
     setSaving(true);
-    saveBillingConfig(billing);
-    saveTaxConfig(tax);
-    setSaving(false);
-    toast.success("Billing settings saved");
+    try {
+      // Both or neither, as far as the person filling the form is concerned —
+      // a failure that saved one half silently is the worst outcome here.
+      await Promise.all([saveBillingConfig(billing), saveTaxConfig(tax)]);
+      toast.success("Billing settings saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Those settings could not be saved.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   /**

@@ -204,9 +204,9 @@ export function AdminPageHeader({
 /**
  * A confirmation dialog.
  *
- * Destructive admin actions never fire straight from a click — deleting a
- * product or an order is not undoable in a mock store, so the pause is the
- * only safety net there is.
+ * Destructive admin actions never fire straight from a click. Deleting a
+ * product or cancelling an order is a write to the database that nothing here
+ * can undo, so the pause is the only safety net there is.
  */
 export function ConfirmDialog({
   open,

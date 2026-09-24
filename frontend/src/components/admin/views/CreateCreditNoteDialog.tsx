@@ -8,9 +8,9 @@ import { AdminButton } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { Modal } from "@/components/ui/Dialog";
 import { formatMoney, toMinor } from "@/lib/money";
+import { useRefundReasons, useTaxConfig } from "@/hooks/useBillingConfig";
 import { createCreditNote } from "@/services/billing/creditNoteService";
-import { refundReasons } from "@/services/billing/refundService";
-import { calculateTax } from "@/services/billing/taxService";
+import { EMPTY_TAX, calculateTax } from "@/services/billing/taxService";
 import { toast } from "@/store/toastStore";
 
 /**
@@ -18,8 +18,9 @@ import { toast } from "@/store/toastStore";
  *
  * The tax on it is recomputed from the amount being credited rather than taken
  * from the invoice, so a partial credit carries its own proportion of tax and
- * the note reconciles with the document it offsets. The split is shown live, so
- * whoever issues it can see what they are actually crediting before they commit.
+ * the note reconciles with the document it offsets. That happens on the
+ * server; the split shown here is a preview of it, so whoever issues the note
+ * can see what they are crediting before they commit.
  *
  * Drafting is offered because a credit note is a document, and documents get
  * checked before they are issued.
@@ -42,25 +43,33 @@ export function CreateCreditNoteDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reasons = refundReasons();
+  const reasons = useRefundReasons();
+  const taxConfig = useTaxConfig();
 
   useEffect(() => {
     if (!open) return;
     setAmountInput(String(Math.round(invoice.breakdown.grandTotal / 100)));
-    setReason(reasons[0] ?? "");
     setNote("");
     setAsDraft(false);
     setError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // The reasons are fetched, so the default is chosen when they arrive rather
+  // than when the dialog opens — otherwise the select starts blank.
+  useEffect(() => {
+    if (open && !reason) setReason(reasons[0] ?? "");
+  }, [open, reason, reasons]);
+
   const total = toMinor(Number(amountInput) || 0);
-  const tax = calculateTax(total, invoice.placeOfSupply, null);
+  const tax = taxConfig
+    ? calculateTax(total, invoice.placeOfSupply, null, taxConfig)
+    : EMPTY_TAX;
 
   const submit = async () => {
     setBusy(true);
     const result = await createCreditNote({
-      invoice,
+      invoiceId: invoice.id,
       total,
       reason: note.trim() ? `${reason} — ${note.trim()}` : reason,
       status: asDraft ? "draft" : "issued",

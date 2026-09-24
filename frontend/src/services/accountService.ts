@@ -1,61 +1,65 @@
 import type { Address } from "@/types";
 
-import { STORAGE_KEYS, readJson, writeJson } from "@/lib/storage/local-storage";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/services/api/client";
 
 /**
  * Saved addresses.
  *
- * Local storage today; `GET/POST/PUT/DELETE /addresses` later. Only one
- * address can be the default, which is enforced here rather than trusted to
- * the caller.
+ * Owned by the customer's account on the server, so they follow them between
+ * devices — which is the whole reason to save one.
+ *
+ * "Exactly one default" is enforced by the API, not here: two tabs could each
+ * think they had made the right one default, and only the writer can settle
+ * it. The signatures are unchanged from the local-storage version this
+ * replaced.
  */
 
-function read(): Address[] {
-  return readJson<Address[]>(STORAGE_KEYS.addresses, []);
-}
-
-function write(addresses: Address[]): Address[] {
-  writeJson(STORAGE_KEYS.addresses, addresses);
-  return addresses;
-}
-
-/** Guarantee exactly one default, preferring `preferredId` when given. */
-function normaliseDefaults(addresses: Address[], preferredId?: string): Address[] {
-  if (addresses.length === 0) return addresses;
-  const defaultId =
-    preferredId ?? addresses.find((address) => address.isDefault)?.id ?? addresses[0]!.id;
-  return addresses.map((address) => ({ ...address, isDefault: address.id === defaultId }));
-}
+const AUTH = { auth: "customer" } as const;
 
 export async function getAddresses(): Promise<Address[]> {
-  return read();
+  try {
+    return await apiGet<Address[]>("/account/addresses", AUTH);
+  } catch {
+    // A signed-out visitor has no addresses, which is an empty list rather
+    // than a failure — the checkout renders a blank form either way.
+    return [];
+  }
 }
 
 export async function getDefaultAddress(): Promise<Address | null> {
-  const addresses = read();
+  const addresses = await getAddresses();
   return addresses.find((address) => address.isDefault) ?? addresses[0] ?? null;
 }
 
-export async function saveAddress(input: Omit<Address, "id"> & { id?: string }): Promise<Address> {
-  const addresses = read();
-  const id = input.id ?? `addr_${Date.now()}`;
-  const address: Address = { ...input, id };
+export async function saveAddress(
+  input: Omit<Address, "id"> & { id?: string },
+): Promise<Address> {
+  const payload = {
+    fullName: input.fullName,
+    phone: input.phone,
+    line1: input.line1,
+    line2: input.line2,
+    city: input.city,
+    state: input.state,
+    pincode: input.pincode,
+    country: "India",
+    type: input.type,
+    isDefault: input.isDefault,
+  };
 
-  const existingIndex = addresses.findIndex((entry) => entry.id === id);
-  const next =
-    existingIndex >= 0
-      ? addresses.map((entry) => (entry.id === id ? address : entry))
-      : [...addresses, address];
-
-  write(normaliseDefaults(next, address.isDefault ? id : undefined));
-  return address;
+  return input.id
+    ? apiPut<Address>(`/account/addresses/${encodeURIComponent(input.id)}`, payload, AUTH)
+    : apiPost<Address>("/account/addresses", payload, AUTH);
 }
 
 export async function deleteAddress(id: string): Promise<void> {
-  const remaining = read().filter((address) => address.id !== id);
-  write(normaliseDefaults(remaining));
+  await apiDelete(`/account/addresses/${encodeURIComponent(id)}`, AUTH);
 }
 
 export async function setDefaultAddress(id: string): Promise<void> {
-  write(normaliseDefaults(read(), id));
+  const addresses = await getAddresses();
+  const address = addresses.find((entry) => entry.id === id);
+  if (!address) return;
+
+  await saveAddress({ ...address, isDefault: true });
 }

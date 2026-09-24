@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 import type { AdminCredentials } from "@/services/admin/adminAuthService";
 import type { AdminUser } from "@/types/admin";
@@ -25,12 +25,40 @@ export function useAdminHydrated(): boolean {
   return useSyncExternalStore(subscribeHydration, getHydrated, () => false);
 }
 
+/**
+ * Whether the persisted session has been checked against the server.
+ *
+ * Module-scoped, so it happens once per page load however many components
+ * call the hook.
+ */
+let verified = false;
+
 /** The signed-in admin, with sign-in and sign-out. */
 export function useAdminSession() {
   const hydrated = useAdminHydrated();
   const session = useAdminAuthStore((state) => state.session);
   const setSession = useAdminAuthStore((state) => state.setSession);
   const updateUser = useAdminAuthStore((state) => state.updateUser);
+
+  /**
+   * Confirm the stored session with the server.
+   *
+   * What local storage holds is who *was* signed in. The account may since
+   * have been disabled or had its role changed, and the token expires — so the
+   * portal asks, and drops the session if the answer is no. It is not a
+   * security measure (the API refuses the request either way); it is what
+   * stops the portal rendering a menu the person can no longer use.
+   */
+  useEffect(() => {
+    if (!hydrated || verified) return;
+    verified = true;
+    if (session === null) return;
+
+    void adminAuth.refreshSession().then((user) => {
+      if (user) updateUser(user);
+      else setSession(null);
+    });
+  }, [hydrated, session, setSession, updateUser]);
 
   const signIn = useCallback(
     async (credentials: AdminCredentials) => {

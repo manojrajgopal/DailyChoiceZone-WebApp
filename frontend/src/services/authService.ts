@@ -1,112 +1,133 @@
 import type { AuthSession, Credentials, RegisterInput, User } from "@/types";
 
-import { STORAGE_KEYS, readJson, remove, writeJson } from "@/lib/storage/local-storage";
+import { ApiError, apiGet, apiPost, apiPut, setToken } from "@/services/api/client";
 
 /**
- * Mock authentication.
+ * Customer authentication.
  *
- * There is no auth backend, so this accepts any well-formed email with a
- * password of at least six characters and mints a local session. It exists to
- * give the account area a real shape, not to provide security.
+ * Real authentication now: the password is verified against a bcrypt hash on
+ * the server, and the token that comes back is what every account endpoint
+ * checks. Nothing about a session is decided in the browser.
  *
- *   signIn   →  POST /auth/login
- *   register →  POST /auth/register
- *   signOut  →  POST /auth/logout
+ * The token lives in local storage. That is not "local storage as the
+ * database" — it holds no business data, only proof of who is asking, and it
+ * is the ordinary place for a bearer token in a single-page application. The
+ * stronger option is an httpOnly cookie, which needs the API and the site to
+ * share an origin or a cookie domain; that swap is confined to `client.ts`.
  *
- * IMPORTANT: passwords are never stored — not hashed, not in local storage,
- * not anywhere. Only the resulting session is kept. When a real backend
- * arrives it should set an httpOnly cookie rather than handing a token to JS.
+ * The signatures are unchanged from the mock this replaced, which is why no
+ * account page or hook had to be touched.
  */
 
-export type AuthResult =
-  | { ok: true; session: AuthSession }
-  | { ok: false; reason: string };
+interface ApiCustomer {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  phone: string;
+  status: string;
+  joinedAt: string;
+}
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+interface ApiAuthPayload {
+  token: { accessToken: string; tokenType: string; expiresIn: number };
+  customer: ApiCustomer;
+}
 
-function nameFromEmail(email: string): { firstName: string; lastName: string } {
-  const local = email.split("@")[0] ?? "there";
-  const parts = local.split(/[._-]+/).filter(Boolean);
-  const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+export type AuthResult = { ok: true; session: AuthSession } | { ok: false; reason: string };
+
+function toUser(payload: ApiCustomer): User {
   return {
-    firstName: capitalise(parts[0] ?? "There"),
-    lastName: parts[1] ? capitalise(parts[1]) : "",
+    id: payload.id,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    email: payload.email,
+    phone: payload.phone,
+    memberSince: payload.joinedAt,
   };
 }
 
-function buildSession(user: User): AuthSession {
-  // Deliberately opaque and obviously not a credential.
-  return { user, token: `mock-session-${user.id}` };
+async function authenticate(path: string, body: unknown): Promise<AuthResult> {
+  try {
+    const payload = await apiPost<ApiAuthPayload>(path, body);
+    setToken(payload.token.accessToken, "customer");
+    return {
+      ok: true,
+      session: { user: toUser(payload.customer), token: payload.token.accessToken },
+    };
+  } catch (error) {
+    // The API's messages are already written for a customer to read — "That
+    // email and password do not match", not a status code.
+    if (error instanceof ApiError) return { ok: false, reason: error.message };
+    return { ok: false, reason: "Something went wrong. Please try again." };
+  }
 }
 
-function persist(session: AuthSession): AuthSession {
-  writeJson(STORAGE_KEYS.session, session);
-  return session;
+export function signIn(credentials: Credentials): Promise<AuthResult> {
+  return authenticate("/auth/login", credentials);
 }
 
-export async function signIn({ email, password }: Credentials): Promise<AuthResult> {
-  if (!EMAIL_PATTERN.test(email)) {
-    return { ok: false, reason: "Enter a valid email address." };
-  }
-  if (password.length < 6) {
-    return { ok: false, reason: "Password must be at least 6 characters." };
-  }
-
-  const { firstName, lastName } = nameFromEmail(email);
-  const user: User = {
-    id: `usr_${Math.abs(hashCode(email)).toString(36)}`,
-    firstName,
-    lastName,
-    email: email.toLowerCase(),
-    phone: "",
-    memberSince: new Date().toISOString().slice(0, 10),
-  };
-
-  return { ok: true, session: persist(buildSession(user)) };
-}
-
-export async function register(input: RegisterInput): Promise<AuthResult> {
-  if (!input.firstName.trim()) return { ok: false, reason: "Enter your first name." };
-  if (!EMAIL_PATTERN.test(input.email)) {
-    return { ok: false, reason: "Enter a valid email address." };
-  }
-  if (input.password.length < 6) {
-    return { ok: false, reason: "Password must be at least 6 characters." };
-  }
-
-  const user: User = {
-    id: `usr_${Math.abs(hashCode(input.email)).toString(36)}`,
-    firstName: input.firstName.trim(),
-    lastName: input.lastName.trim(),
-    email: input.email.toLowerCase(),
-    phone: "",
-    memberSince: new Date().toISOString().slice(0, 10),
-  };
-
-  return { ok: true, session: persist(buildSession(user)) };
+export function register(input: RegisterInput): Promise<AuthResult> {
+  return authenticate("/auth/register", input);
 }
 
 export async function signOut(): Promise<void> {
-  remove(STORAGE_KEYS.session);
-}
-
-/** The current session, or `null`. Reads local storage; safe on the server. */
-export function getSession(): AuthSession | null {
-  return readJson<AuthSession | null>(STORAGE_KEYS.session, null);
-}
-
-export function updateProfile(patch: Partial<User>): AuthSession | null {
-  const session = getSession();
-  if (!session) return null;
-  const updated: AuthSession = { ...session, user: { ...session.user, ...patch } };
-  return persist(updated);
-}
-
-function hashCode(value: string): number {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0;
+  // Told to the server as well as forgotten locally. There is nothing to
+  // invalidate today — a JWT is valid until it expires, by design — but this
+  // is where a denylist would hook in.
+  try {
+    await apiPost("/auth/logout", {}, { auth: "customer" });
+  } catch {
+    /* signing out has to succeed even when the request does not */
   }
-  return hash;
+  setToken(null, "customer");
+}
+
+/**
+ * Who is signed in, according to the server.
+ *
+ * Asked rather than remembered: a token expires, and an account can be
+ * suspended, between one page and the next. Returns null rather than throwing,
+ * because signed out is a normal state and not an error.
+ */
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    return toUser(await apiGet<ApiCustomer>("/auth/me", { auth: "customer" }));
+  } catch (error) {
+    if (error instanceof ApiError && (error.isAuthError || error.status === 403)) {
+      setToken(null, "customer");
+    }
+    return null;
+  }
+}
+
+export async function updateProfile(patch: Partial<User>): Promise<User | null> {
+  try {
+    const payload = await apiPut<ApiCustomer>(
+      "/account/profile",
+      {
+        firstName: patch.firstName,
+        lastName: patch.lastName,
+        phone: patch.phone,
+      },
+      { auth: "customer" },
+    );
+    return toUser(payload);
+  } catch {
+    return null;
+  }
+}
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  try {
+    await apiPut("/account/password", { currentPassword, newPassword }, { auth: "customer" });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiError) return { ok: false, reason: error.message };
+    return { ok: false, reason: "Could not change your password." };
+  }
 }

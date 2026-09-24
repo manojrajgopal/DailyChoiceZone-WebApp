@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { toCsv, downloadCsv } from "@/lib/billing/csv";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
-import { paymentMethodLabel } from "@/services/billing/paymentService";
 import { toast } from "@/store/toastStore";
 
 /**

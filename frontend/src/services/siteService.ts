@@ -1,4 +1,4 @@
-import navigationJson from "@/data/navigation.json";
+import navigationJson from "@/config/navigation/storefront.json";
 
 import type {
   HomepageConfig,
@@ -13,11 +13,12 @@ import { dataSource } from "./data-source.instance";
 /**
  * Site chrome and page composition.
  *
- * Navigation is read directly here rather than through the data source: menu
- * structure is frontend configuration, not business data, and it is needed
- * synchronously to render the header on the server. If it ever becomes
- * CMS-managed, add a `listNavigation()` method to `DataSource` and route it
- * through the adapter like everything else.
+ * Navigation is read from `src/config` rather than through the data source,
+ * and that is the one exception on purpose: every entry names a route that has
+ * to exist in `src/app`, and the header renders on the first paint before any
+ * request has been made. See `src/config/README.md`. Everything else on this
+ * page — the site config, the homepage layout, the banners — is business data
+ * and comes from the API.
  */
 export function getNavigation(): NavItem[] {
   return navigationJson as NavItem[];

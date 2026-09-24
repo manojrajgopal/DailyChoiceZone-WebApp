@@ -16,6 +16,27 @@ export function getProducts(query: ProductQuery = {}): Promise<Paginated<Product
   return dataSource.queryProducts(query);
 }
 
+/**
+ * Every product, a page at a time.
+ *
+ * The API caps a page at 100 — deliberately, so no single request can ask it
+ * to serialise the whole catalogue. The sitemap genuinely does need all of
+ * them, so it pages through rather than asking for a limit the server is right
+ * to refuse. Nothing else should use this.
+ */
+export async function getAllProducts(): Promise<Product[]> {
+  const pageSize = 100;
+  const all: Product[] = [];
+
+  for (let page = 1; ; page += 1) {
+    const { items, totalPages } = await getProducts({ page, pageSize });
+    all.push(...items);
+    if (page >= totalPages || items.length === 0) break;
+  }
+
+  return all;
+}
+
 export function getProductBySlug(slug: string): Promise<Product | null> {
   return dataSource.getProductBySlug(slug);
 }
@@ -42,40 +63,35 @@ export function getFacets(
 /**
  * Each rail is a query, expressed once here.
  *
- * `isNew`, `isTrending` and friends are not filterable fields on
- * `ProductQuery` — they are merchandising decisions, so they are resolved here
- * rather than being exposed to the URL.
+ * The flags are sent to the API, so the database returns six products rather
+ * than the browser fetching a few hundred and discarding most of them. That is
+ * the difference between a rail that stays fast at ten thousand products and
+ * one that does not.
  */
-async function rail(
-  predicate: (product: Product) => boolean,
-  limit: number,
-  sort: ProductQuery["sort"] = "recommended",
-): Promise<Product[]> {
-  // Ask for a generous page, then narrow by flag. With a real backend these
-  // become `GET /products/new` and the filtering happens server-side.
-  const { items } = await dataSource.queryProducts({ sort, pageSize: 250, page: 1 });
-  return items.filter(predicate).slice(0, limit);
+async function rail(filters: ProductQuery, limit: number): Promise<Product[]> {
+  const { items } = await dataSource.queryProducts({ ...filters, page: 1, pageSize: limit });
+  return items;
 }
 
 export function getNewArrivals(limit = 6): Promise<Product[]> {
-  return rail((product) => product.isNew, limit, "newest");
+  return rail({ isNew: true, sort: "newest" }, limit);
 }
 
 export function getTrendingProducts(limit = 6): Promise<Product[]> {
-  return rail((product) => product.isTrending, limit, "popular");
+  return rail({ isTrending: true, sort: "popular" }, limit);
 }
 
 export function getBestSellingProducts(limit = 6): Promise<Product[]> {
-  return rail((product) => product.isBestSeller, limit, "popular");
+  return rail({ isBestSeller: true, sort: "popular" }, limit);
 }
 
 export function getFeaturedProducts(limit = 6): Promise<Product[]> {
-  return rail((product) => product.isFeatured, limit);
+  return rail({ isFeatured: true, sort: "recommended" }, limit);
 }
 
 /** Deals: genuinely reduced and actually in stock, deepest cut first. */
 export function getDeals(limit = 6): Promise<Product[]> {
-  return rail((product) => product.discount >= 20 && product.stock > 0, limit, "discount");
+  return rail({ minDiscount: 20, inStockOnly: true, sort: "discount" }, limit);
 }
 
 /* ------------------------------------------------------------ relationships */
@@ -99,9 +115,12 @@ export async function getRecommendedProducts(
     return getFeaturedProducts(limit);
   }
 
+  // One page of candidates, not the catalogue: recommendations pick a handful
+  // of near neighbours, and the API caps a page at 100 — asking for 250 was a
+  // 422 and an empty rail rather than a bigger pool.
   const [recentlyViewed, { items: catalogue }] = await Promise.all([
     dataSource.getProductsByIds(recentlyViewedIds),
-    dataSource.queryProducts({ pageSize: 250, page: 1 }),
+    dataSource.queryProducts({ pageSize: 100, page: 1 }),
   ]);
 
   const recommended = findRecommended(recentlyViewed, catalogue, limit);

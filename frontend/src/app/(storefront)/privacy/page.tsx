@@ -23,14 +23,18 @@ export default async function PrivacyPage() {
       <section>
         <h2>The short version</h2>
         <p>
-          In its current state this storefront has no backend and no analytics. Nothing you type —
-          your bag, your addresses, your sample orders, the contact form — leaves your browser. It
-          is held in your device&rsquo;s local storage and clearing your browser data removes all
-          of it.
+          This is a demonstration store. It has no analytics, no advertising and no third-party
+          trackers, and no order placed here is ever fulfilled. What you do save — your account,
+          your bag, your addresses, your orders — is stored in our own database and nowhere else.
         </p>
         <p>
-          The section below describes how the live store will handle data once ordering and
-          payments are connected, so there are no surprises later.
+          Your browser keeps only two things: proof of who you are signed in as, and a bag held
+          for you before you sign in. Clearing your browser data removes both and leaves your
+          account untouched.
+        </p>
+        <p>
+          The section below describes how the live store handles data, so there are no surprises
+          later.
         </p>
       </section>
 

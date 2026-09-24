@@ -9,7 +9,7 @@ import { ProductReviews } from "@/components/products/ProductReviews";
 import { RecentlyViewedRail } from "@/components/products/RecentlyViewedRail";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Tabs } from "@/components/ui/Tabs";
-import { getProductBySlug, getProducts, getRelatedProducts } from "@/services/productService";
+import { getProductBySlug, getRelatedProducts } from "@/services/productService";
 import { getReviewSummary, getReviews } from "@/services/reviewService";
 import { getSiteConfig } from "@/services/siteService";
 import { formatPrice, humanize } from "@/lib/utils/format";
@@ -19,28 +19,18 @@ interface PageProps {
 }
 
 /**
- * Every valid slug is known at build time, so anything else is genuinely not
- * found.
+ * Rendered per request.
  *
- * Without this, Next renders unknown slugs on demand and serves the not-found
- * page with a 200 status — a "soft 404" that lets search engines index
- * unlimited junk URLs. `dynamicParams = false` returns a real 404 instead. The
- * catalogue is bundled JSON, so a new product needs a rebuild regardless and
- * nothing is lost by declaring the set closed.
- */
-export const dynamicParams = false;
-
-/**
- * Pre-render every product.
+ * The catalogue is a live database now, so the set of valid slugs is not
+ * something a build can know: a product added this morning has to work this
+ * morning. These pages used to be pre-rendered from bundled JSON with
+ * `dynamicParams = false`, which returned a real 404 for anything unlisted —
+ * correct then, and exactly wrong now, because it would 404 every product
+ * added since the last deploy.
  *
- * The catalogue is small enough that this is worth it — the static pages cost
- * little and every product page then serves instantly. With a catalogue in the
- * tens of thousands this would switch to on-demand rendering with a cache.
+ * `notFound()` below still produces a genuine 404 status, which is what stops
+ * unknown slugs becoming indexable soft-404s.
  */
-export async function generateStaticParams() {
-  const { items } = await getProducts({ pageSize: 500, page: 1 });
-  return items.map((product) => ({ slug: product.slug }));
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;

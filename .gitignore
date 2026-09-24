@@ -9,3 +9,9 @@ next-env.d.ts
 .claude
 .env
 .kilo
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/

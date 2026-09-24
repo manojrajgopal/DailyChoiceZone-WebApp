@@ -28,10 +28,11 @@ const NO_BADGES: NavBadges = { lowStock: 0, openOrders: 0, pendingReviews: 0 };
  * a session that has not loaded yet would bounce a signed-in admin to the login
  * screen on every refresh.
  *
- * It is **not** a security boundary. The admin bundle is already downloaded by
- * the time this runs, and anyone can bypass it. Real protection means the
- * server refusing to render admin routes for an unauthenticated request; see
- * `adminAuthService` for what that changes.
+ * It is **not** a security boundary, and does not need to be. The admin bundle
+ * is already downloaded by the time this runs and anyone can bypass it — but
+ * it contains no data. Every figure on every screen comes from an API call
+ * that validates an administrator's token, so bypassing the guard reaches a
+ * portal with nothing in it.
  */
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();

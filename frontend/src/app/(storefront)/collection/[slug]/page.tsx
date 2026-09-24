@@ -4,28 +4,16 @@ import Image from "next/image";
 
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ProductGrid } from "@/components/products/ProductGrid";
-import { getCollections, getCollectionWithProducts } from "@/services/categoryService";
+import { getCollectionWithProducts } from "@/services/categoryService";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
 /**
- * Every valid slug is known at build time, so anything else is genuinely not
- * found.
- *
- * Without this, Next renders unknown slugs on demand and serves the
- * not-found page with a 200 status — a "soft 404" that lets search engines
- * index unlimited junk URLs. `dynamicParams = false` returns a real 404
- * instead. The catalogue is bundled JSON, so a new product needs a rebuild
- * regardless and nothing is lost by declaring the set closed.
+ * Rendered per request, like every catalogue route — see the product page for
+ * why. `notFound()` below still returns a genuine 404 for an unknown slug.
  */
-export const dynamicParams = false;
-
-export async function generateStaticParams() {
-  const collections = await getCollections();
-  return collections.map((collection) => ({ slug: collection.slug }));
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;

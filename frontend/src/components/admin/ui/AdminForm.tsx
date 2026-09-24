@@ -427,11 +427,11 @@ export function TagListInput({
  * Image management.
  *
  * Takes URLs rather than file uploads, because uploading needs somewhere to
- * upload *to* — there is no backend and no object store. A file picker that
- * only produced a temporary blob URL would look like it worked and then break
- * on the next reload, which is worse than being honest about it.
+ * upload *to*, and this store has no object storage. A file picker that only
+ * produced a temporary blob URL would look like it worked and then break on
+ * the next reload, which is worse than being honest about it.
  *
- * When storage exists, this component gains a file input and posts to it; the
+ * When a bucket exists, this component gains a file input and posts to it; the
  * rest of the form is unaffected since it only ever sees a list of URLs.
  */
 export function ImageListInput({

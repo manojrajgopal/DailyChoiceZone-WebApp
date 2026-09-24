@@ -1,44 +1,52 @@
 import type {
   BillingStats,
   CreditNote,
+  CreditNoteStatus,
   Invoice,
+  Money,
   Payment,
   Refund,
+  RefundLine,
+  RefundStatus,
   TaxReportRow,
 } from "@/types";
 
 /**
  * Where billing records come from.
  *
- * The same arrangement as `DataSource` and `AdminDataSource`: one contract, a
- * mock adapter over local JSON today, an HTTP adapter over a real API later.
- * Every method is shaped like the endpoint that will back it, named here so the
- * mapping is not something anyone has to infer:
+ * The same arrangement as `DataSource` and `AdminDataSource`: one contract,
+ * one adapter over the REST API. Every method is named for the endpoint behind
+ * it, so the mapping is not something anyone has to infer:
  *
- *   listInvoices      → GET    /billing/invoices
- *   getInvoice        → GET    /billing/invoices/:id
- *   createInvoice     → POST   /billing/invoices
- *   updateInvoice     → PUT    /billing/invoices/:id
+ *   listInvoices      → GET    /admin/billing/invoices
+ *   getInvoice        → GET    /admin/billing/invoices/:id
+ *   updateInvoice     → POST   /admin/billing/invoices/:id/mark-paid
  *
- *   listPayments      → GET    /billing/payments
- *   getPayment        → GET    /billing/payments/:id
- *   createPayment     → POST   /billing/payments
- *   refundPayment     → POST   /billing/payments/:id/refund
+ *   listMyInvoices    → GET    /invoices              — a customer's own
+ *   getMyInvoice      → GET    /invoices/:id
  *
- *   listRefunds       → GET    /billing/refunds
- *   getRefund         → GET    /billing/refunds/:id
- *   createRefund      → POST   /billing/refunds
- *   updateRefund      → PUT    /billing/refunds/:id
+ *   listPayments      → GET    /admin/billing/payments
+ *   getPayment        → GET    /admin/billing/payments/:id
+ *   updatePayment     → POST   /admin/billing/payments/:id/capture
  *
- *   listCreditNotes   → GET    /billing/credit-notes
- *   createCreditNote  → POST   /billing/credit-notes
+ *   listRefunds       → GET    /admin/billing/refunds
+ *   createRefund      → POST   /admin/billing/refunds
+ *   updateRefund      → PUT    /admin/billing/refunds/:id
  *
- *   getStats          → GET    /billing/reports
- *   getTaxReport      → GET    /billing/reports/tax
+ *   listCreditNotes   → GET    /admin/billing/credit-notes
+ *   createCreditNote  → POST   /admin/billing/credit-notes
+ *   updateCreditNote  → PUT    /admin/billing/credit-notes/:id
  *
- * Filtering and aggregation are the *data source's* job, not the UI's. Today
- * the mock adapter runs them over JSON; tomorrow the server runs them in SQL.
- * Either way the services ask the same question.
+ *   getStats          → GET    /admin/billing/stats
+ *   getTaxReport      → GET    /admin/billing/tax-report
+ *
+ * There is no `createInvoice` or `createPayment`, and that is deliberate
+ * rather than missing: both are produced by *placing an order*, inside the
+ * transaction that also takes the stock and records the coupon. A route that
+ * made one on its own would be a way to have an invoice nothing pays for.
+ *
+ * Filtering and aggregation are the server's job. The UI asks a question; it
+ * does not download a table and answer it itself.
  */
 
 export interface InvoiceQuery {
@@ -72,27 +80,56 @@ export interface RefundQuery {
   customerId?: string;
 }
 
+/** What raising a refund needs. The number, the tax and the settlement are the server's. */
+export interface RefundDraft {
+  invoiceId: string;
+  amount: Money;
+  reason: string;
+  /** Empty for a whole-order refund; populated for a per-item one. */
+  lines?: RefundLine[];
+  /** `requested` leaves it awaiting action; `completed` settles it immediately. */
+  status?: RefundStatus;
+}
+
+/** What issuing a credit note needs. Its tax is recomputed server-side from `total`. */
+export interface CreditNoteDraft {
+  invoiceId: string;
+  total: Money;
+  reason: string;
+  refundId?: string | null;
+  status?: CreditNoteStatus;
+}
+
 export interface BillingDataSource {
   listInvoices(query?: InvoiceQuery): Promise<Invoice[]>;
   getInvoice(id: string): Promise<Invoice | null>;
+
+  /**
+   * The signed-in customer's own invoices.
+   *
+   * A separate pair of methods rather than a filter on the admin ones, because
+   * they are a different endpoint with a different token and a different
+   * answer to "whose is this?". Sharing one method would mean a customer page
+   * calling an admin route and quietly getting nothing back.
+   */
+  listMyInvoices(): Promise<Invoice[]>;
+  getMyInvoice(id: string): Promise<Invoice | null>;
   getInvoiceByOrderId(orderId: string): Promise<Invoice | null>;
-  createInvoice(invoice: Invoice): Promise<Invoice>;
   updateInvoice(invoice: Invoice): Promise<Invoice>;
 
   listPayments(query?: PaymentQuery): Promise<Payment[]>;
   getPayment(id: string): Promise<Payment | null>;
   getPaymentByOrderId(orderId: string): Promise<Payment | null>;
-  createPayment(payment: Payment): Promise<Payment>;
   updatePayment(payment: Payment): Promise<Payment>;
 
   listRefunds(query?: RefundQuery): Promise<Refund[]>;
   getRefund(id: string): Promise<Refund | null>;
-  createRefund(refund: Refund): Promise<Refund>;
+  createRefund(draft: RefundDraft): Promise<Refund>;
   updateRefund(refund: Refund): Promise<Refund>;
 
   listCreditNotes(): Promise<CreditNote[]>;
   getCreditNote(id: string): Promise<CreditNote | null>;
-  createCreditNote(note: CreditNote): Promise<CreditNote>;
+  createCreditNote(draft: CreditNoteDraft): Promise<CreditNote>;
   updateCreditNote(note: CreditNote): Promise<CreditNote>;
 
   /** Aggregates over a date window. Omitting the window means all time. */

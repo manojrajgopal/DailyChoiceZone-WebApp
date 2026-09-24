@@ -13,7 +13,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { formatMoney } from "@/lib/money";
-import { getInvoiceById } from "@/services/billing/invoiceService";
+import { getMyInvoice } from "@/services/billing/invoiceService";
 import { getOrder } from "@/services/orderService";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 
@@ -67,7 +67,7 @@ function OrderSuccess() {
   useEffect(() => {
     if (!invoiceId) return;
     let active = true;
-    getInvoiceById(invoiceId)
+    getMyInvoice(invoiceId)
       .then((result) => {
         if (active) setInvoice(result);
       })

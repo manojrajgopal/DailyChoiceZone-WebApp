@@ -14,9 +14,9 @@ import { downloadInvoiceCsv, useInvoicePrint } from "@/components/billing/Invoic
 import { CreateRefundDialog } from "@/components/admin/views/CreateRefundDialog";
 import { CreateCreditNoteDialog } from "@/components/admin/views/CreateCreditNoteDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useBillingConfig, useTaxConfig } from "@/hooks/useBillingConfig";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
-import { getBillingConfig } from "@/services/billing/billingService";
 import { getCreditNotesForOrder } from "@/services/billing/creditNoteService";
 import { amountDue, getInvoiceById, markInvoicePaid } from "@/services/billing/invoiceService";
 import { capturePayment, getPaymentById } from "@/services/billing/paymentService";
@@ -45,6 +45,8 @@ function AdminInvoiceDetail() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [creditNoteOpen, setCreditNoteOpen] = useState(false);
 
+  const config = useBillingConfig();
+  const taxConfig = useTaxConfig();
   const print = useInvoicePrint();
 
   /**
@@ -92,7 +94,7 @@ function AdminInvoiceDetail() {
     toast.success(`${invoice.invoiceNumber} marked as paid`);
   };
 
-  if (isLoading) {
+  if (isLoading || !config) {
     return (
       <div>
         <Skeleton className="h-8 w-64" />
@@ -204,7 +206,7 @@ function AdminInvoiceDetail() {
       <div className="grid gap-4 xl:grid-cols-[1fr_20rem]">
         {/* -------------------------------------------------------- document */}
         <div className="min-w-0 overflow-hidden rounded-[3px] border border-admin-border bg-white">
-          <InvoiceDocument invoice={invoice} config={getBillingConfig()} />
+          <InvoiceDocument invoice={invoice} config={config} gstin={taxConfig?.gstin ?? ""} />
         </div>
 
         {/* --------------------------------------------------------- related */}

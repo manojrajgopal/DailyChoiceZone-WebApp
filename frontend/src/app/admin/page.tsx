@@ -7,9 +7,10 @@ import { Loader2 } from "lucide-react";
 /**
  * `/admin` sends you to the dashboard.
  *
- * A client-side redirect rather than `redirect()` from a server component,
- * because this app is exported as static HTML and there is no server to issue
- * one.
+ * A client-side redirect rather than `redirect()` from a server component:
+ * where somebody lands depends on whether they are signed in, and that is
+ * decided in the browser by the same guard the rest of the portal uses. A
+ * server redirect here would have to duplicate it.
  */
 export default function AdminIndexPage() {
   const router = useRouter();

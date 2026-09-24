@@ -99,6 +99,22 @@ export interface ProductFilters {
   inStockOnly?: boolean;
   /** Free-text search term. */
   query?: string;
+  /** Narrow to one collection, by slug or id. */
+  collection?: string;
+
+  /*
+   * Merchandising flags.
+   *
+   * Filters like any other, because that is what they are: a rail is a query
+   * with a flag set. They stay out of the URL — `useProductQuery` never writes
+   * them — but they belong on the query object so the *server* can answer
+   * "the new arrivals" instead of the browser fetching 250 products and
+   * throwing most of them away.
+   */
+  isNew?: boolean;
+  isTrending?: boolean;
+  isBestSeller?: boolean;
+  isFeatured?: boolean;
 }
 
 /** A listing request: what to filter by, how to sort, and which page. */

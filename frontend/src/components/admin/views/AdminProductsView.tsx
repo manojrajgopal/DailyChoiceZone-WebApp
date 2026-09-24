@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Copy, Eye, EyeOff, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Copy, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 import type { AdminProduct, ProductStatus } from "@/types/admin";
 
@@ -16,7 +16,6 @@ import {
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
-import { hasStorefrontPage } from "@/lib/admin/catalogue";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice, humanize } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
@@ -289,26 +288,21 @@ export function AdminProductsView() {
       align: "right",
       cell: (product) => (
         <span className="flex items-center justify-end gap-0.5">
-          {hasStorefrontPage(product.slug) ? (
-            <Link
-              href={`/product/${product.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`View ${product.name} on the storefront`}
-              title="View on storefront"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-[3px] text-admin-muted transition-colors hover:bg-admin-raised hover:text-admin-ink"
-            >
-              <Eye className="h-3.5 w-3.5" strokeWidth={1.75} />
-            </Link>
-          ) : (
-            <span
-              title="No storefront page yet — this product was added after the last site build"
-              aria-label={`${product.name} has no storefront page until the next build`}
-              className="inline-flex h-7 w-7 cursor-not-allowed items-center justify-center rounded-[3px] text-admin-border-strong"
-            >
-              <EyeOff className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-            </span>
-          )}
+          {/*
+            Always a live link now. The storefront renders product pages on
+            request from the database, so a product created a moment ago has
+            a page — which is what the disabled state here used to cover.
+          */}
+          <Link
+            href={`/product/${product.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`View ${product.name} on the storefront`}
+            title="View on storefront"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-[3px] text-admin-muted transition-colors hover:bg-admin-raised hover:text-admin-ink"
+          >
+            <Eye className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </Link>
 
           <Link
             href={`/admin/products/edit?id=${product.id}`}

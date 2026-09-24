@@ -5,7 +5,8 @@ import { persist } from "zustand/middleware";
 
 import type { AdminSession, AdminUser } from "@/types/admin";
 
-import { OVERLAY_KEYS } from "@/lib/admin/mock-store";
+/** Where the session is persisted. Namespaced like every other key this app uses. */
+const STORAGE_KEY = "dcz:admin:session";
 
 interface AdminAuthState {
   session: AdminSession | null;
@@ -17,9 +18,11 @@ interface AdminAuthState {
 /**
  * The signed-in admin.
  *
- * Mock only — see `adminAuthService` for why this provides no security. It is
- * persisted under the same key the service writes, so a page refresh keeps the
- * admin signed in and the two never disagree about who is logged on.
+ * Persisted so a refresh does not bounce somebody back to the login screen.
+ * What it holds is a *claim*, not an authorisation: the API validates the
+ * bearer token on every request, and `useAdminSession` re-checks this session
+ * against `/admin/auth/me` once per page load so a disabled account stops
+ * seeing a portal it can no longer use.
  */
 export const useAdminAuthStore = create<AdminAuthState>()(
   persist(
@@ -37,7 +40,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
       signOut: () => set({ session: null }),
     }),
     {
-      name: OVERLAY_KEYS.session,
+      name: STORAGE_KEY,
       version: 1,
       partialize: (state) => ({ session: state.session }),
     },
