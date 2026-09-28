@@ -10,6 +10,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * succeeds the page re-reads rather than patching local state, so what is on
  * screen is always what the data layer actually holds. Optimistic patching
  * would be faster and would eventually disagree with the store.
+ *
+ * `enabled: false` holds the request back. It is for data only one part of a
+ * page needs — the catalogue behind a "pick a product" dialog, say — so
+ * opening the page does not fetch something nobody has asked to see yet.
  */
 export interface AdminResource<T> {
   data: T | null;
@@ -23,10 +27,13 @@ export interface AdminResource<T> {
 export function useAdminResource<T>(
   load: () => Promise<T>,
   deps: readonly unknown[] = [],
+  { enabled = true }: { enabled?: boolean } = {},
 ): AdminResource<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Nothing is loading while it is switched off, so a caller that renders a
+  // spinner on `isLoading` shows its closed state rather than a spinner.
+  const [isLoading, setIsLoading] = useState(enabled);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const mounted = useRef(true);
@@ -46,6 +53,8 @@ export function useAdminResource<T>(
 
   const fetchData = useCallback(
     async (isReload: boolean) => {
+      if (!enabled) return;
+
       runId.current += 1;
       const id = runId.current;
 
@@ -67,7 +76,7 @@ export function useAdminResource<T>(
         }
       }
     },
-    [run],
+    [run, enabled],
   );
 
   useEffect(() => {

@@ -74,6 +74,13 @@ import type {
  * pretend work. When the API arrives, add a query argument here and the table's
  * existing `total`/`page` props already describe what it needs.
  */
+/** The counts the sidebar chips show. */
+export interface NavCounts {
+  lowStock: number;
+  openOrders: number;
+  pendingReviews: number;
+}
+
 export interface AdminDataSource {
   /* -------------------------------------------------------------- products */
   listProducts(): Promise<AdminProduct[]>;
@@ -98,7 +105,8 @@ export interface AdminDataSource {
   listStockLog(): Promise<StockAdjustment[]>;
 
   /* ---------------------------------------------------------------- orders */
-  listOrders(): Promise<AdminOrder[]>;
+  /** Every order, or one customer's. */
+  listOrders(customerId?: string): Promise<AdminOrder[]>;
   getOrder(id: string): Promise<AdminOrder | null>;
   updateOrderStatus(
     id: string,
@@ -158,4 +166,13 @@ export interface AdminDataSource {
    * synchronously — the sidebar must render on the first paint.
    */
   getNavigation(): Promise<AdminNavGroup[]>;
+
+  /**
+   * The three counts beside the sidebar links.
+   *
+   * Its own method because the sidebar is on every page: it used to be three
+   * full list reads filtered in the browser, which downloaded the inventory,
+   * the orders and the reviews to render three small numbers.
+   */
+  getNavCounts(): Promise<NavCounts>;
 }

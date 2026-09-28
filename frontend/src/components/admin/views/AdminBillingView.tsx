@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import type { BillingStats, Invoice, Payment, Refund, TaxReportRow } from "@/types";
+import type { BillingOverview, BillingStats, TaxReportRow } from "@/types";
 
 import { AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { BarList } from "@/components/admin/charts/BarList";
@@ -12,9 +12,7 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatMoney } from "@/lib/money";
 import { formatCompactINR, formatDate } from "@/lib/utils/format";
-import { getInvoices } from "@/services/billing/invoiceService";
-import { getPayments, paymentMethodLabel } from "@/services/billing/paymentService";
-import { getRefunds } from "@/services/billing/refundService";
+import { paymentMethodLabel } from "@/services/billing/paymentService";
 import { billingDataSource } from "@/services/billing/billing-data-source.instance";
 
 /**
@@ -59,25 +57,34 @@ export function AdminBillingView() {
     () => billingDataSource.getTaxReport(from),
     [from],
   );
-  const { data: invoices } = useAdminResource<Invoice[]>(() => getInvoices(), []);
-  const { data: payments } = useAdminResource<Payment[]>(() => getPayments(), []);
-  const { data: refunds } = useAdminResource<Refund[]>(() => getRefunds(), []);
+  /**
+   * The three panels below, in one read.
+   *
+   * Each used to have a list endpoint behind it — every invoice, every payment
+   * and every refund in the business, around 470 KB — to show eight rows, the
+   * refunds still open, and a total per method. The server does the slicing and
+   * the grouping now; see `BillingOverview`.
+   *
+   * No `from` in the dependencies, deliberately: none of these three was ever
+   * scoped to the range the tiles above are showing.
+   */
+  const { data: overview } = useAdminResource<BillingOverview>(
+    () => billingDataSource.getOverview(),
+    [],
+  );
 
-  const recentInvoices = (invoices ?? []).slice(0, 8);
-  const openRefunds = (refunds ?? []).filter((refund) => refund.status !== "completed" && refund.status !== "rejected");
+  const recentInvoices = overview?.recentInvoices ?? [];
+  const openRefunds = overview?.openRefunds ?? [];
 
   /** Payments grouped by method — where the money actually comes in. */
-  const byMethod = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const payment of payments ?? []) {
-      if (payment.status === "failed") continue;
-      const key = paymentMethodLabel(payment.method);
-      totals.set(key, (totals.get(key) ?? 0) + payment.amount);
-    }
-    return [...totals.entries()]
-      .map(([label, value]) => ({ label, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [payments]);
+  const byMethod = useMemo(
+    () =>
+      (overview?.paymentsByMethod ?? []).map(({ method, amount }) => ({
+        label: paymentMethodLabel(method),
+        value: amount,
+      })),
+    [overview],
+  );
 
   return (
     <div>

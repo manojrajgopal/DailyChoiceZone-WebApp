@@ -5,11 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { Product } from "@/types";
 
 import * as wishlistService from "@/services/wishlistService";
-import { useSessionStore } from "@/store/sessionStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { toast } from "@/store/toastStore";
 
 import { useHydrated } from "./useHydrated";
+import { useCustomerStatus } from "./useSession";
 
 /**
  * The wishlist.
@@ -24,13 +24,24 @@ import { useHydrated } from "./useHydrated";
  */
 
 /**
- * The one sync in flight, shared by everything that asks for it.
+ * The one sync for this page, shared by everything that asks for it.
  *
  * A product grid mounts thirty `useWishlistItem`s at once, and every one of
- * them wants the mirror to be current. Without this they each fired their own
- * request: thirty identical round trips to render one page of hearts.
+ * them wants the mirror to be current. Kept for the life of the document
+ * rather than only while it is in flight: clearing it on settle meant any
+ * component mounting a tick later — the header badge, a rail below the fold —
+ * started another identical read.
+ *
+ * `resetWishlistSync` is what makes a *change* re-read, so this is a cache of
+ * "already done for this page", not of the list itself. The list lives in the
+ * store, and every mutation writes to it directly.
  */
-let inFlight: Promise<void> | null = null;
+let synced: Promise<void> | null = null;
+
+/** Force the next mount to re-read — after a sign-out, or a failed attempt. */
+function resetWishlistSync(): void {
+  synced = null;
+}
 
 /**
  * Keep the local mirror in step with the server, and merge a guest list once.
@@ -45,10 +56,11 @@ let inFlight: Promise<void> | null = null;
  */
 function useWishlistSync() {
   const hydrated = useHydrated();
-  const session = useSessionStore((state) => state.session);
   const replace = useWishlistStore((state) => state.replace);
 
-  const isSignedIn = hydrated && session !== null;
+  // Confirmed, not merely stored — see `useCart` for why, including what
+  // `isPending` is for.
+  const { isSignedIn, isPending } = useCustomerStatus();
 
   useEffect(() => {
     if (!hydrated || !isSignedIn) return;
@@ -60,28 +72,24 @@ function useWishlistSync() {
      * state, so an unmount mid-flight has nothing to leak into — and the other
      * twenty-nine cards sharing this promise still want the answer.
      */
-    inFlight ??= (async () => {
+    synced ??= (async () => {
       const staged = useWishlistStore.getState().drain();
       if (staged.length > 0) await wishlistService.mergeGuestWishlist(staged);
 
       const ids = await wishlistService.fetchWishlistIds();
       useWishlistStore.getState().replace(ids);
-    })()
-      .catch(() => {
-        /* an unreachable API leaves the local mirror alone */
-      })
-      .finally(() => {
-        // Cleared so the next page load, a later sign-in, or a retry after a
-        // failure can run one of its own.
-        inFlight = null;
-      });
+    })().catch(() => {
+      // An unreachable API leaves the mirror alone, and clears the marker so
+      // the next mount can try again rather than inheriting the failure.
+      resetWishlistSync();
+    });
   }, [hydrated, isSignedIn, replace]);
 
-  return { isSignedIn, hydrated };
+  return { isSignedIn, isPending, hydrated };
 }
 
 export function useWishlist() {
-  const { isSignedIn, hydrated } = useWishlistSync();
+  const { isSignedIn, isPending, hydrated } = useWishlistSync();
 
   const productIds = useWishlistStore((state) => state.productIds);
   const removeId = useWishlistStore((state) => state.remove);
@@ -91,7 +99,7 @@ export function useWishlist() {
   const [isResolving, setIsResolving] = useState(false);
 
   useEffect(() => {
-    if (!hydrated || productIds.length === 0) return;
+    if (!hydrated || isPending || productIds.length === 0) return;
 
     let active = true;
     setIsResolving(true);
@@ -114,7 +122,7 @@ export function useWishlist() {
     return () => {
       active = false;
     };
-  }, [productIds, hydrated, isSignedIn]);
+  }, [productIds, hydrated, isPending, isSignedIn]);
 
   /**
    * Derived, not stored.
@@ -143,7 +151,7 @@ export function useWishlist() {
   return {
     products,
     count: hydrated ? productIds.length : 0,
-    isLoading: !hydrated || isResolving,
+    isLoading: !hydrated || isPending || isResolving,
     isEmpty: hydrated && productIds.length === 0,
     hydrated,
     remove,

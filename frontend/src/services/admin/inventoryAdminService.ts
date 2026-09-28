@@ -28,17 +28,3 @@ export async function adjustStock(
   const adjustment: StockAdjustment = { ...input, at: new Date().toISOString() };
   return { ok: true, data: await adminDataSource.adjustStock(adjustment) };
 }
-
-/** Products in stock but at or below their threshold. Drives the alert badge. */
-export async function countLowStock(): Promise<number> {
-  const items = await adminDataSource.listInventory();
-  return items.filter((item) => item.status === "low-stock").length;
-}
-
-export async function listLowStock(limit = 6): Promise<InventoryItem[]> {
-  const items = await adminDataSource.listInventory();
-  return items
-    .filter((item) => item.status === "low-stock" || item.status === "out-of-stock")
-    .sort((a, b) => a.available - b.available)
-    .slice(0, limit);
-}

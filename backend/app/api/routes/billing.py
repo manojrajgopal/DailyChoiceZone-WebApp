@@ -59,6 +59,7 @@ def get_my_invoice(
 def list_invoices(
     search: Optional[str] = None,
     status: Optional[str] = None,
+    order_id: Optional[str] = Query(None, alias="orderId"),
     payment_status: Optional[str] = Query(None, alias="paymentStatus"),
     date_from: Optional[datetime] = Query(None, alias="from"),
     date_to: Optional[datetime] = Query(None, alias="to"),
@@ -66,10 +67,18 @@ def list_invoices(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
+    """
+    Every invoice, or the ones matching the filters.
+
+    `orderId` narrows it to a single order's invoice, which is what the order
+    and invoice screens ask for. They used to read the whole ledger — 334 KB —
+    and pick the row out in the browser.
+    """
     rows = service.list_invoices(
         db,
         search=search,
         status=status,
+        order_id=order_id,
         payment_status=payment_status,
         date_from=date_from,
         date_to=date_to,
@@ -104,10 +113,14 @@ def list_payments(
     search: Optional[str] = None,
     status: Optional[str] = None,
     method: Optional[str] = None,
+    order_id: Optional[str] = Query(None, alias="orderId"),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    rows = service.list_payments(db, search=search, status=status, method=method)
+    """`orderId` narrows it to one order's transaction — see the invoices route."""
+    rows = service.list_payments(
+        db, search=search, status=status, method=method, order_id=order_id
+    )
     return ok_list([PaymentOut.from_model(payment).model_dump(by_alias=True) for payment in rows])
 
 
@@ -174,10 +187,12 @@ def update_refund(
 
 @admin_router.get("/credit-notes", summary="Every credit note")
 def list_credit_notes(
+    order_id: Optional[str] = Query(None, alias="orderId"),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    rows = service.list_credit_notes(db)
+    """`orderId` narrows it to one order's notes — see the invoices route."""
+    rows = service.list_credit_notes(db, order_id=order_id)
     return ok_list([CreditNoteOut.model_validate(note).model_dump(by_alias=True) for note in rows])
 
 
@@ -222,6 +237,54 @@ def _window(from_: Optional[datetime], to: Optional[datetime]):
     if to:
         conditions.append(Invoice.issued_at <= to)
     return conditions
+
+
+@admin_router.get("/overview", summary="What the billing landing page shows")
+def billing_overview(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    """
+    The three panels beside the tiles, in one read.
+
+    The page used to assemble them from the three list endpoints — every
+    invoice, every payment and every refund in the business, some 470 KB of
+    them — to show eight invoices, the refunds still open, and a total per
+    payment method. The lists are still there for the pages that list things.
+
+    Deliberately not scoped to the tiles' date range, because none of these
+    three ever was: "recent invoices" means the latest eight whatever window
+    the tiles are showing, and the same goes for what is outstanding.
+    """
+    recent = service.list_invoices(db)[:8]
+
+    open_refunds = [
+        refund
+        for refund in service.list_refunds(db)
+        if refund.status not in ("completed", "rejected")
+    ]
+
+    by_method = db.execute(
+        select(Payment.method, func.coalesce(func.sum(Payment.amount), 0))
+        .where(Payment.status != "failed")
+        .group_by(Payment.method)
+        .order_by(func.sum(Payment.amount).desc())
+    ).all()
+
+    return ok(
+        {
+            "recentInvoices": [
+                InvoiceOut.from_model(invoice).model_dump(by_alias=True) for invoice in recent
+            ],
+            "openRefunds": [
+                RefundOut.from_model(refund).model_dump(by_alias=True)
+                for refund in open_refunds
+            ],
+            "paymentsByMethod": [
+                {"method": method, "amount": int(amount)} for method, amount in by_method
+            ],
+        }
+    )
 
 
 @admin_router.get("/stats", summary="Revenue, collected, outstanding, refunded")

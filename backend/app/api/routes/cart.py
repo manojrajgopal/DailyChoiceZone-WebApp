@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies.auth import get_current_customer
-from app.models import Customer
+from app.models import CartItem, Customer
 from app.schemas.base import CamelModel
 from app.schemas.catalogue import ProductOut
 from app.services import cart as service
@@ -60,6 +61,28 @@ def get_cart(
         place_of_supply=place_of_supply,
     )
     return ok(_render(payload))
+
+
+@router.get("/count", summary="How many items are in the bag")
+def get_cart_count(
+    db: Session = Depends(get_db),
+    customer: Customer = Depends(get_current_customer),
+):
+    """
+    Just the number on the header badge.
+
+    The badge used to read the whole bag for this: every product in it
+    serialised in full, and the delivery, coupon and tax arithmetic run, to
+    render one integer. Pages that display the bag still take the count from
+    the cart they already loaded; this is for the rest of them.
+    """
+    total = db.execute(
+        select(func.coalesce(func.sum(CartItem.quantity), 0)).where(
+            CartItem.customer_id == customer.id
+        )
+    ).scalar_one()
+
+    return ok({"itemCount": int(total)})
 
 
 @router.post("/items", status_code=201, summary="Add to the bag")

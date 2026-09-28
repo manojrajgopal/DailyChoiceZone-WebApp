@@ -27,7 +27,3 @@ export async function deleteReview(id: string): Promise<AdminResult<string>> {
 }
 
 /** Reviews awaiting moderation. Drives the sidebar badge. */
-export async function countPendingReviews(): Promise<number> {
-  const reviews = await adminDataSource.listReviews();
-  return reviews.filter((review) => review.status === "pending").length;
-}

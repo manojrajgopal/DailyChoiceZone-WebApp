@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import type { AdminCredentials } from "@/services/admin/adminAuthService";
 import type { AdminUser } from "@/types/admin";
@@ -28,10 +28,18 @@ export function useAdminHydrated(): boolean {
 /**
  * Whether the persisted session has been checked against the server.
  *
- * Module-scoped, so it happens once per page load however many components
- * call the hook.
+ * Module-scoped, so the check happens once per page load however many
+ * components call the hook — and so it survives a re-render, which is what
+ * lets the shell hold its children back until the answer is in.
  */
-let verified = false;
+let checkStarted = false;
+let settled = false;
+
+/** Reset by a fresh sign-in: a new session is verified by definition. */
+export function markSessionVerified(): void {
+  checkStarted = true;
+  settled = true;
+}
 
 /** The signed-in admin, with sign-in and sign-out. */
 export function useAdminSession() {
@@ -39,6 +47,9 @@ export function useAdminSession() {
   const session = useAdminAuthStore((state) => state.session);
   const setSession = useAdminAuthStore((state) => state.setSession);
   const updateUser = useAdminAuthStore((state) => state.updateUser);
+
+  // Re-rendered when the check finishes, so the shell can stop waiting.
+  const [checked, setChecked] = useState(settled);
 
   /**
    * Confirm the stored session with the server.
@@ -50,13 +61,28 @@ export function useAdminSession() {
    * stops the portal rendering a menu the person can no longer use.
    */
   useEffect(() => {
-    if (!hydrated || verified) return;
-    verified = true;
-    if (session === null) return;
+    if (!hydrated) return;
+
+    if (session === null) {
+      // Nothing to confirm. The guard redirects to the sign-in page.
+      settled = true;
+      setChecked(true);
+      return;
+    }
+
+    if (checkStarted) {
+      if (settled) setChecked(true);
+      return;
+    }
+
+    checkStarted = true;
 
     void adminAuth.refreshSession().then((user) => {
       if (user) updateUser(user);
       else setSession(null);
+
+      settled = true;
+      setChecked(true);
     });
   }, [hydrated, session, setSession, updateUser]);
 
@@ -64,6 +90,9 @@ export function useAdminSession() {
     async (credentials: AdminCredentials) => {
       const result = await adminAuth.signIn(credentials);
       if (result.ok) {
+        // Just came from the server, so there is nothing to confirm — and the
+        // shell must not wait on a check that will never run.
+        markSessionVerified();
         setSession(result.data);
       }
       return result;
@@ -89,8 +118,16 @@ export function useAdminSession() {
   return {
     user,
     isSignedIn: hydrated && session !== null,
-    /** True until the store has rehydrated — guards must wait for this. */
-    isLoading: !hydrated,
+    /**
+     * True until the store has rehydrated **and** the stored session has been
+     * confirmed. Guards must wait for it.
+     *
+     * Waiting for the confirmation, not just the rehydration, is what stops a
+     * page firing all of its requests against a token that has expired: seven
+     * calls that could only ever return 401, before the one call that was
+     * going to find that out.
+     */
+    isLoading: !hydrated || !checked,
     signIn,
     signOut,
     updateProfile,

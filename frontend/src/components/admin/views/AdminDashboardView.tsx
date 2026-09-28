@@ -22,8 +22,6 @@ import { useAdminSession } from "@/hooks/useAdminSession";
 import { cn } from "@/lib/utils/cn";
 import { formatCompactINR, formatDate, formatPrice, humanize } from "@/lib/utils/format";
 import { getAnalytics, getDashboard } from "@/services/admin/analyticsAdminService";
-import { listLowStock } from "@/services/admin/inventoryAdminService";
-import { listOrders } from "@/services/admin/orderAdminService";
 
 import type { AdminOrder } from "@/types/admin";
 
@@ -40,10 +38,16 @@ export function AdminDashboardView() {
 
   const dashboard = useAdminResource(() => getDashboard(), []);
   const analytics = useAdminResource(() => getAnalytics(range), [range]);
-  const orders = useAdminResource(() => listOrders(), []);
-  const lowStock = useAdminResource(() => listLowStock(5), []);
 
-  const recentOrders = (orders.data ?? []).slice(0, 8);
+  /**
+   * Both panels below come out of the dashboard call.
+   *
+   * They used to have an endpoint each: every order in the shop to list eight,
+   * and every product in the catalogue to list five. The dashboard response
+   * already carried both — see `DashboardStats`.
+   */
+  const recentOrders = dashboard.data?.recentOrders ?? [];
+  const lowStock = dashboard.data?.lowStock ?? [];
   const snapshot = analytics.data;
 
   const orderColumns: Column<AdminOrder>[] = [
@@ -230,19 +234,19 @@ export function AdminDashboardView() {
             </Link>
           }
         >
-          {lowStock.isLoading ? (
+          {dashboard.isLoading ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 4 }, (_, index) => (
                 <div key={index} className="h-8 animate-pulse rounded-[3px] bg-admin-raised" />
               ))}
             </div>
-          ) : (lowStock.data ?? []).length === 0 ? (
+          ) : lowStock.length === 0 ? (
             <p className="py-6 text-center text-xs text-admin-muted">
               Everything is comfortably in stock.
             </p>
           ) : (
             <ul className="flex flex-col divide-y divide-admin-border">
-              {(lowStock.data ?? []).map((item) => (
+              {lowStock.map((item) => (
                 <li key={item.productId} className="flex items-center gap-2.5 py-2 first:pt-0">
                   <Package
                     className="h-3.5 w-3.5 shrink-0 text-admin-faint"
@@ -294,7 +298,7 @@ export function AdminDashboardView() {
               rows={recentOrders}
               columns={orderColumns}
               getRowId={(order) => order.id}
-              isLoading={orders.isLoading}
+              isLoading={dashboard.isLoading}
               pageSize={8}
               emptyTitle="No orders yet"
               emptyDescription="Orders will appear here as customers place them."

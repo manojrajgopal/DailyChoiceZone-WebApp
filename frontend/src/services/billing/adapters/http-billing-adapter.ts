@@ -1,4 +1,5 @@
 import type {
+  BillingOverview,
   BillingStats,
   CreditNote,
   Invoice,
@@ -55,9 +56,13 @@ export const httpBillingAdapter: BillingDataSource = {
 
   async getInvoiceByOrderId(orderId: string): Promise<Invoice | null> {
     // Invoices are one per order, so this is a filter rather than a route of
-    // its own — one way to read an invoice, narrowed.
-    const invoices = await apiGet<Invoice[]>("/admin/billing/invoices", AUTH);
-    return invoices.find((invoice) => invoice.orderId === orderId) ?? null;
+    // its own — one way to read an invoice, narrowed. Narrowed by the server:
+    // reading the whole ledger to find one row was 334 KB an order page.
+    const invoices = await apiGet<Invoice[]>(
+      `/admin/billing/invoices${query({ orderId })}`,
+      AUTH,
+    );
+    return invoices[0] ?? null;
   },
 
   listMyInvoices(): Promise<Invoice[]> {
@@ -95,8 +100,11 @@ export const httpBillingAdapter: BillingDataSource = {
   },
 
   async getPaymentByOrderId(orderId: string): Promise<Payment | null> {
-    const payments = await apiGet<Payment[]>("/admin/billing/payments", AUTH);
-    return payments.find((payment) => payment.orderId === orderId) ?? null;
+    const payments = await apiGet<Payment[]>(
+      `/admin/billing/payments${query({ orderId })}`,
+      AUTH,
+    );
+    return payments[0] ?? null;
   },
 
   updatePayment(payment: Payment): Promise<Payment> {
@@ -145,8 +153,8 @@ export const httpBillingAdapter: BillingDataSource = {
     );
   },
 
-  listCreditNotes(): Promise<CreditNote[]> {
-    return apiGet<CreditNote[]>("/admin/billing/credit-notes", AUTH);
+  listCreditNotes(orderId?: string): Promise<CreditNote[]> {
+    return apiGet<CreditNote[]>(`/admin/billing/credit-notes${query({ orderId })}`, AUTH);
   },
 
   async getCreditNote(id: string): Promise<CreditNote | null> {
@@ -174,6 +182,10 @@ export const httpBillingAdapter: BillingDataSource = {
       { status: note.status },
       AUTH,
     );
+  },
+
+  getOverview(): Promise<BillingOverview> {
+    return apiGet<BillingOverview>("/admin/billing/overview", AUTH);
   },
 
   getStats(from?: string, to?: string): Promise<BillingStats> {

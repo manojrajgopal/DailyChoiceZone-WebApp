@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Dialog";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
-import { useCart } from "@/hooks/useCart";
+import { useAddToCart } from "@/hooks/useCart";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
 import { humanize } from "@/lib/utils/format";
@@ -48,7 +48,7 @@ export function QuickViewDialog({
 }
 
 function QuickViewBody({ product, onClose }: { product: Product; onClose: () => void }) {
-  const { add } = useCart();
+  const add = useAddToCart();
   const { isWishlisted, toggle } = useWishlistItem(product.id);
 
   const [activeImage, setActiveImage] = useState(0);

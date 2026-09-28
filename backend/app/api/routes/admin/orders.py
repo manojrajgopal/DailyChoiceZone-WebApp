@@ -20,10 +20,17 @@ router = APIRouter(prefix="/admin/orders", tags=["Orders"])
 
 @router.get("", summary="Every order")
 def list_orders(
+    customer_id: Optional[str] = Query(None, alias="customerId"),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    orders = service.list_orders(db)
+    """
+    Every order, or one customer's.
+
+    `customerId` is what the customer page asks for. It used to read the whole
+    order book — 279 KB — and filter it in the browser.
+    """
+    orders = service.list_orders(db, customer_id=customer_id)
     invoices = {
         invoice.order_id: invoice for invoice in db.execute(select(Invoice)).scalars()
     }

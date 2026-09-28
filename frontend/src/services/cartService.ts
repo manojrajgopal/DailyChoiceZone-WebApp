@@ -121,6 +121,18 @@ export async function fetchCart(options: {
   return toView(cart);
 }
 
+/**
+ * The item count on its own.
+ *
+ * What the header badge needs, and nothing else. Reading the priced cart for
+ * it meant serialising every product in the bag and running the delivery,
+ * coupon and tax arithmetic to produce one integer.
+ */
+export async function fetchCartCount(): Promise<number> {
+  const { itemCount } = await apiGet<{ itemCount: number }>("/cart/count", AUTH);
+  return itemCount;
+}
+
 export async function addToCart(input: {
   productId: string;
   size?: string | null;

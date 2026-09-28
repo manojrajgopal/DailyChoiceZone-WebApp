@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, update as sql_update
+from sqlalchemy import func, select, update as sql_update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -14,13 +14,17 @@ from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.core.permissions import permissions_for
 from app.core.security import hash_password
 from app.dependencies.auth import get_current_admin, require_permission
-from app.models import AdminUser, Notification, SettingDocument
+from app.models import AdminUser, Notification, Order, Product, Review, SettingDocument
 from app.services import site as site_service
 from app.schemas.auth import AdminUserOut, AdminUserWrite
 from app.utils.ids import next_id
 from app.utils.response import ok, ok_list
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+# What counts as an order still needing attention. The same set the orders
+# screen filters by, named once so the chip and the screen cannot disagree.
+OPEN_ORDER_STATUSES = ("pending", "confirmed", "processing")
 
 # The documents this endpoint will serve. An allowlist, so a crafted key cannot
 # read or write something that was never meant to be configuration.
@@ -52,11 +56,18 @@ def save_document(
     admin: AdminUser = Depends(require_permission("settings")),
 ):
     """
-    Stored whole.
+    Stored whole, merged at the top level.
 
     Settings, billing and tax are each read and written entire, by one person,
     a handful of times a year. Exploding them into columns would mean a
     migration every time a field is added, to buy querying nobody does.
+
+    The merge is not cosmetic. A replace meant any section the saving screen
+    does not model was *deleted* by saving: the billing screen knows nothing
+    about `order` or `sku`, so one visit to it removed the order-number prefix
+    and the next order placed got the number `1` — colliding with an existing
+    one from then on. Sections are only ever replaced by a screen that sends
+    them.
     """
     if key not in DOCUMENTS:
         raise NotFoundError(f"No configuration document '{key}'.", error_code="UNKNOWN_DOCUMENT")
@@ -66,7 +77,7 @@ def save_document(
         row = SettingDocument(key=key, value=payload)
         db.add(row)
     else:
-        row.value = payload
+        row.value = {**(row.value or {}), **payload}
 
     db.commit()
     return ok(payload, message="Settings saved.")
@@ -203,6 +214,53 @@ def delete_admin(
     db.delete(user)
     db.commit()
     return ok(message="Administrator removed.")
+
+
+# ---------------------------------------------------------- sidebar counts
+
+
+@router.get("/nav-counts", summary="The counts beside the sidebar links")
+def nav_counts(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    """
+    Three numbers, counted in SQL.
+
+    Every page of the portal shows these chips, so this is the most frequently
+    called endpoint there is — which is why it is three `COUNT(*)`s and not a
+    list.
+
+    It replaced the portal downloading `/admin/inventory`, `/admin/orders` and
+    `/admin/reviews` in full and counting the rows in the browser: **459 KB on
+    every page view** to render three small numbers, and growing with the
+    catalogue. This answers in about sixty bytes and does not grow at all.
+    """
+    available = Product.stock - Product.reserved_stock
+
+    low_stock = db.execute(
+        select(func.count())
+        .select_from(Product)
+        .where(available > 0, available <= Product.low_stock_threshold)
+    ).scalar_one()
+
+    open_orders = db.execute(
+        select(func.count())
+        .select_from(Order)
+        .where(Order.status.in_(OPEN_ORDER_STATUSES))
+    ).scalar_one()
+
+    pending_reviews = db.execute(
+        select(func.count()).select_from(Review).where(Review.status == "pending")
+    ).scalar_one()
+
+    return ok(
+        {
+            "lowStock": low_stock,
+            "openOrders": open_orders,
+            "pendingReviews": pending_reviews,
+        }
+    )
 
 
 # ------------------------------------------------------------ navigation

@@ -293,9 +293,28 @@ export interface DashboardStat {
   icon: "sales" | "orders" | "customers" | "products" | "alert";
 }
 
+/** A product the dashboard is warning about. */
+export interface DashboardLowStock {
+  productId: string;
+  name: string;
+  sku: string;
+  stock: number;
+  available: number;
+}
+
 export interface DashboardStats {
   stats: DashboardStat[];
   generatedAt: string;
+  /**
+   * The eight most recent orders and the five thinnest lines of stock.
+   *
+   * Both arrive with the figures above, because the same request that
+   * aggregates the tiles has the rows to hand. The dashboard used to drop them
+   * and then read every order and every product back out of two list endpoints
+   * to show eight rows and five.
+   */
+  recentOrders: AdminOrder[];
+  lowStock: DashboardLowStock[];
 }
 
 /* ------------------------------------------------------------------ analytics */

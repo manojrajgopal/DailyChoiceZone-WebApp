@@ -115,15 +115,28 @@ export async function getRecommendedProducts(
     return getFeaturedProducts(limit);
   }
 
-  // One page of candidates, not the catalogue: recommendations pick a handful
-  // of near neighbours, and the API caps a page at 100 — asking for 250 was a
-  // 422 and an empty rail rather than a bigger pool.
-  const [recentlyViewed, { items: catalogue }] = await Promise.all([
-    dataSource.getProductsByIds(recentlyViewedIds),
-    dataSource.queryProducts({ pageSize: 100, page: 1 }),
-  ]);
+  const recentlyViewed = await dataSource.getProductsByIds(recentlyViewedIds);
 
-  const recommended = findRecommended(recentlyViewed, catalogue, limit);
+  /**
+   * Candidates from the departments this shopper has been looking in.
+   *
+   * The scoring weights subcategory, then category, then brand — so a product
+   * from a department they have not touched scores near zero and is only ever
+   * ballast. This used to fetch the first hundred products of the whole
+   * catalogue to pick six near neighbours: a large request whose best answers
+   * might not even be in it, since page one is ordered by merchandising rather
+   * than by anything to do with this shopper.
+   */
+  const categories = [...new Set(recentlyViewed.map((product) => product.category))];
+
+  const { items: candidates } = await dataSource.queryProducts({
+    category: categories,
+    inStockOnly: true,
+    pageSize: 48,
+    page: 1,
+  });
+
+  const recommended = findRecommended(recentlyViewed, candidates, limit);
   // A very short history can yield fewer than `limit`; top up with featured.
   if (recommended.length >= limit) return recommended;
 

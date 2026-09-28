@@ -187,6 +187,15 @@ Each has a screen in the portal:
 | Settings → Navigation | `navigation`, `admin_navigation` |
 | Settings → Billing | `billing`, `tax` |
 
+A save is **merged at the top level**, not stored as the whole document. This is
+not tidiness. The billing screen does not model the `order` and `sku` sections —
+they are numbering prefixes, not settings anyone edits there — so a replacing
+save deleted them. Order numbering then fell back to its starting number on
+every order, and the second order asked the unique index for a number the first
+one already had: checkout returned a 409 from then on. A screen that *sends* a
+section still owns it, so removing a refund reason or a payment method works as
+before. `tests/integration/test_numbering_and_settings.py` holds both rules.
+
 `content` is the one worth naming. It holds the states a delivery address can
 choose, the contact form's topics, the popular searches, the sort orders, the
 rating and discount filter buckets, the delivery and payment methods, the FAQ,
@@ -225,6 +234,31 @@ price" — because five endpoints returning products is five places to fix a bug
 
 Updates are payload-driven: `PUT /api/products/{id}` applies whatever the body
 contains and leaves the rest alone.
+
+### Narrow reads for narrow questions
+
+The counterpart to the rule above: a filter belongs on the server. A screen that
+wants one row, or eight, or a single number must not read the table and do the
+work in the browser — that is the same query, run in the slowest possible place,
+over the wire.
+
+Every one of these replaced exactly that:
+
+| Route | What asks for it | Instead of |
+|---|---|---|
+| `GET /api/cart/count` | the header bag badge | the whole priced cart, per page |
+| `GET /api/admin/nav-counts` | the three sidebar badges | the inventory, the orders and the reviews in full — 459 KB a page view |
+| `GET /api/admin/billing/overview` | the billing landing page's three panels | every invoice, payment and refund — 468 KB, to show eight rows |
+| `?orderId=` on `billing/invoices`, `billing/payments`, `billing/credit-notes` | the order and invoice screens | the whole ledger, then `.find()` |
+| `?customerId=` on `admin/orders` | the customer screen | every order in the shop — 279 KB |
+
+`GET /api/admin/dashboard` already returned its recent orders and low-stock
+rows; the page was throwing them away and reading `admin/orders` and
+`admin/inventory` for the same thing.
+
+The test that matters for each is not that it is smaller but that it is the
+*same answer* — see `tests/integration/test_narrow_reads.py`, which compares
+each narrow read against the wide one it replaced.
 
 ---
 
@@ -327,7 +361,7 @@ pytest -m integration     # the API and the database together
 pytest -k refund          # by name
 ```
 
-258 tests. They run against MySQL in a database of their own
+294 tests. They run against MySQL in a database of their own
 (`daily_choice_zone_test`, or `TEST_DATABASE_NAME`), created on first run and
 rebuilt from the models each session. The development database is never touched
 — the fixtures refuse to run if the two names coincide.
@@ -343,8 +377,9 @@ What is covered: money and tax arithmetic against worked examples, password
 hashing and token forgery, registration and sign-in, catalogue filtering,
 sorting and paging, the cart and its pricing, the wishlist's uniqueness, the
 order transaction and what the client is not allowed to decide, coupons,
-inventory and its ledger, refunds and credit notes, and — endpoint by endpoint —
-who is allowed to call what.
+inventory and its ledger, refunds and credit notes, order numbering and what a
+configuration save may not delete, the narrow reads above against the wide ones
+they replaced, and — endpoint by endpoint — who is allowed to call what.
 
 ---
 

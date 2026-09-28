@@ -9,9 +9,6 @@ import type { AdminNavGroup } from "@/types/admin";
 import { Drawer } from "@/components/ui/Dialog";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { adminDataSource } from "@/services/admin/admin-data-source.instance";
-import { countLowStock } from "@/services/admin/inventoryAdminService";
-import { countOpenOrders } from "@/services/admin/orderAdminService";
-import { countPendingReviews } from "@/services/admin/reviewAdminService";
 
 import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar, type NavBadges } from "./AdminSidebar";
@@ -70,15 +67,25 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (!isSignedIn) router.replace("/admin/login");
   }, [isLoading, isSignedIn, router]);
 
-  // Badge counts are re-read on navigation, so acting on a low-stock item or
-  // approving a review updates the sidebar without a manual refresh.
+  /**
+   * The sidebar's counts, re-read on navigation.
+   *
+   * Re-reading means acting on a low-stock item or approving a review updates
+   * the chips without a manual refresh, and it is affordable because the
+   * server counts in SQL: about sixty bytes a click.
+   *
+   * It used to fetch the inventory, the orders and the reviews in full and
+   * count the rows here — 459 KB on every page view, growing with the
+   * catalogue, to render three numbers.
+   */
   useEffect(() => {
     if (!isSignedIn) return;
 
     let active = true;
-    Promise.all([countLowStock(), countOpenOrders(), countPendingReviews()])
-      .then(([lowStock, openOrders, pendingReviews]) => {
-        if (active) setBadges({ lowStock, openOrders, pendingReviews });
+    adminDataSource
+      .getNavCounts()
+      .then((counts) => {
+        if (active) setBadges(counts);
       })
       .catch(() => {
         if (active) setBadges(NO_BADGES);

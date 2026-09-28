@@ -236,7 +236,7 @@ export default async function ProductPage({ params }: PageProps) {
             subtitle="What people say"
             className="mb-8"
           />
-          <ProductReviews productId={product.id} reviews={reviews} summary={summary} />
+          <ProductReviews reviews={reviews} summary={summary} />
         </section>
       </div>
 

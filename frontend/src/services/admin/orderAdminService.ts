@@ -72,9 +72,3 @@ export async function updatePaymentStatus(
 }
 
 /** Orders still needing action. Drives the sidebar badge. */
-export async function countOpenOrders(): Promise<number> {
-  const orders = await adminDataSource.listOrders();
-  return orders.filter((order) =>
-    ["pending", "confirmed", "processing"].includes(order.status),
-  ).length;
-}

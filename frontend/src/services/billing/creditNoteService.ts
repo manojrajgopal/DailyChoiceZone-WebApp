@@ -30,9 +30,8 @@ export function getCreditNoteById(id: string): Promise<CreditNote | null> {
   return billingDataSource.getCreditNote(id);
 }
 
-export async function getCreditNotesForOrder(orderId: string): Promise<CreditNote[]> {
-  const notes = await billingDataSource.listCreditNotes();
-  return notes.filter((note) => note.orderId === orderId);
+export function getCreditNotesForOrder(orderId: string): Promise<CreditNote[]> {
+  return billingDataSource.listCreditNotes(orderId);
 }
 
 export interface CreateCreditNoteInput {

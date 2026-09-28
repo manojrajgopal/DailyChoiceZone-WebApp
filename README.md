@@ -85,7 +85,7 @@ renders.
 | Backend | |
 |---|---|
 | `uvicorn app.main:app --reload` | Development server |
-| `pytest` | The whole suite (266 tests) |
+| `pytest` | The whole suite (294 tests) |
 | `alembic upgrade head` | Apply migrations |
 | `alembic revision --autogenerate -m "…"` | New migration |
 
@@ -287,6 +287,45 @@ works this morning, and `notFound()` still returns a genuine 404 for a slug that
 does not exist — which is what stops unknown URLs becoming indexable soft-404s.
 The sitemap is generated per request for the same reason.
 
+### What a page is allowed to ask for
+
+A page makes the requests its own sections need, and no others. That is a rule
+worth stating because the static export left behind a whole class of code that
+broke it: components that re-read on mount because the HTML they were rendered
+into might have been built weeks ago. Once pages render per request that fetch
+is a second copy of what the server just sent. `PromoStrip`, `HomeSections`,
+`useLiveProduct` and `useLiveReviews` were all of this kind, and all of them are
+gone — the server-rendered value is the live one.
+
+The rest of the rule:
+
+- **A hook that only writes does not read.** `useAddToCart` exists because the
+  product page, the quick view and the wishlist only ever add to the bag;
+  mounting the full `useCart` to get that one function cost a priced cart on
+  each of those pages.
+- **A badge asks for a number, not a document.** `useCartCount` takes the count
+  from `useCart` when something on the page has already loaded the bag, and
+  falls back to `GET /api/cart/count` — 54 bytes — when nothing has.
+- **A count is counted in SQL.** The three portal sidebar badges were 459 KB of
+  inventory, orders and reviews per page view; they are now
+  `GET /api/admin/nav-counts`.
+- **A filter goes in the query string.** See "Narrow reads for narrow
+  questions" in the backend README for the list.
+- **A resource that only a dialog uses loads when the dialog opens** — the
+  `enabled` option on `useAdminResource`.
+- **Wait for the session before asking.** `useCustomerStatus` distinguishes
+  "signed out" from "not asked yet", so a page does not fire six requests
+  against a token that has expired — nor, as the checkout did, mistake an
+  unconfirmed session for a guest and bounce a signed-in shopper with a full
+  bag back to /cart.
+
+What deliberately stays: `GET /api/site/content` on the listing pages, because
+the filter panel and the sort control genuinely need it and one 7.6 KB document
+serves every caller on the page; and the portal's products and categories
+tables, which read the catalogue in full because their filtering, sorting and
+paging all happen in the browser. Making those server-driven would change how
+the tables behave, which is a different change from this one.
+
 **Deployment:** two services. A Node host running `next build && next start` for
 the frontend, and a Python host running Uvicorn for the API, with
 `NEXT_PUBLIC_API_URL` pointing at it and `CORS_ORIGINS` pointing back.
@@ -465,7 +504,7 @@ The properties, and where each is enforced. The backend README has the detail.
 cd backend && pytest
 ```
 
-258 tests against MySQL, in a database of their own. Money and tax arithmetic
+294 tests against MySQL, in a database of their own. Money and tax arithmetic
 against worked examples, password hashing and token forgery, registration and
 sign-in, catalogue filtering and paging, the cart and its pricing, the
 wishlist's uniqueness, the order transaction and what the client is not allowed

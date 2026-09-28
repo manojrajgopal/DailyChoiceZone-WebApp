@@ -5,9 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BillingBreakdown, CartTotals, Product, ResolvedCartLine } from "@/types";
 
 import * as cartService from "@/services/cartService";
+import { useConfirmedCustomer, useCustomerStatus } from "@/hooks/useSession";
 import { useCartStore } from "@/store/cartStore";
 import { useCheckoutStore } from "@/store/checkoutStore";
-import { useSessionStore } from "@/store/sessionStore";
 import { toast } from "@/store/toastStore";
 
 import { useHydrated } from "./useHydrated";
@@ -40,6 +40,36 @@ const EMPTY_BREAKDOWN: BillingBreakdown = {
   pricesIncludeTax: true,
 };
 
+/**
+ * The item count from the most recent server cart, shared across the page.
+ *
+ * The header badge and the bag itself both want to know what is in the cart.
+ * Without this they each fetched it — two reads of the same cart on the one
+ * page where both are on screen, and the badge's copy was the less useful of
+ * the two because it asked without the delivery method or the coupon.
+ *
+ * So `useCart` publishes what it loaded and the badge listens. The badge only
+ * fetches when nothing has published yet, which is every page except the bag
+ * and the checkout.
+ */
+let publishedCount: number | null = null;
+const countListeners = new Set<(count: number) => void>();
+
+/**
+ * Set the moment a full cart read starts, not when it finishes.
+ *
+ * The badge decides whether to fetch during its own effect, which runs in the
+ * same commit as the bag's — long before any request has come back. A flag
+ * that only went up on completion would always look clear, and the badge would
+ * duplicate the request every time.
+ */
+let fullCartLoading = false;
+
+function publishItemCount(count: number): void {
+  publishedCount = count;
+  for (const listen of countListeners) listen(count);
+}
+
 const EMPTY_TOTALS: CartTotals = {
   itemCount: 0,
   subtotal: 0,
@@ -54,8 +84,19 @@ const EMPTY_TOTALS: CartTotals = {
 export function useCart() {
   const hydrated = useHydrated();
 
-  const session = useSessionStore((state) => state.session);
-  const isSignedIn = hydrated && session !== null;
+  /**
+   * Confirmed, not merely stored.
+   *
+   * Asking the server for a cart on a token local storage happens to hold is
+   * a request that returns 401 whenever that token has expired — one per page,
+   * for as long as the stale session sits there.
+   *
+   * `isPending` is the other half of that answer, and the hook is wrong
+   * without it: while the check is in flight a signed-in shopper looks like a
+   * guest, and treating them as one resolves an empty local bag and reports an
+   * empty cart. The checkout's guard acted on that and sent them back to /cart.
+   */
+  const { isSignedIn, isPending } = useCustomerStatus();
 
   // The guest bag. Also the staging area that `mergeGuestCart` drains.
   const guestLines = useCartStore((state) => state.lines);
@@ -85,6 +126,9 @@ export function useCart() {
     if (!hydrated || !isSignedIn) return;
 
     let active = true;
+    // Claimed synchronously so the badge knows not to ask as well.
+    fullCartLoading = true;
+
     cartService
       .fetchCart({
         couponCode: guestCoupon,
@@ -92,7 +136,9 @@ export function useCart() {
         placeOfSupply: billingState,
       })
       .then((result) => {
-        if (active) setView(result);
+        if (!active) return;
+        setView(result);
+        publishItemCount(result.breakdown.itemCount);
       })
       .catch(() => {
         if (active) setView(null);
@@ -109,7 +155,7 @@ export function useCart() {
   /* ---------------------------------------------------------- guest cart */
 
   useEffect(() => {
-    if (!hydrated || isSignedIn) return;
+    if (!hydrated || isSignedIn || isPending) return;
 
     let active = true;
     cartService
@@ -127,7 +173,7 @@ export function useCart() {
     return () => {
       active = false;
     };
-  }, [hydrated, isSignedIn, guestLines]);
+  }, [hydrated, isSignedIn, isPending, guestLines]);
 
   /* -------------------------------------------------- merge on sign-in */
 
@@ -185,38 +231,7 @@ export function useCart() {
 
   /* ------------------------------------------------------------- actions */
 
-  const add = useCallback(
-    async (
-      product: Product,
-      options: { size?: string | null; color?: string | null; quantity?: number } = {},
-    ) => {
-      if (isSignedIn) {
-        try {
-          const result = await cartService.addToCart({
-            productId: product.id,
-            size: options.size ?? null,
-            color: options.color ?? null,
-            quantity: options.quantity ?? 1,
-          });
-          setView(result);
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : "Could not add that to your bag.");
-          return;
-        }
-      } else {
-        addGuestItem({
-          productId: product.id,
-          size: options.size ?? null,
-          color: options.color ?? null,
-          quantity: options.quantity ?? 1,
-          maxQuantity: product.stock,
-        });
-      }
-
-      toast.success(`${product.name} added to bag`, { label: "View bag", href: "/cart" });
-    },
-    [isSignedIn, addGuestItem],
-  );
+  const add = useAddAction(setView);
 
   const remove = useCallback(
     async (lineId: string, productName?: string) => {
@@ -309,8 +324,8 @@ export function useCart() {
     /** The billing breakdown, in minor units. Calculated by the server. */
     breakdown,
     coupon: totals.appliedCoupon,
-    isLoading: !hydrated || isLoading,
-    isEmpty: hydrated && !isLoading && lines.length === 0,
+    isLoading: !hydrated || isPending || isLoading,
+    isEmpty: hydrated && !isPending && !isLoading && lines.length === 0,
     hydrated,
 
     add,
@@ -325,34 +340,131 @@ export function useCart() {
 }
 
 /**
+ * Adding to the bag, without reading it.
+ *
+ * `useCart` loads and prices the entire bag, which is exactly what the bag and
+ * the checkout need. A product page, a quick view and the wishlist only ever
+ * *write* to it — so mounting the full hook there spent a priced cart read per
+ * page to obtain one function, and on the product page it also gave the header
+ * badge a second cart to race against.
+ *
+ * The response to the add is a whole cart, so the badge still gets its number
+ * from here the moment something is added.
+ */
+export function useAddToCart() {
+  return useAddAction(null);
+}
+
+/**
+ * The shared body of `add`.
+ *
+ * `onView` is the full hook's `setView`, so the bag re-renders from the
+ * server's answer. Null for callers that do not display the cart; they still
+ * publish the count, which is all the badge reads.
+ */
+function useAddAction(onView: ((view: cartService.CartView) => void) | null) {
+  const isSignedIn = useConfirmedCustomer();
+  const addGuestItem = useCartStore((state) => state.addItem);
+
+  return useCallback(
+    async (
+      product: Product,
+      options: { size?: string | null; color?: string | null; quantity?: number } = {},
+    ) => {
+      if (isSignedIn) {
+        try {
+          const result = await cartService.addToCart({
+            productId: product.id,
+            size: options.size ?? null,
+            color: options.color ?? null,
+            quantity: options.quantity ?? 1,
+          });
+          onView?.(result);
+          publishItemCount(result.breakdown.itemCount);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Could not add that to your bag.");
+          return;
+        }
+      } else {
+        addGuestItem({
+          productId: product.id,
+          size: options.size ?? null,
+          color: options.color ?? null,
+          quantity: options.quantity ?? 1,
+          maxQuantity: product.stock,
+        });
+      }
+
+      toast.success(`${product.name} added to bag`, { label: "View bag", href: "/cart" });
+    },
+    [isSignedIn, addGuestItem, onView],
+  );
+}
+
+/**
  * Just the badge count.
  *
  * Reads whichever bag is live. Zero until hydration so the server and client
  * markup agree.
+ *
+ * On a page that already shows the cart it takes the count from there rather
+ * than fetching one of its own — see `publishItemCount`.
  */
 export function useCartCount(): number {
   const hydrated = useHydrated();
-  const session = useSessionStore((state) => state.session);
   const guestLines = useCartStore((state) => state.lines);
-  const [serverCount, setServerCount] = useState(0);
+  const [serverCount, setServerCount] = useState(publishedCount ?? 0);
 
-  const isSignedIn = hydrated && session !== null;
+  const isSignedIn = useConfirmedCustomer();
 
   useEffect(() => {
     if (!isSignedIn) return;
 
     let active = true;
-    cartService
-      .fetchCart({})
-      .then((cart) => {
-        if (active) setServerCount(cart.breakdown.itemCount);
-      })
-      .catch(() => {
-        if (active) setServerCount(0);
-      });
+
+    const listen = (count: number) => {
+      if (active) setServerCount(count);
+    };
+    countListeners.add(listen);
+
+    if (publishedCount !== null) {
+      setServerCount(publishedCount);
+      return () => {
+        active = false;
+        countListeners.delete(listen);
+      };
+    }
+
+    /**
+     * Decide in a microtask, not here.
+     *
+     * The badge lives in the layout and the bag in the page, so this effect
+     * usually runs first — before the bag has had a chance to say it is already
+     * loading the cart. React flushes every effect of one commit in a single
+     * synchronous pass, so a microtask queued here runs after all of them.
+     *
+     * "Usually", not always: the two can land in different commits when the
+     * page streams in behind its layout, and then the badge asks as well. That
+     * is why it asks for a count rather than a cart — the duplicate, when it
+     * happens, is an integer instead of a priced bag.
+     */
+    queueMicrotask(() => {
+      if (!active || fullCartLoading || publishedCount !== null) return;
+
+      // Nothing on this page shows the cart, so the badge reads the count.
+      void cartService
+        .fetchCartCount()
+        .then((count) => {
+          if (active) publishItemCount(count);
+        })
+        .catch(() => {
+          if (active) setServerCount(0);
+        });
+    });
 
     return () => {
       active = false;
+      countListeners.delete(listen);
     };
   }, [isSignedIn]);
 

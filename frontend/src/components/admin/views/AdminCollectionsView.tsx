@@ -51,12 +51,20 @@ function emptyCollection(): Collection {
  */
 export function AdminCollectionsView() {
   const collections = useAdminResource(() => listCollections(), []);
-  const products = useAdminResource(() => listProducts(), []);
 
   const [editing, setEditing] = useState<Collection | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Collection | null>(null);
   const [pickerTerm, setPickerTerm] = useState("");
   const [saving, setSaving] = useState(false);
+
+  /**
+   * The catalogue, fetched only once the editor is open.
+   *
+   * It feeds the "search products to add" picker and nothing else, so opening
+   * this page used to download every product to render a table that shows a
+   * count it already had.
+   */
+  const products = useAdminResource(() => listProducts(), [], { enabled: editing !== null });
 
   const rows = collections.data ?? [];
   const catalogue = products.data ?? [];

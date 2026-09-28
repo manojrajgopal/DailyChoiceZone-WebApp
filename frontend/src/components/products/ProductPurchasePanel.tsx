@@ -12,9 +12,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
-import { useCart } from "@/hooks/useCart";
+import { useAddToCart } from "@/hooks/useCart";
 import { useHydrated } from "@/hooks/useHydrated";
-import { useLiveProduct } from "@/hooks/useLiveProduct";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
 import { deliveryEstimate, formatPrice, humanize } from "@/lib/utils/format";
@@ -36,10 +35,18 @@ export function ProductPurchasePanel({
   config: SiteConfig;
 }) {
   const router = useRouter();
-  const { add } = useCart();
+  const add = useAddToCart();
 
-  // Price and stock come from the live catalogue, not the build. See the hook.
-  const product = useLiveProduct(prerendered);
+  /**
+   * The record the server rendered, which is the live one.
+   *
+   * This used to re-read the product on mount: the page was static HTML, so
+   * the price in the buy box could be stale, and a stale price there is a
+   * wrong charge rather than a cosmetic lag. The page is rendered per request
+   * now, so the figure is already current and the extra read asked the
+   * catalogue a question it had just answered.
+   */
+  const product = prerendered;
 
   /**
    * The arrival date is computed in the browser, never at build time.

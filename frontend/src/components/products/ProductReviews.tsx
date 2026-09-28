@@ -1,30 +1,28 @@
-"use client";
-
 import { BadgeCheck } from "lucide-react";
 
 import type { Review, ReviewSummary } from "@/types";
 
 import { Rating } from "@/components/ui/Rating";
-import { useLiveReviews } from "@/hooks/useLiveReviews";
 import { formatDate } from "@/lib/utils/format";
 
 /**
  * Ratings breakdown and review list.
  *
- * The distribution bars and the list are both computed from the same review
- * set, so the summary can never disagree with what is shown underneath it.
+ * Both come from the server, which reads only approved reviews and aggregates
+ * the same set — so the bars can never disagree with the list under them.
+ *
+ * They used to be re-read on mount, because the page was static HTML and a
+ * moderator's decision had to be able to reach it. Per-request rendering
+ * already does that, and the two extra calls were asking for what the page
+ * had.
  */
 export function ProductReviews({
-  productId,
-  reviews: prerendered,
-  summary: prerenderedSummary,
+  reviews,
+  summary,
 }: {
-  productId: string;
   reviews: Review[];
   summary: ReviewSummary;
 }) {
-  // Moderation decides what belongs here, and it changes after the build.
-  const { reviews, summary } = useLiveReviews(productId, prerendered, prerenderedSummary);
 
   if (summary.total === 0) {
     return (

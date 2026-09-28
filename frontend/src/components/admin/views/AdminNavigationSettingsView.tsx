@@ -7,7 +7,7 @@ import type { NavColumn, NavItem } from "@/types";
 import type { AdminNavGroup, AdminNavItem } from "@/types/admin";
 
 import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
-import { AdminInput, FormSection } from "@/components/admin/ui/AdminForm";
+import { FormSection } from "@/components/admin/ui/AdminForm";
 import { ICON_NAMES } from "@/components/admin/layout/AdminIcons";
 import { BADGE_NAMES } from "@/components/admin/layout/AdminSidebar";
 import { RecordListEditor } from "@/components/admin/ui/RecordListEditor";

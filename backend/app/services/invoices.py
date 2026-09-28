@@ -34,6 +34,7 @@ def list_invoices(
     db: Session,
     *,
     customer_id: Optional[str] = None,
+    order_id: Optional[str] = None,
     search: Optional[str] = None,
     status: Optional[str] = None,
     payment_status: Optional[str] = None,
@@ -46,6 +47,8 @@ def list_invoices(
 
     if customer_id:
         conditions.append(Invoice.customer_id == customer_id)
+    if order_id:
+        conditions.append(Invoice.order_id == order_id)
     if status and status != "all":
         conditions.append(Invoice.status == status)
     if payment_status and payment_status != "all":
@@ -162,6 +165,7 @@ def list_payments(
     db: Session,
     *,
     customer_id: Optional[str] = None,
+    order_id: Optional[str] = None,
     search: Optional[str] = None,
     status: Optional[str] = None,
     method: Optional[str] = None,
@@ -171,6 +175,8 @@ def list_payments(
 
     if customer_id:
         conditions.append(Payment.customer_id == customer_id)
+    if order_id:
+        conditions.append(Payment.order_id == order_id)
     if status and status != "all":
         conditions.append(Payment.status == status)
     if method and method != "all":

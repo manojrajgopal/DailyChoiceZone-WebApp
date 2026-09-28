@@ -336,6 +336,26 @@ export interface BillingConfig {
     /** Extra charge for cash on delivery, in minor units. */
     codFee: Money;
   };
+  /**
+   * Order numbering.
+   *
+   * Declared here because the document is saved whole: leaving it out of the
+   * type meant the billing screen posted a document without it, and one save
+   * deleted the prefix. The next order then numbered itself `1` and every
+   * order after that collided with it.
+   *
+   * The settings screen does not edit either of these two; they are carried
+   * through so that saving what it does edit leaves them alone.
+   */
+  order: {
+    prefix: string;
+    /** The first number a fresh sequence issues. */
+    startNumber: number;
+  };
+  /** SKU numbering, carried through for the same reason as `order`. */
+  sku: {
+    prefix: string;
+  };
 }
 
 /* ----------------------------------------------------------------- reporting */
@@ -354,6 +374,21 @@ export interface BillingStats {
   creditNoteCount: number;
   /** Grand total minus refunds — what the business actually kept. */
   netSales: Money;
+}
+
+/**
+ * The three panels on the billing landing page.
+ *
+ * Assembled by the server because the page only ever showed a slice of each:
+ * building it here meant reading every invoice, payment and refund in the
+ * business to display eight rows, a handful of totals and the open refunds.
+ *
+ * Not scoped to the tiles' date range — none of these three ever was.
+ */
+export interface BillingOverview {
+  recentInvoices: Invoice[];
+  openRefunds: Refund[];
+  paymentsByMethod: { method: PaymentMethodKey; amount: Money }[];
 }
 
 /** One row of the tax report: how much was collected at each rate. */

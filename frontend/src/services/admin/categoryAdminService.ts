@@ -12,12 +12,19 @@ export function listCategories(): Promise<Category[]> {
 }
 
 /** How many products sit in each category. Shown in the table. */
+/**
+ * How many products sit in each category, by slug.
+ *
+ * Read from the category list, which the API counts in SQL and returns as
+ * `productCount`. It used to download the whole catalogue and tally it here —
+ * two requests and 80 KB to recompute numbers the same page had already been
+ * given.
+ */
 export async function countProductsByCategory(): Promise<Record<string, number>> {
-  const products = await adminDataSource.listProducts();
-  return products.reduce<Record<string, number>>((counts, product) => {
-    counts[product.category] = (counts[product.category] ?? 0) + 1;
-    return counts;
-  }, {});
+  const categories = await adminDataSource.listCategories();
+  return Object.fromEntries(
+    categories.map((category) => [category.slug, category.productCount ?? 0]),
+  );
 }
 
 export async function saveCategory(category: Category): Promise<AdminResult<Category>> {

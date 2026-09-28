@@ -10,7 +10,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { ProductGridSkeleton } from "@/components/ui/Skeleton";
-import { useCart } from "@/hooks/useCart";
+import { useAddToCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { humanize } from "@/lib/utils/format";
 
@@ -29,7 +29,7 @@ import Link from "next/link";
  */
 export function WishlistView() {
   const { products, isLoading, isEmpty, remove } = useWishlist();
-  const { add } = useCart();
+  const add = useAddToCart();
 
   return (
     <div className="page-shell py-8 sm:py-10">

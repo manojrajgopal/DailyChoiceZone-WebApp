@@ -22,7 +22,6 @@ import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { slugify } from "@/lib/utils/format";
 import {
-  countProductsByCategory,
   deleteCategory,
   listCategories,
   saveCategory,
@@ -51,14 +50,22 @@ function emptyCategory(order: number): Category {
  */
 export function AdminCategoriesView() {
   const categories = useAdminResource(() => listCategories(), []);
-  const counts = useAdminResource(() => countProductsByCategory(), []);
 
   const [editing, setEditing] = useState<Category | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
 
   const rows = categories.data ?? [];
-  const productCounts = counts.data ?? {};
+
+  /**
+   * Taken from the rows already on screen.
+   *
+   * The API counts products per category in SQL and sends the number with the
+   * list, so there is nothing to fetch and nothing to tally.
+   */
+  const productCounts = Object.fromEntries(
+    rows.map((category) => [category.slug, category.productCount ?? 0]),
+  );
 
   const onSave = async () => {
     if (!editing) return;
@@ -73,7 +80,7 @@ export function AdminCategoriesView() {
 
     toast.success(`${result.data.name} saved`);
     setEditing(null);
-    await Promise.all([categories.reload(), counts.reload()]);
+    await categories.reload();
   };
 
   const onDelete = async () => {
@@ -89,7 +96,7 @@ export function AdminCategoriesView() {
     }
 
     toast.success(`${result.data} deleted`);
-    await Promise.all([categories.reload(), counts.reload()]);
+    await categories.reload();
   };
 
   const columns: Column<Category>[] = [

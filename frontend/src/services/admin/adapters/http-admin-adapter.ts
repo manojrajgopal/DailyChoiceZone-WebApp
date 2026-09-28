@@ -21,9 +21,10 @@ import type {
   StoreSettings,
 } from "@/types/admin";
 
-import { apiDelete, apiGet, apiGetPage, apiPost, apiPut } from "@/services/api/client";
+import { pageCache } from "@/services/api/cache";
+import { apiDelete, apiGet, apiGetPage, apiPost, apiPut, query } from "@/services/api/client";
 
-import type { AdminDataSource } from "../admin-data-source";
+import type { AdminDataSource, NavCounts } from "../admin-data-source";
 
 /**
  * The portal, over the REST API.
@@ -38,6 +39,15 @@ import type { AdminDataSource } from "../admin-data-source";
  */
 
 const AUTH = { auth: "admin" } as const;
+
+/**
+ * The sidebar, read once per page rather than once per navigation.
+ *
+ * It is the same document on every screen and only changes when somebody
+ * edits it — at which point the editor says to reload. Re-fetching it on each
+ * route change was a request per click for an answer that never differed.
+ */
+const navigation = pageCache(() => apiGet<AdminNavGroup[]>("/admin/navigation", AUTH));
 
 /* ------------------------------------------------------------------- shapes */
 
@@ -241,8 +251,10 @@ export const httpAdminAdapter: AdminDataSource = {
 
   /* -------------------------------------------------------------- orders */
 
-  async listOrders(): Promise<AdminOrder[]> {
-    return (await apiGet<ApiAdminOrder[]>("/admin/orders", AUTH)).map(toAdminOrder);
+  async listOrders(customerId?: string): Promise<AdminOrder[]> {
+    return (
+      await apiGet<ApiAdminOrder[]>(`/admin/orders${query({ customerId })}`, AUTH)
+    ).map(toAdminOrder);
   },
 
   async getOrder(id: string): Promise<AdminOrder | null> {
@@ -416,8 +428,16 @@ export const httpAdminAdapter: AdminDataSource = {
   },
 
   async getDashboard(): Promise<DashboardStats> {
-    const data = await apiGet<DashboardStats>("/admin/dashboard", AUTH);
-    return { stats: data.stats, generatedAt: data.generatedAt };
+    const data = await apiGet<Omit<DashboardStats, "recentOrders"> & {
+      recentOrders: ApiAdminOrder[];
+    }>("/admin/dashboard", AUTH);
+
+    return {
+      stats: data.stats,
+      generatedAt: data.generatedAt,
+      recentOrders: (data.recentOrders ?? []).map(toAdminOrder),
+      lowStock: data.lowStock ?? [],
+    };
   },
 
   /* ------------------------------------------------------------ settings */
@@ -466,7 +486,11 @@ export const httpAdminAdapter: AdminDataSource = {
   /* -------------------------------------------------------- navigation */
 
   getNavigation(): Promise<AdminNavGroup[]> {
-    return apiGet<AdminNavGroup[]>("/admin/navigation", AUTH);
+    return navigation.read();
+  },
+
+  getNavCounts(): Promise<NavCounts> {
+    return apiGet<NavCounts>("/admin/nav-counts", AUTH);
   },
 };
 

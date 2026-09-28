@@ -20,6 +20,13 @@ export interface Category {
   /** Ordering hint for "Shop by category". Lower sorts first. */
   order: number;
   featured: boolean;
+  /**
+   * How many products are in it.
+   *
+   * Counted in SQL and present only when asked for (`?withCounts=true`), so
+   * the storefront's menu is not paying for a count it does not show.
+   */
+  productCount?: number;
 }
 
 export interface Collection {

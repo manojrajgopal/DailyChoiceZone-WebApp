@@ -1,4 +1,5 @@
 import type {
+  BillingOverview,
   BillingStats,
   CreditNote,
   CreditNoteStatus,
@@ -37,6 +38,7 @@ import type {
  *   createCreditNote  → POST   /admin/billing/credit-notes
  *   updateCreditNote  → PUT    /admin/billing/credit-notes/:id
  *
+ *   getOverview       → GET    /admin/billing/overview
  *   getStats          → GET    /admin/billing/stats
  *   getTaxReport      → GET    /admin/billing/tax-report
  *
@@ -127,10 +129,14 @@ export interface BillingDataSource {
   createRefund(draft: RefundDraft): Promise<Refund>;
   updateRefund(refund: Refund): Promise<Refund>;
 
-  listCreditNotes(): Promise<CreditNote[]>;
+  /** Every credit note, or one order's. */
+  listCreditNotes(orderId?: string): Promise<CreditNote[]>;
   getCreditNote(id: string): Promise<CreditNote | null>;
   createCreditNote(draft: CreditNoteDraft): Promise<CreditNote>;
   updateCreditNote(note: CreditNote): Promise<CreditNote>;
+
+  /** The landing page's three panels, in one read. */
+  getOverview(): Promise<BillingOverview>;
 
   /** Aggregates over a date window. Omitting the window means all time. */
   getStats(from?: string, to?: string): Promise<BillingStats>;

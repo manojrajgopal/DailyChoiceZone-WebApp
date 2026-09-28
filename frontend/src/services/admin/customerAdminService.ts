@@ -13,9 +13,8 @@ export function getCustomer(id: string): Promise<AdminCustomer | null> {
 }
 
 /** A customer's orders, newest first. Joined by id rather than duplicated. */
-export async function getCustomerOrders(customerId: string): Promise<AdminOrder[]> {
-  const orders = await adminDataSource.listOrders();
-  return orders.filter((order) => order.customerId === customerId);
+export function getCustomerOrders(customerId: string): Promise<AdminOrder[]> {
+  return adminDataSource.listOrders(customerId);
 }
 
 export async function setCustomerStatus(

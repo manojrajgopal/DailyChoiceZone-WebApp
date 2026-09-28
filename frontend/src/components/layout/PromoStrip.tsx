@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { PromoBanner } from "@/types";
-import { getBanners } from "@/services/siteService";
 
 /**
  * The thin promotional strip above the header.
@@ -14,26 +13,15 @@ import { getBanners } from "@/services/siteService";
  * the tab is hidden, and `prefers-reduced-motion` users get a static first
  * message instead of a cycling one.
  *
- * The strip is baked into every prerendered page, so the messages are re-read
- * once on mount: a banner switched on or scheduled to end in the portal takes
- * effect without a rebuild.
+ * The messages come from the server render and are not re-read here. They used
+ * to be: the strip was baked into every prerendered page back when the site
+ * was a static export, so a banner switched on in the portal needed a client
+ * fetch to appear. Pages render per request now, so that fetch asked for an
+ * answer the page already had — one wasted request on every navigation, on
+ * every page.
  */
-export function PromoStrip({ banners: initial }: { banners: PromoBanner[] }) {
-  const [banners, setBanners] = useState(initial);
+export function PromoStrip({ banners }: { banners: PromoBanner[] }) {
   const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    void getBanners().then((fresh) => {
-      if (!active) return;
-      setBanners(fresh);
-      // A shorter list must not leave the rotation pointing past its end.
-      setIndex(0);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (banners.length <= 1) return;

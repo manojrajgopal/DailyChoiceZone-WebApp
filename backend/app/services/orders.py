@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
@@ -59,16 +59,29 @@ def _generate_order_number(db: Session, config: dict) -> str:
     prefix = str(order_cfg.get("prefix") or "")
     start = int(order_cfg.get("startNumber") or 1)
 
+    # The highest so far, read numerically.
+    #
+    # `max()` on the column is a *string* max, which orders "DCZ9" above
+    # "DCZ10" — and, with no prefix configured, put a number that does not
+    # parse at the top and sent this back to `start` on every order. Every
+    # order after the first then asked for a number that already existed and
+    # the unique index refused it.
+    suffix = func.substr(Order.order_number, len(prefix) + 1)
     highest = db.execute(
-        select(func.max(Order.order_number)).where(Order.order_number.like(f"{prefix}%"))
+        select(func.max(func.cast(suffix, Integer))).where(
+            Order.order_number.like(f"{prefix}%"),
+            suffix.regexp_match("^[0-9]+$"),
+        )
     ).scalar()
 
-    number = start
-    if highest:
-        try:
-            number = int(highest[len(prefix):]) + 1
-        except ValueError:
-            pass
+    number = max(start, int(highest) + 1 if highest else start)
+
+    # Belt and braces: a gap in the series is fine, a collision is a failed
+    # checkout. Nothing here should loop more than once.
+    while db.execute(
+        select(Order.id).where(Order.order_number == f"{prefix}{number}")
+    ).scalar_one_or_none():
+        number += 1
 
     return f"{prefix}{number}"
 
