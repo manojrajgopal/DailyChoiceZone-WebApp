@@ -4,6 +4,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import type { AdminNavGroup } from "@/types/admin";
+
 import { Drawer } from "@/components/ui/Dialog";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { adminDataSource } from "@/services/admin/admin-data-source.instance";
@@ -41,8 +43,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [badges, setBadges] = useState<NavBadges>(NO_BADGES);
+  const [groups, setGroups] = useState<AdminNavGroup[]>([]);
 
-  const groups = adminDataSource.getNavigation();
+  // The sidebar is configuration an administrator can reorder, so it is read
+  // rather than bundled. Empty for the first paint; the shell renders around it.
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    let active = true;
+    adminDataSource
+      .getNavigation()
+      .then((result) => {
+        if (active) setGroups(result);
+      })
+      .catch(() => {
+        if (active) setGroups([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isSignedIn]);
 
   useEffect(() => {
     if (isLoading) return;

@@ -148,7 +148,7 @@ export function ProfileView() {
               type="email"
               value={user?.email ?? ""}
               disabled
-              hint="Email cannot be changed in this demo."
+              hint="Your sign-in address. Contact support to change it."
               className="sm:col-span-2"
             />
             <Input

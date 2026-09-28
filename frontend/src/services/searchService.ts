@@ -49,18 +49,3 @@ export async function getSearchSuggestions(
   };
 }
 
-/**
- * Popular searches, shown before anyone has typed anything.
- *
- * Static today. A real implementation would read this from search analytics.
- */
-export const POPULAR_SEARCHES = [
-  "linen shirt",
-  "sneakers",
-  "cotton dress",
-  "serum",
-  "backpack",
-  "bedsheet",
-  "earrings",
-  "headphones",
-] as const;

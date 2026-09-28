@@ -10,14 +10,6 @@ import { adminDataSource } from "./admin-data-source.instance";
  * counts the dashboard and sidebar need.
  */
 
-export const ADJUSTMENT_REASONS: { value: StockAdjustment["reason"]; label: string }[] = [
-  { value: "restock", label: "Restock" },
-  { value: "correction", label: "Correction" },
-  { value: "damage", label: "Damaged or lost" },
-  { value: "return", label: "Customer return" },
-  { value: "stocktake", label: "Stocktake" },
-];
-
 export function listInventory(): Promise<InventoryItem[]> {
   return adminDataSource.listInventory();
 }

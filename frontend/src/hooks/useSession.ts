@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 import type { Credentials, RegisterInput, User } from "@/types";
 
@@ -11,11 +11,20 @@ import { toast } from "@/store/toastStore";
 import { useHydrated } from "./useHydrated";
 
 /**
+ * Whether the stored session has been checked against the server.
+ *
+ * Module-scoped, so it happens once per page load however many components
+ * call the hook.
+ */
+let verified = false;
+
+/**
  * The signed-in customer.
  *
- * Mock authentication — see `authService`. The shape is what a real auth
- * integration would expose, so swapping the service out will not touch the
- * account pages.
+ * What local storage holds is who *was* signed in. The token behind it
+ * expires, so the hook asks the server once per page load and drops the
+ * session if the answer is no — otherwise the account area renders a
+ * signed-in shell whose every figure comes back empty.
  */
 export function useSession() {
   const hydrated = useHydrated();
@@ -23,6 +32,17 @@ export function useSession() {
   const setSession = useSessionStore((state) => state.setSession);
   const updateUser = useSessionStore((state) => state.updateUser);
   const clearSession = useSessionStore((state) => state.signOut);
+
+  useEffect(() => {
+    if (!hydrated || verified) return;
+    verified = true;
+    if (session === null) return;
+
+    void authService.getCurrentUser().then((user) => {
+      if (user) updateUser(user);
+      else clearSession();
+    });
+  }, [hydrated, session, updateUser, clearSession]);
 
   const signIn = useCallback(
     async (credentials: Credentials) => {

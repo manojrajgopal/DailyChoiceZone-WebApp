@@ -220,9 +220,6 @@ export function AdminCustomerDetailView() {
                 <dd className="mt-0.5 text-admin-ink tabular-nums">+91 {record.phone}</dd>
               </div>
             </dl>
-            <p className="mt-3 rounded-[3px] bg-admin-raised px-2.5 py-2 text-[0.625rem] leading-relaxed text-admin-muted">
-              These details are generated demo data, not a real person.
-            </p>
           </AdminCard>
 
           <AdminCard title={`Addresses (${record.addresses.length})`}>

@@ -17,6 +17,24 @@ def get_config(db: Session = Depends(get_db)):
     return ok(service.site_config(db))
 
 
+@router.get("/content", summary="The lists and copy the storefront renders")
+def get_content(db: Session = Depends(get_db)):
+    """
+    Everything that used to be an array in a component.
+
+    Delivery states, contact topics, popular searches, sort orders, the
+    delivery and payment methods on offer, the FAQ, the size charts, and the
+    vocabularies the portal's dropdowns are built from. Public, because all of
+    it is printed on pages anybody can read.
+    """
+    return ok(service.content(db))
+
+
+@router.get("/navigation", summary="The storefront menu")
+def get_navigation(db: Session = Depends(get_db)):
+    return ok_list(service.navigation(db))
+
+
 @router.get("/homepage", summary="Homepage sections, in order")
 def get_homepage(db: Session = Depends(get_db)):
     """

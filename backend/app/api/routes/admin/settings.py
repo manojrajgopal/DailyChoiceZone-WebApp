@@ -11,9 +11,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.errors import ConflictError, NotFoundError, ValidationError
+from app.core.permissions import permissions_for
 from app.core.security import hash_password
 from app.dependencies.auth import get_current_admin, require_permission
 from app.models import AdminUser, Notification, SettingDocument
+from app.services import site as site_service
 from app.schemas.auth import AdminUserOut, AdminUserWrite
 from app.utils.ids import next_id
 from app.utils.response import ok, ok_list
@@ -22,23 +24,8 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 # The documents this endpoint will serve. An allowlist, so a crafted key cannot
 # read or write something that was never meant to be configuration.
-DOCUMENTS = {"store", "billing", "tax", "site"}
+DOCUMENTS = {"store", "billing", "tax", "site", "content", "navigation", "admin_navigation"}
 
-# Every role the portal can assign. A role missing from here would create an
-# administrator who is allowed nothing, which is not a state the portal offers.
-PERMISSIONS_BY_ROLE = {
-    "super-admin": [
-        "products", "orders", "customers", "coupons", "reviews",
-        "content", "reports", "settings", "admins",
-    ],
-    "admin": [
-        "products", "orders", "customers", "coupons", "reviews",
-        "content", "reports", "settings",
-    ],
-    "manager": ["products", "orders", "customers", "reviews", "reports"],
-    "editor": ["products", "content"],
-    "staff": ["products", "orders", "reviews"],
-}
 
 
 # -------------------------------------------------------------- settings
@@ -121,7 +108,7 @@ def create_admin(
         password_hash=hash_password(payload.password),
         name=payload.name,
         role=role,
-        permissions=PERMISSIONS_BY_ROLE.get(role, []),
+        permissions=permissions_for(role),
         status=payload.status or "active",
     )
 
@@ -176,7 +163,7 @@ def update_admin(
         user.email = payload.email.lower()
     if payload.role is not None:
         user.role = payload.role
-        user.permissions = PERMISSIONS_BY_ROLE.get(payload.role, [])
+        user.permissions = permissions_for(payload.role)
     if payload.status is not None:
         user.status = payload.status
     if payload.password:
@@ -216,6 +203,23 @@ def delete_admin(
     db.delete(user)
     db.commit()
     return ok(message="Administrator removed.")
+
+
+# ------------------------------------------------------------ navigation
+
+
+@router.get("/navigation", summary="The portal sidebar")
+def get_navigation(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    """
+    The sidebar's groups and their links.
+
+    Behind the admin dependency rather than public: it is a map of the portal,
+    and there is no reason to hand one to somebody who cannot sign in.
+    """
+    return ok_list(site_service.admin_navigation(db))
 
 
 # --------------------------------------------------------- notifications

@@ -1,4 +1,4 @@
-import type { AdminHomeSection, AdminResult, HomeSectionKind } from "@/types/admin";
+import type { AdminHomeSection, AdminResult } from "@/types/admin";
 
 import { adminDataSource } from "./admin-data-source.instance";
 
@@ -10,23 +10,20 @@ import { adminDataSource } from "./admin-data-source.instance";
  * so sections can be toggled and reordered rather than deleted and retyped.
  */
 
-export const SECTION_KINDS: { value: HomeSectionKind; label: string; needsSource: boolean }[] = [
-  { value: "product-carousel", label: "Product carousel", needsSource: true },
-  { value: "product-grid", label: "Product grid", needsSource: true },
-  { value: "featured-products", label: "Featured products", needsSource: true },
-  { value: "category-grid", label: "Category grid", needsSource: false },
-  { value: "collection-grid", label: "Collection grid", needsSource: false },
-  { value: "promo-banner", label: "Promo banner", needsSource: false },
-];
+/**
+ * Which kinds of section exist, and which of them need a product source.
+ *
+ * Module state, primed by `siteService`: `saveSection` validates against it
+ * while handling a form submit, so it cannot await. The homepage editor reads
+ * the same list through `useSiteContent`.
+ */
+let sectionKinds: { value: string; label: string; needsSource: boolean }[] = [];
 
-export const SECTION_SOURCES = [
-  { value: "new-arrivals", label: "New arrivals" },
-  { value: "trending", label: "Trending now" },
-  { value: "bestsellers", label: "Best sellers" },
-  { value: "featured", label: "Featured" },
-  { value: "recommended", label: "Recommended" },
-  { value: "deals", label: "Deals" },
-];
+export function setSectionKinds(
+  next: { value: string; label: string; needsSource: boolean }[],
+): void {
+  sectionKinds = next;
+}
 
 export function getSections(): Promise<AdminHomeSection[]> {
   return adminDataSource.getHomepage();
@@ -72,7 +69,7 @@ export async function saveSection(
     return { ok: false, reason: "Enter a section title." };
   }
 
-  const kind = SECTION_KINDS.find((entry) => entry.value === section.type);
+  const kind = sectionKinds.find((entry) => entry.value === section.type);
   if (kind?.needsSource && !section.source) {
     return { ok: false, reason: "Choose which products feed this section." };
   }

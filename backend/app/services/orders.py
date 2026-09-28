@@ -47,18 +47,30 @@ ALLOWED_TRANSITIONS = {
 CUSTOMER_CANCELLABLE = {"pending", "confirmed", "processing"}
 
 
-def _generate_order_number(db: Session) -> str:
-    """`DCZ10241` — short enough to read aloud on a support call."""
+def _generate_order_number(db: Session, config: dict) -> str:
+    """
+    The reference a customer quotes on a support call.
+
+    Its prefix and starting point are the store's — configured in the billing
+    document, not written in here, so a shop can use its own numbering without
+    editing code.
+    """
+    order_cfg = config.get("order") or {}
+    prefix = str(order_cfg.get("prefix") or "")
+    start = int(order_cfg.get("startNumber") or 1)
+
     highest = db.execute(
-        select(func.max(Order.order_number)).where(Order.order_number.like("DCZ%"))
+        select(func.max(Order.order_number)).where(Order.order_number.like(f"{prefix}%"))
     ).scalar()
 
-    try:
-        number = int((highest or "DCZ10000")[3:]) + 1
-    except ValueError:
-        number = 10001
+    number = start
+    if highest:
+        try:
+            number = int(highest[len(prefix):]) + 1
+        except ValueError:
+            pass
 
-    return f"DCZ{number}"
+    return f"{prefix}{number}"
 
 
 def _next_invoice_number(db: Session, config: dict, issued: datetime) -> str:
@@ -69,15 +81,15 @@ def _next_invoice_number(db: Session, config: dict, issued: datetime) -> str:
     guarantee a gapless sequence — two devices would mint the same number,
     because neither can see the other. One writer, one counter.
     """
-    invoice_cfg = config.get("invoice", {})
-    prefix = invoice_cfg.get("prefix", "DCZ-INV")
-    padding = invoice_cfg.get("padding", 6)
+    invoice_cfg = config.get("invoice") or {}
+    prefix = str(invoice_cfg.get("prefix") or "")
+    padding = int(invoice_cfg.get("padding") or 1)
 
     highest = db.execute(
         select(func.max(Invoice.invoice_number)).where(Invoice.invoice_number.like(f"{prefix}-%"))
     ).scalar()
 
-    number = invoice_cfg.get("startNumber", 1)
+    number = int(invoice_cfg.get("startNumber") or 1)
     if highest:
         try:
             number = int(highest.split("-")[-1]) + 1
@@ -221,7 +233,7 @@ def place_order(
         # --- the order ---------------------------------------------------
         order = Order(
             id=next_id(db, Order, "order"),
-            order_number=_generate_order_number(db),
+            order_number=_generate_order_number(db, config),
             customer_id=customer.id,
             customer_name=customer.full_name,
             customer_email=email or customer.email,

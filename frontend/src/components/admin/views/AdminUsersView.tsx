@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Pencil, Plus, Power, ShieldAlert, Trash2 } from "lucide-react";
 
-import type { AdminUser } from "@/types/admin";
+import type { AdminRole, AdminUser } from "@/types/admin";
 
 import {
   AdminButton,
@@ -16,10 +16,10 @@ import { DomainStatus, StatusBadge } from "@/components/admin/ui/StatusBadge";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { useAdminSession } from "@/hooks/useAdminSession";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { formatDate } from "@/lib/utils/format";
 import { permissionsFor } from "@/services/admin/adminAuthService";
 import {
-  ROLES,
   deleteAdminUser,
   emptyAdminUser,
   listAdminUsers,
@@ -37,10 +37,12 @@ import { toast } from "@/store/toastStore";
  * a check the browser can skip.
  */
 export function AdminUsersView() {
+  const roles = useSiteContent()?.adminRoles ?? [];
   const users = useAdminResource(() => listAdminUsers(), []);
   const { user: currentUser } = useAdminSession();
 
   const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [password, setPassword] = useState("");
   const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -49,7 +51,7 @@ export function AdminUsersView() {
   const onSave = async () => {
     if (!editing) return;
     setBusy(true);
-    const result = await saveAdminUser(editing);
+    const result = await saveAdminUser(editing, password || undefined);
     setBusy(false);
 
     if (!result.ok) {
@@ -58,8 +60,14 @@ export function AdminUsersView() {
     }
 
     toast.success(`${result.data.name} saved`);
-    setEditing(null);
+    close();
     await users.reload();
+  };
+
+  /** Close the dialog and forget the password rather than leave it in state. */
+  const close = () => {
+    setEditing(null);
+    setPassword("");
   };
 
   const onToggle = async (user: AdminUser) => {
@@ -124,7 +132,7 @@ export function AdminUsersView() {
       header: "Role",
       sortValue: (user) => user.role,
       cell: (user) => {
-        const role = ROLES.find((entry) => entry.value === user.role);
+        const role = roles.find((entry) => entry.value === user.role);
         return (
           <span className="min-w-0">
             <StatusBadge tone={user.role === "super-admin" ? "info" : "neutral"}>
@@ -253,7 +261,7 @@ export function AdminUsersView() {
 
       {/* --------------------------------------------------- role reference */}
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {ROLES.map((role) => (
+        {roles.map((role) => (
           <div
             key={role.value}
             className="rounded-[3px] border border-admin-border bg-admin-surface p-3"
@@ -263,7 +271,7 @@ export function AdminUsersView() {
               {role.description}
             </p>
             <p className="mt-2 text-[0.625rem] text-admin-faint tabular-nums">
-              {permissionsFor(role.value).length} permissions
+              {permissionsFor(role.value as AdminRole).length} permissions
             </p>
           </div>
         ))}
@@ -271,7 +279,7 @@ export function AdminUsersView() {
 
       <Modal
         open={editing !== null}
-        onOpenChange={(open) => !open && setEditing(null)}
+        onOpenChange={(open) => !open && close()}
         title={editing?.name ? `Edit ${editing.name}` : "Add admin user"}
         className="max-w-md"
       >
@@ -298,8 +306,8 @@ export function AdminUsersView() {
                 onChange={(event) =>
                   setEditing({ ...editing, role: event.target.value as AdminUser["role"] })
                 }
-                options={ROLES.map((role) => ({ value: role.value, label: role.label }))}
-                hint={ROLES.find((role) => role.value === editing.role)?.description}
+                options={roles.map((role) => ({ value: role.value, label: role.label }))}
+                hint={roles.find((role) => role.value === editing.role)?.description}
               />
               <AdminSelect
                 label="Status"
@@ -312,15 +320,23 @@ export function AdminUsersView() {
                   { value: "disabled", label: "Disabled — cannot sign in" },
                 ]}
               />
+              <AdminInput
+                label={editing.id ? "New password" : "Password"}
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required={!editing.id}
+                hint={
+                  editing.id
+                    ? "Leave blank to keep the current password."
+                    : "At least eight characters. Hashed on the server; never stored as typed."
+                }
+              />
             </FormGrid>
 
-            <p className="rounded-[3px] bg-admin-raised px-3 py-2 text-[0.6875rem] leading-relaxed text-admin-muted">
-              No password is set here. Sign-in uses the shared demo password until an auth backend
-              exists — at which point this form gains an invitation flow instead.
-            </p>
-
             <div className="flex justify-end gap-2">
-              <AdminButton variant="secondary" onClick={() => setEditing(null)}>
+              <AdminButton variant="secondary" onClick={close}>
                 Cancel
               </AdminButton>
               <AdminButton variant="primary" loading={busy} onClick={() => void onSave()}>

@@ -25,12 +25,6 @@ import { useAdminAuthStore } from "@/store/adminAuthStore";
 
 const AUTH = { auth: "admin" } as const;
 
-/** Demo credentials for the seeded portal. Shown on the sign-in screen. */
-export const DEMO_CREDENTIALS = {
-  email: "admin@dailychoicezone.com",
-  password: "Admin@123",
-};
-
 export interface AdminCredentials {
   email: string;
   password: string;

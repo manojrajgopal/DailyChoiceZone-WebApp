@@ -10,6 +10,8 @@ import { Checkbox } from "@/components/ui/Field";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice, humanize } from "@/lib/utils/format";
 
+import { useSiteContent } from "@/hooks/useSiteContent";
+
 import type { MultiFilterKey } from "@/hooks/useProductQuery";
 
 export interface FilterPanelProps {
@@ -24,9 +26,6 @@ export interface FilterPanelProps {
   showCategoryFilter?: boolean;
   className?: string;
 }
-
-const RATINGS = [4, 3, 2] as const;
-const DISCOUNTS = [10, 25, 40, 50] as const;
 
 /**
  * The filter panel.
@@ -47,6 +46,12 @@ export function FilterPanel({
   showCategoryFilter = true,
   className,
 }: FilterPanelProps) {
+  // The rating and discount buckets a shopper can filter by are the store's to
+  // choose — a shop that never discounts past 25% should not offer "50% off".
+  const content = useSiteContent();
+  const ratings = content?.ratingFilters ?? [];
+  const discounts = content?.discountFilters ?? [];
+
   const isChecked = (key: MultiFilterKey, value: string) =>
     (query[key] ?? []).some((entry) => entry.toLowerCase() === value.toLowerCase());
 
@@ -163,7 +168,7 @@ export function FilterPanel({
 
       <Accordion title="Customer rating">
         <div className="flex flex-col gap-2 pt-1">
-          {RATINGS.map((rating) => {
+          {ratings.map((rating) => {
             const active = query.minRating === rating;
             return (
               <button
@@ -194,7 +199,7 @@ export function FilterPanel({
 
       <Accordion title="Discount">
         <div className="flex flex-wrap gap-2 pt-1">
-          {DISCOUNTS.map((discount) => {
+          {discounts.map((discount) => {
             const active = query.minDiscount === discount;
             return (
               <button

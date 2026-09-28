@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import pytest
 
+from sqlalchemy import select as _select
+
 from tests.conftest import PASSWORD
+
+
+def select_all(model):
+    """Every row of a table, for the assertions below."""
+    return _select(model)
 
 pytestmark = pytest.mark.integration
 
@@ -182,3 +189,143 @@ class TestAccount:
         db.flush()
 
         assert client.delete("/api/account/addresses/ADR999", headers=auth).status_code == 404
+
+
+class TestFirstRegistrationClaimsAdmin:
+    """
+    The bootstrap rule: whoever registers first on an empty installation
+    becomes the administrator, and nobody after them does.
+
+    There is no seed data any more, so this is the only way a fresh install
+    gets somebody who can reach the portal.
+    """
+
+    def test_the_first_registration_becomes_an_administrator(self, client, db):
+        from app.models import AdminUser
+
+        response = client.post("/api/auth/register", json={
+            "email": "founder@example.com", "password": "Founder@123",
+            "firstName": "Asha", "lastName": "Rao",
+        })
+        assert response.status_code == 201, response.text
+
+        admins = db.execute(select_all(AdminUser)).scalars().all()
+        assert len(admins) == 1
+        assert admins[0].email == "founder@example.com"
+        assert admins[0].role == "super-admin"
+        assert admins[0].status == "active"
+
+    def test_that_administrator_can_sign_in_to_the_portal(self, client):
+        client.post("/api/auth/register", json={
+            "email": "founder@example.com", "password": "Founder@123",
+            "firstName": "Asha", "lastName": "Rao",
+        })
+
+        response = client.post("/api/admin/auth/login",
+                               json={"email": "founder@example.com", "password": "Founder@123"})
+        assert response.status_code == 200, response.text
+        assert response.json()["data"]["admin"]["role"] == "super-admin"
+
+    def test_it_carries_every_permission(self, client):
+        client.post("/api/auth/register", json={
+            "email": "founder@example.com", "password": "Founder@123",
+            "firstName": "Asha", "lastName": "Rao",
+        })
+        token = client.post("/api/admin/auth/login", json={
+            "email": "founder@example.com", "password": "Founder@123",
+        }).json()["data"]["token"]["accessToken"]
+
+        response = client.put("/api/admin/settings/store",
+                              headers={"Authorization": f"Bearer {token}"},
+                              json={"shipping": {"standardFee": 49}})
+        assert response.status_code == 200
+
+    def test_the_second_registration_is_an_ordinary_customer(self, client, db):
+        from app.models import AdminUser
+
+        client.post("/api/auth/register", json={
+            "email": "founder@example.com", "password": "Founder@123",
+            "firstName": "Asha", "lastName": "Rao",
+        })
+        response = client.post("/api/auth/register", json={
+            "email": "shopper.two@example.com", "password": "Shopper@123",
+            "firstName": "Ravi", "lastName": "Nair",
+        })
+        assert response.status_code == 201
+
+        admins = db.execute(select_all(AdminUser)).scalars().all()
+        assert [a.email for a in admins] == ["founder@example.com"]
+
+    def test_the_second_registration_cannot_reach_the_portal(self, client):
+        client.post("/api/auth/register", json={
+            "email": "founder@example.com", "password": "Founder@123",
+            "firstName": "Asha", "lastName": "Rao",
+        })
+        client.post("/api/auth/register", json={
+            "email": "shopper.two@example.com", "password": "Shopper@123",
+            "firstName": "Ravi", "lastName": "Nair",
+        })
+
+        response = client.post("/api/admin/auth/login", json={
+            "email": "shopper.two@example.com", "password": "Shopper@123",
+        })
+        assert response.status_code == 401
+
+    def test_nobody_claims_it_when_an_administrator_already_exists(self, client, db, admin):
+        """
+        The rule is "first on an empty installation", not "first ever".
+
+        With the fixture's administrator already present, a registration is an
+        ordinary customer — which is what protects every existing store.
+        """
+        from app.models import AdminUser
+
+        before = db.execute(select_all(AdminUser)).scalars().all()
+
+        response = client.post("/api/auth/register", json={
+            "email": "latecomer@example.com", "password": "Shopper@123",
+            "firstName": "Nisha", "lastName": "Kumar",
+        })
+        assert response.status_code == 201
+
+        after = db.execute(select_all(AdminUser)).scalars().all()
+        assert {a.email for a in after} == {a.email for a in before}
+
+    def test_a_role_in_the_payload_is_ignored(self, client, db, admin):
+        """
+        The decision is the server's, from the state of the table.
+
+        `RegisterRequest` has no role field, so this is belt and braces — but
+        it is the one assertion worth having, because the day somebody adds a
+        field to that schema this test is what notices.
+        """
+        from app.models import AdminUser
+
+        response = client.post("/api/auth/register", json={
+            "email": "ambitious@example.com", "password": "Shopper@123",
+            "firstName": "Sneaky", "lastName": "User",
+            "role": "super-admin", "isAdmin": True, "permissions": ["admins"],
+        })
+        assert response.status_code == 201
+
+        emails = {
+            a.email for a in db.execute(select_all(AdminUser)).scalars().all()
+        }
+        assert "ambitious@example.com" not in emails
+
+    def test_the_customer_token_is_still_only_a_customer_token(self, client):
+        """
+        Being an administrator does not change what the *registration* returns.
+
+        One person, two surfaces, two tokens: the token from `/auth/register`
+        carries `actor: customer` and opens no admin endpoint. The portal is
+        reached by signing in to it.
+        """
+        token = client.post("/api/auth/register", json={
+            "email": "founder@example.com", "password": "Founder@123",
+            "firstName": "Asha", "lastName": "Rao",
+        }).json()["data"]["token"]["accessToken"]
+
+        response = client.get("/api/admin/dashboard",
+                              headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 403

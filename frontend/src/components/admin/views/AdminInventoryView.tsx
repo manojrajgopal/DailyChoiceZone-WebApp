@@ -12,11 +12,11 @@ import { DataTable, type Column } from "@/components/admin/ui/DataTable";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, humanize } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
 import {
-  ADJUSTMENT_REASONS,
   adjustStock,
   listInventory,
   listStockLog,
@@ -32,6 +32,8 @@ import { toast } from "@/store/toastStore";
  * again.
  */
 export function AdminInventoryView() {
+  const adjustmentReasons = useSiteContent()?.stockAdjustmentReasons ?? [];
+
   const inventory = useAdminResource(() => listInventory(), []);
   const log = useAdminResource(() => listStockLog(), []);
 
@@ -397,7 +399,7 @@ export function AdminInventoryView() {
               label="Reason"
               value={reason}
               onChange={(event) => setReason(event.target.value as StockAdjustment["reason"])}
-              options={ADJUSTMENT_REASONS.map((entry) => ({
+              options={adjustmentReasons.map((entry) => ({
                 value: entry.value,
                 label: entry.label,
               }))}

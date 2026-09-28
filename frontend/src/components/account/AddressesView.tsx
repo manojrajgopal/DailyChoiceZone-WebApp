@@ -19,13 +19,8 @@ import {
   saveAddress,
   setDefaultAddress,
 } from "@/services/accountService";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { toast } from "@/store/toastStore";
-
-const STATES = [
-  "Karnataka", "Maharashtra", "Delhi", "Tamil Nadu", "Telangana", "Gujarat",
-  "West Bengal", "Rajasthan", "Kerala", "Uttar Pradesh", "Punjab", "Haryana",
-  "Madhya Pradesh", "Bihar", "Odisha", "Assam",
-];
 
 type FormState = Omit<Address, "id"> & { id?: string };
 
@@ -44,6 +39,8 @@ const EMPTY_FORM: FormState = {
 /** Saved address book: add, edit, delete and choose a default. */
 export function AddressesView() {
   const { isSignedIn } = useSession();
+
+  const states = useSiteContent()?.states ?? [];
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -274,7 +271,7 @@ export function AddressesView() {
               <Select
                 label="State"
                 autoComplete="address-level1"
-                options={STATES.map((state) => ({ value: state, label: state }))}
+                options={states.map((state) => ({ value: state, label: state }))}
                 value={editing.state}
                 onChange={(event) => update("state", event.target.value)}
                 className="sm:col-span-2"

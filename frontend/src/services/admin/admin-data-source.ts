@@ -142,7 +142,7 @@ export interface AdminDataSource {
 
   /* ----------------------------------------------------------- admin users */
   listAdminUsers(): Promise<AdminUser[]>;
-  saveAdminUser(user: AdminUser): Promise<AdminUser>;
+  saveAdminUser(user: AdminUser, password?: string): Promise<AdminUser>;
   deleteAdminUser(id: string): Promise<void>;
 
   /* --------------------------------------------------------- notifications */
@@ -157,5 +157,5 @@ export interface AdminDataSource {
    * Frontend configuration rather than business data, so it is read
    * synchronously — the sidebar must render on the first paint.
    */
-  getNavigation(): AdminNavGroup[];
+  getNavigation(): Promise<AdminNavGroup[]>;
 }

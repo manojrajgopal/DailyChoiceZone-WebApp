@@ -16,8 +16,11 @@ export default async function StorefrontLayout({
   children: React.ReactNode;
 }) {
   // Chrome data is fetched once here rather than per page.
-  const [config, banners] = await Promise.all([getSiteConfig(), getBanners()]);
-  const navigation = getNavigation();
+  const [config, banners, navigation] = await Promise.all([
+    getSiteConfig(),
+    getBanners(),
+    getNavigation(),
+  ]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-cream text-ink">

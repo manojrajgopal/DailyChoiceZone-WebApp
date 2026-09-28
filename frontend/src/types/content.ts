@@ -1,3 +1,5 @@
+import type { DeliveryMethod, PaymentMethod } from "./order";
+
 /** Site chrome, navigation and homepage composition — all config-driven. */
 
 export interface NavChildLink {
@@ -158,4 +160,67 @@ export interface ReviewSummary {
   total: number;
   /** Count per star level, indexed 5 down to 1. */
   distribution: { stars: number; count: number }[];
+}
+
+/* ------------------------------------------------------------- site content */
+
+/**
+ * The lists and copy the storefront and the portal render.
+ *
+ * Everything here used to be an array in a component or a service — the
+ * states a delivery address can name, the topics the contact form offers, the
+ * delivery and payment methods, the FAQ, the size charts, and the vocabularies
+ * behind the portal's dropdowns. It is one document because it is read once
+ * per page load and a dozen small endpoints would be a dozen round trips.
+ *
+ * `GET /api/site/content`.
+ */
+
+export interface Labelled {
+  value: string;
+  label: string;
+}
+
+export interface SizeChart {
+  title: string;
+  columns: string[];
+  rows: string[][];
+}
+
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+export interface AccountNavItem {
+  href: string;
+  label: string;
+  /** Names an icon the shell maps to a component; the API does not ship React. */
+  icon: string;
+}
+
+export interface SiteContent {
+  states: string[];
+  contactTopics: Labelled[];
+  popularSearches: string[];
+  sortOptions: Labelled[];
+  ratingFilters: number[];
+  discountFilters: number[];
+  deliveryMethods: DeliveryMethod[];
+  paymentMethods: PaymentMethodOption[];
+  /** Which of them the store currently offers at checkout. */
+  enabledPaymentMethods: string[];
+  faqs: FaqEntry[];
+  sizeGuide: { intro: string; charts: SizeChart[] };
+  accountNavigation: AccountNavItem[];
+  adminRoles: (Labelled & { description: string })[];
+  stockAdjustmentReasons: Labelled[];
+  analyticsRanges: (Labelled & { shortLabel: string })[];
+  homeSectionKinds: (Labelled & { needsSource: boolean })[];
+  homeSectionSources: Labelled[];
+}
+
+export interface PaymentMethodOption extends PaymentMethod {
+  /** The short form used in tables and on invoices. */
+  label: string;
 }

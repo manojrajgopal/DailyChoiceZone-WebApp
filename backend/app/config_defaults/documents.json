@@ -1,0 +1,1499 @@
+{
+  "store": {
+    "general": {
+      "storeName": "Daily Choice Zone",
+      "tagline": "Quality products, happier you",
+      "description": "An everyday store for clothing, home, beauty and lifestyle — chosen for how things feel after a year, not a week.",
+      "logoUrl": "/brand/logo.png"
+    },
+    "contact": {
+      "email": "help@dailychoicezone.com",
+      "phone": "1800 200 4567",
+      "supportHours": "Mon–Sat, 9am – 7pm IST",
+      "addressLine": "Unit 4, Brigade Logistics Park, Whitefield",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "pincode": "560066",
+      "country": "India"
+    },
+    "currency": {
+      "code": "INR",
+      "symbol": "₹",
+      "locale": "en-IN"
+    },
+    "shipping": {
+      "freeDeliveryThreshold": 999,
+      "standardFee": 79,
+      "expressFee": 149,
+      "standardEstimate": "3–5 business days",
+      "expressEstimate": "1–2 business days"
+    },
+    "tax": {
+      "enabled": true,
+      "ratePercent": 5,
+      "pricesIncludeTax": true,
+      "gstin": "29AABCD1234E1Z5"
+    },
+    "notifications": {
+      "orderConfirmation": true,
+      "shippingUpdates": true,
+      "lowStockAlerts": true,
+      "reviewAlerts": true,
+      "marketingEmails": false
+    },
+    "social": {
+      "instagram": "https://instagram.com/dailychoicezone",
+      "facebook": "https://facebook.com/dailychoicezone",
+      "youtube": "https://youtube.com/@dailychoicezone"
+    },
+    "returns": {
+      "windowDays": 15,
+      "policyNote": "Unworn and with tags on. We arrange the pickup."
+    }
+  },
+  "billing": {
+    "business": {
+      "legalName": "Daily Choice Zone Retail Private Limited",
+      "storeName": "Daily Choice Zone",
+      "email": "billing@dailychoicezone.com",
+      "phone": "1800 200 4567",
+      "website": "www.dailychoicezone.com",
+      "addressLine1": "Unit 4, Brigade Logistics Park",
+      "addressLine2": "Whitefield",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "postalCode": "560066",
+      "country": "India"
+    },
+    "currency": {
+      "code": "INR",
+      "symbol": "₹",
+      "locale": "en-IN",
+      "decimals": 2
+    },
+    "invoice": {
+      "prefix": "DCZ-INV",
+      "startNumber": 1,
+      "padding": 6,
+      "dueDays": 7,
+      "footer": "Thank you for shopping with Daily Choice Zone.",
+      "paymentTerms": "Payable on receipt. Prepaid orders are settled at checkout; cash on delivery is settled with the courier.",
+      "notes": "Goods once sold may be returned within the returns window stated on our website. This document is computer generated."
+    },
+    "creditNote": {
+      "prefix": "DCZ-CN",
+      "startNumber": 1,
+      "padding": 5
+    },
+    "refund": {
+      "windowDays": 15,
+      "refundShipping": false,
+      "reasons": [
+        "Item damaged in transit",
+        "Wrong item delivered",
+        "Size or fit issue",
+        "Item not as described",
+        "Order cancelled before dispatch",
+        "Delivery delayed beyond promise",
+        "Customer changed their mind"
+      ],
+      "prefix": "DCZ-RF",
+      "padding": 5
+    },
+    "payment": {
+      "enabledMethods": [
+        "upi",
+        "card",
+        "debit-card",
+        "netbanking",
+        "wallet",
+        "cod"
+      ],
+      "codFee": 0
+    },
+    "order": {
+      "prefix": "DCZ",
+      "startNumber": 10001
+    },
+    "sku": {
+      "prefix": "DCZ"
+    }
+  },
+  "tax": {
+    "enabled": true,
+    "taxType": "GST",
+    "pricesIncludeTax": true,
+    "originState": "Karnataka",
+    "gstin": "29AABCD1234E1Z5",
+    "rates": {
+      "cgst": 2.5,
+      "sgst": 2.5,
+      "igst": 5
+    },
+    "categoryRates": {
+      "electronics": {
+        "cgst": 9,
+        "sgst": 9,
+        "igst": 18
+      },
+      "beauty": {
+        "cgst": 9,
+        "sgst": 9,
+        "igst": 18
+      },
+      "jewellery": {
+        "cgst": 1.5,
+        "sgst": 1.5,
+        "igst": 3
+      }
+    }
+  },
+  "site": {
+    "name": "Daily Choice Zone",
+    "tagline": "Quality products, happier you",
+    "description": "Daily Choice Zone is an everyday store for clothing, home, beauty and lifestyle — chosen for how things feel after a year, not a week. Free delivery over ₹999 across India.",
+    "currency": "INR",
+    "locale": "en-IN",
+    "url": "https://dailychoicezone.com",
+    "support": {
+      "email": "help@dailychoicezone.com",
+      "phone": "1800 200 4567",
+      "hours": "Mon–Sat, 9am – 7pm IST"
+    },
+    "freeDeliveryThreshold": 999,
+    "standardDeliveryFee": 79,
+    "returnWindowDays": 15,
+    "social": [
+      {
+        "label": "Instagram",
+        "href": "https://instagram.com",
+        "icon": "instagram"
+      },
+      {
+        "label": "Facebook",
+        "href": "https://facebook.com",
+        "icon": "facebook"
+      },
+      {
+        "label": "YouTube",
+        "href": "https://youtube.com",
+        "icon": "youtube"
+      }
+    ],
+    "trustPoints": [
+      {
+        "icon": "truck",
+        "title": "Free delivery over ₹999",
+        "text": "Dispatched within 24 hours from our Bengaluru warehouse."
+      },
+      {
+        "icon": "shield",
+        "title": "Quality checked",
+        "text": "Every order is inspected by hand before it is packed."
+      },
+      {
+        "icon": "refresh",
+        "title": "15-day returns",
+        "text": "Changed your mind? Send it back, no questions asked."
+      },
+      {
+        "icon": "headset",
+        "title": "Real people on support",
+        "text": "Mon–Sat, 9am – 7pm. Call, email or chat with us."
+      }
+    ],
+    "footer": [
+      {
+        "heading": "Shop",
+        "links": [
+          {
+            "label": "Women",
+            "href": "/category/women"
+          },
+          {
+            "label": "Men",
+            "href": "/category/men"
+          },
+          {
+            "label": "Kids",
+            "href": "/category/kids"
+          },
+          {
+            "label": "Home",
+            "href": "/category/home"
+          },
+          {
+            "label": "Beauty",
+            "href": "/category/beauty"
+          },
+          {
+            "label": "Accessories",
+            "href": "/category/accessories"
+          },
+          {
+            "label": "All products",
+            "href": "/shop"
+          }
+        ]
+      },
+      {
+        "heading": "Help",
+        "links": [
+          {
+            "label": "Contact us",
+            "href": "/contact"
+          },
+          {
+            "label": "Shipping",
+            "href": "/shipping"
+          },
+          {
+            "label": "Returns",
+            "href": "/returns"
+          },
+          {
+            "label": "FAQ",
+            "href": "/faq"
+          },
+          {
+            "label": "Size guide",
+            "href": "/faq#size-guide"
+          },
+          {
+            "label": "Track order",
+            "href": "/account/orders"
+          }
+        ]
+      },
+      {
+        "heading": "About",
+        "links": [
+          {
+            "label": "About Daily Choice Zone",
+            "href": "/about"
+          },
+          {
+            "label": "Our story",
+            "href": "/about#story"
+          },
+          {
+            "label": "Careers",
+            "href": "/about#careers"
+          },
+          {
+            "label": "Collections",
+            "href": "/collection/everyday-basics"
+          }
+        ]
+      },
+      {
+        "heading": "Legal",
+        "links": [
+          {
+            "label": "Privacy policy",
+            "href": "/privacy"
+          },
+          {
+            "label": "Terms & conditions",
+            "href": "/terms"
+          },
+          {
+            "label": "Cookie policy",
+            "href": "/privacy#cookies"
+          }
+        ]
+      }
+    ]
+  },
+  "content": {
+    "states": [
+      "Andhra Pradesh",
+      "Arunachal Pradesh",
+      "Assam",
+      "Bihar",
+      "Chhattisgarh",
+      "Delhi",
+      "Goa",
+      "Gujarat",
+      "Haryana",
+      "Himachal Pradesh",
+      "Jammu and Kashmir",
+      "Jharkhand",
+      "Karnataka",
+      "Kerala",
+      "Madhya Pradesh",
+      "Maharashtra",
+      "Manipur",
+      "Meghalaya",
+      "Mizoram",
+      "Nagaland",
+      "Odisha",
+      "Puducherry",
+      "Punjab",
+      "Rajasthan",
+      "Sikkim",
+      "Tamil Nadu",
+      "Telangana",
+      "Tripura",
+      "Uttar Pradesh",
+      "Uttarakhand",
+      "West Bengal"
+    ],
+    "contactTopics": [
+      {
+        "value": "order",
+        "label": "A question about my order"
+      },
+      {
+        "value": "return",
+        "label": "A return or exchange"
+      },
+      {
+        "value": "product",
+        "label": "A question about a product"
+      },
+      {
+        "value": "delivery",
+        "label": "Delivery or tracking"
+      },
+      {
+        "value": "other",
+        "label": "Something else"
+      }
+    ],
+    "popularSearches": [
+      "linen shirt",
+      "sneakers",
+      "cotton dress",
+      "serum",
+      "backpack",
+      "bedsheet",
+      "earrings",
+      "headphones"
+    ],
+    "sortOptions": [
+      {
+        "value": "recommended",
+        "label": "Recommended"
+      },
+      {
+        "value": "newest",
+        "label": "Newest first"
+      },
+      {
+        "value": "price-asc",
+        "label": "Price: low to high"
+      },
+      {
+        "value": "price-desc",
+        "label": "Price: high to low"
+      },
+      {
+        "value": "rating",
+        "label": "Customer rating"
+      },
+      {
+        "value": "popular",
+        "label": "Most popular"
+      },
+      {
+        "value": "discount",
+        "label": "Biggest discount"
+      }
+    ],
+    "ratingFilters": [
+      4,
+      3,
+      2
+    ],
+    "discountFilters": [
+      10,
+      25,
+      40,
+      50
+    ],
+    "deliveryMethods": [
+      {
+        "id": "standard",
+        "name": "Standard delivery",
+        "description": "Free on orders above the delivery threshold",
+        "fee": 79,
+        "estimate": "3–5 business days"
+      },
+      {
+        "id": "express",
+        "name": "Express delivery",
+        "description": "Dispatched today, priority courier",
+        "fee": 149,
+        "estimate": "1–2 business days"
+      }
+    ],
+    "paymentMethods": [
+      {
+        "id": "upi",
+        "name": "UPI",
+        "label": "UPI",
+        "description": "Pay using any UPI app"
+      },
+      {
+        "id": "card",
+        "name": "Credit / Debit card",
+        "label": "Credit card",
+        "description": "Visa, Mastercard, RuPay, Amex"
+      },
+      {
+        "id": "debit-card",
+        "name": "Debit card",
+        "label": "Debit card",
+        "description": "Visa, Mastercard and RuPay debit"
+      },
+      {
+        "id": "netbanking",
+        "name": "Net banking",
+        "label": "Net banking",
+        "description": "All major Indian banks"
+      },
+      {
+        "id": "wallet",
+        "name": "Wallet",
+        "label": "Wallet",
+        "description": "Paytm, PhonePe and other wallets"
+      },
+      {
+        "id": "cod",
+        "name": "Cash on delivery",
+        "label": "Cash on delivery",
+        "description": "Pay the courier when it arrives"
+      }
+    ],
+    "faqs": [
+      {
+        "question": "How long does delivery take?",
+        "answer": "Standard delivery is 3–5 business days and free on orders above the delivery threshold shown at checkout. Below that a standard fee applies. Express delivery arrives in 1–2 business days. Everything is dispatched within 24 hours of the order being placed."
+      },
+      {
+        "question": "Can I return something?",
+        "answer": "Yes — within the returns window shown at checkout, as long as the item is unworn with its tags attached. We arrange the pickup, so you do not need to post anything. Refunds reach the original payment method within 5–7 business days of the item reaching us."
+      },
+      {
+        "question": "What if the size is wrong?",
+        "answer": "Exchanges work the same way as returns: request one from your order, we collect the original and send the new size. If the size you need is out of stock we refund instead. The size charts below are measured from the garments themselves, not a generic standard."
+      },
+      {
+        "question": "How do I track my order?",
+        "answer": "Every order has its own page under Orders in your account, showing its current stage and the expected delivery date. We also email updates at dispatch and on the day of delivery."
+      },
+      {
+        "question": "Which payment methods do you accept?",
+        "answer": "UPI, credit and debit cards (Visa, Mastercard, RuPay and Amex), net banking from all major Indian banks, wallets, and cash on delivery. The methods offered at checkout are the ones enabled in the store's billing settings."
+      },
+      {
+        "question": "Are the products genuine?",
+        "answer": "Everything is sourced directly by us or made under our own house brands. There is no third-party marketplace, so there is no grey stock."
+      },
+      {
+        "question": "Do you deliver everywhere in India?",
+        "answer": "We deliver to most PIN codes across India. A handful of remote areas are served by a slower partner courier, which adds two or three days; you will see the accurate estimate at checkout."
+      },
+      {
+        "question": "Something arrived damaged. What now?",
+        "answer": "Email our support address with your order number and a photograph within 48 hours of delivery. We will send a replacement or refund immediately — you will not need to return the damaged item first."
+      }
+    ],
+    "sizeGuide": {
+      "intro": "All measurements are in inches and taken from the garment laid flat, then doubled where relevant. If you are between sizes on a fitted style, size up; on anything described as oversized, take your usual size.",
+      "charts": [
+        {
+          "title": "Women's clothing",
+          "columns": [
+            "Size",
+            "Bust",
+            "Waist",
+            "Hip"
+          ],
+          "rows": [
+            [
+              "XS",
+              "32",
+              "25",
+              "35"
+            ],
+            [
+              "S",
+              "34",
+              "27",
+              "37"
+            ],
+            [
+              "M",
+              "36",
+              "29",
+              "39"
+            ],
+            [
+              "L",
+              "38.5",
+              "31.5",
+              "41.5"
+            ],
+            [
+              "XL",
+              "41",
+              "34",
+              "44"
+            ],
+            [
+              "XXL",
+              "43.5",
+              "36.5",
+              "46.5"
+            ]
+          ]
+        },
+        {
+          "title": "Men's clothing",
+          "columns": [
+            "Size",
+            "Chest",
+            "Waist",
+            "Sleeve"
+          ],
+          "rows": [
+            [
+              "XS",
+              "35",
+              "29",
+              "32"
+            ],
+            [
+              "S",
+              "37",
+              "31",
+              "32.5"
+            ],
+            [
+              "M",
+              "39",
+              "33",
+              "33"
+            ],
+            [
+              "L",
+              "41.5",
+              "35.5",
+              "33.5"
+            ],
+            [
+              "XL",
+              "44",
+              "38",
+              "34"
+            ],
+            [
+              "XXL",
+              "46.5",
+              "40.5",
+              "34.5"
+            ]
+          ]
+        },
+        {
+          "title": "Footwear",
+          "columns": [
+            "UK",
+            "EU",
+            "Foot length (cm)"
+          ],
+          "rows": [
+            [
+              "UK 3",
+              "36",
+              "22.5"
+            ],
+            [
+              "UK 4",
+              "37",
+              "23.5"
+            ],
+            [
+              "UK 5",
+              "38",
+              "24.1"
+            ],
+            [
+              "UK 6",
+              "39",
+              "25.0"
+            ],
+            [
+              "UK 7",
+              "41",
+              "25.7"
+            ],
+            [
+              "UK 8",
+              "42",
+              "26.5"
+            ],
+            [
+              "UK 9",
+              "43",
+              "27.3"
+            ],
+            [
+              "UK 10",
+              "44",
+              "28.0"
+            ],
+            [
+              "UK 11",
+              "45",
+              "28.8"
+            ]
+          ]
+        },
+        {
+          "title": "Kids",
+          "columns": [
+            "Size",
+            "Height (cm)",
+            "Chest"
+          ],
+          "rows": [
+            [
+              "2-3Y",
+              "92–98",
+              "21"
+            ],
+            [
+              "4-5Y",
+              "104–110",
+              "22.5"
+            ],
+            [
+              "6-7Y",
+              "116–122",
+              "24"
+            ],
+            [
+              "8-9Y",
+              "128–134",
+              "26"
+            ],
+            [
+              "10-11Y",
+              "140–146",
+              "28"
+            ]
+          ]
+        }
+      ]
+    },
+    "accountNavigation": [
+      {
+        "href": "/account",
+        "label": "Profile",
+        "icon": "user"
+      },
+      {
+        "href": "/account/orders",
+        "label": "Orders",
+        "icon": "package"
+      },
+      {
+        "href": "/account/invoices",
+        "label": "Invoices",
+        "icon": "file-text"
+      },
+      {
+        "href": "/account/addresses",
+        "label": "Addresses",
+        "icon": "map-pin"
+      },
+      {
+        "href": "/wishlist",
+        "label": "Wishlist",
+        "icon": "heart"
+      },
+      {
+        "href": "/account/settings",
+        "label": "Settings",
+        "icon": "settings"
+      }
+    ],
+    "adminRoles": [
+      {
+        "value": "super-admin",
+        "label": "Super admin",
+        "description": "Full access, including admin users and settings."
+      },
+      {
+        "value": "admin",
+        "label": "Admin",
+        "description": "Everything except admin user management."
+      },
+      {
+        "value": "manager",
+        "label": "Manager",
+        "description": "Orders, inventory, customers and reviews."
+      },
+      {
+        "value": "editor",
+        "label": "Editor",
+        "description": "Catalogue and storefront content only."
+      }
+    ],
+    "stockAdjustmentReasons": [
+      {
+        "value": "restock",
+        "label": "Restock"
+      },
+      {
+        "value": "correction",
+        "label": "Correction"
+      },
+      {
+        "value": "damage",
+        "label": "Damaged or lost"
+      },
+      {
+        "value": "return",
+        "label": "Customer return"
+      },
+      {
+        "value": "stocktake",
+        "label": "Stocktake"
+      }
+    ],
+    "analyticsRanges": [
+      {
+        "value": "today",
+        "label": "Today",
+        "shortLabel": "Today"
+      },
+      {
+        "value": "7d",
+        "label": "Last 7 days",
+        "shortLabel": "7D"
+      },
+      {
+        "value": "30d",
+        "label": "Last 30 days",
+        "shortLabel": "30D"
+      },
+      {
+        "value": "3m",
+        "label": "Last 3 months",
+        "shortLabel": "3M"
+      },
+      {
+        "value": "1y",
+        "label": "Last year",
+        "shortLabel": "1Y"
+      }
+    ],
+    "homeSectionKinds": [
+      {
+        "value": "product-carousel",
+        "label": "Product carousel",
+        "needsSource": true
+      },
+      {
+        "value": "product-grid",
+        "label": "Product grid",
+        "needsSource": true
+      },
+      {
+        "value": "featured-products",
+        "label": "Featured products",
+        "needsSource": true
+      },
+      {
+        "value": "category-grid",
+        "label": "Category grid",
+        "needsSource": false
+      },
+      {
+        "value": "collection-grid",
+        "label": "Collection grid",
+        "needsSource": false
+      },
+      {
+        "value": "promo-banner",
+        "label": "Promo banner",
+        "needsSource": false
+      }
+    ],
+    "homeSectionSources": [
+      {
+        "value": "new-arrivals",
+        "label": "New arrivals"
+      },
+      {
+        "value": "trending",
+        "label": "Trending now"
+      },
+      {
+        "value": "bestsellers",
+        "label": "Best sellers"
+      },
+      {
+        "value": "featured",
+        "label": "Featured"
+      },
+      {
+        "value": "recommended",
+        "label": "Recommended"
+      },
+      {
+        "value": "deals",
+        "label": "Deals"
+      }
+    ]
+  },
+  "navigation": {
+    "items": [
+      {
+        "id": "nav_women",
+        "label": "Women",
+        "href": "/category/women",
+        "columns": [
+          {
+            "heading": "Clothing",
+            "links": [
+              {
+                "label": "Dresses",
+                "href": "/category/women?subcategory=dresses"
+              },
+              {
+                "label": "Tops",
+                "href": "/category/women?subcategory=tops"
+              },
+              {
+                "label": "Shirts",
+                "href": "/category/women?subcategory=shirts"
+              },
+              {
+                "label": "Jeans",
+                "href": "/category/women?subcategory=jeans"
+              },
+              {
+                "label": "Trousers",
+                "href": "/category/women?subcategory=trousers"
+              },
+              {
+                "label": "Jackets",
+                "href": "/category/women?subcategory=jackets"
+              },
+              {
+                "label": "Knitwear",
+                "href": "/category/women?subcategory=knitwear"
+              }
+            ]
+          },
+          {
+            "heading": "Shoes",
+            "links": [
+              {
+                "label": "Sneakers",
+                "href": "/category/footwear?subcategory=sneakers"
+              },
+              {
+                "label": "Heels",
+                "href": "/category/footwear?subcategory=heels"
+              },
+              {
+                "label": "Sandals",
+                "href": "/category/footwear?subcategory=sandals"
+              }
+            ]
+          },
+          {
+            "heading": "Accessories",
+            "links": [
+              {
+                "label": "Handbags",
+                "href": "/category/bags?subcategory=handbags"
+              },
+              {
+                "label": "Totes",
+                "href": "/category/bags?subcategory=totes"
+              },
+              {
+                "label": "Jewellery",
+                "href": "/category/jewellery"
+              },
+              {
+                "label": "Eyewear",
+                "href": "/category/accessories?subcategory=eyewear"
+              },
+              {
+                "label": "Scarves & Hats",
+                "href": "/category/accessories?subcategory=scarves-hats"
+              }
+            ]
+          },
+          {
+            "heading": "Edits",
+            "links": [
+              {
+                "label": "New arrivals",
+                "href": "/shop?sort=newest&category=women"
+              },
+              {
+                "label": "Best sellers",
+                "href": "/shop?category=women&sort=popular"
+              },
+              {
+                "label": "Under ₹1,499",
+                "href": "/shop?category=women&maxPrice=1499"
+              },
+              {
+                "label": "Sale",
+                "href": "/shop?category=women&minDiscount=25"
+              }
+            ]
+          }
+        ],
+        "promo": {
+          "title": "Everyday Basics",
+          "subtitle": "The pieces that do the heavy lifting",
+          "image": "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?auto=format&fit=crop&w=700&q=80",
+          "href": "/collection/everyday-basics"
+        }
+      },
+      {
+        "id": "nav_men",
+        "label": "Men",
+        "href": "/category/men",
+        "columns": [
+          {
+            "heading": "Clothing",
+            "links": [
+              {
+                "label": "Shirts",
+                "href": "/category/men?subcategory=shirts"
+              },
+              {
+                "label": "T-Shirts",
+                "href": "/category/men?subcategory=tshirts"
+              },
+              {
+                "label": "Jeans",
+                "href": "/category/men?subcategory=jeans"
+              },
+              {
+                "label": "Trousers",
+                "href": "/category/men?subcategory=trousers"
+              },
+              {
+                "label": "Jackets",
+                "href": "/category/men?subcategory=jackets"
+              },
+              {
+                "label": "Knitwear",
+                "href": "/category/men?subcategory=knitwear"
+              }
+            ]
+          },
+          {
+            "heading": "Shoes",
+            "links": [
+              {
+                "label": "Sneakers",
+                "href": "/category/footwear?subcategory=sneakers"
+              },
+              {
+                "label": "Formal",
+                "href": "/category/footwear?subcategory=formal"
+              },
+              {
+                "label": "Sandals",
+                "href": "/category/footwear?subcategory=sandals"
+              }
+            ]
+          },
+          {
+            "heading": "Accessories",
+            "links": [
+              {
+                "label": "Backpacks",
+                "href": "/category/bags?subcategory=backpacks"
+              },
+              {
+                "label": "Belts & Wallets",
+                "href": "/category/accessories?subcategory=belts-wallets"
+              },
+              {
+                "label": "Watches",
+                "href": "/category/jewellery?subcategory=watches"
+              },
+              {
+                "label": "Eyewear",
+                "href": "/category/accessories?subcategory=eyewear"
+              }
+            ]
+          },
+          {
+            "heading": "Edits",
+            "links": [
+              {
+                "label": "New arrivals",
+                "href": "/shop?sort=newest&category=men"
+              },
+              {
+                "label": "Best sellers",
+                "href": "/shop?category=men&sort=popular"
+              },
+              {
+                "label": "Office Edit",
+                "href": "/collection/office-edit"
+              },
+              {
+                "label": "Sale",
+                "href": "/shop?category=men&minDiscount=25"
+              }
+            ]
+          }
+        ],
+        "promo": {
+          "title": "Office Edit",
+          "subtitle": "Quiet tailoring for real working days",
+          "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=700&q=80",
+          "href": "/collection/office-edit"
+        }
+      },
+      {
+        "id": "nav_kids",
+        "label": "Kids",
+        "href": "/category/kids",
+        "columns": [
+          {
+            "heading": "Shop by age",
+            "links": [
+              {
+                "label": "Infants",
+                "href": "/category/kids?subcategory=infants"
+              },
+              {
+                "label": "Girls",
+                "href": "/category/kids?subcategory=girls"
+              },
+              {
+                "label": "Boys",
+                "href": "/category/kids?subcategory=boys"
+              }
+            ]
+          },
+          {
+            "heading": "Edits",
+            "links": [
+              {
+                "label": "New arrivals",
+                "href": "/shop?sort=newest&category=kids"
+              },
+              {
+                "label": "Under ₹799",
+                "href": "/shop?category=kids&maxPrice=799"
+              },
+              {
+                "label": "Sale",
+                "href": "/shop?category=kids&minDiscount=25"
+              }
+            ]
+          }
+        ],
+        "promo": {
+          "title": "Built for play",
+          "subtitle": "Reinforced knees, flat seams, easy washes",
+          "image": "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?auto=format&fit=crop&w=700&q=80",
+          "href": "/category/kids"
+        }
+      },
+      {
+        "id": "nav_home",
+        "label": "Home",
+        "href": "/category/home",
+        "columns": [
+          {
+            "heading": "Bedroom",
+            "links": [
+              {
+                "label": "Bedding",
+                "href": "/category/home?subcategory=bedding"
+              },
+              {
+                "label": "Throws & Quilts",
+                "href": "/category/home?subcategory=furnishing"
+              }
+            ]
+          },
+          {
+            "heading": "Living",
+            "links": [
+              {
+                "label": "Decor",
+                "href": "/category/home?subcategory=decor"
+              },
+              {
+                "label": "Rugs & Furnishing",
+                "href": "/category/home?subcategory=furnishing"
+              },
+              {
+                "label": "Candles",
+                "href": "/category/lifestyle?subcategory=wellness"
+              }
+            ]
+          },
+          {
+            "heading": "Kitchen",
+            "links": [
+              {
+                "label": "Kitchen & Dining",
+                "href": "/category/home?subcategory=kitchen"
+              },
+              {
+                "label": "Serveware",
+                "href": "/category/home?subcategory=kitchen"
+              }
+            ]
+          },
+          {
+            "heading": "Edits",
+            "links": [
+              {
+                "label": "Home Refresh",
+                "href": "/collection/home-refresh"
+              },
+              {
+                "label": "New arrivals",
+                "href": "/shop?sort=newest&category=home"
+              }
+            ]
+          }
+        ],
+        "promo": {
+          "title": "Home Refresh",
+          "subtitle": "Small changes, whole new room",
+          "image": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=700&q=80",
+          "href": "/collection/home-refresh"
+        }
+      },
+      {
+        "id": "nav_beauty",
+        "label": "Beauty",
+        "href": "/category/beauty",
+        "columns": [
+          {
+            "heading": "Skin",
+            "links": [
+              {
+                "label": "Skincare",
+                "href": "/category/beauty?subcategory=skincare"
+              },
+              {
+                "label": "Serums",
+                "href": "/search?q=serum"
+              },
+              {
+                "label": "SPF",
+                "href": "/search?q=spf"
+              }
+            ]
+          },
+          {
+            "heading": "Colour",
+            "links": [
+              {
+                "label": "Makeup",
+                "href": "/category/beauty?subcategory=makeup"
+              },
+              {
+                "label": "Lips",
+                "href": "/search?q=lipstick"
+              },
+              {
+                "label": "Eyes",
+                "href": "/search?q=mascara"
+              }
+            ]
+          },
+          {
+            "heading": "Hair & Scent",
+            "links": [
+              {
+                "label": "Haircare",
+                "href": "/category/beauty?subcategory=haircare"
+              },
+              {
+                "label": "Fragrance",
+                "href": "/category/beauty?subcategory=fragrance"
+              }
+            ]
+          }
+        ],
+        "promo": {
+          "title": "Fragrance-free favourites",
+          "subtitle": "Kind to sensitive skin",
+          "image": "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&w=700&q=80",
+          "href": "/category/beauty?subcategory=skincare"
+        }
+      },
+      {
+        "id": "nav_accessories",
+        "label": "Accessories",
+        "href": "/category/accessories",
+        "columns": [
+          {
+            "heading": "Bags",
+            "links": [
+              {
+                "label": "Handbags",
+                "href": "/category/bags?subcategory=handbags"
+              },
+              {
+                "label": "Backpacks",
+                "href": "/category/bags?subcategory=backpacks"
+              },
+              {
+                "label": "Totes",
+                "href": "/category/bags?subcategory=totes"
+              }
+            ]
+          },
+          {
+            "heading": "Jewellery",
+            "links": [
+              {
+                "label": "Earrings",
+                "href": "/category/jewellery?subcategory=earrings"
+              },
+              {
+                "label": "Necklaces",
+                "href": "/category/jewellery?subcategory=necklaces"
+              },
+              {
+                "label": "Watches",
+                "href": "/category/jewellery?subcategory=watches"
+              }
+            ]
+          },
+          {
+            "heading": "More",
+            "links": [
+              {
+                "label": "Eyewear",
+                "href": "/category/accessories?subcategory=eyewear"
+              },
+              {
+                "label": "Belts & Wallets",
+                "href": "/category/accessories?subcategory=belts-wallets"
+              },
+              {
+                "label": "Scarves & Hats",
+                "href": "/category/accessories?subcategory=scarves-hats"
+              },
+              {
+                "label": "Electronics",
+                "href": "/category/electronics"
+              },
+              {
+                "label": "Lifestyle",
+                "href": "/category/lifestyle"
+              }
+            ]
+          }
+        ],
+        "promo": {
+          "title": "Travel Essentials",
+          "subtitle": "Packed and ready in one trip",
+          "image": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=700&q=80",
+          "href": "/collection/travel-essentials"
+        }
+      },
+      {
+        "id": "nav_sale",
+        "label": "Sale",
+        "href": "/shop?minDiscount=25",
+        "highlight": true
+      }
+    ]
+  },
+  "admin_navigation": {
+    "groups": [
+      {
+        "id": "nav_overview",
+        "heading": "Overview",
+        "items": [
+          {
+            "id": "dashboard",
+            "label": "Dashboard",
+            "href": "/admin/dashboard",
+            "icon": "dashboard"
+          },
+          {
+            "id": "reports",
+            "label": "Reports",
+            "href": "/admin/reports",
+            "icon": "reports"
+          }
+        ]
+      },
+      {
+        "id": "nav_catalogue",
+        "heading": "Catalogue",
+        "items": [
+          {
+            "id": "products",
+            "label": "Products",
+            "href": "/admin/products",
+            "icon": "products"
+          },
+          {
+            "id": "categories",
+            "label": "Categories",
+            "href": "/admin/categories",
+            "icon": "categories"
+          },
+          {
+            "id": "collections",
+            "label": "Collections",
+            "href": "/admin/collections",
+            "icon": "collections"
+          },
+          {
+            "id": "inventory",
+            "label": "Inventory",
+            "href": "/admin/inventory",
+            "icon": "inventory",
+            "badge": "lowStock"
+          }
+        ]
+      },
+      {
+        "id": "nav_sales",
+        "heading": "Sales",
+        "items": [
+          {
+            "id": "orders",
+            "label": "Orders",
+            "href": "/admin/orders",
+            "icon": "orders",
+            "badge": "openOrders"
+          },
+          {
+            "id": "customers",
+            "label": "Customers",
+            "href": "/admin/customers",
+            "icon": "customers"
+          },
+          {
+            "id": "billing",
+            "label": "Billing",
+            "href": "/admin/billing",
+            "icon": "billing",
+            "children": [
+              {
+                "id": "billing-invoices",
+                "label": "Invoices",
+                "href": "/admin/billing/invoices",
+                "icon": "invoices"
+              },
+              {
+                "id": "billing-payments",
+                "label": "Payments",
+                "href": "/admin/billing/payments",
+                "icon": "payments"
+              },
+              {
+                "id": "billing-refunds",
+                "label": "Refunds",
+                "href": "/admin/billing/refunds",
+                "icon": "refunds"
+              },
+              {
+                "id": "billing-credit-notes",
+                "label": "Credit notes",
+                "href": "/admin/billing/credit-notes",
+                "icon": "creditNotes"
+              }
+            ]
+          },
+          {
+            "id": "coupons",
+            "label": "Coupons",
+            "href": "/admin/coupons",
+            "icon": "coupons"
+          },
+          {
+            "id": "reviews",
+            "label": "Reviews",
+            "href": "/admin/reviews",
+            "icon": "reviews",
+            "badge": "pendingReviews"
+          }
+        ]
+      },
+      {
+        "id": "nav_storefront",
+        "heading": "Storefront",
+        "items": [
+          {
+            "id": "homepage",
+            "label": "Homepage",
+            "href": "/admin/homepage",
+            "icon": "homepage"
+          },
+          {
+            "id": "banners",
+            "label": "Banners",
+            "href": "/admin/banners",
+            "icon": "banners"
+          }
+        ]
+      },
+      {
+        "id": "nav_admin",
+        "heading": "Administration",
+        "items": [
+          {
+            "id": "settings",
+            "label": "Store settings",
+            "href": "/admin/settings",
+            "icon": "settings"
+          },
+          {
+            "id": "site-settings",
+            "label": "Site",
+            "href": "/admin/settings/site",
+            "icon": "site"
+          },
+          {
+            "id": "content-settings",
+            "label": "Content",
+            "href": "/admin/settings/content",
+            "icon": "content"
+          },
+          {
+            "id": "navigation-settings",
+            "label": "Navigation",
+            "href": "/admin/settings/navigation",
+            "icon": "navigation"
+          },
+          {
+            "id": "billing-settings",
+            "label": "Billing settings",
+            "href": "/admin/settings/billing",
+            "icon": "invoices"
+          },
+          {
+            "id": "admin-users",
+            "label": "Admin users",
+            "href": "/admin/admin-users",
+            "icon": "adminUsers"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { EmptyState } from "@/components/common/States";
 import { ProductListing } from "@/components/products/ProductListing";
-import { POPULAR_SEARCHES } from "@/services/searchService";
+import { useSiteContent } from "@/hooks/useSiteContent";
 
 /**
  * Search results.
@@ -23,6 +23,7 @@ import { POPULAR_SEARCHES } from "@/services/searchService";
 export function SearchView() {
   const searchParams = useSearchParams();
   const term = (searchParams?.get("q") ?? "").trim();
+  const popularSearches = useSiteContent()?.popularSearches ?? [];
 
   return (
     <div className="page-shell py-8 sm:py-10">
@@ -51,7 +52,7 @@ export function SearchView() {
           <div className="mx-auto max-w-lg pb-8">
             <p className="label-wide mb-3 text-center text-ink-500">Popular searches</p>
             <ul className="flex flex-wrap justify-center gap-2">
-              {POPULAR_SEARCHES.map((popular) => (
+              {popularSearches.map((popular) => (
                 <li key={popular}>
                   <Link
                     href={`/search?q=${encodeURIComponent(popular)}`}

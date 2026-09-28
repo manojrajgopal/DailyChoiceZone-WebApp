@@ -293,6 +293,20 @@ def get_refund(db: Session, refund_id: str) -> Refund:
     return refund
 
 
+def _next_refund_number(db: Session, issued: datetime, sequence: int) -> str:
+    """
+    A refund's reference, in the store's own series.
+
+    Same reasoning as the invoice number: one writer, one counter, and the
+    prefix is configuration rather than a literal here.
+    """
+    config = billing.billing_config(db).get("refund") or {}
+    prefix = str(config.get("prefix") or "")
+    padding = int(config.get("padding") or 1)
+
+    return f"{prefix}-{issued.year}-{sequence:0{padding}d}"
+
+
 def create_refund(
     db: Session,
     *,
@@ -349,7 +363,7 @@ def create_refund(
 
     refund = Refund(
         id=next_id(db, Refund, "refund"),
-        refund_number=f"DCZ-RF-{now.year}-{sequence:05d}",
+        refund_number=_next_refund_number(db, now, sequence),
         order_id=invoice.order_id,
         order_number=invoice.order_number,
         invoice_id=invoice.id,
@@ -477,9 +491,9 @@ def create_credit_note(
         raise ValidationError("Give a reason for the credit note.", error_code="REASON_REQUIRED")
 
     now = datetime.utcnow()
-    config = billing.billing_config(db).get("creditNote", {})
-    prefix = config.get("prefix", "DCZ-CN")
-    padding = config.get("padding", 5)
+    config = billing.billing_config(db).get("creditNote") or {}
+    prefix = str(config.get("prefix") or "")
+    padding = int(config.get("padding") or 1)
 
     highest = db.execute(
         select(func.max(CreditNote.credit_note_number)).where(
@@ -487,7 +501,7 @@ def create_credit_note(
         )
     ).scalar()
 
-    number = config.get("startNumber", 1)
+    number = int(config.get("startNumber") or 1)
     if highest:
         try:
             number = int(highest.split("-")[-1]) + 1

@@ -32,31 +32,43 @@ cp .env.example .env            # Windows: copy .env.example .env
 python -m uvicorn app.main:app --reload
 ```
 
-The first start creates the database, applies every migration and loads the
-demo data. It prints what it did. Then:
+The first start creates the database and applies every migration. It prints
+what it did. Then:
 
 - API — <http://localhost:8000/api>
 - Interactive docs — <http://localhost:8000/docs>
 - Health check — <http://localhost:8000/health>
 
-### Demo accounts
+**Nothing is seeded.** A fresh installation has a configured store and an empty
+catalogue: no products, no customers, no orders. That is what a real shop
+starts as, and it is why every list the two applications render is editable
+from the portal rather than compiled in.
 
-Seeded with hashed passwords, like any other account. There is no plaintext
-password column for them to live in.
+### The first administrator
 
-| | Email | Password |
-|---|---|---|
-| Administrator | `admin@dailychoicezone.com` | `Admin@123` |
-| Customer | any seeded customer, e.g. `aditya.banerjee1@example.com` | `Customer@123` |
+Nobody is created for you. **The first account to register becomes the
+administrator**, and everyone who registers after them is an ordinary
+customer.
 
-Change them before this is in front of anybody. Seeding is refused outright in
-production (`AUTO_SEED` must be off, and the app will not start otherwise).
+So: start both servers, open the storefront, create an account. That account
+can sign in to `/admin` as a super admin. The next person to register cannot.
 
----
+The decision is made in `app/services/auth.py`, from the state of the
+`admin_users` table, and **nothing in the request influences it** —
+`RegisterRequest` has no role field to send, and a payload that invents one
+changes nothing. It runs inside the registration transaction with a locking
+read, so two people signing up at the same instant cannot both claim it: on an
+empty table InnoDB takes a gap lock, the second request waits, and then sees
+the administrator the first one created.
+
+Being an administrator does not merge the two surfaces. One person, two
+sessions: the token from `/auth/register` carries `actor: customer` and opens
+no admin endpoint. The portal is reached by signing in to it, with the same
+credentials.
 
 ## What happens at startup
 
-Four steps, in order, before the first request is served — so a
+Three steps, in order, before the first request is served — so a
 misconfiguration is a startup failure with a readable message rather than a 500
 somebody hits mid-checkout.
 
@@ -64,22 +76,19 @@ somebody hits mid-checkout.
 2. **Does the database exist?** `CREATE DATABASE IF NOT EXISTS` — never a drop.
 3. **Is the schema current?** `alembic upgrade head`. Upgrade only: a process
    that runs unattended must not be able to destroy data.
-4. **Is the demo data loaded?** Seeded **if absent**, by primary key. A restart
-   neither duplicates anything nor overwrites a change made through the portal.
 
-Each step has its own switch (`AUTO_CREATE_DATABASE`, `AUTO_MIGRATE`,
-`AUTO_SEED`), because a real deployment migrates from its own pipeline and must
-never seed.
+**No data step.** Nothing is written at boot. The catalogue, the customers and
+the orders are whatever the database holds; the configuration a fresh install
+needs arrives once, from a migration.
 
-To rebuild the development database from scratch — after changing the seed's
-shape, say — there is a deliberate, manual tool:
+Either of the first two can be switched off (`AUTO_CREATE_DATABASE`,
+`AUTO_MIGRATE`), because a real deployment migrates from its own pipeline.
 
-```bash
-python -m app.seed.reset --yes
-```
-
-Nothing calls it. It refuses to run unless `DEBUG` is on and the database is the
-development one.
+There is no tool that rebuilds the data, and deliberately so: the only thing
+such a tool could rebuild is a demo dataset, and there is not one any more.
+Dropping tables is `alembic downgrade` or a DBA, both of which are somebody
+making an explicit decision rather than a convenience script sitting next to
+the code.
 
 ---
 
@@ -92,6 +101,7 @@ app/
     config.py          settings from .env, and what production refuses to start without
     database.py        engine, session, first-run creation
     security.py        password hashing, JWT issue and verify
+    permissions.py     what each admin role may write — the one copy
     errors.py          the error hierarchy and its handlers
     startup.py         the four steps above
   models/              32 tables, SQLAlchemy 2 declarative
@@ -100,7 +110,7 @@ app/
   services/            the business rules
   api/routes/          HTTP only: read the request, call a service, wrap the result
   dependencies/        who is calling, and what they may do
-  seed/                the demo data, its id translation, and the reset tool
+  config_defaults/     the configuration a fresh install starts with, once
   utils/               id generation, the response envelope
 tests/
   unit/                money, tax, tokens — no database
@@ -149,9 +159,48 @@ One prefix per entity, three digits, growing past it without a format change —
 reading a support ticket that quotes one.
 
 The width is decided in exactly one place (`app/utils/ids.py`). It has to be:
-when the seeder padded invoices to four digits and the id generator to three,
-the two series interleaved and the first order placed after a seed collided with
-a seeded invoice.
+back when there was a seeder, it padded invoices to four digits and the id
+generator to three — the two series interleaved, and the first order placed
+after a seed collided with an existing invoice.
+
+### The configuration documents
+
+Seven rows in `setting_documents`, each a whole JSON document:
+
+| Key | What it holds |
+|---|---|
+| `store` | store settings — contact details, shipping fees, returns window |
+| `billing` | seller details, currency, numbering, refund reasons, enabled payment methods |
+| `tax` | GST registration and rates |
+| `site` | brand, support details, social links, trust points, footer |
+| `content` | the lists the two applications render — see below |
+| `navigation` | the storefront menu |
+| `admin_navigation` | the portal sidebar |
+
+Each has a screen in the portal:
+
+| Screen | Documents |
+|---|---|
+| Settings | `store` |
+| Settings → Site | `site` |
+| Settings → Content | `content` |
+| Settings → Navigation | `navigation`, `admin_navigation` |
+| Settings → Billing | `billing`, `tax` |
+
+`content` is the one worth naming. It holds the states a delivery address can
+choose, the contact form's topics, the popular searches, the sort orders, the
+rating and discount filter buckets, the delivery and payment methods, the FAQ,
+the size charts, the account menu, and the vocabularies behind every dropdown
+in the portal — roles, stock adjustment reasons, analytics ranges and homepage
+section kinds.
+
+Every one of those was an array in a frontend component or service. They are
+rows now, read through `GET /api/site/content`, so changing one is an edit to
+the store rather than a deployment. Two things deliberately did **not** move:
+which icon a named menu entry draws, because an API cannot send a React
+component, and `app/core/permissions.py`, because what a role may *write* is
+policy this server enforces — put it in an editable document and an
+administrator could grant themselves the right to grant permissions.
 
 ### camelCase on the wire, snake_case in Python
 
@@ -217,12 +266,16 @@ own hosted fields.
 describes your schema to whoever asked for it. Database errors are logged in
 full and returned as a generic message with a code.
 
-**Production refuses to start** with the default JWT secret, `DEBUG` on, a
-wildcard CORS origin, or `AUTO_SEED` left on. It lists every problem rather than
-failing on the first.
+**Roles are assigned by the server.** The first registration on an empty
+installation becomes the administrator; every one after it is a customer.
+Nothing in the request influences that — see [The first administrator](#the-first-administrator).
 
-**Migrations only ever upgrade.** Nothing drops a table automatically. The one
-tool that can is manual, guarded, and called by nothing.
+**Production refuses to start** with the default JWT secret, `DEBUG` on, or a
+wildcard CORS origin. It lists every problem rather than failing on the first.
+
+**Migrations only ever upgrade.** Nothing drops a table automatically, and
+nothing in the codebase can — the tool that used to is gone along with the
+demo data it existed to reload.
 
 ---
 
@@ -282,10 +335,9 @@ rebuilt from the models each session. The development database is never touched
 Each test runs inside a transaction that is rolled back afterwards, so tests see
 their fixtures and nothing any other test wrote.
 
-The fixtures are small and written in `conftest.py` rather than loaded from the
-demo seed: a test that asserts on "the 47th product" is a test nobody can read,
-and a fixture set that changes when the demo data is regenerated is a suite that
-breaks for no reason.
+The fixtures are small and written in `conftest.py`: four products, two
+customers, one administrator. A test that asserts on "the 47th product" is a
+test nobody can read.
 
 What is covered: money and tax arithmetic against worked examples, password
 hashing and token forgery, registration and sign-in, catalogue filtering,
@@ -309,23 +361,35 @@ hardcoded, and none of it reaches the frontend.
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | |
 | `ENVIRONMENT` / `DEBUG` | `development` / `true` | |
 | `CORS_ORIGINS` | `http://localhost:3000,…` | A list, never `*` |
-| `AUTO_CREATE_DATABASE` / `AUTO_MIGRATE` / `AUTO_SEED` | `true` | Each step of startup, independently |
+| `AUTO_CREATE_DATABASE` / `AUTO_MIGRATE` | `true` | Either step of startup, independently |
 | `PAYMENT_PROVIDER` | `mock` | Which `PaymentProvider` to use |
 
 ---
 
-## The demo data
+## There is no demo data
 
-`app/seed/data/` holds the JSON the seed is built from — 139 products, 434
-reviews, 64 customers, 168 orders with their invoices, payments, refunds and
-credit notes. It used to live in the frontend bundle; it lives here now because
-it is *seed* data, and the browser has no business shipping it.
+There used to be: `app/seed/` held a fabricated catalogue — 140 products, 434
+reviews, 66 customers, 176 orders with their invoices, payments and refunds —
+as JSON, reloaded on every boot, plus the Node generators that produced it.
+All of it is gone, along with the seeder and the reset tool that dropped tables
+to re-run it.
 
-The generators that produce it are in `app/seed/generators/`, and
-`node app/seed/generators/check-data.mjs` validates the lot — every reference
-resolves, every invoice total re-derives from its components.
+What replaced it is nothing at all. The catalogue is whatever somebody has
+added through the portal. A fresh database is empty, and the first person to
+register is the administrator who fills it.
 
-The demo ids (`prod_001`, `order_0005`) are translated to the `PRD001` scheme on
-the way in, and **every reference between records is translated with them**.
-Renumbering without rewriting the references would leave a database full of
-dangling pointers.
+The one thing a fresh install *does* get is configuration, because a store
+cannot price anything without a currency or decide a tax treatment without a
+registered state. That arrives once, from `app/config_defaults/`, installed by
+the `configuration baseline` migration:
+
+- **Insert-if-absent, never update.** Running it against a configured store
+  changes nothing.
+- **Read once, at migration time.** Nothing in `app/` imports it afterwards;
+  the database is the only source the application reads.
+- **Editable from the portal.** Every value in it has a screen — see the
+  document table above.
+
+That is the difference worth holding on to. Initial state that is installed
+once and then owned by the database is not the same thing as a dataset the
+application reads at runtime, and the old seeder was the second kind.

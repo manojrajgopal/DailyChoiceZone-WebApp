@@ -15,7 +15,7 @@ import {
 } from "@/components/admin/ui/AdminForm";
 import { formatMoney, toMinor } from "@/lib/money";
 import { getBillingConfig, saveBillingConfig } from "@/services/billing/billingService";
-import { PAYMENT_METHOD_LABELS } from "@/services/billing/paymentService";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { getTaxConfig, saveTaxConfig } from "@/services/billing/taxService";
 import { toast } from "@/store/toastStore";
 
@@ -35,15 +35,11 @@ import { toast } from "@/store/toastStore";
  * setting up a store.
  */
 
-const STATES = [
-  "Karnataka", "Maharashtra", "Delhi", "Tamil Nadu", "Telangana", "Gujarat",
-  "West Bengal", "Rajasthan", "Kerala", "Uttar Pradesh", "Punjab", "Haryana",
-  "Madhya Pradesh", "Bihar", "Odisha", "Assam",
-];
-
-const METHODS = Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethodKey[];
-
 export function AdminBillingSettingsView() {
+  const content = useSiteContent();
+  const states = content?.states ?? [];
+  const methods = content?.paymentMethods ?? [];
+
   const [billing, setBilling] = useState<BillingConfig | null>(null);
   const [tax, setTax] = useState<TaxConfig | null>(null);
   const [saving, setSaving] = useState(false);
@@ -196,7 +192,7 @@ export function AdminBillingSettingsView() {
               label="State"
               value={billing.business.state}
               onChange={(event) => patchBusiness("state", event.target.value)}
-              options={STATES.map((state) => ({ value: state, label: state }))}
+              options={states.map((state) => ({ value: state, label: state }))}
             />
             <AdminInput
               label="Country"
@@ -304,7 +300,7 @@ export function AdminBillingSettingsView() {
                 label="State of registration"
                 value={tax.originState}
                 onChange={(event) => setTax({ ...tax, originState: event.target.value })}
-                options={STATES.map((state) => ({ value: state, label: state }))}
+                options={states.map((state) => ({ value: state, label: state }))}
                 hint="Supply inside this state is CGST + SGST; outside it is IGST."
               />
               <AdminInput
@@ -398,12 +394,13 @@ export function AdminBillingSettingsView() {
         {/* --------------------------------------------------------- payment */}
         <AdminCard title="Payment settings" description="What a customer can pay with.">
           <div className="flex flex-col gap-3">
-            {METHODS.map((method) => {
+            {methods.map(({ id, label }) => {
+              const method = id as PaymentMethodKey;
               const enabled = billing.payment.enabledMethods.includes(method);
               return (
                 <AdminToggle
                   key={method}
-                  label={PAYMENT_METHOD_LABELS[method]}
+                  label={label}
                   checked={enabled}
                   onChange={(checked) =>
                     setBilling({

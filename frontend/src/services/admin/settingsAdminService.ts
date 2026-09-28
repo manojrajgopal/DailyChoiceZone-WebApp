@@ -27,21 +27,33 @@ export async function saveSettings(settings: StoreSettings): Promise<AdminResult
 
 /* ----------------------------------------------------------- admin users */
 
-export const ROLES: { value: AdminUser["role"]; label: string; description: string }[] = [
-  { value: "super-admin", label: "Super admin", description: "Full access, including admin users and settings." },
-  { value: "admin", label: "Admin", description: "Everything except admin user management." },
-  { value: "manager", label: "Manager", description: "Orders, inventory, customers and reviews." },
-  { value: "editor", label: "Editor", description: "Catalogue and storefront content only." },
-];
-
 export function listAdminUsers(): Promise<AdminUser[]> {
   return adminDataSource.listAdminUsers();
 }
 
-export async function saveAdminUser(user: AdminUser): Promise<AdminResult<AdminUser>> {
+/**
+ * Create or update an administrator.
+ *
+ * `password` is required on a new account and optional on an existing one,
+ * because the server needs something to hash and has nothing to fall back on.
+ * It is never read back — `AdminUser` has no password field, so it travels
+ * only in the direction it can.
+ */
+export async function saveAdminUser(
+  user: AdminUser,
+  password?: string,
+): Promise<AdminResult<AdminUser>> {
   if (user.name.trim().length < 2) return { ok: false, reason: "Enter a name." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(user.email)) {
     return { ok: false, reason: "Enter a valid email address." };
+  }
+
+  const isNew = !user.id;
+  if (isNew && (password ?? "").length < 8) {
+    return { ok: false, reason: "Set a password of at least eight characters." };
+  }
+  if (!isNew && password && password.length < 8) {
+    return { ok: false, reason: "A new password must be at least eight characters." };
   }
 
   const existing = await adminDataSource.listAdminUsers();
@@ -56,7 +68,10 @@ export async function saveAdminUser(user: AdminUser): Promise<AdminResult<AdminU
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
 
-  return { ok: true, data: await adminDataSource.saveAdminUser({ ...user, avatarInitials: initials }) };
+  return {
+    ok: true,
+    data: await adminDataSource.saveAdminUser({ ...user, avatarInitials: initials }, password),
+  };
 }
 
 /**
@@ -101,9 +116,16 @@ export async function setAdminUserStatus(
   return { ok: true, data: await adminDataSource.saveAdminUser({ ...user, status }) };
 }
 
+/**
+ * A blank administrator for the "add" form.
+ *
+ * The id is empty because the server assigns it — `ADM006` follows `ADM005`,
+ * and a client minting `adm_1790…` would have produced an id in a scheme
+ * nothing else uses.
+ */
 export function emptyAdminUser(): AdminUser {
   return {
-    id: `adm_${Date.now()}`,
+    id: "",
     name: "",
     email: "",
     role: "editor",

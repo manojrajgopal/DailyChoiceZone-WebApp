@@ -8,17 +8,24 @@ import { AuthPanel } from "@/components/account/AuthPanel";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useSession } from "@/hooks/useSession";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
 
-const NAV = [
-  { href: "/account", label: "Profile", icon: User },
-  { href: "/account/orders", label: "Orders", icon: Package },
-  { href: "/account/invoices", label: "Invoices", icon: FileText },
-  { href: "/account/addresses", label: "Addresses", icon: MapPin },
-  { href: "/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/account/settings", label: "Settings", icon: Settings },
-] as const;
+/**
+ * Icons, by the name the API uses.
+ *
+ * The menu itself is configuration and comes from the store; only the drawing
+ * of each entry lives here, because an API cannot send a React component.
+ */
+const ICONS: Record<string, typeof User> = {
+  user: User,
+  package: Package,
+  "file-text": FileText,
+  "map-pin": MapPin,
+  heart: Heart,
+  settings: Settings,
+};
 
 /**
  * The frame for every account page.
@@ -41,6 +48,7 @@ export function AccountShell({
 }) {
   const pathname = usePathname();
   const { user, isSignedIn, isLoading, signOut } = useSession();
+  const accountNav = useSiteContent()?.accountNavigation ?? [];
 
   if (isLoading) {
     return (
@@ -107,9 +115,9 @@ export function AccountShell({
 
           <nav aria-label="Account" className="mt-4">
             <ul className="flex flex-col">
-              {NAV.map((item) => {
+              {accountNav.map((item) => {
                 const active = pathname === item.href;
-                const Icon = item.icon;
+                const Icon = ICONS[item.icon] ?? User;
                 return (
                   <li key={item.href}>
                     <Link

@@ -17,10 +17,11 @@ import { DataTable, type Column } from "@/components/admin/ui/DataTable";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { StatCard } from "@/components/admin/ui/StatCard";
 import { useAdminResource } from "@/hooks/useAdminResource";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { cn } from "@/lib/utils/cn";
 import { formatCompactINR, formatDate, formatPrice, humanize } from "@/lib/utils/format";
-import { RANGES, getAnalytics, getDashboard } from "@/services/admin/analyticsAdminService";
+import { getAnalytics, getDashboard } from "@/services/admin/analyticsAdminService";
 import { listLowStock } from "@/services/admin/inventoryAdminService";
 import { listOrders } from "@/services/admin/orderAdminService";
 
@@ -33,6 +34,7 @@ import type { AdminOrder } from "@/types/admin";
  * we take, what needs doing, what is selling, and what is about to run out.
  */
 export function AdminDashboardView() {
+  const ranges = useSiteContent()?.analyticsRanges ?? [];
   const { user } = useAdminSession();
   const [range, setRange] = useState<AnalyticsRange>("30d");
 
@@ -135,11 +137,11 @@ export function AdminDashboardView() {
               aria-label="Time range"
               className="flex overflow-hidden rounded-[3px] border border-admin-border"
             >
-              {RANGES.map((option) => (
+              {ranges.map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setRange(option.value)}
+                  onClick={() => setRange(option.value as AnalyticsRange)}
                   aria-pressed={range === option.value}
                   className={cn(
                     "px-2.5 py-1 text-[0.6875rem] font-medium transition-colors",

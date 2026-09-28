@@ -15,10 +15,9 @@ import { AdminInput, AdminSelect, FormGrid } from "@/components/admin/ui/AdminFo
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { cn } from "@/lib/utils/cn";
 import {
-  SECTION_KINDS,
-  SECTION_SOURCES,
   deleteSection,
   emptySection,
   getSections,
@@ -38,6 +37,10 @@ import Link from "next/link";
  * and adding sections all happen here.
  */
 export function AdminHomepageView() {
+  const content = useSiteContent();
+  const sectionKinds = content?.homeSectionKinds ?? [];
+  const sectionSources = content?.homeSectionSources ?? [];
+
   const sections = useAdminResource(() => getSections(), []);
 
   const [editing, setEditing] = useState<AdminHomeSection | null>(null);
@@ -48,10 +51,10 @@ export function AdminHomepageView() {
   const activeCount = rows.filter((section) => section.active).length;
 
   const kindLabel = (type: HomeSectionKind) =>
-    SECTION_KINDS.find((entry) => entry.value === type)?.label ?? type;
+    sectionKinds.find((entry) => entry.value === type)?.label ?? type;
 
   const needsSource = (type: HomeSectionKind) =>
-    SECTION_KINDS.find((entry) => entry.value === type)?.needsSource ?? false;
+    sectionKinds.find((entry) => entry.value === type)?.needsSource ?? false;
 
   const onMove = async (id: string, direction: "up" | "down") => {
     setBusy(true);
@@ -273,7 +276,7 @@ export function AdminHomepageView() {
                     source: needsSource(type) ? (editing.source ?? "new-arrivals") : null,
                   });
                 }}
-                options={SECTION_KINDS.map((entry) => ({
+                options={sectionKinds.map((entry) => ({
                   value: entry.value,
                   label: entry.label,
                 }))}
@@ -306,7 +309,7 @@ export function AdminHomepageView() {
                         source: event.target.value as AdminHomeSection["source"],
                       })
                     }
-                    options={SECTION_SOURCES.map((entry) => ({
+                    options={sectionSources.map((entry) => ({
                       value: entry.value,
                       label: entry.label,
                     }))}

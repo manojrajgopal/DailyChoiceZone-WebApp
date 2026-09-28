@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import AuthenticationError, AuthorizationError, ConflictError, NotFoundError
+from app.core.permissions import permissions_for
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import Address, AdminUser, Customer
 from app.schemas.auth import (
@@ -38,7 +39,61 @@ def _token_for(subject: str, actor: str, role: Optional[str] = None) -> TokenOut
 # ------------------------------------------------------------- customers
 
 
+def _claim_first_administrator(db: Session, customer: Customer, password_hash: str) -> bool:
+    """
+    Make the very first registered person an administrator.
+
+    A fresh installation has nobody who can reach the portal, so the first
+    account to register claims it. Everybody after them is an ordinary
+    customer, and **nothing in the request influences that** — the decision is
+    made here, from the state of the table, and `RegisterRequest` has no role
+    field to send.
+
+    `WITH FOR UPDATE` is what makes it safe under concurrent signups. On an
+    empty table InnoDB takes a gap lock over the whole index range, so a second
+    registration arriving at the same moment blocks here until the first
+    commits and then sees the administrator it created. Without it, two
+    simultaneous signups would both read zero and both claim the role.
+
+    Returns whether this registration became an administrator.
+    """
+    taken = db.execute(
+        select(AdminUser.id).limit(1).with_for_update()
+    ).scalar_one_or_none()
+
+    if taken is not None:
+        return False
+
+    initials = "".join(
+        part[0] for part in f"{customer.first_name} {customer.last_name}".split()[:2]
+    ).upper()
+
+    db.add(
+        AdminUser(
+            id=next_id(db, AdminUser, "admin_user"),
+            email=customer.email,
+            # The same hash, not a second password: one set of credentials
+            # opens both surfaces, because it is one person.
+            password_hash=password_hash,
+            name=f"{customer.first_name} {customer.last_name}".strip() or customer.email,
+            role="super-admin",
+            permissions=permissions_for("super-admin"),
+            status="active",
+            created_at=datetime.utcnow(),
+        )
+    )
+    return True
+
+
 def register(db: Session, payload: RegisterRequest) -> tuple[Customer, TokenOut]:
+    """
+    Create a customer account.
+
+    The first one to arrive on an installation with no administrator also
+    becomes one — see `_claim_first_administrator`. Both rows are written in
+    the same transaction, so there is no moment where the account exists
+    without the role it was promised, or the other way round.
+    """
     existing = db.execute(
         select(Customer.id).where(Customer.email == payload.email.lower())
     ).scalar_one_or_none()
@@ -49,10 +104,12 @@ def register(db: Session, payload: RegisterRequest) -> tuple[Customer, TokenOut]
             error_code="EMAIL_TAKEN",
         )
 
+    password_hash = hash_password(payload.password)
+
     customer = Customer(
         id=next_id(db, Customer, "customer"),
         email=payload.email.lower(),
-        password_hash=hash_password(payload.password),
+        password_hash=password_hash,
         first_name=payload.first_name.strip(),
         last_name=payload.last_name.strip(),
         phone=payload.phone.strip(),
@@ -61,7 +118,14 @@ def register(db: Session, payload: RegisterRequest) -> tuple[Customer, TokenOut]
     )
 
     db.add(customer)
-    db.commit()
+
+    try:
+        _claim_first_administrator(db, customer, password_hash)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
     db.refresh(customer)
 
     return customer, _token_for(customer.id, "customer")

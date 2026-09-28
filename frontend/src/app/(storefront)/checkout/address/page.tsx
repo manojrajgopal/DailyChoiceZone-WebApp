@@ -8,18 +8,11 @@ import type { Address, BillingAddress, DeliveryMethodId } from "@/types";
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Input, Radio, Select } from "@/components/ui/Field";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
 import { getAddresses } from "@/services/accountService";
-import { DELIVERY_METHODS } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { formatPrice } from "@/lib/utils/format";
-
-/** A short list rather than all 28 — enough to be credible in a demo. */
-const STATES = [
-  "Karnataka", "Maharashtra", "Delhi", "Tamil Nadu", "Telangana", "Gujarat",
-  "West Bengal", "Rajasthan", "Kerala", "Uttar Pradesh", "Punjab", "Haryana",
-  "Madhya Pradesh", "Bihar", "Odisha", "Assam",
-];
 
 type FormState = Omit<Address, "id">;
 
@@ -69,6 +62,9 @@ function toFormState(address: Omit<Address, "id">): FormState {
 
 /** Step 2 — where it is going, and how fast. */
 export default function CheckoutAddressPage() {
+  const content = useSiteContent();
+  const states = content?.states ?? [];
+  const deliveryMethods = content?.deliveryMethods ?? [];
   const router = useRouter();
   const checkoutHydrated = useCheckoutHydrated();
 
@@ -279,7 +275,7 @@ export default function CheckoutAddressPage() {
           <Select
             label="State"
             autoComplete="address-level1"
-            options={STATES.map((state) => ({ value: state, label: state }))}
+            options={states.map((state) => ({ value: state, label: state }))}
             value={form.state}
             onChange={(event) => update("state", event.target.value)}
             className="sm:col-span-2"
@@ -392,7 +388,7 @@ export default function CheckoutAddressPage() {
               <Select
                 label="State"
                 autoComplete="billing address-level1"
-                options={STATES.map((state) => ({ value: state, label: state }))}
+                options={states.map((state) => ({ value: state, label: state }))}
                 value={billing.state}
                 onChange={(event) => updateBilling("state", event.target.value)}
               />
@@ -412,7 +408,7 @@ export default function CheckoutAddressPage() {
         <fieldset className="mt-10 max-w-2xl">
           <legend className="label-wide mb-3 text-ink-700">Delivery method</legend>
           <div className="flex flex-col gap-2.5">
-            {DELIVERY_METHODS.map((method) => (
+            {deliveryMethods.map((method) => (
               <Radio
                 key={method.id}
                 name="delivery"

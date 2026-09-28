@@ -1,5 +1,3 @@
-import navigationJson from "@/config/navigation/admin.json";
-
 import type { Category, Collection } from "@/types";
 import type {
   AdminBanner,
@@ -438,10 +436,13 @@ export const httpAdminAdapter: AdminDataSource = {
     return apiGet<AdminUser[]>("/admin/users", AUTH);
   },
 
-  saveAdminUser(user: AdminUser): Promise<AdminUser> {
+  saveAdminUser(user: AdminUser, password?: string): Promise<AdminUser> {
+    // The password travels only on the way in — no response carries one back.
+    const body = password ? { ...user, password } : user;
+
     return user.id && user.id.startsWith("ADM")
-      ? apiPut<AdminUser>(`/admin/users/${encodeURIComponent(user.id)}`, user, AUTH)
-      : apiPost<AdminUser>("/admin/users", user, AUTH);
+      ? apiPut<AdminUser>(`/admin/users/${encodeURIComponent(user.id)}`, body, AUTH)
+      : apiPost<AdminUser>("/admin/users", body, AUTH);
   },
 
   async deleteAdminUser(id: string): Promise<void> {
@@ -464,17 +465,8 @@ export const httpAdminAdapter: AdminDataSource = {
 
   /* -------------------------------------------------------- navigation */
 
-  getNavigation(): AdminNavGroup[] {
-    /**
-     * The sidebar stays frontend configuration.
-     *
-     * It is the shape of this application's interface, not business data:
-     * every entry names a route that only exists because a page was built for
-     * it, and there is no portal screen to edit it. Putting it in the database
-     * would move a file nobody edits behind a query nobody needs — and it is
-     * read synchronously to render the shell, which a query cannot be.
-     */
-    return navigationJson as AdminNavGroup[];
+  getNavigation(): Promise<AdminNavGroup[]> {
+    return apiGet<AdminNavGroup[]>("/admin/navigation", AUTH);
   },
 };
 

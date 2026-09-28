@@ -57,7 +57,12 @@ export interface Product {
   specifications: ProductSpecification[];
 }
 
-/** The sort orders offered in the listing toolbar. */
+/**
+ * The sort orders the listing toolbar offers.
+ *
+ * The labels live in the store's content document — this union is what the
+ * query string and the API agree on.
+ */
 export type SortOption =
   | "recommended"
   | "newest"
@@ -66,16 +71,6 @@ export type SortOption =
   | "rating"
   | "popular"
   | "discount";
-
-export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: "recommended", label: "Recommended" },
-  { value: "newest", label: "Newest first" },
-  { value: "price-asc", label: "Price: low to high" },
-  { value: "price-desc", label: "Price: high to low" },
-  { value: "rating", label: "Customer rating" },
-  { value: "popular", label: "Most popular" },
-  { value: "discount", label: "Biggest discount" },
-];
 
 /**
  * Every filter a listing page can apply.

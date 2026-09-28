@@ -27,32 +27,30 @@ Money = int
 # ---------------------------------------------------------------- config
 
 
-def _document(db: Session, key: str, fallback: dict) -> dict:
+def _document(db: Session, key: str) -> dict:
+    """
+    One configuration document, as the store has it.
+
+    An empty dict when the row is missing, and **no invented values**. A rate
+    or a delivery fee that a function supplied for itself would be a figure
+    charged to somebody that appears nowhere an administrator can see — which
+    is worse than charging nothing and having the portal say the store is not
+    configured yet.
+    """
     row = db.get(SettingDocument, key)
-    return row.value if row and row.value else fallback
+    return (row.value if row else {}) or {}
 
 
 def billing_config(db: Session) -> dict:
-    return _document(db, "billing", {})
+    return _document(db, "billing")
 
 
 def tax_config(db: Session) -> dict:
-    return _document(
-        db,
-        "tax",
-        {
-            "enabled": True,
-            "taxType": "GST",
-            "pricesIncludeTax": True,
-            "originState": "Karnataka",
-            "rates": {"cgst": 2.5, "sgst": 2.5, "igst": 5},
-            "categoryRates": {},
-        },
-    )
+    return _document(db, "tax")
 
 
 def store_settings(db: Session) -> dict:
-    return _document(db, "store", {})
+    return _document(db, "store")
 
 
 # ------------------------------------------------------------- money bits
@@ -271,7 +269,7 @@ def calculate(
     """
     tax_cfg = tax_config(db)
     billing_cfg = billing_config(db)
-    currency = (billing_cfg.get("currency") or {}).get("code", "INR")
+    currency = (billing_cfg.get("currency") or {}).get("code", "")
     prices_include_tax = bool(tax_cfg.get("pricesIncludeTax", True))
     mode = tax_mode_for(place_of_supply, tax_cfg)
 
@@ -391,19 +389,26 @@ def calculate_shipping(
     tested against the *pre-coupon* subtotal, so applying a coupon never
     quietly adds a fee back; and it waives the *standard* fee only, because an
     express upgrade is a paid service whatever the basket is worth.
+
+    An unconfigured store delivers free. That is the only safe direction to be
+    wrong in — a fee invented here would be charged to a customer and reconciled
+    against nothing.
     """
     if item_count == 0:
         return 0
 
-    shipping = (store_settings(db).get("shipping") or {})
-    threshold = to_minor(shipping.get("freeDeliveryThreshold", 999))
-    standard = to_minor(shipping.get("standardFee", 79))
-    express = to_minor(shipping.get("expressFee", 149))
+    shipping = store_settings(db).get("shipping") or {}
+    standard = to_minor(shipping.get("standardFee", 0))
+    express = to_minor(shipping.get("expressFee", 0))
+    threshold = shipping.get("freeDeliveryThreshold")
 
     if method == "express":
         return express
 
-    if coupon_waives_shipping or subtotal >= threshold:
+    if coupon_waives_shipping:
+        return 0
+
+    if threshold is not None and subtotal >= to_minor(threshold):
         return 0
 
     return standard

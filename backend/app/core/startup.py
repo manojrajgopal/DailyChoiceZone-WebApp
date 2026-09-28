@@ -43,11 +43,15 @@ def prepare_database() -> None:
         1. MySQL is reachable          — fail with instructions if not
         2. the database exists         — create it if it does not
         3. the schema is current       — alembic upgrade head
-        4. the demo data is loaded     — seed, idempotently
 
-    Each step can be switched off independently (`AUTO_CREATE_DATABASE`,
-    `AUTO_MIGRATE`, `AUTO_SEED`), because a production deployment usually
-    migrates from its own pipeline and must never seed.
+    Either of the first two can be switched off (`AUTO_CREATE_DATABASE`,
+    `AUTO_MIGRATE`), because a deployment usually migrates from its own
+    pipeline.
+
+    **Nothing is written here.** There is no data step: the catalogue, the
+    customers and the orders are whatever the database holds, and the
+    configuration documents a fresh install needs are installed once by a
+    migration. Everything after that is edited through the portal.
     """
     check_server_connection()
 
@@ -61,12 +65,3 @@ def prepare_database() -> None:
     else:
         logger.info("AUTO_MIGRATE is off; assuming the schema is current.")
 
-    if settings.AUTO_SEED:
-        # Imported here, not at module load: the seeder imports models, which
-        # import the engine, and pulling that in before the database exists
-        # turns a clear error into an import-time one.
-        from app.seed.seed_database import seed_all
-
-        seed_all()
-    else:
-        logger.info("AUTO_SEED is off; not touching the data.")

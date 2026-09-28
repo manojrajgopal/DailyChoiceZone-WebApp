@@ -13,6 +13,7 @@ from typing import List, Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.utils.dates import parse_dt
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import Coupon, CouponUsage
 from app.services import billing
@@ -239,8 +240,6 @@ def delete_coupon(db: Session, coupon_id: str) -> None:
 
 
 def _parse(value: str) -> datetime:
-    from app.seed.json_loader import parse_dt
-
     parsed = parse_dt(value)
     if parsed is None:
         raise ValidationError(f"'{value}' is not a valid date.", error_code="INVALID_DATE")

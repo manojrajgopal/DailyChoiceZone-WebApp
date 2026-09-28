@@ -10,10 +10,11 @@ import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome"
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { datedFilename, downloadCsv, toCsv } from "@/lib/billing/csv";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
-import { PAYMENT_METHOD_LABELS, getPayments, paymentMethodLabel } from "@/services/billing/paymentService";
+import { getPayments, paymentMethodLabel } from "@/services/billing/paymentService";
 import { toast } from "@/store/toastStore";
 
 /** Every transaction, and what happened to it. */
@@ -22,11 +23,10 @@ const STATUSES: BillingPaymentStatus[] = [
   "pending", "authorized", "paid", "failed", "refunded", "partially-refunded",
 ];
 
-const METHODS = Object.keys(PAYMENT_METHOD_LABELS) as PaymentMethodKey[];
-
 type DateWindow = "all" | "7d" | "30d" | "3m";
 
 export function AdminPaymentsView() {
+  const methods = useSiteContent()?.paymentMethods ?? [];
   const { data, isLoading } = useAdminResource(() => getPayments(), []);
 
   const [term, setTerm] = useState("");
@@ -271,9 +271,9 @@ export function AdminPaymentsView() {
             className={selectClass}
           >
             <option value="all">Any method</option>
-            {METHODS.map((option) => (
-              <option key={option} value={option}>
-                {PAYMENT_METHOD_LABELS[option]}
+            {methods.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
               </option>
             ))}
           </select>

@@ -22,12 +22,12 @@ export const metadata: Metadata = {
  * arrive somewhere that looks like the shop, with a way back into it.
  */
 export default async function NotFound() {
-  const [config, banners, categories] = await Promise.all([
+  const [config, banners, categories, navigation] = await Promise.all([
     getSiteConfig(),
     getBanners(),
     getFeaturedCategories(6),
+    getNavigation(),
   ]);
-  const navigation = getNavigation();
 
   return (
     <div className="flex min-h-dvh flex-col bg-cream text-ink">

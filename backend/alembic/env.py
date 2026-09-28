@@ -1,8 +1,13 @@
 """Alembic environment.
 
-The database URL and the target metadata both come from the application, so a
-migration can never be generated against a different schema than the one the
-app runs on.
+The target metadata comes from the application, so a migration can never be
+generated against a different schema than the one the app runs on.
+
+The URL comes from the application too, **unless the caller supplied one**.
+That matters for anything that migrates a database other than the one in
+`.env`: a staging deploy, or a check that a fresh installation comes up
+correctly. Overwriting it unconditionally meant every such call silently
+migrated the development database instead.
 """
 
 from logging.config import fileConfig
@@ -19,7 +24,13 @@ from app.core.database import Base
 import app.models  # noqa: F401
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+
+# `alembic.ini` deliberately carries no URL, so an empty value here means
+# nobody asked for a particular database and the application's own is right.
+if not config.get_main_option("sqlalchemy.url", default=None):
+    config.set_main_option("sqlalchemy.url", settings.database_url)
+
+database_url = config.get_main_option("sqlalchemy.url")
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -30,7 +41,7 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     """Emit SQL to stdout instead of running it — for review, or a DBA."""
     context.configure(
-        url=settings.database_url,
+        url=database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

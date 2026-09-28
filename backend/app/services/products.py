@@ -22,6 +22,7 @@ from app.models import (
     StockAdjustment,
 )
 from app.repositories import products as repo
+from app.services import billing
 from app.schemas.catalogue import ProductQuery, ProductWrite
 from app.utils.ids import next_id, slugify
 
@@ -52,15 +53,24 @@ def unique_slug(db: Session, desired: str, *, ignore_id: Optional[str] = None) -
 
 
 def _next_sku(db: Session, category_slug: str) -> str:
-    """`DCZ-WO0140` — the prefix names the department, the number is sequential."""
-    letters = (category_slug[:2] or "XX").upper()
-    count = db.execute(select(func.count()).select_from(Product)).scalar_one()
-    candidate = f"DCZ-{letters}{count + 1:04d}"
+    """
+    A generated SKU: the store's prefix, the department, a sequence.
 
+    The prefix comes from the billing document so a shop can use its own.
+    Only reached when somebody leaves the SKU field blank — a product listed
+    with a real supplier code keeps it.
+    """
+    prefix = str((billing.billing_config(db).get("sku") or {}).get("prefix") or "")
+    lead = f"{prefix}-" if prefix else ""
+    letters = (category_slug[:2] or "XX").upper()
+
+    count = db.execute(select(func.count()).select_from(Product)).scalar_one()
     bump = count + 1
+    candidate = f"{lead}{letters}{bump:04d}"
+
     while repo.sku_exists(db, candidate):
         bump += 1
-        candidate = f"DCZ-{letters}{bump:04d}"
+        candidate = f"{lead}{letters}{bump:04d}"
 
     return candidate
 

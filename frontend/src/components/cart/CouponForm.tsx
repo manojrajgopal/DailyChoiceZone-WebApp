@@ -12,9 +12,9 @@ import { formatPrice } from "@/lib/utils/format";
 /**
  * Coupon entry.
  *
- * The available codes are listed underneath, because this is a demo storefront
- * and a coupon field with no discoverable codes is a dead end. On a real store
- * that list would come from an offers endpoint, or be removed entirely.
+ * The codes currently on offer are listed underneath, read from the store —
+ * a coupon field with no discoverable codes is a dead end, and an offer the
+ * shop is running is not a secret.
  */
 export function CouponForm({
   applied,

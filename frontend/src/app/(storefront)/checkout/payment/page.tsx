@@ -9,8 +9,8 @@ import type { PaymentMethodId } from "@/types";
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
 import { Button } from "@/components/ui/Button";
 import { Radio } from "@/components/ui/Field";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
-import { PAYMENT_METHODS } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
 
 /**
@@ -25,6 +25,13 @@ import { useCheckoutStore } from "@/store/checkoutStore";
 export default function CheckoutPaymentPage() {
   const router = useRouter();
   const checkoutHydrated = useCheckoutHydrated();
+
+  // Only the methods the store has switched on. An option somebody can pick
+  // and the server then refuses is worse than one that is not offered.
+  const content = useSiteContent();
+  const paymentMethods = (content?.paymentMethods ?? []).filter((method) =>
+    (content?.enabledPaymentMethods ?? []).includes(method.id),
+  );
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
@@ -48,7 +55,7 @@ export default function CheckoutPaymentPage() {
         <legend className="sr-only">Payment method</legend>
 
         <div className="flex flex-col gap-2.5">
-          {PAYMENT_METHODS.map((method) => (
+          {paymentMethods.map((method) => (
             <Radio
               key={method.id}
               name="payment"

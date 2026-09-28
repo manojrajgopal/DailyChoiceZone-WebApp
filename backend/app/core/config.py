@@ -62,7 +62,6 @@ class Settings(BaseSettings):
     # production deployment can run migrations from its own pipeline instead.
     AUTO_CREATE_DATABASE: bool = True
     AUTO_MIGRATE: bool = True
-    AUTO_SEED: bool = True
 
     # ------------------------------------------------------------- payments
     # Which PaymentProvider implementation to use. "mock" moves no money.
@@ -113,8 +112,6 @@ class Settings(BaseSettings):
             problems.append("DEBUG is on, which leaks internals in error responses.")
         if "*" in self.CORS_ORIGINS:
             problems.append("CORS_ORIGINS contains a wildcard.")
-        if self.AUTO_SEED:
-            problems.append("AUTO_SEED is on — demo data would be written to a production database.")
 
         return problems
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
-import { SORT_OPTIONS, type ProductQuery } from "@/types";
+import type { ProductQuery, SortOption } from "@/types";
 
 import { ActiveFilterChips } from "@/components/filters/ActiveFilterChips";
 import { FilterPanel } from "@/components/filters/FilterPanel";
@@ -14,6 +14,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Field";
 import { useProductQuery } from "@/hooks/useProductQuery";
 import { useFacets, useProducts } from "@/hooks/useProducts";
+import { useSiteContent } from "@/hooks/useSiteContent";
 
 import { ProductGrid } from "./ProductGrid";
 
@@ -48,6 +49,7 @@ export function ProductListing({
   emptyDescription = "Try removing a filter or two, or widen your price range.",
 }: ProductListingProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const sortOptions = useSiteContent()?.sortOptions ?? [];
 
   const {
     query,
@@ -147,14 +149,12 @@ export function ProductListing({
 
             <Select
               aria-label="Sort products"
-              options={SORT_OPTIONS.map((option) => ({
+              options={sortOptions.map((option) => ({
                 value: option.value,
                 label: option.label,
               }))}
               value={urlQuery.sort ?? "recommended"}
-              onChange={(event) =>
-                setSort(event.target.value as (typeof SORT_OPTIONS)[number]["value"])
-              }
+              onChange={(event) => setSort(event.target.value as SortOption)}
               className="min-w-0 flex-1 sm:flex-none"
               selectClassName="h-9 w-full text-[0.8125rem] sm:w-[11.5rem]"
             />

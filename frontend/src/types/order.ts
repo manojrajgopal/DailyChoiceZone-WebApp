@@ -15,10 +15,17 @@ export interface Address {
   isDefault: boolean;
 }
 
+/**
+ * The delivery methods the store ships with.
+ *
+ * A hint, not a closed set: which methods exist is configuration an
+ * administrator edits, so `DeliveryMethod.id` is a plain string and this union
+ * documents what is there out of the box.
+ */
 export type DeliveryMethodId = "standard" | "express";
 
 export interface DeliveryMethod {
-  id: DeliveryMethodId;
+  id: string;
   name: string;
   description: string;
   fee: number;
@@ -26,10 +33,11 @@ export interface DeliveryMethod {
   estimate: string;
 }
 
+/** The payment methods the store ships with. See `DeliveryMethodId`. */
 export type PaymentMethodId = "card" | "upi" | "netbanking" | "cod";
 
 export interface PaymentMethod {
-  id: PaymentMethodId;
+  id: string;
   name: string;
   description: string;
 }

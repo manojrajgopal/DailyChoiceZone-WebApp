@@ -9,8 +9,8 @@ import { ProductImage } from "@/components/common/ProductImage";
 import { Drawer } from "@/components/ui/Dialog";
 import { Price } from "@/components/ui/Price";
 import { useSearchSuggestions } from "@/hooks/useSearch";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { humanize } from "@/lib/utils/format";
-import { POPULAR_SEARCHES } from "@/services/searchService";
 
 /**
  * Search, as a sheet from the top of the page.
@@ -51,6 +51,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
   const [term, setTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const { suggestions, isSearching } = useSearchSuggestions(term);
+  const popularSearches = useSiteContent()?.popularSearches ?? [];
 
   // Focus the field once the drawer has finished animating in.
   useEffect(() => {
@@ -117,7 +118,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
               Popular searches
             </p>
             <ul className="flex flex-wrap gap-2">
-              {POPULAR_SEARCHES.map((popular) => (
+              {popularSearches.map((popular) => (
                 <li key={popular}>
                   <button
                     type="button"

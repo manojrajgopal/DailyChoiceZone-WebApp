@@ -25,17 +25,22 @@ import type { PaymentQuery } from "./billing-data-source";
  * touch this DOM.
  */
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethodKey, string> = {
-  upi: "UPI",
-  card: "Credit card",
-  "debit-card": "Debit card",
-  netbanking: "Net banking",
-  cod: "Cash on delivery",
-  wallet: "Wallet",
-};
+/**
+ * How each method is named in tables and on invoices.
+ *
+ * Module state, primed by `siteService` from the store's own configuration.
+ * It has to answer synchronously: invoices, CSV exports and table columns all
+ * label a method while rendering.
+ */
+let labels: Record<string, string> = {};
 
-export function paymentMethodLabel(method: PaymentMethodKey): string {
-  return PAYMENT_METHOD_LABELS[method] ?? method;
+export function setPaymentMethodLabels(next: Record<string, string>): void {
+  labels = next;
+}
+
+/** The method's own id if the store has no name for it — never a wrong name. */
+export function paymentMethodLabel(method: PaymentMethodKey | string): string {
+  return labels[method] ?? method;
 }
 
 export function getPayments(query?: PaymentQuery): Promise<Payment[]> {

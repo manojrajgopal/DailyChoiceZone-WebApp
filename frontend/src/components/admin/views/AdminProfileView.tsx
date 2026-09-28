@@ -11,9 +11,9 @@ import {
 import { AdminInput, FormGrid, FormSection } from "@/components/admin/ui/AdminForm";
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
 import { useAdminSession } from "@/hooks/useAdminSession";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { formatDate } from "@/lib/utils/format";
 import { permissionsFor } from "@/services/admin/adminAuthService";
-import { ROLES } from "@/services/admin/settingsAdminService";
 
 /**
  * The signed-in admin's own profile.
@@ -23,6 +23,7 @@ import { ROLES } from "@/services/admin/settingsAdminService";
  * refuse rather than the UI merely discourage.
  */
 export function AdminProfileView() {
+  const roles = useSiteContent()?.adminRoles ?? [];
   const { user, isLoading, updateProfile } = useAdminSession();
 
   const [name, setName] = useState("");
@@ -40,7 +41,7 @@ export function AdminProfileView() {
     );
   }
 
-  const role = ROLES.find((entry) => entry.value === user.role);
+  const role = roles.find((entry) => entry.value === user.role);
   const permissions = permissionsFor(user.role);
 
   const onSave = () => {

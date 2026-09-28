@@ -23,29 +23,24 @@ import { apiGet, apiGetOrNull, apiPost } from "@/services/api/client";
 
 const AUTH = { auth: "customer" } as const;
 
-export const DELIVERY_METHODS: DeliveryMethod[] = [
-  {
-    id: "standard",
-    name: "Standard delivery",
-    description: "Free on orders above ₹999",
-    fee: 79,
-    estimate: "3–5 business days",
-  },
-  {
-    id: "express",
-    name: "Express delivery",
-    description: "Dispatched today, priority courier",
-    fee: 149,
-    estimate: "1–2 business days",
-  },
-];
+/**
+ * The methods on offer, as the store configured them.
+ *
+ * Held as module state rather than fetched per lookup, because `toOrder` maps
+ * a payload synchronously and the review page reads a method while rendering.
+ * `siteService` fills both in when it reads the site content, which every page
+ * does once — the same arrangement `formatMoney` uses for the currency.
+ */
+let deliveryMethods: DeliveryMethod[] = [];
+let paymentMethods: PaymentMethod[] = [];
 
-export const PAYMENT_METHODS: PaymentMethod[] = [
-  { id: "upi", name: "UPI", description: "Pay using any UPI app" },
-  { id: "card", name: "Credit / Debit card", description: "Visa, Mastercard, RuPay, Amex" },
-  { id: "netbanking", name: "Net banking", description: "All major Indian banks" },
-  { id: "cod", name: "Cash on delivery", description: "Pay the courier when it arrives" },
-];
+export function setDeliveryMethods(methods: DeliveryMethod[]): void {
+  deliveryMethods = methods;
+}
+
+export function setPaymentMethods(methods: PaymentMethod[]): void {
+  paymentMethods = methods;
+}
 
 /** What the API returns for an order. */
 interface ApiOrder {
@@ -226,10 +221,20 @@ export async function cancelOrder(identifier: string, reason = ""): Promise<Orde
   return toOrder(payload);
 }
 
+/**
+ * One method by id.
+ *
+ * Falls back to a record carrying the id itself rather than to the first in
+ * the list: an order placed with a method the store has since withdrawn should
+ * read "netbanking", not silently become "UPI".
+ */
 export function getDeliveryMethod(id: string): DeliveryMethod {
-  return DELIVERY_METHODS.find((method) => method.id === id) ?? DELIVERY_METHODS[0]!;
+  return (
+    deliveryMethods.find((method) => method.id === id) ??
+    { id, name: id, description: "", fee: 0, estimate: "" }
+  );
 }
 
 export function getPaymentMethod(id: string): PaymentMethod {
-  return PAYMENT_METHODS.find((method) => method.id === id) ?? PAYMENT_METHODS[0]!;
+  return paymentMethods.find((method) => method.id === id) ?? { id, name: id, description: "" };
 }

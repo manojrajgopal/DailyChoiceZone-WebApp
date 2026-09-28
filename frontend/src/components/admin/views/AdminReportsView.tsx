@@ -9,9 +9,10 @@ import { TimeSeriesChart } from "@/components/admin/charts/TimeSeriesChart";
 import { AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { BillingReports } from "@/components/admin/views/BillingReports";
 import { useAdminResource } from "@/hooks/useAdminResource";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { cn } from "@/lib/utils/cn";
 import { formatCompactINR, formatPrice, humanize } from "@/lib/utils/format";
-import { RANGES, getAnalytics, rangeLabel } from "@/services/admin/analyticsAdminService";
+import { getAnalytics, rangeLabel } from "@/services/admin/analyticsAdminService";
 
 /**
  * Reports.
@@ -22,6 +23,7 @@ import { RANGES, getAnalytics, rangeLabel } from "@/services/admin/analyticsAdmi
  * nothing here depends on distinguishing two hues.
  */
 export function AdminReportsView() {
+  const ranges = useSiteContent()?.analyticsRanges ?? [];
   const [range, setRange] = useState<AnalyticsRange>("30d");
   const { data, isLoading } = useAdminResource(() => getAnalytics(range), [range]);
 
@@ -45,11 +47,11 @@ export function AdminReportsView() {
             aria-label="Reporting period"
             className="flex overflow-hidden rounded-[3px] border border-admin-border"
           >
-            {RANGES.map((option) => (
+            {ranges.map((option) => (
               <button
                 key={option.value}
                 type="button"
-                onClick={() => setRange(option.value)}
+                onClick={() => setRange(option.value as AnalyticsRange)}
                 aria-pressed={range === option.value}
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium transition-colors",
@@ -219,9 +221,7 @@ export function AdminReportsView() {
       <BillingReports range={range} />
 
       <p className="mt-4 rounded-[3px] border border-admin-border bg-admin-surface px-3 py-2.5 text-[0.6875rem] leading-relaxed text-admin-muted">
-        Figures are aggregated from the demo order history and exclude cancelled orders. Once a
-        backend exists these come from <code>GET /admin/analytics</code> with the same shape, so
-        this page will not change.
+        Figures are aggregated by the server over the selected range and exclude cancelled orders.
       </p>
     </div>
   );

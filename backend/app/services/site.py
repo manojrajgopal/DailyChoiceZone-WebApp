@@ -12,6 +12,67 @@ from app.models import Banner, HomepageSection, SettingDocument
 from app.services import billing
 
 
+def _document(db: Session, key: str) -> dict:
+    row = db.get(SettingDocument, key)
+    return (row.value if row else {}) or {}
+
+
+def content(db: Session) -> dict:
+    """
+    Everything the two applications used to hardcode.
+
+    The states a delivery address can name, the topics the contact form
+    offers, the delivery and payment methods, the FAQ, the size charts, the
+    sort orders, and the vocabularies the portal's dropdowns are built from.
+
+    One document rather than an endpoint each: they are all read once when a
+    page loads, none of them is large, and a dozen tiny endpoints would be a
+    dozen round trips to render one form.
+
+    The commercial figures inside it are re-pointed at store settings on the
+    way out, for the same reason `site_config` does it — a delivery fee quoted
+    from one place and charged from another is two numbers that will disagree.
+    """
+    document = _document(db, "content")
+    shipping = (billing.store_settings(db).get("shipping") or {})
+    enabled = set((billing.billing_config(db).get("payment") or {}).get("enabledMethods") or [])
+
+    methods = []
+    for method in document.get("deliveryMethods", []):
+        fee = shipping.get("standardFee") if method.get("id") == "standard" else shipping.get("expressFee")
+        estimate = (
+            shipping.get("standardEstimate")
+            if method.get("id") == "standard"
+            else shipping.get("expressEstimate")
+        )
+        methods.append({
+            **method,
+            "fee": fee if fee is not None else method.get("fee", 0),
+            "estimate": estimate or method.get("estimate", ""),
+        })
+
+    return {
+        **document,
+        "deliveryMethods": methods,
+        # Every method the store knows about, so the settings page can offer
+        # each as a toggle — and separately, the ids currently switched on, so
+        # the checkout can show only those. One list filtered here would leave
+        # the portal unable to turn anything back on.
+        "enabledPaymentMethods": sorted(enabled) if enabled else
+            [method.get("id") for method in document.get("paymentMethods", [])],
+    }
+
+
+def navigation(db: Session) -> list:
+    """The storefront's menu, as an ordered tree."""
+    return _document(db, "navigation").get("items", [])
+
+
+def admin_navigation(db: Session) -> list:
+    """The portal's sidebar, grouped."""
+    return _document(db, "admin_navigation").get("groups", [])
+
+
 def site_config(db: Session) -> dict:
     """
     What the header, footer and delivery copy read.

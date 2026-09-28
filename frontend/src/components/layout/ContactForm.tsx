@@ -4,15 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Field";
+import { useSiteContent } from "@/hooks/useSiteContent";
 import { toast } from "@/store/toastStore";
-
-const TOPICS = [
-  { value: "order", label: "A question about my order" },
-  { value: "return", label: "A return or exchange" },
-  { value: "product", label: "A question about a product" },
-  { value: "delivery", label: "Delivery or tracking" },
-  { value: "other", label: "Something else" },
-];
 
 /**
  * The contact form.
@@ -21,6 +14,8 @@ const TOPICS = [
  * anywhere. When a support endpoint exists, only `onSubmit` changes.
  */
 export function ContactForm() {
+  const topics = useSiteContent()?.contactTopics ?? [];
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
@@ -81,7 +76,7 @@ export function ContactForm() {
 
         <Select
           label="What is it about?"
-          options={TOPICS}
+          options={topics}
           value={topic}
           onChange={(event) => setTopic(event.target.value)}
         />
