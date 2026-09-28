@@ -15,6 +15,9 @@ const SOCIAL_ICONS: Record<SocialIcon, React.ComponentType<{ className?: string;
   twitter: Twitter,
 };
 
+/** The icons a social link can name. The settings screen offers exactly these. */
+export const SOCIAL_ICON_NAMES = Object.keys(SOCIAL_ICONS) as SocialIcon[];
+
 /**
  * The site footer.
  *

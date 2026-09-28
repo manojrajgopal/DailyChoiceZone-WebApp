@@ -21,6 +21,15 @@ export interface NavBadges {
 }
 
 /**
+ * The counts a sidebar link can show.
+ *
+ * Each is resolved by a function in `AdminShell`, so this is the whole set —
+ * the navigation editor offers these and nothing else, because a fourth name
+ * would save fine and then render no chip.
+ */
+export const BADGE_NAMES: (keyof NavBadges)[] = ["openOrders", "lowStock", "pendingReviews"];
+
+/**
  * The admin sidebar.
  *
  * Entirely driven by `admin/navigation.json` — adding a section is a data edit,

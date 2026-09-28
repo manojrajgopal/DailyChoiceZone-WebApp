@@ -1,6 +1,7 @@
 import type { BillingConfig } from "@/types";
 
 import { setCurrency } from "@/lib/money";
+import { pageCache } from "@/services/api/cache";
 import { apiGet, apiPut } from "@/services/api/client";
 
 /**
@@ -23,25 +24,27 @@ import { apiGet, apiPut } from "@/services/api/client";
  */
 
 /**
- * Read once per page load.
+ * Read once per page — see `pageCache`.
  *
  * It changes a handful of times a year and every invoice needs it, so fetching
  * it per render would be a request per document for a document that never
- * differs. `saveBillingConfig` clears it, so the settings page sees its own
- * change immediately.
+ * differs within one page.
  */
-let cached: Promise<BillingConfig> | null = null;
+const config = pageCache(() =>
+  apiGet<BillingConfig>("/site/billing-config").then(adopt),
+);
 
 export function getBillingConfig(): Promise<BillingConfig> {
-  cached ??= apiGet<BillingConfig>("/site/billing-config").then(adopt);
-  return cached;
+  return config.read();
 }
 
-export async function saveBillingConfig(config: BillingConfig): Promise<BillingConfig> {
+export async function saveBillingConfig(next: BillingConfig): Promise<BillingConfig> {
   const saved = adopt(
-    await apiPut<BillingConfig>("/admin/settings/billing", config, { auth: "admin" }),
+    await apiPut<BillingConfig>("/admin/settings/billing", next, { auth: "admin" }),
   );
-  cached = Promise.resolve(saved);
+  // Dropped rather than replaced: the settings page reloads after saving, and
+  // the next read should be the server's answer, not the payload we sent.
+  config.invalidate();
   return saved;
 }
 

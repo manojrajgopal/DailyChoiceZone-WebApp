@@ -1,6 +1,7 @@
 import {
   BadgePercent,
   Boxes,
+  Compass,
   CreditCard,
   FileBarChart,
   FileMinus,
@@ -8,6 +9,7 @@ import {
   Image as ImageIcon,
   LayoutDashboard,
   LayoutTemplate,
+  Palette,
   Package,
   Receipt,
   Settings,
@@ -20,12 +22,15 @@ import {
 } from "lucide-react";
 
 /**
- * Maps the icon names in `admin/navigation.json` to components.
+ * Maps the icon names in the sidebar document to components.
  *
- * The sidebar is data-driven, and JSON cannot hold a React component — so the
- * config names an icon and this is the one place that resolves it. Adding a nav
- * item means adding a line of JSON plus, if it needs a new glyph, one entry
- * here.
+ * The sidebar is data-driven, and an API cannot send a React component — so
+ * the document names an icon and this is the one place that resolves it.
+ *
+ * **These names are the whole vocabulary.** The navigation editor builds its
+ * icon dropdown from `ICON_NAMES` below, so nobody can save a name that has no
+ * glyph behind it. Adding a new one means one entry here, and it appears in
+ * the dropdown for free.
  */
 const ICONS = {
   dashboard: LayoutDashboard,
@@ -47,9 +52,15 @@ const ICONS = {
   payments: CreditCard,
   refunds: Undo2,
   creditNotes: FileMinus,
+  site: Palette,
+  content: FileText,
+  navigation: Compass,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;
+
+/** Every icon the sidebar can draw. The navigation editor offers exactly these. */
+export const ICON_NAMES = Object.keys(ICONS) as AdminIconName[];
 
 export function AdminIcon({
   name,

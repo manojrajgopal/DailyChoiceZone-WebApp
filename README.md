@@ -46,9 +46,9 @@ npm install
 npm run dev
 ```
 
-The API creates its database, migrates it and loads the demo data on first
-start — 139 products, 64 customers, 168 orders with their invoices, payments,
-refunds and credit notes. Nothing to import by hand.
+The API creates its database and migrates it on first start. **It loads no
+data** — a fresh installation is a configured store with an empty catalogue,
+which is what a real shop starts as.
 
 | | |
 |---|---|
@@ -57,15 +57,19 @@ refunds and credit notes. Nothing to import by hand.
 | API | <http://localhost:8000/api> |
 | API documentation | <http://localhost:8000/docs> |
 
-### Demo accounts
+### Getting in the first time
 
-| | Email | Password |
-|---|---|---|
-| Administrator | `admin@dailychoicezone.com` | `Admin@123` |
-| Customer | any seeded customer, e.g. `aditya.banerjee1@example.com` | `Customer@123` |
+Nobody is created for you. **The first account to register becomes the
+administrator.** Open the storefront, create an account, and that account can
+sign in at `/admin` as a super admin. Everyone who registers after them is an
+ordinary customer.
 
-Hashed with bcrypt like any other account. Change them before this is in front
-of anybody.
+The role is decided on the server from the state of the table, never from the
+request — details in [`backend/README.md`](backend/README.md#the-first-administrator).
+
+From there the portal fills the shop: products, categories, collections,
+coupons, banners, the homepage, the menus and every list either application
+renders.
 
 ### Scripts
 
@@ -81,8 +85,8 @@ of anybody.
 | Backend | |
 |---|---|
 | `uvicorn app.main:app --reload` | Development server |
-| `pytest` | The whole suite (258 tests) |
-| `python -m app.seed.reset --yes` | Rebuild the development database from the seed |
+| `pytest` | The whole suite (266 tests) |
+| `alembic upgrade head` | Apply migrations |
 | `alembic revision --autogenerate -m "…"` | New migration |
 
 ### Environment
@@ -163,7 +167,7 @@ backend/app/
 ├── services/             the business rules
 ├── api/routes/           HTTP only
 ├── dependencies/         who is calling, and what they may do
-└── seed/                 the demo data and its id translation
+└── config_defaults/      the configuration a fresh install starts with, once
 ```
 
 ### The seam between them
@@ -205,11 +209,23 @@ the same `ProductListing` component with a different `basePath`.
 administrator edits. `app/page.tsx` renders whatever the API describes. Adding a
 new *kind* of section means adding a case to `HomeSectionRenderer.tsx`.
 
-**Navigation is the one thing still in the repository**, in `src/config/`. Every
-entry names a route that has to exist in `src/app`, and the header renders on
-the first paint before any request has been made.
-[`src/config/README.md`](frontend/src/config/README.md) says why, and what would
-change if menus ever became something a non-developer edits.
+**Nothing in the frontend is a data file.** There is no JSON under `src`, and no
+component holds a list of business data. The menus, the states a delivery
+address can name, the contact form's topics, the delivery and payment methods
+on offer, the sort orders, the filter buckets, the FAQ, the size charts and
+every dropdown in the portal all come from `GET /api/site/content` and
+`GET /api/site/navigation`. Each of them was an array in a component; each of
+them is now something the store can change without a deployment.
+
+**And every one of them has a screen.** Settings → Site, Content and
+Navigation edit those documents directly: add a row, reorder it, remove it,
+save. Nothing has to be changed in a file to change what the shop shows.
+
+Two things stay in code, and neither is data: which icon a named entry draws
+(an API cannot send a React component, so the document names one and one map
+resolves it), and the permissions each admin role carries — that is policy the
+server enforces, and putting it somewhere an administrator could edit would let
+one grant themselves the right to grant permissions.
 
 **Route groups keep the two applications apart.** `app/(storefront)/` carries
 the customer header, promo strip and footer; `app/admin/(portal)/` carries the
@@ -306,9 +322,9 @@ it stops a signed-out visitor seeing a broken shell, and bypassing it reaches a
 portal with nothing in it, because every figure on every screen comes from a
 call that validates a token.
 
-The demo credentials are shown on the login page deliberately — the seeded
-database ships with one administrator, and a login form whose password nobody
-can discover is a locked door with no key. Change them before this is public.
+Nothing on the sign-in page names an account, because there is no account to
+name — the first person to register becomes the administrator, and after that
+the credentials are theirs.
 
 `/admin` is excluded from `robots.txt` and marked `noindex`, which keeps it out
 of search results. That is hygiene, not access control; the access control is
@@ -437,7 +453,8 @@ The properties, and where each is enforced. The backend README has the detail.
 | Gateway keys | Backend only. The frontend does not know which provider is in use |
 | Secrets | `.env`, never the bundle. No database password or JWT secret reaches the browser |
 | Errors | Driver messages and stack traces are logged, never returned — they describe your schema to whoever asked |
-| Production | Refuses to start with a default JWT secret, `DEBUG` on, wildcard CORS, or seeding enabled |
+| Roles | Assigned by the server on registration. The request cannot influence it |
+| Production | Refuses to start with a default JWT secret, `DEBUG` on, or wildcard CORS |
 | Migrations | Upgrade only. Nothing drops a table automatically |
 
 ---
@@ -459,29 +476,27 @@ The frontend is checked with `npm run typecheck` and `npm run lint`.
 
 ---
 
-## The demo data
+## There is no demo data
 
-`backend/app/seed/data/` holds the JSON the database is seeded from. It used to
-live in the frontend bundle; it lives there now because it is *seed* data, and
-the browser has no business shipping it.
+There used to be: a fabricated catalogue of 140 products, 434 reviews, 66
+customers and 176 orders with their invoices, payments and refunds — first as
+JSON in the frontend bundle, then as JSON in the backend's seed folder,
+reloaded on every boot. Along with the Node generators that produced it, the
+seeder that read it, and the reset tool that dropped tables to re-run it.
 
-The generators are in `backend/app/seed/generators/`:
+All of it is gone. The catalogue is whatever somebody has added through the
+portal, and a fresh database is empty.
 
-```bash
-node app/seed/generators/generate-products.mjs      # catalogue and reviews
-node app/seed/generators/generate-admin-data.mjs    # orders, customers, analytics
-node app/seed/generators/generate-billing-data.mjs  # invoices, payments, refunds
-node app/seed/generators/check-data.mjs             # validate all of it
-```
+The one thing a fresh install gets is **configuration**, because a store cannot
+price anything without a currency or decide a tax treatment without a
+registered state. It arrives once, from `backend/app/config_defaults/`,
+installed by a migration that inserts only what is missing — so running it
+against a configured store changes nothing. Every value in it has a screen in
+the portal.
 
-`check-data.mjs` does not merely confirm the files parse. It **re-derives every
-stored total from its own components** and fails if they disagree: lines against
-subtotal, apportioned discounts against the coupon, line tax against invoice
-tax, CGST + SGST + IGST against the total, and the whole breakdown against the
-grand total.
-
-Seeding is idempotent by primary key, so a restart neither duplicates anything
-nor overwrites a change made through the portal.
+Initial state, installed once and then owned by the database, is not the same
+thing as a dataset the application reads at runtime. The old seeder was the
+second kind.
 
 ### Dummy images
 
@@ -504,8 +519,8 @@ Honest about it in the UI rather than pretending:
   and real invoices. No parcel leaves anywhere.
 - **Forms do not send.** The contact form and newsletter confirm and clear.
 - **The tax figures are not a compliance calculation.** [Details](#tax).
-- **The demo credentials are public**, on purpose, and are the first thing to
-  change.
+- **There are no seeded accounts.** The first person to register is the
+  administrator; nothing ships with a password.
 
 ---
 

@@ -96,7 +96,11 @@ export function AuthPanel() {
           autoComplete={mode === "signin" ? "current-password" : "new-password"}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          hint="At least 6 characters."
+          // The rule the server enforces, stated where somebody is typing —
+          // a hint that undersells it is a rejection they did not expect.
+          hint={
+            mode === "register" ? "At least eight characters, with a letter and a number." : undefined
+          }
           required
         />
 

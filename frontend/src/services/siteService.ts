@@ -9,6 +9,7 @@ import type {
 
 import { setAnalyticsRanges } from "@/services/admin/analyticsAdminService";
 import { setSectionKinds } from "@/services/admin/homepageAdminService";
+import { pageCache } from "@/services/api/cache";
 import { apiGet } from "@/services/api/client";
 import { setPaymentMethodLabels } from "@/services/billing/paymentService";
 
@@ -48,20 +49,16 @@ export function getBanners(): Promise<PromoBanner[]> {
 /* ------------------------------------------------------------------ content */
 
 /**
- * Read once per page load.
+ * Read once per page — see `pageCache` for what that means on each side.
  *
  * Every form that needs a list of states, every dropdown in the portal and the
- * FAQ all read this, so a page can ask for it several times; the promise is
- * shared so they cost one request between them.
- *
- * Module state, which means it is per-request on the server and per-page in
- * the browser — never stale for longer than the page somebody is looking at.
+ * FAQ all read this, so a page asks for it several times and they cost one
+ * request between them.
  */
-let cached: Promise<SiteContent> | null = null;
+const content = pageCache(() => apiGet<SiteContent>("/site/content").then(adopt));
 
 export function getSiteContent(): Promise<SiteContent> {
-  cached ??= apiGet<SiteContent>("/site/content").then(adopt);
-  return cached;
+  return content.read();
 }
 
 /**
@@ -85,5 +82,5 @@ function adopt(content: SiteContent): SiteContent {
 
 /** Drop the cache, so the next read sees a change the portal just saved. */
 export function refreshSiteContent(): void {
-  cached = null;
+  content.invalidate();
 }

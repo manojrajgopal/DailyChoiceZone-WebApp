@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Power, ShieldAlert, Trash2 } from "lucide-react";
+import { Pencil, Plus, Power, ShieldCheck, Trash2 } from "lucide-react";
 
 import type { AdminRole, AdminUser } from "@/types/admin";
 
@@ -234,18 +234,18 @@ export function AdminUsersView() {
         }
       />
 
-      {/* ------------------------------------------------- security notice */}
-      <div className="mb-4 flex items-start gap-3 rounded-[3px] border border-[#fab219]/40 bg-[#fdf3dd] p-3.5">
-        <ShieldAlert
-          className="mt-0.5 h-4 w-4 shrink-0 text-[#8a5d00]"
+      {/* --------------------------------------------- how roles are applied */}
+      <div className="mb-4 flex items-start gap-3 rounded-[3px] border border-admin-border bg-admin-surface p-3.5">
+        <ShieldCheck
+          className="mt-0.5 h-4 w-4 shrink-0 text-admin-faint"
           strokeWidth={1.75}
           aria-hidden="true"
         />
-        <p className="text-xs leading-relaxed text-[#6b4900]">
-          <strong>Roles shape the interface, not access.</strong> Everything here runs in the
-          browser, so hiding a button does not protect the action behind it. Real role enforcement
-          belongs in the backend, and must be added before this portal is exposed to anyone outside
-          your team.
+        <p className="text-xs leading-relaxed text-admin-muted">
+          <strong className="text-admin-ink">A role is enforced by the server.</strong> Every
+          request from this portal carries the signed-in administrator&rsquo;s token, and the API
+          checks the role&rsquo;s permissions before it writes anything. What the interface hides
+          is a courtesy on top of that, not the check itself.
         </p>
       </div>
 

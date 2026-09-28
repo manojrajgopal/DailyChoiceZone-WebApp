@@ -10,6 +10,15 @@ const ICONS: Record<TrustIcon, React.ComponentType<{ className?: string; strokeW
 };
 
 /**
+ * The icons a trust point can name.
+ *
+ * Exported so the settings screen builds its dropdown from this map rather
+ * than from a second list — an icon offered there but missing here would save
+ * fine and then render nothing.
+ */
+export const TRUST_ICON_NAMES = Object.keys(ICONS) as TrustIcon[];
+
+/**
  * The reassurance strip: delivery, quality, returns and support.
  *
  * The icon tints reuse the logo's own trust badges — blush, sage and peach —

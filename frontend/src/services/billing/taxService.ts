@@ -1,6 +1,7 @@
 import type { Money, TaxBreakdown, TaxConfig, TaxMode } from "@/types";
 
 import { percentOf, taxIncludedIn } from "@/lib/money";
+import { pageCache } from "@/services/api/cache";
 import { apiGet, apiPut } from "@/services/api/client";
 
 /**
@@ -24,17 +25,16 @@ import { apiGet, apiPut } from "@/services/api/client";
  * belong with professional advice.
  */
 
-/** Read once per page load; `saveTaxConfig` refreshes it. */
-let cached: Promise<TaxConfig> | null = null;
+/** Read once per page — see `pageCache`. */
+const config = pageCache(() => apiGet<TaxConfig>("/site/tax-config"));
 
 export function getTaxConfig(): Promise<TaxConfig> {
-  cached ??= apiGet<TaxConfig>("/site/tax-config");
-  return cached;
+  return config.read();
 }
 
-export async function saveTaxConfig(config: TaxConfig): Promise<TaxConfig> {
-  const saved = await apiPut<TaxConfig>("/admin/settings/tax", config, { auth: "admin" });
-  cached = Promise.resolve(saved);
+export async function saveTaxConfig(next: TaxConfig): Promise<TaxConfig> {
+  const saved = await apiPut<TaxConfig>("/admin/settings/tax", next, { auth: "admin" });
+  config.invalidate();
   return saved;
 }
 
