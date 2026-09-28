@@ -399,7 +399,11 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
                 label="URL slug"
                 value={draft.slug}
                 onChange={(event) => set("slug", event.target.value)}
-                hint={`Storefront URL: /product/${draft.slug || slugify(draft.name) || "…"}`}
+                hint={
+                  draft.id
+                    ? `Storefront URL: /product/${draft.id} — the slug redirects to it`
+                    : "The storefront addresses products by id; the slug redirects to it."
+                }
                 className="sm:col-span-2"
               />
 

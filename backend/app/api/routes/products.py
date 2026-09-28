@@ -110,29 +110,25 @@ def get_facets(query: ProductQuery = Depends(_query), db: Session = Depends(get_
     return ok(ProductFacets(**facets).model_dump(by_alias=True))
 
 
-@router.get("/slug/{slug}", summary="Get a product by its URL slug")
-def get_by_slug(slug: str, db: Session = Depends(get_db)):
+@router.get("/{identifier}", summary="Get a product by id or slug")
+def get_product(identifier: str, db: Session = Depends(get_db)):
     """
-    The storefront routes by slug (`/product/wool-blend-overcoat`), so it needs
-    to resolve one. A separate path rather than a query parameter, because this
-    is still a single-resource lookup — just by a different natural key.
+    `GET /api/products/PRD001`, and `GET /api/products/wool-blend-overcoat`.
+
+    One route for one resource. The storefront addresses products by id, which
+    is the identifier that survives a rename; the slug still resolves so that a
+    link shared before the change, or a hand-typed URL, reaches the product
+    rather than a 404.
     """
-    product = service.get_product_by_slug(db, slug)
+    product = service.get_product_by_identifier(db, identifier)
     return ok(ProductOut.from_model(product).model_dump(by_alias=True))
 
 
-@router.get("/{product_id}", summary="Get a product by id")
-def get_product(product_id: str, db: Session = Depends(get_db)):
-    """`GET /api/products/PRD001`."""
-    product = service.get_product(db, product_id, published_only=True)
-    return ok(ProductOut.from_model(product).model_dump(by_alias=True))
-
-
-@router.get("/{product_id}/related", summary="Products to look at next")
-def get_related(product_id: str, limit: int = Query(6, ge=1, le=24), db: Session = Depends(get_db)):
+@router.get("/{identifier}/related", summary="Products to look at next")
+def get_related(identifier: str, limit: int = Query(6, ge=1, le=24), db: Session = Depends(get_db)):
     from app.repositories import products as repo
 
-    product = service.get_product(db, product_id, published_only=True)
+    product = service.get_product_by_identifier(db, identifier)
     related = repo.get_related(db, product, limit)
     return ok_list([ProductOut.from_model(p).model_dump(by_alias=True) for p in related])
 

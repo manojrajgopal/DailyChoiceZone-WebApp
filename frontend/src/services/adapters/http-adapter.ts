@@ -71,8 +71,8 @@ export const httpAdapter: DataSource = {
     };
   },
 
-  getProductBySlug(slug: string): Promise<Product | null> {
-    return apiGetOrNull<Product>(`/products/slug/${encodeURIComponent(slug)}`);
+  getProduct(idOrSlug: string): Promise<Product | null> {
+    return apiGetOrNull<Product>(`/products/${encodeURIComponent(idOrSlug)}`);
   },
 
   async getProductsByIds(ids: string[]): Promise<Product[]> {

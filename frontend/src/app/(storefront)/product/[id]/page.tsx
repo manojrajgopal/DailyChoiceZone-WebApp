@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ProductGallery } from "@/components/products/ProductGallery";
@@ -9,32 +9,48 @@ import { ProductReviews } from "@/components/products/ProductReviews";
 import { RecentlyViewedRail } from "@/components/products/RecentlyViewedRail";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Tabs } from "@/components/ui/Tabs";
-import { getProductBySlug, getRelatedProducts } from "@/services/productService";
+import { getProduct, getRelatedProducts } from "@/services/productService";
 import { getReviewSummary, getReviews } from "@/services/reviewService";
 import { getSiteConfig } from "@/services/siteService";
 import { formatPrice, humanize } from "@/lib/utils/format";
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ id: string }>;
 }
 
 /**
- * Rendered per request.
+ * Rendered per request, and addressed by id.
  *
- * The catalogue is a live database now, so the set of valid slugs is not
- * something a build can know: a product added this morning has to work this
- * morning. These pages used to be pre-rendered from bundled JSON with
+ * ## Why the id and not the slug
+ *
+ * `/product/PRD113` identifies the product; `/product/woven-webbing-belt`
+ * identifies what it was *called* when the link was made. Renaming a product
+ * in the portal changes its slug, and every link anybody had saved — a
+ * customer's bookmark, a message to a friend, an indexed search result —
+ * stopped working. The id never changes.
+ *
+ * A slug still resolves, because the server answers to either, and this page
+ * redirects it to the id URL, so an old link keeps working and a person ends up
+ * on the canonical address. The redirect is issued from the render, which for a
+ * streamed page means the browser follows it rather than receiving a 308 status
+ * — so `alternates.canonical` above names the id URL as well, and that is what
+ * tells a crawler which of the two to index.
+ *
+ * ## Why it is not pre-rendered
+ *
+ * The catalogue is a live database, so the set of valid products is not
+ * something a build can know: one added this morning has to work this morning.
+ * These pages used to be pre-rendered from bundled JSON with
  * `dynamicParams = false`, which returned a real 404 for anything unlisted —
- * correct then, and exactly wrong now, because it would 404 every product
- * added since the last deploy.
+ * correct then, and exactly wrong now.
  *
  * `notFound()` below still produces a genuine 404 status, which is what stops
- * unknown slugs becoming indexable soft-404s.
+ * unknown URLs becoming indexable soft-404s.
  */
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const { id } = await params;
+  const product = await getProduct(id);
 
   if (!product) return { title: "Product not found" };
 
@@ -44,7 +60,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
-    alternates: { canonical: `/product/${product.slug}` },
+    alternates: { canonical: `/product/${product.id}` },
     openGraph: {
       type: "website",
       title,
@@ -61,10 +77,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function ProductPage({ params }: PageProps) {
-  const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const { id } = await params;
+  const product = await getProduct(id);
 
   if (!product) notFound();
+
+  // Reached by an old slug link: send them to the canonical address.
+  if (product.id !== id) permanentRedirect(`/product/${product.id}`);
 
   const [related, reviews, summary, config] = await Promise.all([
     getRelatedProducts(product.id, 6),

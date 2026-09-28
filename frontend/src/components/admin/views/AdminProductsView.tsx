@@ -294,7 +294,7 @@ export function AdminProductsView() {
             a page — which is what the disabled state here used to cover.
           */}
           <Link
-            href={`/product/${product.slug}`}
+            href={`/product/${product.id}`}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`View ${product.name} on the storefront`}

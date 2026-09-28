@@ -37,8 +37,15 @@ export async function getAllProducts(): Promise<Product[]> {
   return all;
 }
 
-export function getProductBySlug(slug: string): Promise<Product | null> {
-  return dataSource.getProductBySlug(slug);
+/**
+ * One product, by id.
+ *
+ * A slug resolves too — the server answers to either — which is what keeps a
+ * link shared before the storefront moved to ids working. The detail page
+ * redirects such a URL to the canonical one.
+ */
+export function getProduct(idOrSlug: string): Promise<Product | null> {
+  return dataSource.getProduct(idOrSlug);
 }
 
 export function getProductsByIds(ids: string[]): Promise<Product[]> {

@@ -61,7 +61,7 @@ export function ProductCard({
         {/* ---------------------------------------------------------- media */}
         <div className="relative overflow-hidden bg-cream-deep">
           <Link
-            href={`/product/${product.slug}`}
+            href={`/product/${product.id}`}
             className="block focus-visible:outline-offset-4"
             tabIndex={-1}
             aria-hidden="true"
@@ -170,7 +170,7 @@ export function ProductCard({
           <h3 className="text-[0.9375rem] leading-snug text-ink">
             {/* The one real link — its text is the accessible name for the card. */}
             <Link
-              href={`/product/${product.slug}`}
+              href={`/product/${product.id}`}
               className="transition-colors hover:text-copper-700"
             >
               {/* Stretches the link's hit area over the whole card. */}

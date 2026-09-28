@@ -108,6 +108,16 @@ def get_product_by_slug(db: Session, slug: str, *, published_only: bool = True) 
     return product
 
 
+def get_product_by_identifier(
+    db: Session, identifier: str, *, published_only: bool = True
+) -> Product:
+    """By id or by slug — see `repo.get_by_identifier`."""
+    product = repo.get_by_identifier(db, identifier, published_only=published_only)
+    if product is None:
+        raise NotFoundError(f"No product '{identifier}'.", error_code="PRODUCT_NOT_FOUND")
+    return product
+
+
 # ---------------------------------------------------------------- writing
 
 

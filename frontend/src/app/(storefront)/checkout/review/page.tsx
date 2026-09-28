@@ -168,7 +168,7 @@ export default function CheckoutReviewPage() {
           <ul className="mt-4 flex flex-col divide-y divide-ink-100">
             {lines.map((line) => (
               <li key={line.lineId} className="flex items-center gap-3.5 py-3 first:pt-0">
-                <Link href={`/product/${line.product.slug}`} className="shrink-0" tabIndex={-1}>
+                <Link href={`/product/${line.product.id}`} className="shrink-0" tabIndex={-1}>
                   <ProductImage
                     src={line.product.images[0]}
                     alt=""

@@ -155,7 +155,7 @@ function SearchBody({ onClose }: { onClose: () => void }) {
                 {suggestions.products.map((product) => (
                   <li key={product.id}>
                     <Link
-                      href={`/product/${product.slug}`}
+                      href={`/product/${product.id}`}
                       onClick={onClose}
                       className="flex items-center gap-3.5 py-2.5 transition-colors hover:bg-cream-deep"
                     >

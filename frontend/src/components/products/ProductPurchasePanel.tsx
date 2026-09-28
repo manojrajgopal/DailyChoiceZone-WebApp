@@ -11,6 +11,7 @@ import { ColorPicker, QuantityStepper, SizePicker } from "@/components/common/Va
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Price } from "@/components/ui/Price";
+import { ShareButton } from "@/components/products/ShareButton";
 import { Rating } from "@/components/ui/Rating";
 import { useAddToCart } from "@/hooks/useCart";
 import { useHydrated } from "@/hooks/useHydrated";
@@ -233,6 +234,11 @@ export function ProductPurchasePanel({
             {isWishlisted ? "Saved to wishlist" : "Save to wishlist"}
           </span>
         </Button>
+
+        <ShareButton
+          title={product.name}
+          text={`${product.name} by ${product.brand} — ${formatPrice(product.price)}`}
+        />
       </div>
 
       {/* ---------------------------------------------- delivery and returns */}

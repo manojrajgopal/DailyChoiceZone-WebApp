@@ -188,7 +188,7 @@ function OrderSuccess() {
                 key={`${line.productId}-${line.size ?? ""}-${index}`}
                 className="flex items-center gap-3.5 py-3 first:pt-0"
               >
-                <Link href={`/product/${line.slug}`} className="shrink-0" tabIndex={-1}>
+                <Link href={`/product/${line.productId}`} className="shrink-0" tabIndex={-1}>
                   <ProductImage
                     src={line.image}
                     alt=""
@@ -200,7 +200,7 @@ function OrderSuccess() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-ink">
                     <Link
-                      href={`/product/${line.slug}`}
+                      href={`/product/${line.productId}`}
                       className="transition-colors hover:text-copper-700"
                     >
                       {line.name}

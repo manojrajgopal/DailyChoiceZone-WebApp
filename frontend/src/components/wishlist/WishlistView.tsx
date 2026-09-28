@@ -66,7 +66,7 @@ export function WishlistView() {
                 key={product.id}
                 className="flex gap-4 rounded-card border border-ink-200 bg-shell p-4"
               >
-                <Link href={`/product/${product.slug}`} className="shrink-0" tabIndex={-1} aria-hidden="true">
+                <Link href={`/product/${product.id}`} className="shrink-0" tabIndex={-1} aria-hidden="true">
                   <ProductImage
                     src={product.images[0]}
                     alt=""
@@ -80,7 +80,7 @@ export function WishlistView() {
 
                   <h2 className="mt-1 text-sm leading-snug text-ink">
                     <Link
-                      href={`/product/${product.slug}`}
+                      href={`/product/${product.id}`}
                       className="transition-colors hover:text-copper-700"
                     >
                       {product.name}
@@ -115,7 +115,7 @@ export function WishlistView() {
                       // Picking a size on someone's behalf would be worse than
                       // sending them one click onward to choose it themselves.
                       <ButtonLink
-                        href={`/product/${product.slug}`}
+                        href={`/product/${product.id}`}
                         size="sm"
                         variant="outline"
                         className="flex-1"

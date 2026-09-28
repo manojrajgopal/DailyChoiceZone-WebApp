@@ -196,7 +196,7 @@ function QuickViewBody({ product, onClose }: { product: Product; onClose: () => 
           </div>
 
           <Link
-            href={`/product/${product.slug}`}
+            href={`/product/${product.id}`}
             onClick={onClose}
             className="group mt-4 inline-flex items-center gap-1.5 self-start border-b border-ink pb-0.5 label-wide text-ink transition-colors hover:border-copper-600 hover:text-copper-700"
           >

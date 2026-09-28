@@ -27,7 +27,7 @@ class TestListing:
         """PRD004 is a draft. The storefront must not be able to see it at all."""
         assert "PRD004" not in ids(client.get("/api/products"))
         assert client.get("/api/products/PRD004").status_code == 404
-        assert client.get("/api/products/slug/draft-jacket").status_code == 404
+        assert client.get("/api/products/draft-jacket").status_code == 404
 
     def test_the_envelope_carries_pagination(self, client, catalogue):
         body = client.get("/api/products?page=1&pageSize=2").json()
@@ -120,9 +120,28 @@ class TestSingleProduct:
         assert response.status_code == 200
         assert response.json()["data"]["slug"] == "cotton-kurta"
 
-    def test_by_slug(self, client, catalogue):
-        response = client.get("/api/products/slug/cotton-kurta")
+    def test_by_slug_on_the_same_route(self, client, catalogue):
+        """
+        One route, two natural keys.
+
+        The storefront addresses products by id; a slug still resolves so that
+        a link shared before that change reaches the product.
+        """
+        response = client.get("/api/products/cotton-kurta")
         assert response.json()["data"]["id"] == "PRD001"
+
+    def test_related_answers_to_either(self, client, catalogue):
+        by_id = client.get("/api/products/PRD001/related")
+        by_slug = client.get("/api/products/cotton-kurta/related")
+
+        assert by_id.status_code == 200
+        assert by_slug.status_code == 200
+        assert [p["id"] for p in by_id.json()["data"]] == [
+            p["id"] for p in by_slug.json()["data"]
+        ]
+
+    def test_an_unknown_slug_is_a_404(self, client, catalogue):
+        assert client.get("/api/products/no-such-thing").status_code == 404
 
     def test_an_unknown_id_is_a_404_with_a_code(self, client, catalogue):
         response = client.get("/api/products/PRD999")

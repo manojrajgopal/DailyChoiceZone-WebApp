@@ -35,7 +35,7 @@ export function CartLineRow({
   return (
     <li className="flex gap-4 py-5">
       <Link
-        href={`/product/${product.slug}`}
+        href={`/product/${product.id}`}
         className="shrink-0"
         aria-label={product.name}
         tabIndex={-1}
@@ -53,7 +53,7 @@ export function CartLineRow({
           <div className="min-w-0">
             <p className="label-wide text-ink-400">{humanize(product.subcategory)}</p>
             <h3 className="mt-1 text-[0.9375rem] leading-snug text-ink">
-              <Link href={`/product/${product.slug}`} className="transition-colors hover:text-copper-700">
+              <Link href={`/product/${product.id}`} className="transition-colors hover:text-copper-700">
                 {product.name}
               </Link>
             </h3>

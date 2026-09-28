@@ -281,11 +281,27 @@ administrator changing a price would have needed a redeploy before anyone saw
 it, and pages that depend on who is asking would have had nothing to render on
 the server at all.
 
-So `/product/[slug]`, `/category/[slug]` and `/collection/[slug]` are rendered
-on demand rather than enumerated at build time. A product published this morning
-works this morning, and `notFound()` still returns a genuine 404 for a slug that
-does not exist — which is what stops unknown URLs becoming indexable soft-404s.
-The sitemap is generated per request for the same reason.
+So `/product/[id]`, `/category/[slug]` and `/collection/[slug]` are rendered on
+demand rather than enumerated at build time. A product published this morning
+works this morning, and `notFound()` renders the not-found page for anything
+that does not exist. The sitemap is generated per request for the same reason.
+
+### Products are addressed by id
+
+`/product/PRD118`, not `/product/woven-webbing-belt`. The id identifies the
+product; the slug identifies what it was *called* when the link was made.
+Renaming a product in the portal changes its slug, and every link anybody had
+saved — a bookmark, a message to a friend, an indexed result — stopped working.
+
+The slug has not gone away. It is still an editable SEO field, and
+`GET /api/products/{identifier}` answers to either key, so an old link resolves;
+the page then redirects it to the id URL, and `alternates.canonical` names the
+id URL so a crawler knows which of the two to index. `GET /api/products/slug/…`
+is gone, folded into the one route — one resource, one route, the same rule
+categories and orders already follow.
+
+Every link in both applications is built from `product.id`, including the
+sitemap and the cart, order and wishlist rows, which have a `productId` to hand.
 
 ### What a page is allowed to ask for
 

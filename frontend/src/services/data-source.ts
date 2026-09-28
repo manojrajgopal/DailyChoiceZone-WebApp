@@ -22,7 +22,7 @@ import type {
  * eventually back it, so the swap is an adapter change and nothing more:
  *
  *   queryProducts      →  GET  /products?category=&sort=&page=
- *   getProductBySlug   →  GET  /products/:slug
+ *   getProduct         →  GET  /products/:idOrSlug
  *   getProductsByIds   →  GET  /products?ids=a,b,c
  *   getRelatedProducts →  GET  /products/:id/related
  *   getFacets          →  GET  /products/facets
@@ -39,8 +39,13 @@ import type {
 export interface DataSource {
   /** Filter, sort and paginate the catalogue. */
   queryProducts(query: ProductQuery): Promise<Paginated<Product>>;
-  /** A single product, or `null` when no such slug exists. */
-  getProductBySlug(slug: string): Promise<Product | null>;
+  /**
+   * A single product, or `null` when there is no such product.
+   *
+   * Addressed by id. A slug still resolves, so a link shared before the
+   * storefront moved to ids reaches the product rather than a 404.
+   */
+  getProduct(idOrSlug: string): Promise<Product | null>;
   /** Resolve ids to products. Order follows the ids given; unknown ids drop. */
   getProductsByIds(ids: string[]): Promise<Product[]>;
   /** Similar products for a detail page. */

@@ -215,6 +215,32 @@ def get_by_slug(db: Session, slug: str, *, published_only: bool = True) -> Optio
     return db.execute(statement).unique().scalar_one_or_none()
 
 
+def get_by_identifier(
+    db: Session, identifier: str, *, published_only: bool = True
+) -> Optional[Product]:
+    """
+    Resolve `PRD001` or `wool-blend-overcoat`, whichever was asked for.
+
+    Both are natural keys for the same row, so both belong on the same route —
+    the same reasoning as categories and orders, which each answer to an id or
+    to the reference a person actually has to hand. Id first: it is the
+    canonical one, and a slug cannot collide with it because slugs are
+    lower-case and ids are not.
+    """
+    statement = _with_relations(
+        select(Product).where((Product.id == identifier) | (Product.slug == identifier))
+    )
+    if published_only:
+        statement = statement.where(Product.status.in_(PUBLISHED_STATUSES))
+
+    rows = db.execute(statement).unique().scalars().all()
+    if not rows:
+        return None
+
+    # An exact id match wins, in the pathological case that a slug equals one.
+    return next((row for row in rows if row.id == identifier), rows[0])
+
+
 def get_many(db: Session, ids: Sequence[str], *, published_only: bool = True) -> List[Product]:
     """
     Resolve ids to products, **in the order asked for**.
