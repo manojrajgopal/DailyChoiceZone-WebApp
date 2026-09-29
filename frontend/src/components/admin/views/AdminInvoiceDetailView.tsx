@@ -116,8 +116,7 @@ function AdminInvoiceDetail() {
         />
         <AdminCard>
           <p className="py-10 text-center text-sm text-admin-muted">
-            No invoice with that reference. It may have been raised in a different browser —
-            billing records are stored locally.
+            No invoice with that reference. It may have been removed, or the link may be out of date.
           </p>
         </AdminCard>
       </div>
@@ -172,7 +171,7 @@ function AdminInvoiceDetail() {
             // No mail is sent and none can be: there is no server to send it.
             // Saying so is better than a button that pretends.
             toast.info(
-              `Sending is not wired up yet — it needs a backend. ${invoice.customerEmail} would receive this invoice.`,
+              `Emailing invoices isn't available yet. Download or print it to share with ${invoice.customerEmail}.`,
             )
           }
         >

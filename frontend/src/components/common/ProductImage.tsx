@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useState } from "react";
 
-import { mediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils/cn";
 
 export interface ProductImageProps {
@@ -40,8 +39,7 @@ export function ProductImage({
   style,
 }: ProductImageProps) {
   const [failed, setFailed] = useState(false);
-  const resolved = mediaUrl(src);
-  const showFallback = !resolved || failed;
+  const showFallback = !src || failed;
 
   return (
     <span
@@ -65,7 +63,7 @@ export function ProductImage({
         </span>
       ) : (
         <Image
-          src={resolved!}
+          src={src!}
           alt={alt}
           fill
           sizes={sizes}

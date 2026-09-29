@@ -60,7 +60,11 @@ export async function apiImageSrc(path: string): Promise<string> {
   if (!Object.keys(TUNNEL_HEADERS).length) return url;
 
   try {
-    const response = await fetch(url, { headers: TUNNEL_HEADERS, cache: "no-store" });
+    const response = await fetch(url, {
+      headers: TUNNEL_HEADERS,
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
     if (!response.ok) return url;
     return URL.createObjectURL(await response.blob());
   } catch {
@@ -153,7 +157,25 @@ export interface RequestOptions {
   cache?: RequestCache;
   revalidate?: number;
   signal?: AbortSignal;
+  /** How long to wait before giving up, in ms. Defaults to `REQUEST_TIMEOUT_MS`. */
+  timeoutMs?: number;
 }
+
+/**
+ * How long any request may take before it is abandoned.
+ *
+ * Without a limit, a server that accepts the connection and never answers
+ * leaves a spinner turning forever. 20 seconds by default — far beyond a
+ * healthy response — and `NEXT_PUBLIC_API_TIMEOUT_MS` to change it. File
+ * uploads get longer, since the time is spent sending the file.
+ */
+export const REQUEST_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS) || 20_000;
+export const UPLOAD_TIMEOUT_MS = Math.max(REQUEST_TIMEOUT_MS, 60_000);
+
+const TIMEOUT_MESSAGE =
+  "This is taking longer than expected. Please check your connection and try again.";
+const OFFLINE_MESSAGE =
+  "We couldn't connect just now. Please check your internet connection and try again.";
 
 async function request<T>(
   method: string,
@@ -173,11 +195,30 @@ async function request<T>(
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
+  // One controller for both reasons a request can stop: the caller's own
+  // signal (a component unmounting) and the clock running out.
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(
+    () => {
+      timedOut = true;
+      controller.abort();
+    },
+    options.timeoutMs ?? (isForm ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS),
+  );
+  const onCallerAbort = () => controller.abort();
+  if (options.signal?.aborted) controller.abort();
+  else options.signal?.addEventListener("abort", onCallerAbort, { once: true });
+  const finish = () => {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onCallerAbort);
+  };
+
   const init: RequestInit & { next?: { revalidate: number } } = {
     method,
     headers,
     body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
-    signal: options.signal,
+    signal: controller.signal,
   };
 
   /**
@@ -194,6 +235,7 @@ async function request<T>(
   try {
     response = await fetch(`${BASE_URL}${path}`, init);
   } catch (error) {
+    finish();
     /**
      * Let Next's own signals through.
      *
@@ -205,30 +247,34 @@ async function request<T>(
      */
     if (typeof (error as { digest?: unknown })?.digest === "string") throw error;
 
-    // A network failure is not a 500 from the API — saying so helps whoever
-    // is looking at it, usually because the backend is not running.
-    throw new ApiError(
-      "Could not reach the server. Is the API running?",
-      0,
-      "NETWORK_ERROR",
-      error,
-    );
+    if (timedOut) throw new ApiError(TIMEOUT_MESSAGE, 0, "TIMEOUT", error);
+    // Stopped by the caller, not by us: pass it on untouched.
+    if (options.signal?.aborted) throw error;
+
+    // No answer at all — offline, or the service is unreachable.
+    throw new ApiError(OFFLINE_MESSAGE, 0, "NETWORK_ERROR", error);
   }
 
+  // The clock keeps running while the body arrives: a response that starts
+  // and then stalls is as stuck as one that never starts.
   let payload: Envelope<T>;
   try {
     payload = (await response.json()) as Envelope<T>;
-  } catch {
+  } catch (error) {
+    if (timedOut) throw new ApiError(TIMEOUT_MESSAGE, 0, "TIMEOUT", error);
+    if (options.signal?.aborted) throw error;
     throw new ApiError(
-      `The server returned ${response.status} with no readable body.`,
+      "Something went wrong on our side. Please try again in a moment.",
       response.status,
       "BAD_RESPONSE",
     );
+  } finally {
+    finish();
   }
 
   if (!response.ok || payload.success === false) {
     throw new ApiError(
-      payload.message ?? `Request failed with ${response.status}.`,
+      payload.message ?? "Something went wrong. Please try again.",
       response.status,
       payload.error_code ?? "REQUEST_FAILED",
       payload.details,

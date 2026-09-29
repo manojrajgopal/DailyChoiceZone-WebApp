@@ -86,7 +86,7 @@ export default async function ShippingPage() {
         <h2>Missed deliveries</h2>
         <p>
           Couriers attempt delivery up to three times. After a third failed attempt the parcel
-          returns to us and we refund in full, minus nothing. If you know you will be away, reply
+          returns to us and we refund you in full. If you know you will be away, reply
           to the dispatch email and we will ask the courier to hold it.
         </p>
       </section>

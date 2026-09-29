@@ -51,7 +51,7 @@ export function WishlistView() {
       ) : isEmpty ? (
         <EmptyState
           title="Nothing saved yet"
-          description="Tap the heart on any product to keep it here for later. Saved items stay in this browser."
+          description="Tap the heart on any product to keep it here for later. Sign in to keep your wishlist on every device."
           action={{ label: "Find something you like", href: "/shop" }}
           className="mt-4"
         />

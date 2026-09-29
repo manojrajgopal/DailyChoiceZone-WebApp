@@ -1,9 +1,8 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ImagePlus, Plus, Upload, X } from "lucide-react";
 
-import { mediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -436,7 +435,7 @@ export function ImageListInput({
   values,
   onChange,
   error,
-  hint = "Upload photos or paste an image URL. The first image is the one shown on product cards.",
+  hint,
 }: {
   label: string;
   values: string[];
@@ -448,6 +447,27 @@ export function ImageListInput({
   const [uploading, setUploading] = useState(0);
   const [uploadError, setUploadError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Uploading is available only when cloud storage is set up on the server;
+  // until then this is a link field. `null` while we ask.
+  const [canUpload, setCanUpload] = useState<boolean | null>(null);
+  useEffect(() => {
+    let active = true;
+    void import("@/services/admin/productAdminService")
+      .then(({ photoUploadAvailable }) => photoUploadAvailable())
+      .then((enabled) => {
+        if (active) setCanUpload(enabled);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const helpText =
+    hint ??
+    (canUpload
+      ? "Upload photos or paste an image link. The first photo is the one shown on product cards."
+      : "Paste an image link (https://…). The first photo is the one shown on product cards.");
 
   const upload = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -488,7 +508,7 @@ export function ImageListInput({
   };
 
   return (
-    <Field label={label} error={error || uploadError || undefined} hint={hint}>
+    <Field label={label} error={error || uploadError || undefined} hint={helpText}>
       {({ id }) => (
         <div>
           <div className="flex flex-wrap gap-2">
@@ -504,12 +524,22 @@ export function ImageListInput({
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
-              disabled={uploading > 0}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[3px] bg-admin-ink px-3 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              disabled={!canUpload || uploading > 0}
+              title={
+                canUpload === false
+                  ? "Photo upload becomes available once cloud storage is connected for your store."
+                  : undefined
+              }
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[3px] bg-admin-ink px-3 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Upload className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
               {uploading > 0 ? `Uploading ${uploading}…` : "Upload photos"}
             </button>
+            {canUpload === false ? (
+              <p className="self-center text-[0.6875rem] text-admin-muted">
+                Photo upload isn&rsquo;t switched on yet — paste an image link below.
+              </p>
+            ) : null}
           </div>
           <div className="mt-2 flex gap-2">
             <input
@@ -546,7 +576,7 @@ export function ImageListInput({
                         next/image would reject any host not in remotePatterns. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={mediaUrl(url)}
+                      src={url}
                       alt={`${label} ${index + 1}`}
                       className="h-full w-full object-cover"
                     />

@@ -8,10 +8,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import all_routers
-from app.api.routes.admin.uploads import upload_root
 from app.core.config import settings
 from app.core.errors import register_error_handlers
 from app.core.startup import prepare_database
@@ -96,10 +94,6 @@ register_error_handlers(app)
 
 for router in all_routers:
     app.include_router(router, prefix=settings.API_PREFIX)
-
-# Uploaded product photographs, read-only. Every file here was re-encoded by
-# `routes/admin/uploads.py`; nothing an uploader sent is served as sent.
-app.mount("/uploads", StaticFiles(directory=upload_root()), name="uploads")
 
 
 @app.get("/health", tags=["Health"], summary="Liveness and database check")

@@ -36,6 +36,9 @@ python-multipart==0.0.20
 # by a camera — see `app/services/payments/qr_image.py`.
 pillow==12.3.0
 
+# File storage (Amazon S3) — see app/services/storage.py
+boto3==1.40.76
+
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.25.0

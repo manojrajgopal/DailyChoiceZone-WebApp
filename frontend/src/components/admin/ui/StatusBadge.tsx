@@ -98,8 +98,22 @@ const GENERIC_TONES: Record<string, Tone> = {
   blocked: "critical",
 };
 
-/** Turn a kebab-case status into something readable. */
+/** Statuses whose plain spelling would read awkwardly, e.g. "Cod pending". */
+const STATUS_LABELS: Record<string, string> = {
+  "cod-pending": "Cash on delivery due",
+  "partially-refunded": "Partly refunded",
+  "out-for-delivery": "Out for delivery",
+  "in-transit": "In transit",
+  "out-of-stock": "Out of stock",
+  "low-stock": "Low stock",
+  "in-stock": "In stock",
+  "replacement-shipped": "Replacement shipped",
+  "picked-up": "Picked up",
+};
+
+/** Turn a status code into something readable. */
 export function humanStatus(status: string): string {
+  if (STATUS_LABELS[status]) return STATUS_LABELS[status];
   const spaced = status.replace(/-/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

@@ -68,9 +68,32 @@ def navigation(db: Session) -> list:
     return _document(db, "navigation").get("items", [])
 
 
+RETURNS_NAV_ITEM = {
+    "id": "returns",
+    "label": "Returns",
+    "href": "/admin/returns",
+    "icon": "refunds",
+    "badge": "openReturns",
+}
+
+
 def admin_navigation(db: Session) -> list:
-    """The portal's sidebar, grouped."""
-    return _document(db, "admin_navigation").get("groups", [])
+    """
+    The portal's sidebar, grouped.
+
+    A sidebar saved before returns existed has no link to them; one is placed
+    after Orders in what is served — the saved document is left as it is.
+    """
+    groups = _document(db, "admin_navigation").get("groups", [])
+    hrefs = {item.get("href") for group in groups for item in group.get("items", [])}
+    if "/admin/returns" not in hrefs:
+        for group in groups:
+            items = group.get("items", [])
+            at = next((i for i, item in enumerate(items) if item.get("href") == "/admin/orders"), None)
+            if at is not None:
+                group["items"] = items[: at + 1] + [dict(RETURNS_NAV_ITEM)] + items[at + 1 :]
+                break
+    return groups
 
 
 def site_config(db: Session) -> dict:

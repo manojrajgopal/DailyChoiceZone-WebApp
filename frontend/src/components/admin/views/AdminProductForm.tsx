@@ -76,6 +76,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
       description: product.description, material: product.material, tags: product.tags,
       isNew: product.isNew, isTrending: product.isTrending,
       isBestSeller: product.isBestSeller, isFeatured: product.isFeatured,
+      isReturnable: product.isReturnable ?? true, isReplaceable: product.isReplaceable ?? true,
       stock: product.stock, sku: product.sku, care: product.care,
       specifications: product.specifications,
       status: product.status, lowStockThreshold: product.lowStockThreshold,
@@ -161,7 +162,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
         />
         <div className="rounded-[3px] border border-admin-border bg-admin-surface p-8 text-center">
           <p className="text-sm text-admin-ink">
-            We could not find a product with the id <code>{productId || "(none)"}</code>.
+            We couldn&rsquo;t find this product. It may have been deleted.
           </p>
           <p className="mt-1.5 text-xs text-admin-muted">
             It may have been deleted, or the link may be out of date.
@@ -320,8 +321,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
             </FormGrid>
 
             <p className="mt-3 rounded-[3px] bg-admin-raised px-3 py-2 text-[0.6875rem] text-admin-muted">
-              The discount badge is calculated from these two prices, never typed in — so what the
-              shopper sees always matches the arithmetic.
+              The discount shown to shoppers is worked out from these two prices.
               {draft.originalPrice > draft.price ? (
                 <strong className="ml-1 text-admin-ink">
                   This will show {Math.floor(((draft.originalPrice - draft.price) / draft.originalPrice) * 100)}% off.
@@ -363,7 +363,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
           {/* ------------------------------------------------------ variants */}
           <FormSection
             title="Variants"
-            description="Leave sizes empty for products where size is meaningless."
+            description="Leave sizes empty for one-size products."
           >
             <div className="flex flex-col gap-4">
               <TagListInput
@@ -410,19 +410,19 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
           <FormSection title="Search engine listing" description="How this appears in results.">
             <FormGrid>
               <AdminInput
-                label="URL slug"
+                label="Web address"
                 value={draft.slug}
                 onChange={(event) => set("slug", event.target.value)}
                 hint={
                   draft.id
                     ? `Storefront URL: /product/${draft.id} — the slug redirects to it`
-                    : "The storefront addresses products by id; the slug redirects to it."
+                    : "Used in the product's link, for example oversized-cotton-shirt."
                 }
                 className="sm:col-span-2"
               />
 
               <AdminInput
-                label="Meta title"
+                label="Search result title"
                 value={draft.seo.metaTitle}
                 onChange={(event) => set("seo", { ...draft.seo, metaTitle: event.target.value })}
                 hint="Around 60 characters."
@@ -430,7 +430,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
               />
 
               <AdminTextarea
-                label="Meta description"
+                label="Search result description"
                 rows={3}
                 value={draft.seo.metaDescription}
                 onChange={(event) =>
@@ -463,7 +463,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
             </p>
           </FormSection>
 
-          <FormSection title="Merchandising" description="Which homepage rails can pick this up.">
+          <FormSection title="Merchandising" description="Choose where this product can be featured.">
             <div className="flex flex-col gap-1">
               <AdminCheckbox
                 label="New arrival"
@@ -484,6 +484,24 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
                 label="Featured"
                 checked={draft.isFeatured}
                 onChange={(event) => set("isFeatured", event.target.checked)}
+              />
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="Returns & replacements"
+            description="What customers may do after delivery, within your return window. Each order keeps the policy it was bought under."
+          >
+            <div className="flex flex-col gap-2.5">
+              <AdminCheckbox
+                label="Returnable — customers can send it back for a refund"
+                checked={draft.isReturnable ?? true}
+                onChange={(event) => set("isReturnable", event.target.checked)}
+              />
+              <AdminCheckbox
+                label="Replaceable — customers can exchange it for the same item"
+                checked={draft.isReplaceable ?? true}
+                onChange={(event) => set("isReplaceable", event.target.checked)}
               />
             </div>
           </FormSection>
@@ -678,6 +696,7 @@ function ColourEditor({
                 values={colour.images ?? []}
                 onChange={(images) => update(index, { images })}
                 hint="The first photo is the one shown on this colour's product card."
+
               />
             </li>
           ))}

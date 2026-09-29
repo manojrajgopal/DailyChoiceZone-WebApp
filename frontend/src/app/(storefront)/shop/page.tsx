@@ -30,7 +30,7 @@ export default function ShopPage() {
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-500">
           Everything in the store, in one place. Narrow it down by department, size, colour or
-          price — the filters update the link, so you can share exactly what you are looking at.
+          price — narrow it down by department, size, colour or price.
         </p>
       </header>
 

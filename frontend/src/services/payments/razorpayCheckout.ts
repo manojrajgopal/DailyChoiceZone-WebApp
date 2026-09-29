@@ -42,7 +42,7 @@ let loading: Promise<void> | null = null;
 
 function loadCheckout(): Promise<void> {
   if (typeof window === "undefined") {
-    return Promise.reject(new Error("Razorpay Checkout needs a browser."));
+    return Promise.reject(new Error("Secure payment isn't available here. Please try again in your browser."));
   }
 
   if (window.Razorpay) return Promise.resolve();
@@ -52,7 +52,7 @@ function loadCheckout(): Promise<void> {
 
     const onError = () => {
       loading = null;
-      reject(new Error("The payment gateway could not be loaded."));
+      reject(new Error("We couldn't load secure payment. Please refresh the page and try again."));
     };
 
     if (existing) {

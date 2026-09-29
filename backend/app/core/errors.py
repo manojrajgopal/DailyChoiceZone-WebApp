@@ -8,7 +8,7 @@ from typing import Any, Optional
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError, TimeoutError as SATimeoutError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ def register_error_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=_payload(
-                "That conflicts with a record that already exists.",
+                "This already exists. Please check the details and try again.",
                 "DUPLICATE_RECORD",
             ),
         )
@@ -139,9 +139,21 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(SQLAlchemyError)
     async def _database(request: Request, exc: SQLAlchemyError) -> JSONResponse:
         logger.exception("Database error on %s %s", request.method, request.url.path)
+        # Unreachable or too slow (the connection timeouts in core/database):
+        # temporary, so say so and invite a retry.
+        if isinstance(exc, (OperationalError, TimeoutError, SATimeoutError)):
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content=_payload(
+                    "We're unable to complete this right now. Please try again in a moment.",
+                    "SERVICE_UNAVAILABLE",
+                ),
+            )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=_payload("A database error occurred.", "DATABASE_ERROR"),
+            content=_payload(
+                "Something went wrong on our side. Please try again.", "DATABASE_ERROR"
+            ),
         )
 
     @app.exception_handler(Exception)
@@ -149,5 +161,5 @@ def register_error_handlers(app: FastAPI) -> None:
         logger.exception("Unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=_payload("Something went wrong on our side.", "INTERNAL_ERROR"),
+            content=_payload("Something went wrong on our side. Please try again.", "INTERNAL_ERROR"),
         )

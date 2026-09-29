@@ -79,6 +79,7 @@ export interface NavCounts {
   lowStock: number;
   openOrders: number;
   pendingReviews: number;
+  openReturns: number;
 }
 
 export interface AdminDataSource {

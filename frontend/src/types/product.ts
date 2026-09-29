@@ -56,6 +56,10 @@ export interface Product {
   isTrending: boolean;
   isBestSeller: boolean;
   isFeatured: boolean;
+  /** Whether it can be sent back after delivery for a refund. */
+  isReturnable?: boolean;
+  /** Whether it can be exchanged for the same item after delivery. */
+  isReplaceable?: boolean;
   /** Units available. Zero means out of stock. */
   stock: number;
   sku: string;

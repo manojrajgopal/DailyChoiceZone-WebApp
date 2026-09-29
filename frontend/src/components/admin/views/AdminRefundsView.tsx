@@ -333,8 +333,7 @@ export function AdminRefundsView() {
             pending.next === "completed" ? (
               <>
                 {formatMoney(pending.refund.amount)} will be returned against{" "}
-                {pending.refund.invoiceNumber} and the payment marked refunded. This cannot be
-                undone here.
+                {pending.refund.invoiceNumber} and the payment marked refunded. This cannot be undone.
               </>
             ) : (
               <>

@@ -27,7 +27,7 @@ export async function saveCollection(collection: Collection): Promise<AdminResul
   const slug = collection.slug.trim() || slugify(collection.name);
   const existing = await adminDataSource.listCollections();
   const clash = existing.find((c) => c.slug === slug && c.id !== collection.id);
-  if (clash) return { ok: false, reason: `The slug "${slug}" is already used by ${clash.name}.` };
+  if (clash) return { ok: false, reason: `That web address is already used by ${clash.name}. Please choose another.` };
 
   // Drop ids that no longer resolve, so a collection page can never 404 a tile.
   const products = await adminDataSource.listProducts();

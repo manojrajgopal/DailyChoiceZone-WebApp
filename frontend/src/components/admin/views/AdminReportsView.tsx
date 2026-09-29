@@ -96,7 +96,7 @@ export function AdminReportsView() {
       {/* ------------------------------------------------------ sales report */}
       <AdminCard
         title="Sales report"
-        description="Revenue and orders plotted separately — they share no scale."
+        description="Revenue and order count for the period."
         className="mt-4"
       >
         <div className="grid gap-6 lg:grid-cols-2">
@@ -179,7 +179,7 @@ export function AdminReportsView() {
         </AdminCard>
 
         {/* --------------------------------------------- orders breakdown */}
-        <AdminCard title="Orders report" description="Where orders sit in the funnel.">
+        <AdminCard title="Orders report" description="Orders by current status.">
           <BarList
             data={(data?.byStatus ?? []).map((entry) => ({
               label: humanize(entry.status),
@@ -221,7 +221,7 @@ export function AdminReportsView() {
       <BillingReports range={range} />
 
       <p className="mt-4 rounded-[3px] border border-admin-border bg-admin-surface px-3 py-2.5 text-[0.6875rem] leading-relaxed text-admin-muted">
-        Figures are aggregated by the server over the selected range and exclude cancelled orders.
+        Figures cover the selected period and exclude cancelled orders.
       </p>
     </div>
   );

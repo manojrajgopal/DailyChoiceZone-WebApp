@@ -70,6 +70,11 @@ export interface OrderLine {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  /** The order line's own id — what a return request names. */
+  id?: number;
+  /** The return and replacement policy it was bought under. */
+  isReturnable?: boolean;
+  isReplaceable?: boolean;
 }
 
 export interface Order {

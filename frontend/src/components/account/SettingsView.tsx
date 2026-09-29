@@ -46,14 +46,14 @@ export function SettingsView() {
   return (
     <AccountShell
       title="Settings"
-      description="Notification preferences and the data this site keeps in your browser."
+      description="Your email preferences and the items saved on this device."
       breadcrumb={[{ label: "Settings" }]}
     >
       {/* --------------------------------------------------- notifications */}
       <section className="rounded-card border border-ink-200 bg-shell p-5">
         <h2 className="label-wide text-ink">Email preferences</h2>
         <p className="mt-2 text-xs leading-relaxed text-ink-500">
-          Saved on this device only for now — there is no account backend yet to sync them to.
+          Choose the emails you&rsquo;d like to receive from us. Your choices are saved on this device.
         </p>
 
         <div className="mt-4 flex flex-col gap-1">
@@ -94,12 +94,11 @@ export function SettingsView() {
 
       {/* ------------------------------------------------------ local data */}
       <section className="mt-5 rounded-card border border-ink-200 bg-shell p-5">
-        <h2 className="label-wide text-ink">Data stored in this browser</h2>
+        <h2 className="label-wide text-ink">Saved on this device</h2>
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-700">
           This browser keeps a few things for convenience: a bag and wishlist saved before you
           signed in, the checkout details you are part-way through, and the products you recently
-          viewed. Your account, orders, invoices, addresses and saved wishlist are held on our
-          servers, and clearing this browser does not affect them.
+          viewed. Your account, orders, invoices and addresses are kept safely with your account and won&rsquo;t be affected.
         </p>
 
         <Button variant="outline" className="mt-5" onClick={() => setConfirmOpen(true)}>

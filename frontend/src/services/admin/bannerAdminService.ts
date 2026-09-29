@@ -24,7 +24,7 @@ export async function saveBanner(banner: AdminBanner): Promise<AdminResult<Admin
     return { ok: false, reason: "A button needs a link." };
   }
   if (banner.buttonLink.trim() && !banner.buttonLink.startsWith("/")) {
-    return { ok: false, reason: "Links must be internal and start with a slash." };
+    return { ok: false, reason: "Please link to a page on your store, for example /shop/sale." };
   }
   if (banner.endsAt && new Date(banner.endsAt) <= new Date(banner.startsAt)) {
     return { ok: false, reason: "The end date must be after the start date." };

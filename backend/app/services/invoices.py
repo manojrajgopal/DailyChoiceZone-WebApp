@@ -425,14 +425,25 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
     The gateway's own refund id is kept, because that id is the only thing its
     webhook can be matched on.
     """
-    result = get_provider().refund(payment.transaction_id, refund.amount, refund.reason)
-    if not result.ok:
-        raise ConflictError("The payment provider refused the refund.", error_code="PROVIDER_REFUSED")
+    # Cash collected on delivery never passed through the gateway, so there is
+    # no transaction to reverse: the store pays it back directly (bank
+    # transfer or UPI) and this records that it has.
+    direct = not payment.transaction_id
+    if direct:
+        reference, outcome = None, "completed"
+    else:
+        result = get_provider().refund(payment.transaction_id, refund.amount, refund.reason)
+        if not result.ok:
+            raise ConflictError(
+                "The payment provider declined this refund. Please try again or contact support.",
+                error_code="PROVIDER_REFUSED",
+            )
+        reference, outcome = result.reference, result.status
 
     now = datetime.utcnow()
-    refund.gateway_reference = result.reference or None
+    refund.gateway_reference = reference or None
 
-    if result.status == "completed":
+    if outcome == "completed":
         refund.status = "completed"
         refund.processed_at = now
     else:
@@ -448,7 +459,8 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
             status="refunded",
             note=(
                 f"{'Full' if payment.status == 'refunded' else 'Partial'} refund "
-                f"{'sent' if refund.status == 'completed' else 'initiated'} — {refund.reason}."
+                f"{'paid back directly' if direct else 'sent' if refund.status == 'completed' else 'initiated'}"
+                f" — {refund.reason}."
             ),
             occurred_at=now,
         )

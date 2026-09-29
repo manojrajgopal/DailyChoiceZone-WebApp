@@ -218,11 +218,11 @@ function OrderSuccess() {
               <>
                 Nothing has been charged. We have held order{" "}
                 <span className="font-medium text-ink">{order.orderNumber}</span> and the items in
-                it, so you can pay whenever you are ready.
+                it, for a short while so you can complete your payment.
               </>
             ) : (
               <>
-                We have emailed a confirmation to{" "}
+                Thank you,{" "}
                 <span className="text-ink">{order.address.fullName}</span>. Your order number is{" "}
                 <span className="font-medium text-ink">{order.orderNumber}</span>.
               </>
@@ -266,7 +266,7 @@ function OrderSuccess() {
             <dd className="mt-2 text-sm text-ink">{formatDate(order.placedAt)}</dd>
             <dd className="mt-0.5 text-xs text-ink-400">
               {awaitingPayment ? "Awaiting" : "Paid by"}{" "}
-              {order.paymentMethod.name.toLowerCase()}
+              {order.paymentMethod.name}
             </dd>
           </div>
         </dl>

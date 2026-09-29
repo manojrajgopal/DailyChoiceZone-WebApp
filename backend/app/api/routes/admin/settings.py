@@ -254,11 +254,20 @@ def nav_counts(
         select(func.count()).select_from(Review).where(Review.status == "pending")
     ).scalar_one()
 
+    from app.models import ReturnRequest
+
+    open_returns = db.execute(
+        select(func.count())
+        .select_from(ReturnRequest)
+        .where(ReturnRequest.status.notin_(("rejected", "cancelled", "refunded", "completed")))
+    ).scalar_one()
+
     return ok(
         {
             "lowStock": low_stock,
             "openOrders": open_orders,
             "pendingReviews": pending_reviews,
+            "openReturns": open_returns,
         }
     )
 

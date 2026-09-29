@@ -238,7 +238,7 @@ export function AdminCategoriesView() {
               />
 
               <AdminInput
-                label="URL slug"
+                label="Web address"
                 value={editing.slug}
                 onChange={(event) => setEditing({ ...editing, slug: event.target.value })}
                 hint={`Storefront: /category/${editing.slug || slugify(editing.name) || "…"}`}

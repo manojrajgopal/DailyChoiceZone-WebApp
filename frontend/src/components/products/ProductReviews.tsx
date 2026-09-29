@@ -27,7 +27,7 @@ export function ProductReviews({
   if (summary.total === 0) {
     return (
       <p className="text-sm text-ink-500">
-        No reviews yet. Be the first to write one once your order arrives.
+        No reviews yet for this product.
       </p>
     );
   }

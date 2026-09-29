@@ -206,7 +206,7 @@ export function CreateRefundDialog({
               setAmountInput(event.target.value);
               setError(null);
             }}
-            hint={mode === "items" ? "Summed from the items chosen. Editable." : undefined}
+            hint={mode === "items" ? "Total of the selected items. You can adjust it." : undefined}
           />
 
           <AdminSelect
@@ -224,8 +224,7 @@ export function CreateRefundDialog({
         ) : null}
 
         <p className="text-[0.6875rem] leading-relaxed text-admin-faint">
-          The refund is recorded against the payment and the invoice immediately. No money moves —
-          there is no payment provider behind this.
+          The refund is recorded against the payment and the invoice immediately. Online payments are refunded to the original method; cash payments are recorded as paid back by you.
         </p>
 
         <div className="flex justify-end gap-2">

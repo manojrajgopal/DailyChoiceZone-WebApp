@@ -68,7 +68,7 @@ export function AdminCustomerDetailView() {
         />
         <div className="rounded-[3px] border border-admin-border bg-admin-surface p-8 text-center">
           <p className="text-sm text-admin-ink">
-            No customer matches <code>{customerId || "(none)"}</code>.
+            We couldn&rsquo;t find this customer.
           </p>
           <AdminButtonLink href="/admin/customers" variant="secondary" className="mt-5">
             Back to customers

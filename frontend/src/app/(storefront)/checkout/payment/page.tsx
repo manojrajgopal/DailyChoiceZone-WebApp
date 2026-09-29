@@ -532,8 +532,7 @@ function PaymentStep() {
 
       {stage === "card" ? (
         <p className="mt-4 max-w-2xl text-xs leading-relaxed text-ink-500">
-          Your card details are entered on a secure field provided by our payment
-          processor. This site never sees, handles or stores a card number.
+          Your card details are entered securely with our payment partner, Razorpay. We never see or store your card number.
         </p>
       ) : null}
 
@@ -549,7 +548,7 @@ function PaymentStep() {
               </p>
               <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-ink-500">
                 Open any UPI app on your phone, scan this code, and approve the payment.
-                This page will move on by itself.
+                This page will update automatically.
               </p>
 
               {/*
@@ -632,15 +631,13 @@ function PaymentStep() {
             />
             <p className="text-xs leading-relaxed text-ink-700">
               <span className="font-medium text-ink">You are paying on this page.</span>{" "}
-              Your bank or UPI app asks you to authorise — that is the only step that
-              happens anywhere else, and no card number, UPI PIN or bank password is ever
-              sent to, seen by or stored on this site.
+              Your bank or UPI app will ask you to approve the payment. We never see or store your card number, UPI PIN or bank password.
             </p>
           </div>
 
           <p className="mt-4 flex items-center gap-1.5 text-xs text-ink-400">
             <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
-            Encrypted end to end
+            Secure payment
           </p>
 
           {/* Resuming an order: it exists, so it can be cancelled from here. */}

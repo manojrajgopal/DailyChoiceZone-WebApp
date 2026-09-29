@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     # Log every statement. Useful while developing, deafening in production.
     DATABASE_ECHO: bool = False
+    # Seconds. Kept below the storefront's 20 s request limit, so a slow
+    # database produces an error message rather than an endless wait.
+    DATABASE_CONNECT_TIMEOUT: int = 5
+    DATABASE_READ_TIMEOUT: int = 15
 
     # ------------------------------------------------------------------ auth
     JWT_SECRET_KEY: str = "change-this-secret"
@@ -127,9 +131,18 @@ class Settings(BaseSettings):
     # production it must be HTTPS.
     STOREFRONT_URL: str = "http://localhost:3000"
 
-    # Where uploaded product photographs are written, relative to the backend
-    # folder unless absolute. Served read-only at /uploads.
-    UPLOAD_DIR: str = "uploads"
+    # Days after delivery in which a return or replacement can be requested.
+    RETURN_WINDOW_DAYS: int = 15
+
+    # Amazon S3, for uploaded product photographs. Uploading is switched on
+    # when the first three are set; see app/services/storage.py.
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_S3_BUCKET: str = ""
+    AWS_REGION: str = "ap-south-1"
+    AWS_S3_PUBLIC_URL: str = ""
+    AWS_S3_ENDPOINT_URL: str = ""
+    AWS_S3_PREFIX: str = "products"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

@@ -218,10 +218,10 @@ export function AdminBillingSettingsView() {
               min={1}
               value={billing.invoice.startNumber}
               onChange={(event) => patchInvoice("startNumber", Number(event.target.value) || 1)}
-              hint="Applies to a fresh sequence. Existing numbers are never reused."
+              hint="Used for new invoices. Existing numbers never change."
             />
             <AdminInput
-              label="Number padding"
+              label="Invoice number length"
               type="number"
               min={1}
               max={10}
@@ -272,7 +272,7 @@ export function AdminBillingSettingsView() {
         {/* ------------------------------------------------------------- tax */}
         <AdminCard
           title="Tax settings"
-          description="How GST is applied. Rates are configuration, not code."
+          description="How GST is applied to your orders."
         >
           <div className="flex flex-col gap-4">
             <AdminToggle
@@ -284,7 +284,7 @@ export function AdminBillingSettingsView() {
 
             <AdminToggle
               label="Catalogue prices include tax"
-              description="On, the tax is extracted from the shelf price. Off, it is added at checkout — which changes what customers are charged."
+              description="When on, your prices already include tax. When off, tax is added at checkout, which changes what customers pay."
               checked={tax.pricesIncludeTax}
               onChange={(checked) => setTax({ ...tax, pricesIncludeTax: checked })}
             />
@@ -294,7 +294,7 @@ export function AdminBillingSettingsView() {
                 label="GSTIN"
                 value={tax.gstin}
                 onChange={(event) => setTax({ ...tax, gstin: event.target.value })}
-                hint="Shown on invoices. Not validated here."
+                hint="Shown on invoices. Please double-check it is correct."
               />
               <AdminSelect
                 label="State of registration"
@@ -310,7 +310,7 @@ export function AdminBillingSettingsView() {
                 step={0.5}
                 value={tax.rates.cgst}
                 onChange={(event) => setHalfRate(Number(event.target.value) || 0)}
-                hint="Sets both halves and the matching IGST rate."
+                hint="Also updates the IGST rate to match."
               />
               <AdminInput
                 label="IGST (%)"
@@ -326,11 +326,11 @@ export function AdminBillingSettingsView() {
             </FormGrid>
 
             <p className="rounded-[3px] border border-status-warning/40 bg-status-warning/10 p-3 text-[0.6875rem] leading-relaxed text-admin-ink">
-              <strong className="font-medium">This is a configurable model of GST, not a
-              compliance implementation.</strong>{" "}
-              Real tax treatment depends on HSN classification, exemptions, reverse charge,
-              composition schemes and place-of-supply rules. Do not rely on these figures for
-              filing. The calculation belongs on a server, maintained with professional advice.
+              <strong className="font-medium">These settings help calculate GST on your
+              invoices.</strong>{" "}
+              Tax treatment can also depend on HSN classification, exemptions and
+              place-of-supply rules, so please confirm your rates and filings with your tax
+              adviser.
             </p>
 
             {tax.categoryRates && Object.keys(tax.categoryRates).length > 0 ? (
@@ -352,8 +352,8 @@ export function AdminBillingSettingsView() {
                   ))}
                 </ul>
                 <p className="mt-2 text-[0.6875rem] text-admin-faint">
-                  Edited in <code>src/data/billing/tax-config.json</code> for now. A real
-                  implementation attaches a rate to each product&rsquo;s HSN code.
+                  Category rates are set up for your store. Contact support if one needs to
+                  change.
                 </p>
               </div>
             ) : null}
@@ -361,7 +361,7 @@ export function AdminBillingSettingsView() {
         </AdminCard>
 
         {/* -------------------------------------------------------- currency */}
-        <AdminCard title="Currency" description="One currency today; the model supports more.">
+        <AdminCard title="Currency" description="The currency used on invoices.">
           <FormGrid>
             <AdminInput
               label="Currency code"
@@ -377,7 +377,7 @@ export function AdminBillingSettingsView() {
               label="Locale"
               value={billing.currency.locale}
               onChange={(event) => patchCurrency("locale", event.target.value)}
-              hint="Drives number grouping — en-IN gives the lakh/crore scale."
+              hint="Sets how amounts are written, e.g. 1,00,000 for India."
             />
             <AdminInput
               label="Decimal places"
@@ -386,7 +386,7 @@ export function AdminBillingSettingsView() {
               max={4}
               value={billing.currency.decimals}
               onChange={(event) => patchCurrency("decimals", Number(event.target.value) || 0)}
-              hint="Amounts are stored as integers in the minor unit."
+              hint="Number of decimal places shown on invoices."
             />
           </FormGrid>
         </AdminCard>
@@ -428,14 +428,13 @@ export function AdminBillingSettingsView() {
                   payment: { ...billing.payment, codFee: toMinor(Number(event.target.value) || 0) },
                 })
               }
-              hint={`Added as an other charge. Currently ${formatMoney(billing.payment.codFee)}.`}
+              hint={`Added to the order as a separate charge. Currently ${formatMoney(billing.payment.codFee)}.`}
               className="max-w-xs"
             />
 
             <p className="text-[0.6875rem] leading-relaxed text-admin-faint">
-              Which methods are offered at checkout. The gateway decides which of them it can
-              actually take — switching one on here does not switch it on in the Razorpay
-              account, and one that is on here but off there fails at the payment sheet.
+              Choose which payment methods customers see at checkout. Each method must also be
+              switched on in your Razorpay account to work.
             </p>
           </div>
         </AdminCard>
@@ -458,7 +457,7 @@ export function AdminBillingSettingsView() {
             <div className="flex items-end">
               <AdminToggle
                 label="Refund shipping on a whole-order refund"
-                description="The courier was still paid for a delivery that happened."
+                description="Include the delivery charge when refunding a whole order."
                 checked={billing.refund.refundShipping}
                 onChange={(checked) =>
                   setBilling({

@@ -109,13 +109,13 @@ export function AdminContentSettingsView() {
             values={draft.states ?? []}
             onChange={(states) => patch("states", states)}
             placeholder="Add a state and press Enter"
-            hint="Order is the order somebody scrolls through."
+            hint="Shown in this order."
           />
         </FormSection>
 
         <FormSection
           title="Popular searches"
-          description="Suggested before anybody has typed anything."
+          description="Shown to shoppers when they open search."
         >
           <TagListInput
             label="Search terms"
@@ -138,7 +138,7 @@ export function AdminContentSettingsView() {
             emptyMessage="No delivery methods. Checkout cannot be completed without one."
             blank={() => ({ id: "", name: "", description: "", fee: 0, estimate: "" })}
             fields={[
-              { key: "id", label: "Identifier", hint: "Stored on the order. Lower case, no spaces." },
+              { key: "id", label: "Identifier", hint: "A short internal code, lowercase with no spaces — for example, express." },
               { key: "name", label: "Name" },
               { key: "description", label: "Description", span: "full" },
             ]}
@@ -179,7 +179,7 @@ export function AdminContentSettingsView() {
               {
                 key: "value",
                 label: "Value",
-                hint: "Must be one the API accepts: recommended, newest, price-asc, price-desc, rating, popular, discount.",
+                hint: "Choose one of: recommended, newest, price-asc, price-desc, rating, popular, discount.",
               },
               { key: "label", label: "Label" },
             ]}
@@ -187,7 +187,7 @@ export function AdminContentSettingsView() {
         </FormSection>
 
         <FormSection
-          title="Filter buckets"
+          title="Rating and discount filters"
           description="The rating and discount shortcuts on the filter panel."
         >
           <NumberListInput
@@ -296,7 +296,7 @@ export function AdminContentSettingsView() {
 
         <FormSection
           title="Administrator roles"
-          description="The labels this portal offers. What each role may write is enforced by the server and is not editable here."
+          description="The labels this portal offers. What each role can do is fixed and cannot be changed here."
         >
           <RecordListEditor<Labelled & { description: string }>
             rows={draft.adminRoles ?? []}
@@ -308,7 +308,7 @@ export function AdminContentSettingsView() {
               {
                 key: "value",
                 label: "Value",
-                hint: "Must match a role the server knows: super-admin, admin, manager, editor, staff.",
+                hint: "Must be one of: super-admin, admin, manager, editor, staff.",
               },
               { key: "label", label: "Label" },
               { key: "description", label: "Description", span: "full" },
@@ -318,7 +318,7 @@ export function AdminContentSettingsView() {
 
         <FormSection
           title="Stock adjustment reasons"
-          description="Why somebody changed a stock level. Recorded on every movement."
+          description="Reasons staff can give when changing stock."
         >
           <RecordListEditor<Labelled>
             rows={draft.stockAdjustmentReasons ?? []}
@@ -349,7 +349,7 @@ export function AdminContentSettingsView() {
               {
                 key: "value",
                 label: "Value",
-                hint: "Must be one the API accepts: today, 7d, 30d, 3m, 1y.",
+                hint: "Choose one of: today, 7d, 30d, 3m, 1y.",
               },
               { key: "label", label: "Label" },
               { key: "shortLabel", label: "Short label", hint: "For the compact toggle." },
@@ -358,8 +358,8 @@ export function AdminContentSettingsView() {
         </FormSection>
 
         <FormSection
-          title="Homepage section kinds"
-          description="What the homepage editor can add, and which kinds need a product source."
+          title="Homepage section types"
+          description="The section types you can add, and whether each shows products."
         >
           <RecordListEditor<Labelled & { needsSource: boolean }>
             rows={draft.homeSectionKinds ?? []}
@@ -368,7 +368,7 @@ export function AdminContentSettingsView() {
             addLabel="Add a section kind"
             blank={() => ({ value: "", label: "", needsSource: false })}
             fields={[
-              { key: "value", label: "Value", hint: "The renderer must have a case for it." },
+              { key: "value", label: "Value", hint: "Must be a section type the homepage supports." },
               { key: "label", label: "Label" },
               { key: "needsSource", label: "Needs a product source", kind: "toggle" },
             ]}
@@ -376,7 +376,7 @@ export function AdminContentSettingsView() {
 
           <div className="mt-4">
             <p className="mb-2.5 text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-admin-muted">
-              Product sources
+              Product lists
             </p>
             <RecordListEditor<Labelled>
               rows={draft.homeSectionSources ?? []}

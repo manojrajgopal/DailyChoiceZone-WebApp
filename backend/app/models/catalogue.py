@@ -154,6 +154,9 @@ class Product(Base, TimestampMixin):
     low_stock_threshold: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
     barcode: Mapped[str] = mapped_column(String(40), nullable=False, default="")
     tax_rate_percent: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=5)
+    # After delivery: may it be sent back for a refund, or for the same item?
+    is_returnable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    is_replaceable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     meta_title: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     meta_description: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     updated_by: Mapped[Optional[str]] = mapped_column(BusinessId, nullable=True)

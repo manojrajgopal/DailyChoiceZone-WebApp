@@ -28,7 +28,7 @@ export default function RouteError({
     <div className="page-shell py-16">
       <ErrorState
         title="Something went wrong"
-        description="We hit an unexpected problem loading this page. Trying again usually sorts it."
+        description="We hit an unexpected problem loading this page. Please try again."
         onRetry={reset}
       />
 

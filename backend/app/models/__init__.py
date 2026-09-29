@@ -41,6 +41,9 @@ from app.models.customer import Address, CartItem, Customer, WishlistItem
 from app.models.order import Order, OrderEvent, OrderItem
 
 __all__ = [
+    "ReturnEvent",
+    "ReturnRequest",
+    "ReturnRequestItem",
     "BusinessId",
     "TimestampMixin",
     "Address",
@@ -77,3 +80,4 @@ __all__ = [
     "WebhookEvent",
     "WishlistItem",
 ]
+from app.models.returns import ReturnEvent, ReturnRequest, ReturnRequestItem  # noqa: E402

@@ -511,6 +511,8 @@ def place_order(
                     size=line.size,
                     color=line.color,
                     quantity=line.quantity,
+                    is_returnable=item.product.is_returnable,
+                    is_replaceable=item.product.is_replaceable,
                     # The price **at the time of purchase**. An order's value
                     # must never be recomputed from the current catalogue.
                     unit_price=billing.to_major(line.unit_price),

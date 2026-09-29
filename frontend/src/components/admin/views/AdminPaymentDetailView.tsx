@@ -184,16 +184,15 @@ function AdminPaymentDetail() {
               <Row label="Method" value={`${paymentMethodLabel(payment.method)} · ${payment.instrumentHint}`} />
               <Row label="Provider" value={payment.provider} />
               <Row label="Created" value={formatDate(payment.createdAt)} />
-              <Row label="Captured" value={payment.capturedAt ? formatDate(payment.capturedAt) : "Not captured"} />
+              <Row label="Received on" value={payment.capturedAt ? formatDate(payment.capturedAt) : "Not yet received"} />
             </dl>
 
             <p className="mt-4 border-t border-admin-border pt-3 text-[0.6875rem] leading-relaxed text-admin-faint">
-              Only a masked remnant of the instrument is stored. No card number, expiry, CVV, UPI
-              PIN or bank credential is collected anywhere in this application.
+              For security, only the last digits of the card or account are kept. Full card and bank details are never stored.
             </p>
           </AdminCard>
 
-          <AdminCard title="Timeline" description="Append-only history of this transaction.">
+          <AdminCard title="Timeline" description="Every update to this payment.">
             <ol className="flex flex-col gap-3">
               {[...payment.timeline].reverse().map((event, index) => (
                 <li key={`${event.status}-${event.at}-${index}`} className="flex gap-3">

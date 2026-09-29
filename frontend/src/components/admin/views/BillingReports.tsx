@@ -174,7 +174,7 @@ export function BillingReports({ range }: { range: AnalyticsRange }) {
         )}
 
         <p className="mt-3 border-t border-admin-border pt-3 text-[0.6875rem] leading-relaxed text-admin-faint">
-          A representation of GST for demonstration, not a compliance report. Do not file from it.
+          For reference only. Please check with your accountant before filing.
         </p>
       </AdminCard>
 

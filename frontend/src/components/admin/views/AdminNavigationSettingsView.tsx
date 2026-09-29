@@ -95,7 +95,7 @@ function StorefrontMenuEditor() {
     <div className="pb-20">
       <FormSection
         title="Departments"
-        description="The top level of the header, left to right. Each can open a mega menu."
+        description="The top level of the header, left to right. Each can show a drop-down menu."
       >
         <RecordListEditor<{ id: string; label: string; href: string }>
           rows={draft.map(({ id, label, href }) => ({ id, label, href }))}
@@ -113,12 +113,12 @@ function StorefrontMenuEditor() {
           }
           title={(row) => row.label || "New department"}
           addLabel="Add a department"
-          emptyMessage="No menu items. The header renders without a nav bar."
+          emptyMessage="No menu items yet. The header menu stays hidden until you add one."
           blank={() => ({ id: `nav-${Date.now()}`, label: "", href: "" })}
           fields={[
             { key: "label", label: "Label" },
-            { key: "href", label: "Path", hint: "Not checked — a path that does not exist is a 404." },
-            { key: "id", label: "Identifier", span: "full", hint: "Must be unique." },
+            { key: "href", label: "Path", hint: "Make sure this page exists, for example /shop/women." },
+            { key: "id", label: "Identifier", span: "full", hint: "Must be different from the others." },
           ]}
         />
       </FormSection>
@@ -248,7 +248,7 @@ function PortalMenuEditor() {
       return;
     }
 
-    toast.success("Portal sidebar saved — reload to see it");
+    toast.success("Sidebar saved. Refresh the page to see your changes.");
     await reload();
   };
 
@@ -273,7 +273,7 @@ function PortalMenuEditor() {
           blank={() => ({ id: `group-${Date.now()}`, heading: "" })}
           fields={[
             { key: "heading", label: "Heading" },
-            { key: "id", label: "Identifier", hint: "Must be unique." },
+            { key: "id", label: "Identifier", hint: "Must be different from the others." },
           ]}
         />
       </FormSection>
@@ -294,10 +294,10 @@ function PortalMenuEditor() {
             blank={() => ({ id: `item-${Date.now()}`, label: "", href: "", icon: "products" })}
             fields={[
               { key: "label", label: "Label" },
-              { key: "href", label: "Path", hint: "Must be a page this portal has." },
+              { key: "href", label: "Path", hint: "Must be a page in the admin portal." },
               { key: "icon", label: "Icon", kind: "select", options: SIDEBAR_ICONS },
               { key: "badge", label: "Badge", kind: "select", options: BADGES },
-              { key: "id", label: "Identifier", span: "full", hint: "Must be unique." },
+              { key: "id", label: "Identifier", span: "full", hint: "Must be different from the others." },
             ]}
           />
         </FormSection>

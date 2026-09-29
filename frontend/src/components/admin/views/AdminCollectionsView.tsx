@@ -1,6 +1,5 @@
 "use client";
 
-import { mediaUrl } from "@/lib/media";
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 
@@ -259,7 +258,7 @@ export function AdminCollectionsView() {
               />
 
               <AdminInput
-                label="URL slug"
+                label="Web address"
                 value={editing.slug}
                 onChange={(event) => setEditing({ ...editing, slug: event.target.value })}
                 hint={`/collection/${editing.slug || slugify(editing.name) || "…"}`}
@@ -343,7 +342,7 @@ export function AdminCollectionsView() {
                             {product.images[0] ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={mediaUrl(product.images[0])}
+                                src={product.images[0]}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />

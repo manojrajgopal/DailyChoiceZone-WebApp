@@ -15,6 +15,3 @@ next-env.d.ts
 __pycache__/
 *.py[cod]
 .pytest_cache/
-
-# Uploaded product photographs (data, not code)
-backend/uploads/

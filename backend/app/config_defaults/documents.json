@@ -1382,6 +1382,13 @@
             "badge": "openOrders"
           },
           {
+            "id": "returns",
+            "label": "Returns",
+            "href": "/admin/returns",
+            "icon": "refunds",
+            "badge": "openReturns"
+          },
+          {
             "id": "customers",
             "label": "Customers",
             "href": "/admin/customers",

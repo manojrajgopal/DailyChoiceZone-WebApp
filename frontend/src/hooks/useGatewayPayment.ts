@@ -159,7 +159,7 @@ export function useGatewayPayment() {
         toast.error(
           error instanceof Error && error.message
             ? error.message
-            : "The payment gateway could not be opened.",
+            : "We couldn't open the payment window. Please try again.",
         );
         return "failed";
       }

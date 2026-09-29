@@ -28,6 +28,15 @@ engine = create_engine(
     pool_recycle=3600,
     pool_size=10,
     max_overflow=20,
+    # Never wait indefinitely. A stalled database answers with an error in
+    # seconds instead of holding the request open until the browser gives up
+    # (the storefront abandons a request after 20 s; these are all shorter).
+    pool_timeout=10,
+    connect_args={
+        "connect_timeout": settings.DATABASE_CONNECT_TIMEOUT,
+        "read_timeout": settings.DATABASE_READ_TIMEOUT,
+        "write_timeout": settings.DATABASE_READ_TIMEOUT,
+    },
     future=True,
 )
 

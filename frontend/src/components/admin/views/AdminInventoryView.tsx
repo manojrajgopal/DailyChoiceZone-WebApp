@@ -1,6 +1,5 @@
 "use client";
 
-import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { PackageCheck, Search, X } from "lucide-react";
@@ -117,7 +116,7 @@ export function AdminInventoryView() {
           <span className="h-9 w-7 shrink-0 overflow-hidden rounded-[2px] bg-admin-raised">
             {item.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={mediaUrl(item.image)} alt="" className="h-full w-full object-cover" />
+              <img src={item.image} alt="" className="h-full w-full object-cover" />
             ) : null}
           </span>
           <span className="min-w-0">
@@ -321,7 +320,7 @@ export function AdminInventoryView() {
       {(log.data ?? []).length > 0 ? (
         <AdminCard
           title="Recent stock changes"
-          description="Every adjustment made in this browser session."
+          description="The latest stock updates."
           className="mt-4"
         >
           <ul className="flex flex-col divide-y divide-admin-border">

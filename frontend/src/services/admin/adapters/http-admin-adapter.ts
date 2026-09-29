@@ -539,6 +539,8 @@ function toProductPayload(product: AdminProduct) {
     isTrending: product.isTrending,
     isBestSeller: product.isBestSeller,
     isFeatured: product.isFeatured,
+    isReturnable: product.isReturnable ?? true,
+    isReplaceable: product.isReplaceable ?? true,
     stock: product.stock,
     status: product.status,
     lowStockThreshold: product.lowStockThreshold,

@@ -10,10 +10,11 @@ import { toast } from "@/store/toastStore";
 /**
  * The contact form.
  *
- * Frontend only: a valid submission confirms and clears, and nothing is sent
- * anywhere. When a support endpoint exists, only `onSubmit` changes.
+ * A valid message is handed to the customer's own email app, addressed to the
+ * store and filled in, so it arrives with their reply address attached. When
+ * a support inbox service is connected, only `onSubmit` changes.
  */
-export function ContactForm() {
+export function ContactForm({ supportEmail }: { supportEmail: string }) {
   const topics = useSiteContent()?.contactTopics ?? [];
 
   const [name, setName] = useState("");
@@ -38,11 +39,23 @@ export function ContactForm() {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    setName("");
-    setEmail("");
-    setOrderNumber("");
-    setMessage("");
-    toast.success("Thanks — we will reply within one working day");
+    const topicLabel = topics.find((entry) => entry.value === topic)?.label ?? topic;
+    const subject = `${topicLabel}${orderNumber.trim() ? ` — order ${orderNumber.trim()}` : ""}`;
+    const body = [
+      message.trim(),
+      "",
+      `Name: ${name.trim()}`,
+      `Email: ${email.trim()}`,
+      orderNumber.trim() ? `Order number: ${orderNumber.trim()}` : "",
+    ]
+      .filter((line, index) => line || index < 2)
+      .join(String.fromCharCode(10));
+
+    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+
+    toast.success("Your email app is opening with your message ready to send.");
   };
 
   return (
@@ -108,7 +121,11 @@ export function ContactForm() {
       </Button>
 
       <p className="mt-4 text-xs leading-relaxed text-ink-400">
-        This demo form does not send anything — nothing you type here leaves your browser.
+        Sending opens your email app with your message ready to go. You can also write to us at{" "}
+        <a href={`mailto:${supportEmail}`} className="underline underline-offset-2 hover:text-ink">
+          {supportEmail}
+        </a>
+        . We reply within one working day.
       </p>
     </form>
   );

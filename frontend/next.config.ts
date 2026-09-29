@@ -28,7 +28,16 @@ const nextConfig: NextConfig = {
      * size. `remotePatterns` still bounds where images may come from.
      */
     unoptimized: true,
-    remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com" },
+      // Uploaded product photos live in Amazon S3, optionally behind CloudFront.
+      { protocol: "https", hostname: "**.amazonaws.com" },
+      { protocol: "https", hostname: "**.cloudfront.net" },
+      // A custom media domain, if AWS_S3_PUBLIC_URL points at one.
+      ...(process.env.NEXT_PUBLIC_MEDIA_HOST
+        ? [{ protocol: "https" as const, hostname: process.env.NEXT_PUBLIC_MEDIA_HOST }]
+        : []),
+    ],
   },
 };
 

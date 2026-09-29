@@ -106,7 +106,7 @@ export function AdminSettingsView() {
               value={draft.general.description}
               onChange={(event) => patch("general", { description: event.target.value })}
               className="sm:col-span-2"
-              hint="Used as the site meta description."
+              hint="Shown in search engine results."
             />
           </FormGrid>
         </FormSection>
@@ -224,13 +224,13 @@ export function AdminSettingsView() {
               onChange={() => undefined}
               disabled
               options={[{ value: "INR", label: "Indian Rupee (₹)" }]}
-              hint="Multi-currency is not supported yet."
+              hint="Prices are shown in Indian Rupees."
             />
             <AdminInput
               label="Locale"
               value={draft.currency.locale}
               onChange={(event) => patch("currency", { locale: event.target.value })}
-              hint="Number and date formatting."
+              hint="How numbers and dates are written."
             />
             <AdminInput
               label="GSTIN"
@@ -268,7 +268,7 @@ export function AdminSettingsView() {
         {/* -------------------------------------------------- notifications */}
         <FormSection
           title="Notifications"
-          description="Which emails the store sends. No mail is actually sent yet."
+          description="Choose which emails your store sends to customers and staff."
         >
           <div className="flex flex-col divide-y divide-admin-border">
             <AdminToggle
@@ -327,8 +327,8 @@ export function AdminSettingsView() {
 
         {/* ---------------------------------------------- where this lives */}
         <FormSection
-          title="Where this data lives"
-          description="Saved to the database, for everybody."
+          title="Saving changes"
+          description="Changes go live straight away."
           className="xl:col-span-2"
         >
           <div className="flex max-w-prose items-start gap-2.5 rounded-[3px] border border-admin-border bg-admin-surface p-3.5">
@@ -338,14 +338,8 @@ export function AdminSettingsView() {
               aria-hidden="true"
             />
             <p className="text-xs leading-relaxed text-admin-muted">
-              Every change made in this portal is written to the store&rsquo;s database and takes
-              effect on the storefront&rsquo;s next request — for every visitor, not just this
-              browser. There is no local copy to reset. To rebuild the sample catalogue and orders
-              during development, run{" "}
-              <code className="rounded-[2px] bg-admin-plane px-1 py-0.5 font-mono text-[0.6875rem] text-admin-ink">
-                python -m app.seed.reset --yes
-              </code>{" "}
-              against the backend.
+              Changes you save here appear on your storefront immediately, for every shopper on
+              every device.
             </p>
           </div>
         </FormSection>

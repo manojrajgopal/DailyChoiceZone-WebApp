@@ -32,16 +32,13 @@ export default async function TermsPage() {
           <h2>Please note</h2>
           {payments.mode === "test" ? (
             <p>
-              This storefront is running its payment gateway in <strong>test mode</strong>. Card,
-              UPI and bank payments are processed by Razorpay against test credentials, so no real
-              money changes hands and no order is fulfilled. The terms below describe how the live
-              store operates.
+              Our store is currently in preview. No payments are taken and no orders are dispatched
+              yet. The terms below describe how the store operates once it opens.
             </p>
           ) : (
             <p>
-              This storefront has no payment gateway connected, so no orders are fulfilled and no
-              money changes hands. The terms below describe how the live store will operate, and
-              are not a binding contract in its current state.
+              Online ordering is not open yet. The terms below describe how the store will operate
+              once it opens.
             </p>
           )}
         </section>

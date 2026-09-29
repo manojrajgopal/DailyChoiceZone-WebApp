@@ -35,7 +35,7 @@ export async function saveCategory(category: Category): Promise<AdminResult<Cate
   const slug = category.slug.trim() || slugify(category.name);
   const existing = await adminDataSource.listCategories();
   const clash = existing.find((c) => c.slug === slug && c.id !== category.id);
-  if (clash) return { ok: false, reason: `The slug "${slug}" is already used by ${clash.name}.` };
+  if (clash) return { ok: false, reason: `That web address is already used by ${clash.name}. Please choose another.` };
 
   return { ok: true, data: await adminDataSource.saveCategory({ ...category, slug }) };
 }

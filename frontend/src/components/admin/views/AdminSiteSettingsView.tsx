@@ -106,7 +106,7 @@ export function AdminSiteSettingsView() {
               type="url"
               value={draft.url}
               onChange={(event) => setDraft({ ...draft, url: event.target.value })}
-              hint="Used in the sitemap and in canonical links."
+              hint="Your store's web address, used by search engines."
             />
             <AdminInput
               label="Locale"

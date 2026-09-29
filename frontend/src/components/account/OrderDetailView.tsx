@@ -8,6 +8,7 @@ import { AlertCircle, Check, FileText } from "lucide-react";
 import type { Order } from "@/types";
 
 import { AccountShell } from "@/components/account/AccountShell";
+import { OrderReturns } from "@/components/account/OrderReturns";
 import {
   ORDER_TIMELINE,
   OrderStatusBadge,
@@ -112,7 +113,7 @@ export function OrderDetailView() {
             <p className="text-sm text-ink-500">
               Placed {formatDate(order.placedAt)} &middot;{" "}
               {awaitingPayment ? "Awaiting" : "Paid by"}{" "}
-              {order.paymentMethod.name.toLowerCase()}
+              {order.paymentMethod.name}
             </p>
             <OrderStatusBadge status={order.status} />
           </div>
@@ -203,6 +204,9 @@ export function OrderDetailView() {
               })}
             </ol>
           </section>
+
+          {/* ------------------------------------- returns & replacements */}
+          <OrderReturns order={order} />
 
           {/* ------------------------------------------------------- items */}
           <section className="rounded-card border border-ink-200 bg-shell p-5">
@@ -314,8 +318,8 @@ export function OrderDetailView() {
 
               <p className="mt-3 text-xs text-ink-400">
                 {awaitingPayment
-                  ? `Awaiting payment by ${order.paymentMethod.name.toLowerCase()}.`
-                  : `Paid by ${order.paymentMethod.name.toLowerCase()}.`}
+                  ? `Awaiting payment by ${order.paymentMethod.name}.`
+                  : `Paid by ${order.paymentMethod.name}.`}
               </p>
 
               {/*

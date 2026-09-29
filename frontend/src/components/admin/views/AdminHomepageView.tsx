@@ -133,7 +133,7 @@ export function AdminHomepageView() {
 
       <AdminCard
         title={`${rows.length} sections · ${activeCount} live`}
-        description="Drag is not supported; use the arrows to reorder."
+        description="Use the arrows to change the order."
         padded={false}
       >
         {sections.isLoading ? (
@@ -313,7 +313,7 @@ export function AdminHomepageView() {
                       value: entry.value,
                       label: entry.label,
                     }))}
-                    hint="Which merchandising query feeds this rail."
+                    hint="Which products appear in this section."
                   />
 
                   <AdminInput

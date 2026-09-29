@@ -1,3 +1,4 @@
+import { stageLabel } from "@/lib/orders/orderFlow";
 import type { AdminNotification } from "@/types/admin";
 
 import { formatMoney } from "@/lib/money";
@@ -99,7 +100,7 @@ export async function search(term: string, perGroup = 5): Promise<AdminSearchRes
       kind: "order" as const,
       id: order.id,
       title: order.orderNumber,
-      subtitle: `${order.customerName} · ${order.status}`,
+      subtitle: `${order.customerName} · ${stageLabel(order.status)}`,
       href: `/admin/orders/detail?id=${order.id}`,
     }));
 

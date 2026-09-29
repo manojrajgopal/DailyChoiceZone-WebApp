@@ -52,7 +52,7 @@ export default async function ContactPage() {
       </header>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_20rem] lg:gap-16">
-        <ContactForm />
+        <ContactForm supportEmail={config.support.email} />
 
         <aside>
           <h2 className="label-wide mb-4 text-ink">Other ways to reach us</h2>

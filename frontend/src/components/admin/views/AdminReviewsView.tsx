@@ -1,6 +1,5 @@
 "use client";
 
-import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Check, Search, Trash2, X } from "lucide-react";
@@ -108,7 +107,7 @@ export function AdminReviewsView() {
           <span className="h-9 w-7 shrink-0 overflow-hidden rounded-[2px] bg-admin-raised">
             {review.productImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={mediaUrl(review.productImage)} alt="" className="h-full w-full object-cover" />
+              <img src={review.productImage} alt="" className="h-full w-full object-cover" />
             ) : null}
           </span>
           <Link
@@ -393,8 +392,7 @@ export function AdminReviewsView() {
           <>
             Permanently delete this review of{" "}
             <strong className="text-admin-ink">{pendingDelete?.productName}</strong>? Rejecting it
-            hides it from the storefront while keeping the record — prefer that unless it needs to
-            be gone entirely.
+            hides it from the storefront while keeping the record — we recommend rejecting unless it must be removed completely.
           </>
         }
         onConfirm={() => void onDelete()}

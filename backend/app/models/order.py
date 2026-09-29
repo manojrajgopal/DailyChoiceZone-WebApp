@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -145,6 +146,10 @@ class OrderItem(Base):
     color: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
 
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # The return and replacement policy the customer bought under — copied
+    # from the product at checkout, so a later change does not rewrite it.
+    is_returnable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    is_replaceable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     unit_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     line_total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 

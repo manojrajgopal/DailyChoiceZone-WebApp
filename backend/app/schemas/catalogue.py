@@ -63,6 +63,8 @@ class ProductOut(CamelModel):
     is_featured: bool
     stock: int
     sku: str
+    is_returnable: bool = True
+    is_replaceable: bool = True
 
     @classmethod
     def from_model(cls, product) -> "ProductOut":
@@ -106,6 +108,8 @@ class ProductOut(CamelModel):
             is_best_seller=product.is_best_seller,
             is_featured=product.is_featured,
             stock=product.stock,
+            is_returnable=bool(getattr(product, "is_returnable", True)),
+            is_replaceable=bool(getattr(product, "is_replaceable", True)),
             sku=product.sku,
         )
 
@@ -175,8 +179,8 @@ class ColorIn(CamelModel):
                 continue
             if len(url) > 500:
                 raise ValueError("An image address is too long.")
-            if not (url.startswith("https://") or url.startswith("http://") or url.startswith("/uploads/")):
-                raise ValueError("Images must be web addresses or uploaded files.")
+            if not (url.startswith("https://") or url.startswith("http://")):
+                raise ValueError("Each image must be a web address starting with https://.")
             cleaned.append(url)
         return list(dict.fromkeys(cleaned))
 
@@ -214,6 +218,8 @@ class ProductWrite(CamelModel):
     care: Optional[str] = None
     images: Optional[List[str]] = None
     colors: Optional[List[ColorIn]] = None
+    is_returnable: Optional[bool] = None
+    is_replaceable: Optional[bool] = None
     sizes: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     specifications: Optional[List[SpecificationIn]] = None

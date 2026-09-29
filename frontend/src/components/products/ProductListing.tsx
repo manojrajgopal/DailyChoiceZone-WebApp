@@ -177,7 +177,7 @@ export function ProductListing({
           {error ? (
             <ErrorState
               title="We could not load these products"
-              description="Something went wrong fetching the catalogue."
+              description="We couldn't load these products. Please try again in a moment."
               onRetry={reload}
             />
           ) : isLoading ? (

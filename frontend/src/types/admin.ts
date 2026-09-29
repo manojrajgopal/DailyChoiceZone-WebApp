@@ -456,7 +456,7 @@ export interface AdminNavItem {
   href: string;
   icon: string;
   /** Shown as a count chip, resolved at render time. */
-  badge?: "pendingReviews" | "openOrders" | "lowStock";
+  badge?: "pendingReviews" | "openOrders" | "lowStock" | "openReturns";
   /**
    * Sub-sections, revealed while the parent section is open.
    *

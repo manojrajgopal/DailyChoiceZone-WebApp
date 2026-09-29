@@ -34,12 +34,15 @@
 
   /* --- Ink: the near-black of "Daily", stepped down for hierarchy --- */
   --color-ink: #1e1b18;
+  --color-ink-800: #2b2723;
   --color-ink-700: #3a3531;
+  --color-ink-600: #524b45;
   --color-ink-500: #6b635c;
   --color-ink-400: #8a817a;
   --color-ink-300: #b5ada5;
   --color-ink-200: #ddd6ce;
   --color-ink-100: #ede7df;
+  --color-ink-50: #f5f1eb;
 
   /* --- Copper: the logo ring and the swoosh. The primary accent. --- */
   --color-copper-50: #fbf4ef;
@@ -54,14 +57,20 @@
   --color-copper-900: #3f251a;
 
   /* --- Clay: the deeper terracotta of the word "Choice" --- */
+  --color-clay-50: #fbf0ea;
+  --color-clay-200: #ecc6b1;
   --color-clay-400: #b9663c;
   --color-clay-500: #a0522d;
   --color-clay-600: #8a4526;
+  --color-clay-700: #71391f;
 
   /* --- Sage: the leaf. Used for in-stock, trust and success. --- */
+  --color-sage-50: #eef3ea;
   --color-sage-100: #dde5d5;
+  --color-sage-200: #c3d2b8;
   --color-sage-500: #4a7a52;
   --color-sage-600: #3c6543;
+  --color-sage-700: #2f5035;
 
   /* --- Blush: the little heart and the "Shop" icon circle --- */
   --color-blush-100: #f9e9e6;

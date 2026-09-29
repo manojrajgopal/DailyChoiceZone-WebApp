@@ -135,8 +135,7 @@ export function AdminProfileView() {
             </dl>
 
             <p className="mt-3 rounded-[3px] bg-admin-raised px-2.5 py-2 text-[0.625rem] leading-relaxed text-admin-muted">
-              This session lives in your browser&rsquo;s local storage. A real deployment would use
-              an httpOnly cookie the page cannot read.
+              You&rsquo;re signed in on this device. Sign out when you use a shared computer.
             </p>
           </AdminCard>
 
@@ -153,8 +152,7 @@ export function AdminProfileView() {
               ))}
             </ul>
             <p className="mt-3 text-[0.625rem] leading-relaxed text-admin-muted">
-              These names shape the interface only. They are not enforced until the backend checks
-              them.
+              What your role allows you to do in this portal.
             </p>
           </AdminCard>
         </div>

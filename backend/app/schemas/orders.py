@@ -43,6 +43,7 @@ class PlaceOrderRequest(CamelModel):
 
 
 class OrderItemOut(CamelModel):
+    id: Optional[int] = None
     product_id: str
     name: str
     sku: str
@@ -54,6 +55,8 @@ class OrderItemOut(CamelModel):
     quantity: int
     unit_price: float
     line_total: float
+    is_returnable: bool = True
+    is_replaceable: bool = True
 
 
 class OrderEventOut(CamelModel):

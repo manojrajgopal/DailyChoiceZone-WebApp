@@ -24,16 +24,16 @@ export default async function PrivacyPage() {
         <h2>The short version</h2>
         <p>
           We run no analytics, no advertising and no third-party trackers. What you save — your
-          account, your bag, your addresses, your orders — is stored in our own database.
+          account, your bag, your addresses, your orders — is kept securely by us.
         </p>
         <p>
-          Your browser keeps proof of who you are signed in as, a bag and wishlist held for you
+          Your device remembers that you&rsquo;re signed in, along with a bag and wishlist held for you
           before you sign in, a checkout you are part-way through and the products you recently
           viewed. Clearing your browser data removes these and leaves your account untouched.
         </p>
         <p>
           Payments are processed by Razorpay. Your card, UPI and bank details are entered on
-          Razorpay&rsquo;s own systems and never reach our servers.
+          Razorpay&rsquo;s own secure systems and never reach us.
         </p>
       </section>
 
@@ -50,7 +50,7 @@ export default async function PrivacyPage() {
           </li>
           <li>
             <strong>Payment information</strong> — handled entirely by our payment provider,
-            Razorpay. Card numbers, UPI PINs and bank log-ins never reach our servers. We keep
+            Razorpay. Card numbers, UPI PINs and bank log-ins never reach us. We keep
             only what Razorpay tells us about the result: the payment reference, the amount, the
             method used (for example &ldquo;UPI&rdquo; or &ldquo;card&rdquo;) and whether it
             succeeded or was refunded.
@@ -111,13 +111,12 @@ export default async function PrivacyPage() {
       <section id="cookies" className="scroll-mt-28">
         <h2>Cookie policy</h2>
         <p>
-          This storefront sets no cookies of its own. It uses your browser&rsquo;s local storage
-          for your sign-in, bag, wishlist and preferences — which is not a cookie and is not
-          readable by any other website. Only your sign-in is sent to our server, to prove it is
-          you. When you pay, Razorpay&rsquo;s payment window loads from Razorpay and may set its
-          own cookies, which it uses to secure the payment.
+          We don&rsquo;t set cookies of our own. Your sign-in, bag, wishlist and preferences are
+          remembered on your device so the store works smoothly between visits, and no other
+          website can read them. When you pay, Razorpay&rsquo;s secure payment window may set its
+          own cookies to keep the payment safe.
         </p>
-        <p>When the live store adds cookies, they will fall into three groups:</p>
+        <p>If we introduce cookies, they will fall into three groups:</p>
         <ul>
           <li>
             <strong>Essential</strong> — keeping you signed in and your bag intact. These cannot be

@@ -266,7 +266,7 @@ export function AdminBannersView() {
               />
 
               <AdminInput
-                label="Image URL"
+                label="Image link"
                 type="url"
                 value={editing.image}
                 onChange={(event) => setEditing({ ...editing, image: event.target.value })}
@@ -285,7 +285,7 @@ export function AdminBannersView() {
                 value={editing.buttonLink}
                 onChange={(event) => setEditing({ ...editing, buttonLink: event.target.value })}
                 placeholder="/shop"
-                hint="Must start with a slash."
+                hint="Use a page on your store, for example /shop/sale."
               />
 
               <AdminInput

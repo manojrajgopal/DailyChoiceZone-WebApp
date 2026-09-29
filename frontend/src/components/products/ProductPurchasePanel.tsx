@@ -73,6 +73,8 @@ export function ProductPurchasePanel({
   const [sizeError, setSizeError] = useState(false);
 
   const needsSize = product.sizes.length > 0;
+  const returnable = product.isReturnable ?? true;
+  const replaceable = product.isReplaceable ?? true;
   const outOfStock = product.stock <= 0;
   const lowStock = !outOfStock && product.stock <= 5;
 
@@ -274,11 +276,20 @@ export function ProductPurchasePanel({
         <div className="flex gap-3">
           <RotateCcw className="mt-0.5 h-4 w-4 shrink-0 text-copper-600" strokeWidth={1.5} aria-hidden="true" />
           <div>
+            {/* The product's own policy — it decides what the order page offers. */}
             <dt className="text-sm font-medium text-ink">
-              {config.returnWindowDays}-day returns
+              {returnable && replaceable
+                ? `${config.returnWindowDays}-day returns & replacements`
+                : returnable
+                  ? `${config.returnWindowDays}-day returns`
+                  : replaceable
+                    ? `${config.returnWindowDays}-day replacements`
+                    : "Not returnable"}
             </dt>
             <dd className="mt-0.5 text-xs leading-relaxed text-ink-500">
-              Unworn and with tags on. We arrange the pickup.
+              {returnable || replaceable
+                ? `${returnable ? "Unworn and with tags on. " : "Replaced if it arrives damaged, faulty or wrong. "}We arrange the pickup.`
+                : "This item can't be returned or exchanged once delivered."}
             </dd>
           </div>
         </div>
@@ -288,7 +299,7 @@ export function ProductPurchasePanel({
           <div>
             <dt className="text-sm font-medium text-ink">Quality checked</dt>
             <dd className="mt-0.5 text-xs leading-relaxed text-ink-500">
-              Inspected by hand before dispatch. SKU {product.sku}.
+              Quality-checked by hand before dispatch. Product code {product.sku}.
             </dd>
           </div>
         </div>

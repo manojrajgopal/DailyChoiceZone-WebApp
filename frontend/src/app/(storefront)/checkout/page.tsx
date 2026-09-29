@@ -56,7 +56,7 @@ export default function CheckoutContactPage() {
   return (
     <CheckoutShell
       title="Contact details"
-      description="We will send your order confirmation and delivery updates here."
+      description="We'll use this to contact you about your order."
     >
       <form onSubmit={onSubmit} className="max-w-md">
         <div className="flex flex-col gap-5">

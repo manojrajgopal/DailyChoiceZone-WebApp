@@ -1,9 +1,11 @@
 """
 Uploading product photographs.
 
-`POST /api/admin/uploads/images` takes one image file and returns the path it
-is served at, `/uploads/products/<random>.webp`, for the product form to store
-like any other image address.
+`POST /api/admin/uploads/images` takes one image file, stores it in the S3
+bucket and returns its public address, which the product form keeps like any
+other image address. Nothing is written to this server's disk — see
+`app/services/storage.py`, which also describes the settings that turn
+uploading on. `GET /api/admin/uploads/config` tells the form whether it is on.
 
 An uploaded file is untrusted input, so it is never stored as sent:
 
@@ -21,15 +23,14 @@ from __future__ import annotations
 
 import io
 import secrets
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from app.core.config import settings
 from app.core.errors import ValidationError
 from app.dependencies.auth import require_permission
 from app.models import AdminUser
+from app.services import storage
 from app.utils.response import ok
 
 router = APIRouter(prefix="/admin/uploads", tags=["Admin · Uploads"])
@@ -41,13 +42,9 @@ MAX_PIXELS = 40_000_000
 MAX_EDGE = 2400
 
 
-def upload_root() -> Path:
-    """Where uploads live on disk. Created on first use."""
-    root = Path(settings.UPLOAD_DIR)
-    if not root.is_absolute():
-        root = Path(__file__).resolve().parents[4] / root
-    (root / "products").mkdir(parents=True, exist_ok=True)
-    return root
+@router.get("/config", summary="Whether photo upload is available")
+def upload_config(admin: AdminUser = Depends(require_permission("products"))):
+    return ok({"enabled": storage.is_configured(), "maxBytes": MAX_BYTES})
 
 
 @router.post("/images", status_code=201, summary="Upload a product photograph")
@@ -55,6 +52,12 @@ async def upload_image(
     file: UploadFile = File(...),
     admin: AdminUser = Depends(require_permission("products")),
 ):
+    # Refuse before reading a byte when there is nowhere to put it.
+    if not storage.is_configured():
+        raise storage.StorageUnavailableError(
+            "Photo upload isn't available yet. Please paste an image link instead."
+        )
+
     data = await file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
         raise ValidationError("Images must be 8 MB or smaller.", error_code="IMAGE_TOO_LARGE")
@@ -84,6 +87,6 @@ async def upload_image(
         ) from None
 
     name = f"{secrets.token_hex(16)}.webp"
-    (upload_root() / "products" / name).write_bytes(out.getvalue())
+    url = storage.put_file(out.getvalue(), name, "image/webp")
 
-    return ok({"url": f"/uploads/products/{name}"}, message="Image uploaded.")
+    return ok({"url": url}, message="Photo uploaded.")

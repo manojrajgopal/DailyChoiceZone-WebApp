@@ -1,6 +1,5 @@
 "use client";
 
-import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -88,7 +87,7 @@ export function AdminOrderDetailView() {
         />
         <div className="rounded-[3px] border border-admin-border bg-admin-surface p-8 text-center">
           <p className="text-sm text-admin-ink">
-            No order matches <code>{orderId || "(none)"}</code>.
+            We couldn&rsquo;t find this order.
           </p>
           <AdminButtonLink href="/admin/orders" variant="secondary" className="mt-5">
             Back to orders
@@ -273,7 +272,7 @@ export function AdminOrderDetailView() {
 
         {currentIndex === -1 ? (
           <p className="mt-3 rounded-[3px] bg-[#fdeee7] px-3 py-2 text-xs text-[#9c4a24]">
-            This order was {order.status} and has left the normal flow.
+            This order was {order.status}.
           </p>
         ) : null}
       </AdminCard>
@@ -291,7 +290,7 @@ export function AdminOrderDetailView() {
                   <span className="h-14 w-11 shrink-0 overflow-hidden rounded-[2px] bg-admin-raised">
                     {line.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={mediaUrl(line.image)} alt="" className="h-full w-full object-cover" />
+                      <img src={line.image} alt="" className="h-full w-full object-cover" />
                     ) : null}
                   </span>
 
@@ -359,7 +358,7 @@ export function AdminOrderDetailView() {
           <OrderBillingPanel orderId={order.id} />
 
           {/* ------------------------------------------------------ timeline */}
-          <AdminCard title="Timeline" description="Append-only history of this order.">
+          <AdminCard title="Timeline" description="Every update to this order.">
             <ol className="flex flex-col gap-3">
               {[...order.timeline].reverse().map((event, index) => (
                 <li key={`${event.status}-${event.at}-${index}`} className="flex gap-2.5">
@@ -391,8 +390,7 @@ export function AdminOrderDetailView() {
           <AdminCard title="Update status">
             {isTerminal ? (
               <p className="text-xs leading-relaxed text-admin-muted">
-                This order is {order.status} and cannot be moved any further. That is deliberate —
-                a terminal status is a record, not a stage.
+                This order is {order.status}, so its status can no longer be changed.
               </p>
             ) : (
               <div className="flex flex-col gap-3">

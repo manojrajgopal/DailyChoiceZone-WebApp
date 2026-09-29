@@ -111,13 +111,59 @@ def png_bytes(size=(40, 30)) -> bytes:
     return out.getvalue()
 
 
+class FakeBucket:
+    """Stands in for the S3 client: records what would have been stored."""
+
+    def __init__(self):
+        self.objects = {}
+
+    def put_object(self, *, Bucket, Key, Body, ContentType, CacheControl):
+        self.objects[Key] = {"bucket": Bucket, "body": Body, "type": ContentType}
+
+
+@pytest.fixture()
+def bucket(monkeypatch):
+    from app.core.config import settings
+    from app.services import storage
+
+    monkeypatch.setattr(settings, "AWS_ACCESS_KEY_ID", "AKIATEST")
+    monkeypatch.setattr(settings, "AWS_SECRET_ACCESS_KEY", "secret")
+    monkeypatch.setattr(settings, "AWS_S3_BUCKET", "dcz-media")
+    monkeypatch.setattr(settings, "AWS_REGION", "ap-south-1")
+    monkeypatch.setattr(settings, "AWS_S3_PUBLIC_URL", "")
+    monkeypatch.setattr(settings, "AWS_S3_ENDPOINT_URL", "")
+    fake = FakeBucket()
+    monkeypatch.setattr(storage, "_client", lambda *args: fake)
+    return fake
+
+
+@pytest.fixture()
+def no_bucket(monkeypatch):
+    from app.core.config import settings
+
+    for name in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_BUCKET"):
+        monkeypatch.setattr(settings, name, "")
+
+
 class TestUploads:
-    def test_an_image_is_stored_re_encoded(self, client, admin_auth, tmp_path, monkeypatch):
+    def test_without_credentials_uploading_is_off(self, client, admin_auth, no_bucket):
+        config = client.get("/api/admin/uploads/config", headers=admin_auth)
+        assert config.json()["data"]["enabled"] is False
+
+        response = client.post(
+            "/api/admin/uploads/images",
+            headers=admin_auth,
+            files={"file": ("photo.png", png_bytes(), "image/png")},
+        )
+        assert response.status_code == 503
+        assert response.json()["error_code"] == "UPLOADS_DISABLED"
+
+    def test_with_credentials_the_photo_goes_to_the_bucket(self, client, admin_auth, bucket, tmp_path, monkeypatch):
         from PIL import Image
 
-        from app.core.config import settings
+        monkeypatch.chdir(tmp_path)  # anything written locally would land here
+        assert client.get("/api/admin/uploads/config", headers=admin_auth).json()["data"]["enabled"]
 
-        monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
         response = client.post(
             "/api/admin/uploads/images",
             headers=admin_auth,
@@ -125,17 +171,28 @@ class TestUploads:
         )
         assert response.status_code == 201, response.text
         url = response.json()["data"]["url"]
-        assert url.startswith("/uploads/products/") and url.endswith(".webp")
 
-        saved = tmp_path / "products" / url.rsplit("/", 1)[1]
-        with Image.open(saved) as image:
-            assert image.format == "WEBP"
-            assert image.size == (40, 30)
+        [(key, stored)] = bucket.objects.items()
+        assert key.startswith("products/") and key.endswith(".webp")
+        assert url == f"https://dcz-media.s3.ap-south-1.amazonaws.com/{key}"
+        assert stored["type"] == "image/webp"
+        with Image.open(io.BytesIO(stored["body"])) as image:
+            assert image.format == "WEBP" and image.size == (40, 30)
+        # Nothing on this server's disk.
+        assert not list(tmp_path.rglob("*"))
 
-    def test_a_file_that_is_not_an_image_is_refused(self, client, admin_auth, tmp_path, monkeypatch):
+    def test_a_public_address_can_be_configured(self, client, admin_auth, bucket, monkeypatch):
         from app.core.config import settings
 
-        monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+        monkeypatch.setattr(settings, "AWS_S3_PUBLIC_URL", "https://media.example.test/")
+        response = client.post(
+            "/api/admin/uploads/images",
+            headers=admin_auth,
+            files={"file": ("photo.png", png_bytes(), "image/png")},
+        )
+        assert response.json()["data"]["url"].startswith("https://media.example.test/products/")
+
+    def test_a_file_that_is_not_an_image_is_refused(self, client, admin_auth, bucket):
         response = client.post(
             "/api/admin/uploads/images",
             headers=admin_auth,
@@ -143,9 +200,9 @@ class TestUploads:
             files={"file": ("photo.png", b"<script>alert(1)</script>", "image/png")},
         )
         assert response.status_code == 422
-        assert not list((tmp_path / "products").glob("*"))
+        assert not bucket.objects
 
-    def test_only_administrators_may_upload(self, client, auth):
+    def test_only_administrators_may_upload(self, client, auth, bucket):
         anonymous = client.post(
             "/api/admin/uploads/images", files={"file": ("a.png", png_bytes(), "image/png")}
         )
@@ -156,3 +213,4 @@ class TestUploads:
         )
         assert anonymous.status_code == 401
         assert customer.status_code in (401, 403)
+        assert not bucket.objects

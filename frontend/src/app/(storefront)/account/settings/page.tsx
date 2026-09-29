@@ -4,7 +4,7 @@ import { SettingsView } from "@/components/account/SettingsView";
 
 export const metadata: Metadata = {
   title: "Settings",
-  description: "Notification preferences and locally stored data.",
+  description: "Manage your email preferences and the details saved on this device.",
   // Personal pages: useful to the customer, never to a search engine.
   robots: { index: false, follow: false },
 };

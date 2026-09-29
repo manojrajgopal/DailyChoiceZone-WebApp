@@ -281,12 +281,12 @@ export function PaymentMethods({
                   onClick={() => pay({ kind: "upi-vpa", vpa: vpa.trim() })}
                   className="shrink-0"
                 >
-                  Request
+                  Send request
                 </Button>
               </div>
               {vpa && !VPA_PATTERN.test(vpa.trim()) ? (
                 <p className="mt-1.5 text-xs text-clay-600">
-                  That does not look like a UPI ID. They look like name@bank.
+                  Please enter a valid UPI ID, for example name@okbank.
                 </p>
               ) : null}
             </div>
@@ -300,10 +300,10 @@ export function PaymentMethods({
           {!methods.upiQr && !(onPhone && methods.upiIntent) ? (
             <p className="text-xs leading-relaxed text-ink-500">
               {methods.upiIntent
-                ? "Paying by UPI works from a phone, where we can hand you over to " +
-                  "your UPI app. On a computer, please use one of the other methods."
-                : "UPI is not switched on for this store yet. Please use one of the " +
-                  "other methods below."}
+                ? "UPI apps can be used when you pay from your phone. On a computer, " +
+                  "please choose another payment method."
+                : "UPI isn't available right now. Please choose another payment " +
+                  "method below."}
             </p>
           ) : null}
         </Panel>
@@ -321,7 +321,7 @@ export function PaymentMethods({
         >
           <p className="text-xs leading-relaxed text-ink-500">
             We will show a QR code on this page. Scan it with any UPI app and the page
-            moves on by itself — nothing to type, and no window opens.
+            updates automatically — there is nothing to type.
           </p>
 
           <Button
@@ -347,9 +347,7 @@ export function PaymentMethods({
           subtitle="Visa, Mastercard, RuPay and Amex"
         >
           <p className="text-xs leading-relaxed text-ink-500">
-            Card details are entered on a secure field provided by our payment processor.
-            This site never sees, handles or stores a card number — which is what keeps
-            your card out of reach even if this site were compromised.
+            Your card details are entered securely with our payment partner and are never stored by us.
           </p>
           <Button
             fullWidth

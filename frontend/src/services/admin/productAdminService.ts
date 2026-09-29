@@ -1,4 +1,4 @@
-import { ApiError, apiPost } from "@/services/api/client";
+import { ApiError, apiGet, apiPost } from "@/services/api/client";
 import type { AdminProduct, AdminResult, ProductDraft, ProductStatus } from "@/types/admin";
 
 import { discountPercent } from "@/lib/utils/format";
@@ -229,6 +229,8 @@ export function emptyProductDraft(): ProductDraft {
     isTrending: false,
     isBestSeller: false,
     isFeatured: false,
+    isReturnable: true,
+    isReplaceable: true,
     stock: 0,
     sku: "",
     care: "",
@@ -271,4 +273,21 @@ export async function uploadProductImage(file: File): Promise<AdminResult<string
           : `${file.name} could not be uploaded.`,
     };
   }
+}
+
+let uploadsEnabled: Promise<boolean> | null = null;
+
+/**
+ * Whether photo upload is switched on — it is when cloud storage (Amazon S3)
+ * is configured on the server. Asked once per visit; a failed answer is not
+ * kept, so it is asked again next time.
+ */
+export function photoUploadAvailable(): Promise<boolean> {
+  uploadsEnabled ??= apiGet<{ enabled: boolean }>("/admin/uploads/config", { auth: "admin" })
+    .then((config) => config.enabled)
+    .catch(() => {
+      uploadsEnabled = null;
+      return false;
+    });
+  return uploadsEnabled;
 }

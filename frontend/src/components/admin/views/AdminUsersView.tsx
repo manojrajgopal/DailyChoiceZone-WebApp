@@ -242,10 +242,9 @@ export function AdminUsersView() {
           aria-hidden="true"
         />
         <p className="text-xs leading-relaxed text-admin-muted">
-          <strong className="text-admin-ink">A role is enforced by the server.</strong> Every
-          request from this portal carries the signed-in administrator&rsquo;s token, and the API
-          checks the role&rsquo;s permissions before it writes anything. What the interface hides
-          is a courtesy on top of that, not the check itself.
+          <strong className="text-admin-ink">Roles control what each person can see and
+          change.</strong> Every action is checked against the person&rsquo;s role, so a role
+          keeps its limits wherever they sign in. Only a Super admin can change roles.
         </p>
       </div>
 
@@ -330,7 +329,7 @@ export function AdminUsersView() {
                 hint={
                   editing.id
                     ? "Leave blank to keep the current password."
-                    : "At least eight characters. Hashed on the server; never stored as typed."
+                    : "At least eight characters. Passwords are stored securely."
                 }
               />
             </FormGrid>
@@ -340,7 +339,7 @@ export function AdminUsersView() {
                 Cancel
               </AdminButton>
               <AdminButton variant="primary" loading={busy} onClick={() => void onSave()}>
-                Save admin
+                Save user
               </AdminButton>
             </div>
           </div>
