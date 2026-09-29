@@ -26,6 +26,48 @@ export function apiUrl(path: string): string {
   return `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+/**
+ * Headers an ngrok tunnel needs, when the API is behind one.
+ *
+ * ngrok's free tunnels answer a *browser* request with their own HTML warning
+ * page instead of forwarding it (`ERR_NGROK_6024`). That page has no CORS
+ * headers, so every such call surfaces as a CORS error — while the API behind
+ * the tunnel is fine. This header tells ngrok to forward the request.
+ *
+ * Sent only to ngrok hosts: any custom header makes every request need a
+ * preflight, a round trip a real deployment should not pay for.
+ */
+const TUNNEL_HEADERS: Record<string, string> = ((): Record<string, string> => {
+  try {
+    const host = new URL(BASE_URL).hostname;
+    return /\.ngrok(-free)?\.(app|dev|io)$/.test(host)
+      ? { "ngrok-skip-browser-warning": "true" }
+      : {};
+  } catch {
+    return {};
+  }
+})();
+
+/**
+ * An API image as something an `<img src>` can show.
+ *
+ * Normally just its URL. Behind an ngrok tunnel an `<img>` cannot send the
+ * header above and would receive the warning page instead of the picture, so
+ * the image is fetched with the header and handed over as an object URL.
+ */
+export async function apiImageSrc(path: string): Promise<string> {
+  const url = apiUrl(path);
+  if (!Object.keys(TUNNEL_HEADERS).length) return url;
+
+  try {
+    const response = await fetch(url, { headers: TUNNEL_HEADERS, cache: "no-store" });
+    if (!response.ok) return url;
+    return URL.createObjectURL(await response.blob());
+  } catch {
+    return url;
+  }
+}
+
 /** Where the token lives. Not business data — see `docs` in the README. */
 const TOKEN_KEYS = {
   customer: "dcz:auth-token",
@@ -119,7 +161,7 @@ async function request<T>(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<Envelope<T>> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...TUNNEL_HEADERS };
 
   if (body !== undefined) headers["Content-Type"] = "application/json";
 

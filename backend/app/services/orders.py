@@ -730,14 +730,33 @@ def update_status(
 
 
 def _retire_payment_link(db: Session, order: Order) -> None:
+    """
+    Make every way of paying this order stop working: its payment link and any
+    QR code minted for it.
+
+    A customer who cancels from the QR screen would otherwise leave a live,
+    single-use code behind. Paying it would be refunded — a payment on a
+    cancelled order always is — but a code that cannot be paid is better than
+    a refund nobody wanted.
+    """
     payment = db.execute(select(Payment).where(Payment.order_id == order.id)).scalars().first()
-    if payment is None or not payment.payment_link_id:
+    if payment is None:
         return
 
     provider = get_provider()
     cancel = getattr(provider, "cancel_payment_link", None)
-    if cancel is not None:
+    if cancel is not None and payment.payment_link_id:
         cancel(payment.payment_link_id)
+
+    close_qr = getattr(provider, "close_qr", None)
+    if close_qr is not None:
+        from app.services.settlement import _issued_qr_ids
+
+        for qr_id in _issued_qr_ids(payment):
+            try:
+                close_qr(qr_id)
+            except Exception:  # never let the gateway undo a committed cancel
+                logger.exception("Could not close QR code %s for order %s", qr_id, order.id)
 
 
 def cancel_order(db: Session, order_id: str, customer: Customer, reason: str = "") -> Order:

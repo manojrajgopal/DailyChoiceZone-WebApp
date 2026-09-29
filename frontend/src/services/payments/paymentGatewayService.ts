@@ -1,7 +1,7 @@
 import type { GatewayHandoff } from "@/types";
 
 import { pageCache } from "@/services/api/cache";
-import { apiDelete, apiGet, apiPost, apiUrl } from "@/services/api/client";
+import { apiDelete, apiGet, apiImageSrc, apiPost } from "@/services/api/client";
 
 import type { RazorpayResponse } from "./razorpayCheckout";
 
@@ -111,7 +111,7 @@ export async function createQr(paymentId: string): Promise<QrCode> {
   );
 
   // The server hands back a path; only the client knows the API's origin.
-  return { ...code, imageUrl: apiUrl(code.imageUrl) };
+  return { ...code, imageUrl: await apiImageSrc(code.imageUrl) };
 }
 
 /** Has it been scanned? Answered by the server reading the gateway. */

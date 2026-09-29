@@ -83,7 +83,11 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    # `ngrok-skip-browser-warning`: behind a free ngrok tunnel, a browser
+    # request without it gets ngrok's HTML warning page instead of this API —
+    # no CORS headers, so the browser reports a CORS error. The storefront
+    # sends it only when its API URL is an ngrok host. It carries no authority.
+    allow_headers=["Authorization", "Content-Type", "ngrok-skip-browser-warning"],
 )
 
 register_error_handlers(app)

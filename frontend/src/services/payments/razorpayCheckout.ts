@@ -105,6 +105,13 @@ export async function openRazorpayCheckout(
      * Letting it offer everything would put two pickers on one page.
      */
     only?: string;
+    /**
+     * Aborting closes the frame and reports "dismissed".
+     *
+     * Embedded mode draws no close button of its own, so the page's own
+     * "Cancel" and "Pay another way" need a way to take it down.
+     */
+    signal?: AbortSignal;
   } = {},
 ): Promise<CheckoutOutcome> {
   await loadCheckout();
@@ -194,6 +201,23 @@ export async function openRazorpayCheckout(
           "The payment did not go through. No money has been taken.",
       });
     });
+
+    if (options.signal?.aborted) {
+      settle({ status: "dismissed" });
+      return;
+    }
+    options.signal?.addEventListener(
+      "abort",
+      () => {
+        try {
+          checkout.close();
+        } catch {
+          /* already closed */
+        }
+        settle({ status: "dismissed" });
+      },
+      { once: true },
+    );
 
     checkout.open();
   });

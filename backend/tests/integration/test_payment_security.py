@@ -835,6 +835,26 @@ class TestQrCodes:
         assert minted["json"]["usage"] == "single_use"
         assert minted["json"]["fixed_amount"] is True
 
+    def test_cancelling_from_the_qr_screen_closes_the_code(
+        self, client, auth, gateway, catalogue, settings_documents
+    ):
+        """The page's "Cancel order" must not leave a scannable code behind."""
+        placed = place(client, auth).json()["data"]
+        gateway.responses["/payments/qr_codes"] = {
+            "id": "qr_cancel001", "image_url": "https://rzp.io/x", "status": "active",
+            "payment_amount": placed["amount"],
+        }
+        client.post(f"/api/payments/{placed['paymentId']}/qr", headers=auth)
+
+        number = placed["order"]["orderNumber"]
+        response = client.post(f"/api/orders/{number}/cancel", json={"reason": ""}, headers=auth)
+        assert response.status_code == 200, response.text
+
+        closed = [c["path"] for c in gateway.calls if c["path"].endswith("/close")]
+        assert "/payments/qr_codes/qr_cancel001/close" in closed
+        # Nothing was collected, so nothing is refunded.
+        assert not [c for c in gateway.calls if c["path"].endswith("/refund")]
+
 
 class TestPaymentLinks:
     @pytest.fixture()

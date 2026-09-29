@@ -13,6 +13,43 @@ import { useCart } from "@/hooks/useCart";
 import { useCustomerStatus } from "@/hooks/useSession";
 import { formatPrice } from "@/lib/utils/format";
 
+import type { BillingBreakdown, CartTotals, OrderLine } from "@/types";
+
+/** One row of the side summary, from the bag or from a placed order. */
+export interface SummaryLine {
+  key: string;
+  name: string;
+  image?: string;
+  detail: string;
+  quantity: number;
+  lineTotal: number;
+}
+
+/**
+ * What the side panel shows once there is an order to show.
+ *
+ * Placing an order empties the bag, and finishing an earlier payment starts
+ * with an empty one — so on the payment step the bag reads "0 items, ₹0" while
+ * the customer is asked to pay the real amount. The order is what they are
+ * paying for, so from then on the panel shows the order.
+ */
+export interface CheckoutSummary {
+  lines: SummaryLine[];
+  totals: CartTotals;
+  breakdown: BillingBreakdown;
+}
+
+export function summaryLinesFromOrder(lines: OrderLine[]): SummaryLine[] {
+  return lines.map((line, index) => ({
+    key: `${line.productId}-${line.size ?? ""}-${line.color ?? ""}-${index}`,
+    name: line.name,
+    image: line.image,
+    detail: [line.size, line.color].filter(Boolean).join(" · ") || line.brand,
+    quantity: line.quantity,
+    lineTotal: line.lineTotal,
+  }));
+}
+
 /**
  * The frame every checkout step renders inside.
  *
@@ -26,6 +63,7 @@ export function CheckoutShell({
   description,
   suppressEmptyRedirect = false,
   detailedTax = false,
+  summary,
   children,
 }: {
   title: string;
@@ -46,6 +84,11 @@ export function CheckoutShell({
    * the place of supply is not settled until an address is entered.
    */
   detailedTax?: boolean;
+  /**
+   * Show an order instead of the bag. `null` while it loads; left out, the
+   * panel shows the bag as on every earlier step.
+   */
+  summary?: CheckoutSummary | null;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -67,6 +110,17 @@ export function CheckoutShell({
    * token still being confirmed would be bounced to sign in on every refresh.
    */
   const needsSignIn = !isPending && !isSignedIn;
+
+  const shown: SummaryLine[] =
+    summary?.lines ??
+    lines.map((line) => ({
+      key: line.lineId,
+      name: line.product.name,
+      image: line.product.images[0],
+      detail: [line.size, line.color].filter(Boolean).join(" · ") || line.product.brand,
+      quantity: line.quantity,
+      lineTotal: line.lineTotal,
+    }));
 
   useEffect(() => {
     if (!needsSignIn) return;
@@ -110,23 +164,27 @@ export function CheckoutShell({
 
         {/* ------------------------------------------------- order summary */}
         <div className="lg:sticky lg:top-28">
-          {isLoading ? (
+          {summary === null || (summary === undefined && isLoading) ? (
             <Skeleton className="h-80 w-full" />
           ) : (
-            <OrderSummary breakdown={breakdown} totals={totals} detailedTax={detailedTax}>
+            <OrderSummary
+              breakdown={summary?.breakdown ?? breakdown}
+              totals={summary?.totals ?? totals}
+              detailedTax={detailedTax}
+            >
               <ul className="flex flex-col gap-3">
-                {lines.map((line) => (
-                  <li key={line.lineId} className="flex items-center gap-3">
+                {shown.map((line) => (
+                  <li key={line.key} className="flex items-center gap-3">
                     <ProductImage
-                      src={line.product.images[0]}
+                      src={line.image}
                       alt=""
                       sizes="56px"
                       wrapperClassName="h-16 w-14 shrink-0 rounded-card"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs text-ink">{line.product.name}</p>
+                      <p className="truncate text-xs text-ink">{line.name}</p>
                       <p className="mt-0.5 text-[0.6875rem] text-ink-400">
-                        {[line.size, line.color].filter(Boolean).join(" · ") || line.product.brand}
+                        {line.detail}
                         {" · "}
                         Qty {line.quantity}
                       </p>

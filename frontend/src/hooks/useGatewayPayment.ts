@@ -125,16 +125,24 @@ export function useGatewayPayment() {
       setStage("card");
       setMessage("Enter your card details below.");
 
+      const controller = new AbortController();
+      abandon.current = () => controller.abort();
+
       try {
         startClock(handoff);
         const outcome = await openRazorpayCheckout(handoff, {
           container,
           only: "card",
+          signal: controller.signal,
         });
+        abandon.current = null;
 
         if (outcome.status === "dismissed") {
           reset();
-          toast.info("Payment cancelled. Your order is saved — you can pay any time.");
+          // Stopped from this page's own buttons: the page says what happens next.
+          if (!controller.signal.aborted) {
+            toast.info("Payment cancelled. Your order is saved — you can pay any time.");
+          }
           return "abandoned";
         }
 
@@ -146,6 +154,7 @@ export function useGatewayPayment() {
 
         return confirm(handoff.paymentId, outcome.response);
       } catch (error) {
+        abandon.current = null;
         reset();
         toast.error(
           error instanceof Error && error.message
@@ -191,10 +200,16 @@ export function useGatewayPayment() {
             return;
           }
 
+          abandon.current = null;
           void confirm(handoff.paymentId, event.response).then(finish);
         })
           .then((stop) => {
-            abandon.current = stop;
+            // Stopping has to answer the page too, or `pay` would never return.
+            abandon.current = () => {
+              stop();
+              abandon.current = null;
+              finish("abandoned");
+            };
           })
           .catch((error: unknown) => {
             reset();
@@ -321,8 +336,26 @@ export function useGatewayPayment() {
     setMessage("The time to pay ran out, so the items have been released.");
   }, []);
 
+  /**
+   * Stop whatever payment is under way, and go back to choosing.
+   *
+   * For the page's "Pay another way" and "Cancel order". Closes a QR code that
+   * was never scanned, stops listening for a UPI approval, and takes the card
+   * frame down; the `pay` call that started it answers "abandoned".
+   *
+   * Stopping listening does not stop a payment the customer already approved.
+   * That still reaches the server by webhook and is settled — or, on an order
+   * that has been cancelled meanwhile, refunded.
+   */
+  const cancel = useCallback(() => {
+    abandon.current?.();
+    abandon.current = null;
+    reset();
+  }, [reset]);
+
   return {
     pay,
+    cancel,
     stage,
     qr,
     message,

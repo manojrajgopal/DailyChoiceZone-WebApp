@@ -1,10 +1,14 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
 
-import { CheckoutShell } from "@/components/checkout/CheckoutShell";
+import {
+  CheckoutShell,
+  summaryLinesFromOrder,
+  type CheckoutSummary,
+} from "@/components/checkout/CheckoutShell";
 import { PaymentCountdown } from "@/components/checkout/PaymentCountdown";
 import {
   PaymentMethods,
@@ -12,13 +16,15 @@ import {
   type Choice,
 } from "@/components/checkout/PaymentMethods";
 
-import type { GatewayHandoff } from "@/types";
+import type { BillingBreakdown, GatewayHandoff, Order, OrderLine } from "@/types";
 import { useCart } from "@/hooks/useCart";
 import { useGatewayPayment } from "@/hooks/useGatewayPayment";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
 import { formatPrice } from "@/lib/utils/format";
+import { getInvoiceById } from "@/services/billing/invoiceService";
+import { addToCart } from "@/services/cartService";
 import { getPaymentSession } from "@/services/payments/paymentGatewayService";
-import { placeOrder } from "@/services/orderService";
+import { cancelOrder, getOrder, placeOrder } from "@/services/orderService";
 import { getDeliveryMethod, getPaymentMethod } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { toast } from "@/store/toastStore";
@@ -85,7 +91,7 @@ function PaymentStep() {
   const existingPaymentId = searchParams?.get("payment") ?? "";
   const settling = Boolean(existingPaymentId);
   const checkoutHydrated = useCheckoutHydrated();
-  const { lines, totals, clear } = useCart();
+  const { lines, totals, breakdown, clear } = useCart();
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
@@ -117,12 +123,64 @@ function PaymentStep() {
    */
   const [amountDue, setAmountDue] = useState<number | null>(null);
 
-  const { pay, stage, qr, message, isPaying, deadline, startClock, expire } = useGatewayPayment();
+  const { pay, cancel, stage, qr, message, isPaying, deadline, startClock, expire } =
+    useGatewayPayment();
 
   /** The gateway order for an existing payment, when settling one. */
   const [existing, setExisting] = useState<GatewayHandoff | null>(null);
   const [orderNumber, setOrderNumber] = useState("");
   const [loadFailed, setLoadFailed] = useState(false);
+
+  /**
+   * The order being paid for, for the side panel — not the bag, which placing
+   * the order emptied. Starts `null` (loading) when resuming a payment.
+   */
+  const [summary, setSummary] = useState<CheckoutSummary | null | undefined>(
+    settling ? null : undefined,
+  );
+  const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
+  const [activePaymentId, setActivePaymentId] = useState(existingPaymentId);
+
+  /**
+   * Set when the customer stops a payment from this page's own buttons, so the
+   * `pay` call that then returns "abandoned" does not also navigate away.
+   */
+  const exit = useRef<"switch" | "cancel" | null>(null);
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+    },
+    [],
+  );
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  /** The order and its invoice, as the side panel shows them. */
+  const showOrder = (order: Order, fallback?: BillingBreakdown, invoiceId?: string | null) => {
+    setOrderLines(order.lines);
+    const base = {
+      lines: summaryLinesFromOrder(order.lines),
+      // No "add more for free delivery" nudge on an order already placed.
+      totals: { ...order.totals, freeDeliveryShortfall: 0 },
+    };
+    if (fallback) setSummary({ ...base, breakdown: fallback });
+
+    const id = invoiceId ?? order.invoiceId;
+    if (!id) {
+      if (!fallback) setSummary(undefined);
+      return;
+    }
+    // The invoice is the authority on what is owed.
+    void getInvoiceById(id)
+      .then((invoice) => {
+        if (invoice) setSummary({ ...base, breakdown: invoice.breakdown });
+        else if (!fallback) setSummary(undefined);
+      })
+      .catch(() => {
+        if (!fallback) setSummary(undefined);
+      });
+  };
 
   useEffect(() => {
     if (!settling) return;
@@ -149,6 +207,16 @@ function PaymentStep() {
         startClock(session.gateway);
         // The handoff carries minor units; the display works in major.
         setAmountDue(session.gateway.amount / 100);
+
+        void getOrder(session.orderNumber)
+          .then((order) => {
+            if (!active) return;
+            if (order) showOrder(order);
+            else setSummary(undefined);
+          })
+          .catch(() => {
+            if (active) setSummary(undefined);
+          });
       })
       .catch(() => {
         if (active) setLoadFailed(true);
@@ -184,7 +252,9 @@ function PaymentStep() {
     if (settling) {
       if (!existing) return;
 
+      exit.current = null;
       const outcome = await pay(existing, choice);
+      if (exit.current || !alive.current) return;
 
       if (!orderNumber) {
         router.push("/account/orders");
@@ -250,7 +320,11 @@ function PaymentStep() {
      * recoverable from the confirmation page either way.
      */
     setPlaced(true);
-    setAmountDue(totals.total);
+    // What the gateway will charge, which is the server's figure for the order.
+    setAmountDue(placed.gateway ? placed.gateway.amount / 100 : placed.order.totals.total);
+    setOrderNumber(placed.order.orderNumber);
+    setActivePaymentId(placed.paymentId);
+    showOrder(placed.order, breakdown, placed.invoiceId);
     clear();
     resetCheckout();
     setIsPlacing(false);
@@ -261,7 +335,9 @@ function PaymentStep() {
       return;
     }
 
+    exit.current = null;
     const outcome = await pay(placed.gateway, choice);
+    if (exit.current || !alive.current) return;
 
     router.push(
       outcome === "paid"
@@ -269,6 +345,126 @@ function PaymentStep() {
         : `${confirmation}&payment=${encodeURIComponent(placed.paymentId)}`,
     );
   };
+
+  /**
+   * Back to the list of methods, same order, same clock.
+   *
+   * A freshly placed order moves to its `?payment=` address — the page that
+   * reopens an existing payment — because the bag it was placed from is empty
+   * now and there is nothing left to place.
+   */
+  const onPayAnotherWay = () => {
+    exit.current = "switch";
+    cancel();
+    setConfirmCancel(false);
+    if (!settling && activePaymentId) {
+      router.replace(`/checkout/payment?payment=${encodeURIComponent(activePaymentId)}`);
+    }
+  };
+
+  /**
+   * Cancel the order outright.
+   *
+   * The server releases the held stock, retires the QR code and any payment
+   * link, and refunds anything that did get paid — so a customer who scanned
+   * and then pressed cancel is not left out of pocket. The items go back into
+   * the bag, since cancelling a payment is rarely deciding against the things.
+   */
+  const onCancelOrder = async () => {
+    if (!orderNumber) return;
+    exit.current = "cancel";
+    setCancelling(true);
+    cancel();
+
+    try {
+      await cancelOrder(orderNumber, "Cancelled by the customer at payment.");
+    } catch (error) {
+      setCancelling(false);
+      setConfirmCancel(false);
+      exit.current = null;
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "We could not cancel the order. Please try again.",
+      );
+      if (!settling && activePaymentId) {
+        router.replace(`/checkout/payment?payment=${encodeURIComponent(activePaymentId)}`);
+      }
+      return;
+    }
+
+    // Best effort, one line at a time: an item that has since sold out simply
+    // does not come back, and that is not a reason to fail the cancellation.
+    for (const line of orderLines) {
+      try {
+        await addToCart({
+          productId: line.productId,
+          size: line.size,
+          color: line.color,
+          quantity: Math.min(line.quantity, 10),
+        });
+      } catch {
+        /* skipped */
+      }
+    }
+
+    toast.success("Order cancelled. Your items are back in your bag.");
+    router.push("/cart");
+  };
+
+  const exits = cancelling ? (
+    <p className="mt-5 flex items-center justify-center gap-1.5 border-t border-ink-100 pt-4 text-xs text-ink-500">
+      <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} aria-hidden="true" />
+      Cancelling your order…
+    </p>
+  ) : orderNumber ? (
+    <div className="mt-5 border-t border-ink-100 pt-4">
+      {confirmCancel ? (
+        <div className="text-left">
+          <p className="text-sm font-medium text-ink">Cancel this order?</p>
+          <p className="mt-1 text-xs leading-relaxed text-ink-500">
+            The items are released and go back into your bag. If a payment has already gone
+            through, it is refunded to you automatically.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void onCancelOrder()}
+              className="rounded-pill bg-ink px-4 py-2 text-xs font-medium text-cream transition-colors hover:bg-ink-800"
+            >
+              Yes, cancel order
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmCancel(false)}
+              className="rounded-pill border border-ink-200 px-4 py-2 text-xs font-medium text-ink transition-colors hover:border-ink-400"
+            >
+              Keep paying
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          {stage !== "choosing" ? (
+            <button
+              type="button"
+              onClick={onPayAnotherWay}
+              className="text-xs font-medium text-ink-700 underline underline-offset-2 hover:text-copper-700"
+            >
+              Pay another way
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setConfirmCancel(true)}
+            className="text-xs font-medium text-clay-700 underline underline-offset-2 hover:text-ink"
+          >
+            Cancel order
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null;
 
   return (
     <CheckoutShell
@@ -280,8 +476,9 @@ function PaymentStep() {
       }
       // Settling an existing payment happens with an empty bag by definition,
       // so the empty-bag guard must never fire in that mode.
-      suppressEmptyRedirect={settling || busy || placed}
+      suppressEmptyRedirect={settling || busy || placed || cancelling}
       detailedTax
+      summary={summary}
     >
 
       {/*
@@ -339,6 +536,8 @@ function PaymentStep() {
           processor. This site never sees, handles or stores a card number.
         </p>
       ) : null}
+
+      {stage === "card" ? <div className="max-w-2xl">{exits}</div> : null}
 
       {/* ------------------------------------------------------ scan, or wait */}
       {stage === "qr" || stage === "waiting" || stage === "confirming" ? (
@@ -403,7 +602,9 @@ function PaymentStep() {
               <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
               Do not close this page
             </p>
-          ) : null}
+          ) : (
+            exits
+          )}
         </div>
       ) : null}
 
@@ -419,7 +620,7 @@ function PaymentStep() {
           <PaymentMethods
             onPay={onPay}
             isPaying={busy}
-            total={formatPrice(totals.total)}
+            total={formatPrice(amountDue ?? totals.total)}
             cardContainer={`#${CARD_CONTAINER_ID}`}
           />
 
@@ -441,6 +642,9 @@ function PaymentStep() {
             <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
             Encrypted end to end
           </p>
+
+          {/* Resuming an order: it exists, so it can be cancelled from here. */}
+          {settling ? exits : null}
         </div>
       ) : null}
 
