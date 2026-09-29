@@ -108,7 +108,7 @@ def create_review(
         .where(
             OrderItem.product_id == product_id,
             Order.customer_id == customer.id,
-            Order.status.in_(("delivered", "shipped")),
+            Order.status.in_(("shipped", "in-transit", "out-for-delivery", "delivered")),
         )
     ).scalar_one()
 

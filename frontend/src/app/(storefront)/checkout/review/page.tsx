@@ -1,5 +1,6 @@
 "use client";
 
+import { imagesFor, productHref } from "@/lib/products/colourImages";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -109,9 +110,9 @@ export default function CheckoutReviewPage() {
           <ul className="mt-4 flex flex-col divide-y divide-ink-100">
             {lines.map((line) => (
               <li key={line.lineId} className="flex items-center gap-3.5 py-3 first:pt-0">
-                <Link href={`/product/${line.product.id}`} className="shrink-0" tabIndex={-1}>
+                <Link href={productHref(line.product, line.color)} className="shrink-0" tabIndex={-1}>
                   <ProductImage
-                    src={line.product.images[0]}
+                    src={imagesFor(line.product, line.color)[0]}
                     alt=""
                     sizes="64px"
                     wrapperClassName="h-20 w-16 rounded-card"

@@ -26,6 +26,7 @@ from app.api.routes.admin import (
     dashboard as admin_dashboard,
     orders as admin_orders,
     settings as admin_settings,
+    uploads as admin_uploads,
 )
 
 all_routers = [
@@ -54,6 +55,7 @@ all_routers = [
     admin_content.marketing_router,
     admin_settings.router,
     admin_dashboard.router,
+    admin_uploads.router,
     reports.router,
     billing.admin_router,
 ]

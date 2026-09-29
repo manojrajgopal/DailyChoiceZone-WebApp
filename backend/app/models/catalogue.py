@@ -199,6 +199,28 @@ class Product(Base, TimestampMixin):
         return max(0, self.stock - self.reserved_stock)
 
 
+def images_for(product: "Product", color: Optional[str] = None) -> List[str]:
+    """
+    The photographs to show for `product` in `color`.
+
+    The colour's own images when it has any; otherwise the images shared by
+    every colour; otherwise — a product photographed only per colour — the
+    first colour that has images. Never empty while the product has an image.
+    """
+    if color:
+        own = [image.url for image in product.images if image.color == color]
+        if own:
+            return own
+    shared = [image.url for image in product.images if not image.color]
+    if shared:
+        return shared
+    for entry in product.colors:
+        own = [image.url for image in product.images if image.color == entry.name]
+        if own:
+            return own
+    return []
+
+
 class ProductImage(Base):
     __tablename__ = "product_images"
 
@@ -208,6 +230,10 @@ class ProductImage(Base):
     )
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # The colour this photograph shows, by the colour's name; "" for an image
+    # that stands for the product in every colour. Named rather than keyed by
+    # id because colours are replaced wholesale on every edit.
+    color: Mapped[str] = mapped_column(String(60), nullable=False, default="", server_default="")
 
     product: Mapped["Product"] = relationship(back_populates="images")
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, useState } from "react";
-import { ImagePlus, Plus, X } from "lucide-react";
+import { useId, useRef, useState } from "react";
+import { ImagePlus, Plus, Upload, X } from "lucide-react";
 
+import { mediaUrl } from "@/lib/media";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -424,28 +425,47 @@ export function TagListInput({
 }
 
 /**
- * Image management.
+ * Image management: upload files, or paste addresses.
  *
- * Takes URLs rather than file uploads, because uploading needs somewhere to
- * upload *to*, and this store has no object storage. A file picker that only
- * produced a temporary blob URL would look like it worked and then break on
- * the next reload, which is worse than being honest about it.
- *
- * When a bucket exists, this component gains a file input and posts to it; the
- * rest of the form is unaffected since it only ever sees a list of URLs.
+ * Uploads go to the API, which verifies and re-encodes each file and returns
+ * the address it is served at; pasted URLs are kept as typed. Either way the
+ * form only ever sees a list of addresses, first one first.
  */
 export function ImageListInput({
   label,
   values,
   onChange,
   error,
+  hint = "Upload photos or paste an image URL. The first image is the one shown on product cards.",
 }: {
   label: string;
   values: string[];
   onChange: (values: string[]) => void;
   error?: string;
+  hint?: string;
 }) {
   const [draft, setDraft] = useState("");
+  const [uploading, setUploading] = useState(0);
+  const [uploadError, setUploadError] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const { uploadProductImage } = await import("@/services/admin/productAdminService");
+    setUploadError("");
+    setUploading(files.length);
+    const added: string[] = [];
+    const problems: string[] = [];
+    for (const file of Array.from(files)) {
+      const result = await uploadProductImage(file);
+      if (result.ok) added.push(result.data);
+      else problems.push(result.reason);
+      setUploading((count) => count - 1);
+    }
+    if (added.length) onChange([...values, ...added.filter((url) => !values.includes(url))]);
+    if (problems.length) setUploadError(problems.join(" "));
+    if (fileInput.current) fileInput.current.value = "";
+  };
 
   const add = () => {
     const url = draft.trim();
@@ -468,14 +488,30 @@ export function ImageListInput({
   };
 
   return (
-    <Field
-      label={label}
-      error={error}
-      hint="Paste an image URL. The first image is the one shown on product cards."
-    >
+    <Field label={label} error={error || uploadError || undefined} hint={hint}>
       {({ id }) => (
         <div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              className="sr-only"
+              aria-label={`Upload ${label.toLowerCase()}`}
+              onChange={(event) => void upload(event.target.files)}
+            />
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={uploading > 0}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[3px] bg-admin-ink px-3 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              <Upload className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+              {uploading > 0 ? `Uploading ${uploading}…` : "Upload photos"}
+            </button>
+          </div>
+          <div className="mt-2 flex gap-2">
             <input
               id={id}
               type="url"
@@ -510,7 +546,7 @@ export function ImageListInput({
                         next/image would reject any host not in remotePatterns. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={url}
+                      src={mediaUrl(url)}
                       alt={`${label} ${index + 1}`}
                       className="h-full w-full object-cover"
                     />

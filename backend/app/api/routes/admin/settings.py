@@ -24,7 +24,7 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 # What counts as an order still needing attention. The same set the orders
 # screen filters by, named once so the chip and the screen cannot disagree.
-OPEN_ORDER_STATUSES = ("pending", "confirmed", "processing")
+OPEN_ORDER_STATUSES = ("pending", "confirmed", "processing", "packed")
 
 # The documents this endpoint will serve. An allowlist, so a crafted key cannot
 # read or write something that was never meant to be configuration.

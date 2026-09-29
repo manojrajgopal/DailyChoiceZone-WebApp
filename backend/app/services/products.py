@@ -128,15 +128,37 @@ def _apply_children(db: Session, product: Product, payload: ProductWrite) -> Non
     Absent means "leave alone"; present means "this is now the whole list".
     Merging instead would make it impossible to remove the last image.
     """
-    if payload.images is not None:
-        product.images = [
-            ProductImage(url=url, position=index) for index, url in enumerate(payload.images)
-        ]
+    # Images and colours are rebuilt together: a colour's photographs are tied
+    # to it by name, so replacing the colours replaces their images, and
+    # replacing the shared images leaves every colour's own alone.
+    if payload.images is not None or payload.colors is not None:
+        shared = (
+            list(payload.images)
+            if payload.images is not None
+            else [image.url for image in product.images if not image.color]
+        )
 
-    if payload.colors is not None:
-        product.colors = [
-            ProductColor(name=color.name, hex=color.hex, position=index)
-            for index, color in enumerate(payload.colors)
+        if payload.colors is not None:
+            colours = list({color.name.strip(): color for color in payload.colors}.values())
+            coloured = [(color.name.strip(), url) for color in colours for url in color.images]
+            product.colors = [
+                ProductColor(name=color.name.strip(), hex=color.hex, position=index)
+                for index, color in enumerate(colours)
+            ]
+        else:
+            names = {color.name for color in product.colors}
+            coloured = [
+                (image.color, image.url)
+                for image in product.images
+                if image.color and image.color in names
+            ]
+
+        product.images = [
+            ProductImage(url=url, color="", position=index)
+            for index, url in enumerate(dict.fromkeys(shared))
+        ] + [
+            ProductImage(url=url, color=name, position=index)
+            for index, (name, url) in enumerate(coloured)
         ]
 
     if payload.sizes is not None:
@@ -347,7 +369,9 @@ def duplicate_product(db: Session, product_id: str, actor: Optional[str] = None)
         updated_by=actor,
     )
 
-    copy.images = [ProductImage(url=i.url, position=i.position) for i in source.images]
+    copy.images = [
+        ProductImage(url=i.url, color=i.color, position=i.position) for i in source.images
+    ]
     copy.colors = [ProductColor(name=c.name, hex=c.hex, position=c.position) for c in source.colors]
     copy.sizes = [ProductSize(label=s.label, position=s.position) for s in source.sizes]
     copy.specifications = [

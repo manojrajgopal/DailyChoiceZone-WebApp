@@ -163,7 +163,10 @@ async function request<T>(
 ): Promise<Envelope<T>> {
   const headers: Record<string, string> = { ...TUNNEL_HEADERS };
 
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // A file upload is sent as the browser encodes it: no JSON, and no
+  // Content-Type of our own, so the multipart boundary is set correctly.
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
 
   if (options.auth) {
     const token = getToken(options.auth);
@@ -173,7 +176,7 @@ async function request<T>(
   const init: RequestInit & { next?: { revalidate: number } } = {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     signal: options.signal,
   };
 

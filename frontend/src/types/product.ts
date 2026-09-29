@@ -14,6 +14,12 @@ export interface ProductColor {
   name: string;
   /** Any CSS colour — used for the swatch. */
   hex: string;
+  /**
+   * Photographs of the product in this colour. Empty when the colour has none
+   * of its own and the product's shared `images` stand for it — see
+   * `lib/products/colourImages`.
+   */
+  images?: string[];
 }
 
 export interface ProductSpecification {

@@ -70,7 +70,9 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
       category: product.category, subcategory: product.subcategory,
       price: product.price, originalPrice: product.originalPrice, currency: product.currency,
       rating: product.rating, reviewCount: product.reviewCount,
-      images: product.images, colors: product.colors, sizes: product.sizes,
+      images: product.sharedImages ?? product.images,
+      colors: product.colors.map((colour) => ({ ...colour, images: colour.images ?? [] })),
+      sizes: product.sizes,
       description: product.description, material: product.material, tags: product.tags,
       isNew: product.isNew, isTrending: product.isTrending,
       isBestSeller: product.isBestSeller, isFeatured: product.isFeatured,
@@ -372,20 +374,32 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
                 hint="Order matters — they appear in this order on the product page."
               />
 
-              <div>
-                <p className="mb-1.5 text-xs font-medium text-admin-ink">Colours</p>
-                <ColourEditor
-                  colors={draft.colors}
-                  onChange={(colors) => set("colors", colors)}
-                />
-              </div>
             </div>
           </FormSection>
 
+          {/* ----------------------------------------------- colours & photos */}
+          <FormSection
+            title="Colours & photos"
+            description="Add each colour the product is sold in, with photos of the product in that colour. Shoppers see a colour's own photos when they choose it, and each photographed colour gets its own card in product listings."
+          >
+            <ColourEditor
+              colors={draft.colors}
+              onChange={(colors) => set("colors", colors)}
+              error={errors.colors}
+            />
+          </FormSection>
+
           {/* -------------------------------------------------------- images */}
-          <FormSection title="Images" description="The first image is the primary one.">
+          <FormSection
+            title="Shared photos"
+            description={
+              draft.colors.some((colour) => colour.images?.length)
+                ? "Optional. Shown for the product in general — for example a detail shot that is the same in every colour."
+                : "Used for every colour. Add photos to each colour above to show the right one when a shopper picks it."
+            }
+          >
             <ImageListInput
-              label="Product images"
+              label="Shared photos"
               values={draft.images}
               onChange={(values) => set("images", values)}
               error={errors.images}
@@ -522,36 +536,53 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
 /* --------------------------------------------------------------- colours */
 
 /**
- * Colour variants.
+ * Colours, each with its own photographs.
  *
  * A name plus a hex, because the storefront shows a swatch *and* names it — a
- * swatch alone is invisible to anyone who cannot distinguish the colours.
+ * swatch alone is invisible to anyone who cannot distinguish the colours. And
+ * a set of photos per colour, chosen here rather than guessed from the image,
+ * so the product page can show the colour the shopper picked.
  */
+type ColourDraft = { name: string; hex: string; images?: string[] };
+
 function ColourEditor({
   colors,
   onChange,
+  error,
 }: {
-  colors: { name: string; hex: string }[];
-  onChange: (colors: { name: string; hex: string }[]) => void;
+  colors: ColourDraft[];
+  onChange: (colors: ColourDraft[]) => void;
+  error?: string;
 }) {
   const [name, setName] = useState("");
   const [hex, setHex] = useState("#b5734f");
 
   const add = () => {
     const trimmed = name.trim();
-    if (!trimmed || colors.some((colour) => colour.name === trimmed)) {
+    if (!trimmed || colors.some((colour) => colour.name.toLowerCase() === trimmed.toLowerCase())) {
       setName("");
       return;
     }
-    onChange([...colors, { name: trimmed, hex }]);
+    onChange([...colors, { name: trimmed, hex, images: [] }]);
     setName("");
+  };
+
+  const update = (index: number, patch: Partial<ColourDraft>) =>
+    onChange(colors.map((colour, at) => (at === index ? { ...colour, ...patch } : colour)));
+
+  const move = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= colors.length) return;
+    const next = [...colors];
+    [next[index], next[target]] = [next[target]!, next[index]!];
+    onChange(next);
   };
 
   return (
     <div>
       <div className="flex flex-wrap items-end gap-2">
         <label className="min-w-0 flex-1">
-          <span className="sr-only">Colour name</span>
+          <span className="mb-1.5 block text-xs font-medium text-admin-ink">New colour</span>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -562,6 +593,7 @@ function ColourEditor({
               }
             }}
             placeholder="Terracotta"
+            maxLength={60}
             className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface px-2.5 text-[0.8125rem] text-admin-ink placeholder:text-admin-faint focus:border-copper-500"
           />
         </label>
@@ -581,29 +613,75 @@ function ColourEditor({
         </AdminButton>
       </div>
 
+      {error ? (
+        <p role="alert" className="mt-2 text-[0.6875rem] text-[#c23434]">
+          {error}
+        </p>
+      ) : null}
+
       {colors.length > 0 ? (
-        <ul className="mt-2.5 flex flex-wrap gap-1.5">
-          {colors.map((colour) => (
-            <li key={colour.name}>
-              <span className="inline-flex items-center gap-1.5 rounded-[3px] bg-admin-raised px-2 py-1 text-[0.6875rem] text-admin-ink ring-1 ring-inset ring-admin-border">
-                <span
-                  aria-hidden="true"
-                  className="h-3 w-3 shrink-0 rounded-pill ring-1 ring-inset ring-black/15"
-                  style={{ backgroundColor: colour.hex }}
-                />
-                {colour.name}
-                <button
-                  type="button"
-                  onClick={() => onChange(colors.filter((entry) => entry.name !== colour.name))}
-                  aria-label={`Remove ${colour.name}`}
-                  className="text-admin-faint transition-colors hover:text-[#c23434]"
-                >
-                  ×
-                </button>
-              </span>
+        <ol className="mt-4 flex flex-col gap-3">
+          {colors.map((colour, index) => (
+            <li
+              key={colour.name}
+              className="rounded-[3px] border border-admin-border bg-admin-surface p-3"
+            >
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <label className="shrink-0">
+                  <span className="sr-only">{colour.name} swatch</span>
+                  <input
+                    type="color"
+                    value={colour.hex}
+                    onChange={(event) => update(index, { hex: event.target.value })}
+                    className="h-7 w-9 cursor-pointer rounded-[3px] border border-admin-border bg-admin-surface p-0.5"
+                  />
+                </label>
+                <p className="min-w-0 flex-1 truncate text-[0.8125rem] font-medium text-admin-ink">
+                  {colour.name}
+                  {index === 0 ? (
+                    <span className="ml-2 text-[0.625rem] font-normal uppercase tracking-wide text-admin-muted">
+                      Shown first
+                    </span>
+                  ) : null}
+                </p>
+                <span className="flex items-center gap-1 text-[0.6875rem]">
+                  <button
+                    type="button"
+                    onClick={() => move(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`Move ${colour.name} earlier`}
+                    className="rounded-[3px] px-1.5 py-1 text-admin-muted hover:bg-admin-raised disabled:opacity-30"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(index, 1)}
+                    disabled={index === colors.length - 1}
+                    aria-label={`Move ${colour.name} later`}
+                    className="rounded-[3px] px-1.5 py-1 text-admin-muted hover:bg-admin-raised disabled:opacity-30"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange(colors.filter((_, at) => at !== index))}
+                    className="rounded-[3px] px-1.5 py-1 text-[#c23434] hover:bg-[#fbeaea]"
+                  >
+                    Remove
+                  </button>
+                </span>
+              </div>
+
+              <ImageListInput
+                label={`Photos in ${colour.name}`}
+                values={colour.images ?? []}
+                onChange={(images) => update(index, { images })}
+                hint="The first photo is the one shown on this colour's product card."
+              />
             </li>
           ))}
-        </ul>
+        </ol>
       ) : (
         <p className="mt-2 text-[0.6875rem] text-admin-muted">
           No colours yet. Leave empty for products sold in one finish.

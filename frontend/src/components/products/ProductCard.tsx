@@ -12,12 +12,18 @@ import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
+import { imagesFor, productHref } from "@/lib/products/colourImages";
 import { humanize } from "@/lib/utils/format";
 
 import { QuickViewDialog } from "./QuickViewDialog";
 
 export interface ProductCardProps {
   product: Product;
+  /**
+   * Show the product in this colour: its photographs, its name under the
+   * title, and a link that opens the product page on it.
+   */
+  color?: string | null;
   /** Load the image eagerly. Use for the first row only. */
   priority?: boolean;
   /** Hide the quick-view affordance, e.g. inside the quick-view dialog itself. */
@@ -43,6 +49,7 @@ export interface ProductCardProps {
  */
 export function ProductCard({
   product,
+  color = null,
   priority = false,
   showQuickView = true,
   sizes,
@@ -51,9 +58,12 @@ export function ProductCard({
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const { isWishlisted, toggle } = useWishlistItem(product.id);
 
-  const primaryImage = product.images[0];
-  const hoverImage = product.images[1];
+  const photos = imagesFor(product, color);
+  const primaryImage = photos[0];
+  const hoverImage = photos[1];
   const outOfStock = product.stock <= 0;
+  const href = productHref(product, color);
+  const otherColours = product.colors.length - 1;
 
   return (
     <>
@@ -61,7 +71,7 @@ export function ProductCard({
         {/* ---------------------------------------------------------- media */}
         <div className="relative overflow-hidden bg-cream-deep">
           <Link
-            href={`/product/${product.id}`}
+            href={href}
             className="block focus-visible:outline-offset-4"
             tabIndex={-1}
             aria-hidden="true"
@@ -169,17 +179,28 @@ export function ProductCard({
 
           <h3 className="text-[0.9375rem] leading-snug text-ink">
             {/* The one real link — its text is the accessible name for the card. */}
-            <Link
-              href={`/product/${product.id}`}
-              className="transition-colors hover:text-copper-700"
-            >
+            <Link href={href} className="transition-colors hover:text-copper-700">
               {/* Stretches the link's hit area over the whole card. */}
               <span className="absolute inset-0 z-[1]" aria-hidden="true" />
               {product.name}
             </Link>
           </h3>
 
-          <p className="text-xs text-ink-500">{product.brand}</p>
+          <p className="text-xs text-ink-500">
+            {product.brand}
+            {color && product.colors.length > 1 ? (
+              <>
+                <span aria-hidden="true"> · </span>
+                <span className="text-ink-700">{color}</span>
+                {otherColours > 0 ? (
+                  <span className="text-ink-400">
+                    {" "}
+                    · +{otherColours} {otherColours === 1 ? "colour" : "colours"}
+                  </span>
+                ) : null}
+              </>
+            ) : null}
+          </p>
 
           <Price
             price={product.price}
@@ -203,6 +224,7 @@ export function ProductCard({
       {showQuickView ? (
         <QuickViewDialog
           product={product}
+          initialColor={color}
           open={quickViewOpen}
           onOpenChange={setQuickViewOpen}
         />

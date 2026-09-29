@@ -78,8 +78,10 @@ export function Header({ items }: { items: NavItem[] }) {
 
   const activeItem = items.find((item) => item.id === openMenuId) ?? null;
 
+  // 36px wide below 360px: on a 320px phone the logo and four 40px icons are
+  // 3px wider than the screen and the bag icon runs off the edge.
   const iconButton =
-    "relative inline-flex h-10 w-10 items-center justify-center rounded-pill text-ink transition-colors hover:bg-cream-deep";
+    "relative inline-flex h-10 w-9 min-[360px]:w-10 items-center justify-center rounded-pill text-ink transition-colors hover:bg-cream-deep";
 
   return (
     <>
@@ -88,7 +90,7 @@ export function Header({ items }: { items: NavItem[] }) {
           onPointerLeave={scheduleClose}
           onPointerEnter={cancelClose}
         >
-          <div className="page-shell flex h-16 items-center gap-3 sm:h-[4.5rem]">
+          <div className="page-shell flex h-16 items-center gap-2 min-[360px]:gap-3 sm:h-[4.5rem]">
             {/* ------------------------------------------- mobile: hamburger */}
             <button
               type="button"

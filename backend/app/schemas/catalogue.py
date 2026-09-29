@@ -7,6 +7,7 @@ from typing import List, Literal, Optional
 
 from pydantic import Field, field_validator
 
+from app.models.catalogue import images_for
 from app.schemas.base import CamelModel
 
 # ---------------------------------------------------------------- pieces
@@ -15,6 +16,9 @@ from app.schemas.base import CamelModel
 class ColorOut(CamelModel):
     name: str
     hex: str
+    # This colour's own photographs. Empty when the colour has none and the
+    # product's shared `images` stand for it.
+    images: List[str] = []
 
 
 class SpecificationOut(CamelModel):
@@ -77,8 +81,18 @@ class ProductOut(CamelModel):
             currency=product.currency,
             rating=float(product.rating),
             review_count=product.review_count,
-            images=[image.url for image in product.images],
-            colors=[ColorOut(name=c.name, hex=c.hex) for c in product.colors],
+            # The shared images — or, for a product photographed only per
+            # colour, the first colour's — so anything that reads `images[0]`
+            # (a wishlist row, an old client) still has a picture.
+            images=images_for(product),
+            colors=[
+                ColorOut(
+                    name=c.name,
+                    hex=c.hex,
+                    images=[image.url for image in product.images if image.color == c.name],
+                )
+                for c in product.colors
+            ],
             sizes=[size.label for size in product.sizes],
             description=product.description,
             material=product.material,
@@ -119,6 +133,10 @@ class AdminProductOut(ProductOut):
     updated_at: datetime
     updated_by: Optional[str] = None
     seo: SeoOut
+    # Only the images shared by every colour. `images` falls back to the first
+    # colour's photographs when there are none, which is right for a shop
+    # window and wrong for an edit form: saving it would duplicate them.
+    shared_images: List[str] = []
 
     @classmethod
     def from_model(cls, product) -> "AdminProductOut":
@@ -133,6 +151,7 @@ class AdminProductOut(ProductOut):
             created_at=product.created_at,
             updated_at=product.updated_at,
             updated_by=product.updated_by,
+            shared_images=[image.url for image in product.images if not image.color],
             seo=SeoOut(
                 meta_title=product.meta_title,
                 meta_description=product.meta_description,
@@ -141,8 +160,25 @@ class AdminProductOut(ProductOut):
 
 
 class ColorIn(CamelModel):
-    name: str
+    name: str = Field(min_length=1, max_length=60)
     hex: str = "#000000"
+    # The photographs of the product in this colour, in display order.
+    images: List[str] = Field(default_factory=list, max_length=12)
+
+    @field_validator("images")
+    @classmethod
+    def _image_urls(cls, value: List[str]) -> List[str]:
+        cleaned = []
+        for url in value:
+            url = url.strip()
+            if not url:
+                continue
+            if len(url) > 500:
+                raise ValueError("An image address is too long.")
+            if not (url.startswith("https://") or url.startswith("http://") or url.startswith("/uploads/")):
+                raise ValueError("Images must be web addresses or uploaded files.")
+            cleaned.append(url)
+        return list(dict.fromkeys(cleaned))
 
 
 class SpecificationIn(CamelModel):

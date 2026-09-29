@@ -48,7 +48,12 @@ export function AccountShell({
 }) {
   const pathname = usePathname();
   const { user, isSignedIn, isLoading, signOut } = useSession();
-  const accountNav = useSiteContent()?.accountNavigation ?? [];
+  // The menu is a content document an administrator can edit. Stores set up
+  // before the account wishlist existed link "/wishlist" (the full page); inside
+  // the account area it opens the account preview instead, which links on.
+  const accountNav = (useSiteContent()?.accountNavigation ?? []).map((item) =>
+    item.href === "/wishlist" ? { ...item, href: "/account/wishlist" } : item,
+  );
 
   if (isLoading) {
     return (
@@ -100,10 +105,15 @@ export function AccountShell({
         ) : null}
       </div>
 
-      <div className="mt-9 grid items-start gap-9 lg:grid-cols-[14rem_1fr] lg:gap-12">
+      <div className="mt-6 grid items-start gap-6 lg:mt-9 lg:grid-cols-[14rem_1fr] lg:gap-12">
         {/* ------------------------------------------------------- sidebar */}
-        <aside>
-          <div className="rounded-card border border-ink-200 bg-shell p-4">
+        {/*
+          Below 1024px the sidebar becomes one swipeable row of tabs. Stacked,
+          it was eight rows and a card between the page title and the content,
+          on every account page.
+        */}
+        <aside className="min-w-0">
+          <div className="hidden rounded-card border border-ink-200 bg-shell p-4 lg:block">
             <p className="font-display text-base text-ink">
               {user.firstName} {user.lastName}
             </p>
@@ -113,21 +123,22 @@ export function AccountShell({
             </p>
           </div>
 
-          <nav aria-label="Account" className="mt-4">
-            <ul className="flex flex-col">
+          <nav aria-label="Account" className="lg:mt-4">
+            <ul className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto scroll-px-4 px-4 pb-1 sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-0 lg:overflow-visible lg:px-0 lg:pb-0">
               {accountNav.map((item) => {
                 const active = pathname === item.href;
                 const Icon = ICONS[item.icon] ?? User;
                 return (
-                  <li key={item.href}>
+                  <li key={item.href} className="shrink-0 lg:shrink">
                     <Link
                       href={item.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "flex items-center gap-2.5 border-l-2 py-2.5 pl-3.5 text-sm transition-colors",
+                        "flex items-center gap-2 whitespace-nowrap rounded-pill border px-3.5 py-2 text-sm transition-colors",
+                        "lg:gap-2.5 lg:rounded-none lg:border-0 lg:border-l-2 lg:py-2.5 lg:pl-3.5 lg:pr-0",
                         active
-                          ? "border-ink bg-cream-deep font-medium text-ink"
-                          : "border-transparent text-ink-700 hover:border-ink-300 hover:text-ink",
+                          ? "border-ink bg-ink font-medium text-cream lg:border-ink lg:bg-cream-deep lg:text-ink"
+                          : "border-ink-200 text-ink-700 hover:border-ink-400 hover:text-ink lg:border-transparent lg:hover:border-ink-300",
                       )}
                     >
                       <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
@@ -137,11 +148,11 @@ export function AccountShell({
                 );
               })}
 
-              <li>
+              <li className="shrink-0 lg:shrink">
                 <button
                   type="button"
                   onClick={() => void signOut()}
-                  className="flex w-full items-center gap-2.5 border-l-2 border-transparent py-2.5 pl-3.5 text-left text-sm text-ink-700 transition-colors hover:border-ink-300 hover:text-ink"
+                  className="flex w-full items-center gap-2 whitespace-nowrap rounded-pill border border-ink-200 px-3.5 py-2 text-left text-sm text-ink-700 transition-colors hover:border-ink-400 hover:text-ink lg:gap-2.5 lg:rounded-none lg:border-0 lg:border-l-2 lg:border-transparent lg:py-2.5 lg:pl-3.5 lg:hover:border-ink-300"
                 >
                   <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
                   Sign out

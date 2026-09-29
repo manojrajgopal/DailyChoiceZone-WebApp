@@ -1,5 +1,6 @@
 "use client";
 
+import { mediaUrl } from "@/lib/media";
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 
@@ -342,7 +343,7 @@ export function AdminCollectionsView() {
                             {product.images[0] ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={product.images[0]}
+                                src={mediaUrl(product.images[0])}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />

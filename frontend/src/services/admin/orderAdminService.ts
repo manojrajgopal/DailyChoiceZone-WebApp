@@ -5,6 +5,7 @@ import type {
   PaymentStatus,
 } from "@/types/admin";
 
+import { availableMoves, needsConfirmation, stageLabel, type Move } from "@/lib/orders/orderFlow";
 import { ApiError } from "@/services/api/client";
 
 import type { PaymentLinkSent } from "./admin-data-source";
@@ -27,19 +28,9 @@ export function getOrder(id: string): Promise<AdminOrder | null> {
   return adminDataSource.getOrder(id);
 }
 
-/** Where an order can go next, given where it is. */
-const ALLOWED_NEXT: Record<AdminOrderStatus, AdminOrderStatus[]> = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["processing", "cancelled"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered", "returned"],
-  delivered: ["returned"],
-  cancelled: [],
-  returned: [],
-};
-
-export function allowedTransitions(from: AdminOrderStatus): AdminOrderStatus[] {
-  return ALLOWED_NEXT[from] ?? [];
+/** Where an order can go from here, and what kind of move each is. */
+export function availableMovesFor(order: AdminOrder): Move[] {
+  return availableMoves(order.status, order.awaitingPayment ?? false);
 }
 
 export async function updateOrderStatus(
@@ -47,22 +38,40 @@ export async function updateOrderStatus(
   status: AdminOrderStatus,
   note: string,
   by: string,
+  confirm = false,
 ): Promise<AdminResult<AdminOrder>> {
   const order = await adminDataSource.getOrder(id);
   if (!order) return { ok: false, reason: "That order no longer exists." };
 
   if (order.status === status) {
-    return { ok: false, reason: `This order is already ${status}.` };
+    return { ok: false, reason: `This order is already ${stageLabel(status).toLowerCase()}.` };
   }
 
-  if (!allowedTransitions(order.status).includes(status)) {
+  const move = availableMovesFor(order).find((entry) => entry.target === status);
+  if (!move) {
     return {
       ok: false,
-      reason: `An order that is ${order.status} cannot be moved to ${status}.`,
+      reason: `An order that is ${stageLabel(order.status).toLowerCase()} cannot be moved to ${stageLabel(status).toLowerCase()}.`,
     };
   }
+  if (needsConfirmation(move) && !confirm) {
+    return { ok: false, reason: "This change skips or reverses a stage and needs confirming." };
+  }
 
-  return { ok: true, data: await adminDataSource.updateOrderStatus(id, status, note, by) };
+  try {
+    return {
+      ok: true,
+      data: await adminDataSource.updateOrderStatus(id, status, note, by, confirm),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason:
+        error instanceof ApiError && error.message
+          ? error.message
+          : "The status could not be updated. Please try again.",
+    };
+  }
 }
 
 export async function updatePaymentStatus(

@@ -8,6 +8,7 @@ import type { Product } from "@/types";
 
 import { ProductImage } from "@/components/common/ProductImage";
 import { ColorPicker, QuantityStepper, SizePicker } from "@/components/common/VariantPickers";
+import { imagesFor, initialColour } from "@/lib/products/colourImages";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Dialog";
@@ -28,10 +29,13 @@ import { toast } from "@/store/toastStore";
  */
 export function QuickViewDialog({
   product,
+  initialColor = null,
   open,
   onOpenChange,
 }: {
   product: Product;
+  /** Open on this colour — the one the card was showing. */
+  initialColor?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -42,18 +46,38 @@ export function QuickViewDialog({
         close genuinely resets it. Variant choices therefore start fresh on
         every open, with no reset effect to remember to keep in step.
       */}
-      <QuickViewBody product={product} onClose={() => onOpenChange(false)} />
+      <QuickViewBody
+        product={product}
+        initialColor={initialColor}
+        onClose={() => onOpenChange(false)}
+      />
     </Modal>
   );
 }
 
-function QuickViewBody({ product, onClose }: { product: Product; onClose: () => void }) {
+function QuickViewBody({
+  product,
+  initialColor,
+  onClose,
+}: {
+  product: Product;
+  initialColor: string | null;
+  onClose: () => void;
+}) {
   const add = useAddToCart();
   const { isWishlisted, toggle } = useWishlistItem(product.id);
 
   const [activeImage, setActiveImage] = useState(0);
   const [size, setSize] = useState<string | null>(null);
-  const [color, setColor] = useState<string | null>(product.colors[0]?.name ?? null);
+  const [color, setColorState] = useState<string | null>(() =>
+    initialColour(product, initialColor),
+  );
+  // A colour's own photographs; the first of them whenever the colour changes.
+  const photos = imagesFor(product, color);
+  const setColor = (next: string | null) => {
+    setColorState(next);
+    setActiveImage(0);
+  };
   const [quantity, setQuantity] = useState(1);
   const [sizeError, setSizeError] = useState(false);
 
@@ -75,15 +99,15 @@ function QuickViewBody({ product, onClose }: { product: Product; onClose: () => 
         {/* ------------------------------------------------------- gallery */}
         <div className="flex flex-col gap-3">
           <ProductImage
-            src={product.images[activeImage]}
+            src={photos[activeImage] ?? photos[0]}
             alt={product.name}
             sizes="(min-width: 640px) 45vw, 90vw"
             wrapperClassName="aspect-[3/4] w-full rounded-card"
           />
 
-          {product.images.length > 1 ? (
+          {photos.length > 1 ? (
             <div className="flex gap-2" role="tablist" aria-label="Product images">
-              {product.images.slice(0, 4).map((image, index) => (
+              {photos.slice(0, 4).map((image, index) => (
                 <button
                   key={image}
                   type="button"

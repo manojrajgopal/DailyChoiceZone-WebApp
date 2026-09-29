@@ -1,17 +1,18 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import type { Invoice } from "@/types";
 
 import { AccountShell } from "@/components/account/AccountShell";
-import { InvoiceActions } from "@/components/billing/InvoiceActions";
+import { InvoiceActions, downloadInvoice } from "@/components/billing/InvoiceActions";
 import { InvoiceDocument } from "@/components/billing/InvoiceDocument";
 import { EmptyState } from "@/components/common/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useBillingConfig, useTaxConfig } from "@/hooks/useBillingConfig";
 import { getMyInvoice } from "@/services/billing/invoiceService";
+import { toast } from "@/store/toastStore";
 
 /**
  * One invoice, as a document.
@@ -52,6 +53,25 @@ function InvoiceDetail() {
     };
   }, [id]);
 
+  /**
+   * `?download=pdf`: the invoice list's "PDF" option lands here, since a PDF
+   * is drawn from the document on screen. Once, after the document renders.
+   */
+  const wantsPdf = searchParams?.get("download") === "pdf";
+  const started = useRef(false);
+  useEffect(() => {
+    if (!wantsPdf || !invoice || !config || started.current) return;
+    started.current = true;
+    const timer = window.setTimeout(() => {
+      void downloadInvoice("pdf", invoice, config, taxConfig?.gstin ?? "")
+        .then((done) => {
+          if (done) toast.success(`${invoice.invoiceNumber} downloaded`);
+        })
+        .catch(() => toast.error("The PDF could not be created. Please try again."));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [wantsPdf, invoice, config, taxConfig]);
+
   if (isLoading || !config) {
     return (
       <AccountShell title="Invoice" breadcrumb={[{ label: "Invoices", href: "/account/invoices" }]}>
@@ -84,6 +104,7 @@ function InvoiceDetail() {
       <InvoiceActions
         invoice={invoice}
         config={config}
+        gstin={taxConfig?.gstin ?? ""}
         className="print-hidden mb-5 flex flex-wrap gap-2.5"
       />
 

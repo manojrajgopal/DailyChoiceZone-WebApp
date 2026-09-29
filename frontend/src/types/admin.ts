@@ -34,7 +34,15 @@ export interface ProductManagement {
 }
 
 /** The customer product plus its management metadata. */
-export type AdminProduct = Product & ProductManagement;
+export type AdminProduct = Product &
+  ProductManagement & {
+    /**
+     * The images shared by every colour, as stored. `images` falls back to
+     * the first colour's photographs when there are none; the edit form must
+     * not mistake those for shared ones.
+     */
+    sharedImages?: string[];
+  };
 
 /** What the product form submits. Derived fields are computed on save. */
 export type ProductDraft = Omit<AdminProduct, "discount" | "createdAt" | "updatedAt" | "updatedBy">;
@@ -76,11 +84,15 @@ export interface StockAdjustment {
 
 /* -------------------------------------------------------------------- orders */
 
+/** The fulfilment pipeline and its exits — see `lib/orders/orderFlow`. */
 export type AdminOrderStatus =
   | "pending"
   | "confirmed"
   | "processing"
+  | "packed"
   | "shipped"
+  | "in-transit"
+  | "out-for-delivery"
   | "delivered"
   | "cancelled"
   | "returned";
@@ -131,6 +143,8 @@ export interface AdminOrder {
   timeline: OrderEvent[];
   /** Courier reference once shipped. */
   trackingNumber: string | null;
+  /** A checkout order still waiting for its payment: only a payment confirms it. */
+  awaitingPayment?: boolean;
 }
 
 /* ----------------------------------------------------------------- customers */

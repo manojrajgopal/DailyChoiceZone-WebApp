@@ -87,12 +87,13 @@ export function Footer({ config }: { config: SiteConfig }) {
               {config.footer.map((column) => (
                 <div key={column.heading}>
                   <h2 className="label-wide mb-4 text-cream/50">{column.heading}</h2>
-                  <ul className="flex flex-col gap-2.5">
+                  {/* 32px-tall links on touch screens, same spacing as before. */}
+                  <ul className="flex flex-col gap-0.5 sm:gap-2.5">
                     {column.links.map((link) => (
                       <li key={`${column.heading}-${link.href}`}>
                         <Link
                           href={link.href}
-                          className="text-sm text-cream/80 transition-colors hover:text-cream"
+                          className="inline-flex min-h-8 items-center text-sm text-cream/80 transition-colors hover:text-cream sm:min-h-0"
                         >
                           {link.label}
                         </Link>

@@ -10,7 +10,7 @@ import type { CreditNote, Invoice, Payment, Refund } from "@/types";
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { InvoiceDocument } from "@/components/billing/InvoiceDocument";
-import { downloadInvoiceCsv, useInvoicePrint } from "@/components/billing/InvoiceActions";
+import { InvoiceDownloadMenu, useInvoicePrint } from "@/components/billing/InvoiceActions";
 import { CreateRefundDialog } from "@/components/admin/views/CreateRefundDialog";
 import { CreateCreditNoteDialog } from "@/components/admin/views/CreateCreditNoteDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -153,17 +153,17 @@ function AdminInvoiceDetail() {
           Print
         </AdminButton>
 
-        <AdminButton
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            downloadInvoiceCsv(invoice);
-            toast.success(`${invoice.invoiceNumber} downloaded`);
-          }}
-        >
-          <Download className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
-          Download
-        </AdminButton>
+        <InvoiceDownloadMenu
+          invoice={invoice}
+          config={config}
+          gstin={taxConfig?.gstin ?? ""}
+          renderTrigger={({ busy, ...props }) => (
+            <AdminButton size="sm" variant="secondary" {...props} disabled={busy}>
+              <Download className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+              Download
+            </AdminButton>
+          )}
+        />
 
         <AdminButton
           size="sm"

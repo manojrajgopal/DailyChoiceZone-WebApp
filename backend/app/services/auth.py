@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from datetime import datetime
 from typing import Optional
 
@@ -194,7 +196,55 @@ def _clear_other_defaults(db: Session, customer_id: str, keep_id: Optional[str] 
             address.is_default = False
 
 
+_ADDRESS_FIELDS = ("full_name", "line1", "line2", "city", "state", "pincode", "country")
+
+
+def _address_key(values: dict) -> tuple:
+    """
+    What makes two addresses the same place: the fields compared without case,
+    spacing or punctuation, and the phone number by its digits (its last ten,
+    so "+91 98765 43210" and "9876543210" agree).
+    """
+    def clean(value) -> str:
+        return re.sub(r"[^0-9a-z]+", "", str(value or "").lower())
+
+    phone = re.sub(r"\D", "", str(values.get("phone") or ""))[-10:]
+    return tuple(clean(values.get(field)) for field in _ADDRESS_FIELDS) + (phone,)
+
+
+def find_matching_address(
+    db: Session, customer: Customer, payload: AddressWrite
+) -> Optional[Address]:
+    """The customer's saved address that is this one, if there is one."""
+    wanted = _address_key(payload.model_dump(by_alias=False))
+    for address in db.execute(
+        select(Address).where(Address.customer_id == customer.id)
+    ).scalars():
+        existing = {field: getattr(address, field) for field in _ADDRESS_FIELDS}
+        existing["phone"] = address.phone
+        if _address_key(existing) == wanted:
+            return address
+    return None
+
+
 def create_address(db: Session, customer: Customer, payload: AddressWrite) -> Address:
+    """
+    Save an address — once.
+
+    Checkout saves the address it shipped to after every order, and it used to
+    add a fresh copy each time: ten orders to one home, ten identical cards. An
+    address the customer already has is reused instead (made default if this
+    request asks for that); only a genuinely new one creates a record.
+    """
+    existing = find_matching_address(db, customer, payload)
+    if existing is not None:
+        if payload.is_default and not existing.is_default:
+            _clear_other_defaults(db, customer.id, keep_id=existing.id)
+            existing.is_default = True
+            db.commit()
+            db.refresh(existing)
+        return existing
+
     address = Address(
         id=next_id(db, Address, "address"),
         customer_id=customer.id,

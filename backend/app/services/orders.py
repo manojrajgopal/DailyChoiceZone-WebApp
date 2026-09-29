@@ -28,27 +28,122 @@ from app.models import (
     PaymentEvent,
     Product,
 )
+from app.models.catalogue import images_for
 from app.services import billing, coupons as coupon_service, products as product_service
 from app.services.payments import PaymentRequest, get_provider
 from app.utils.ids import next_id
 
-# Which status may follow which. Anything else is refused: an order cannot go
-# from delivered back to processing, and letting it would make the timeline
-# meaningless.
-ALLOWED_TRANSITIONS = {
-    "pending": {"confirmed", "cancelled"},
-    "confirmed": {"processing", "cancelled"},
-    "processing": {"shipped", "cancelled"},
-    "shipped": {"delivered", "returned"},
-    "delivered": {"returned"},
-    "cancelled": set(),
-    "returned": set(),
+# The fulfilment pipeline, in order. An order moves one stage at a time;
+# jumping ahead or stepping back is allowed only when the caller confirms it
+# (`confirm=True`), and is written into the timeline note so the record says
+# so. `shipped` is the stage where the parcel is dispatched to the courier.
+ORDER_FLOW = (
+    "pending",
+    "confirmed",
+    "processing",
+    "packed",
+    "shipped",
+    "in-transit",
+    "out-for-delivery",
+    "delivered",
+)
+
+STAGE_LABELS = {
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "processing": "Processing",
+    "packed": "Packed",
+    "shipped": "Shipped",
+    "in-transit": "In transit",
+    "out-for-delivery": "Out for delivery",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "returned": "Returned",
 }
+
+ORDER_STATUSES = set(ORDER_FLOW) | {"cancelled", "returned"}
+
+# Once it has left the warehouse, cancelling is a return, not a cancellation.
+CANCELLABLE_FROM = {"pending", "confirmed", "processing", "packed"}
+RETURNABLE_FROM = {"shipped", "in-transit", "out-for-delivery", "delivered"}
+TERMINAL = {"cancelled", "returned"}
 
 logger = logging.getLogger(__name__)
 
-# Once it has left the warehouse, cancelling is a return, not a cancellation.
-CUSTOMER_CANCELLABLE = {"pending", "confirmed", "processing"}
+CUSTOMER_CANCELLABLE = CANCELLABLE_FROM
+
+
+def classify_transition(order: Order, target: str) -> str:
+    """
+    What moving `order` to `target` would be: "same", "next", "skip", "back",
+    "cancel" or "return". Raises `ConflictError` for a move that is never
+    allowed, confirmed or not.
+
+    Never allowed:
+    - leaving `cancelled` or `returned` — they are records, not stages;
+    - cancelling once dispatched (that is a return) or returning before it;
+    - going back to `pending` — only a payment moves an order out of it, and
+      only a payment could move it back;
+    - going back from `delivered` — the delivery (and, for cash on delivery,
+      the collection) has been recorded; the way back is a return;
+    - moving a checkout order forward while its stock is only held for a
+      payment that has not arrived. The payment confirms it, or the hold lapses.
+    """
+    current = order.status
+    if target not in ORDER_STATUSES:
+        raise ValidationError(f"'{target}' is not an order status.", error_code="INVALID_STATUS")
+    if target == current:
+        return "same"
+    if current in TERMINAL:
+        raise ConflictError(
+            f"This order is {current}; its status can no longer change.",
+            error_code="INVALID_TRANSITION",
+        )
+    if target == "cancelled":
+        if current not in CANCELLABLE_FROM:
+            raise ConflictError(
+                "This order has left the warehouse and cannot be cancelled. Record a return instead.",
+                error_code="INVALID_TRANSITION",
+            )
+        return "cancel"
+    if target == "returned":
+        if current not in RETURNABLE_FROM:
+            raise ConflictError(
+                "Only an order that has been shipped can be returned. Cancel it instead.",
+                error_code="INVALID_TRANSITION",
+            )
+        return "return"
+
+    here, there = ORDER_FLOW.index(current), ORDER_FLOW.index(target)
+    if there > here:
+        if current == "pending" and order.stock_state == "reserved" and order.payment_status != "paid":
+            raise ConflictError(
+                "This order is waiting for its payment. It is confirmed when the payment arrives.",
+                error_code="AWAITING_PAYMENT",
+            )
+        return "next" if there == here + 1 else "skip"
+
+    if target == "pending":
+        raise ConflictError(
+            "An order cannot be moved back to pending.", error_code="INVALID_TRANSITION"
+        )
+    if current == "delivered":
+        raise ConflictError(
+            "A delivered order cannot be moved back. Record a return instead.",
+            error_code="INVALID_TRANSITION",
+        )
+    return "back"
+
+
+def transition_note(order: Order, target: str, kind: str) -> str:
+    """What the timeline should say about an out-of-sequence move."""
+    if kind == "skip":
+        here, there = ORDER_FLOW.index(order.status), ORDER_FLOW.index(target)
+        skipped = ", ".join(STAGE_LABELS[s] for s in ORDER_FLOW[here + 1 : there])
+        return f"Skipped {skipped}."
+    if kind == "back":
+        return f"Moved back from {STAGE_LABELS[order.status]}."
+    return ""
 
 
 # The delivery methods the shipping calculation understands. Anything else
@@ -410,7 +505,9 @@ def place_order(
                     sku=line.sku,
                     slug=item.product.slug,
                     brand=item.product.brand,
-                    image=item.product.images[0].url if item.product.images else "",
+                    # The photograph of the colour bought, not of the product
+                    # in general: the order page shows what is on its way.
+                    image=next(iter(images_for(item.product, item.color)), ""),
                     size=line.size,
                     color=line.color,
                     quantity=line.quantity,
@@ -657,26 +754,37 @@ def _delivery_estimate(method: str, from_date: Optional[datetime] = None) -> str
 
 
 def update_status(
-    db: Session, order_id: str, status: str, *, note: str = "", actor: str = "system"
+    db: Session,
+    order_id: str,
+    status: str,
+    *,
+    note: str = "",
+    actor: str = "system",
+    confirm: bool = False,
 ) -> Order:
     """
     Move an order along, and record that it moved.
 
-    The transition map is enforced here rather than trusted from the client:
-    an order that could jump from pending to delivered would make its own
-    timeline a work of fiction.
+    The rules are enforced here rather than trusted from the client — see
+    `classify_transition`. The next stage needs nothing more; skipping stages
+    or stepping back needs `confirm=True`, so a slip of the dropdown cannot
+    rewrite an order's history, and the timeline records what was done.
     """
     order = get_order(db, order_id)
 
-    if status == order.status:
+    kind = classify_transition(order, status)
+    if kind == "same":
         return order
-
-    allowed = ALLOWED_TRANSITIONS.get(order.status, set())
-    if status not in allowed:
+    if kind in ("skip", "back") and not confirm:
         raise ConflictError(
-            f"An order that is {order.status} cannot become {status}.",
-            error_code="INVALID_TRANSITION",
+            f"Moving this order from {STAGE_LABELS[order.status]} to {STAGE_LABELS[status]} "
+            + ("skips stages" if kind == "skip" else "moves it backwards")
+            + " and needs confirming.",
+            error_code="CONFIRMATION_REQUIRED",
         )
+
+    extra = transition_note(order, status, kind)
+    note = " ".join(part for part in (extra, note.strip()) if part)
 
     order.status = status
     now = datetime.utcnow()

@@ -1,30 +1,31 @@
 import type { OrderStatus } from "@/types";
 
 import { Badge } from "@/components/ui/Badge";
+import { ORDER_FLOW, customerStageLabel } from "@/lib/orders/orderFlow";
 
-/** Human-readable labels and a tone per order status. */
-const STATUS: Record<OrderStatus, { label: string; tone: "stock" | "neutral" | "new" | "soldout" }> = {
-  placed: { label: "Placed", tone: "neutral" },
-  confirmed: { label: "Confirmed", tone: "new" },
-  shipped: { label: "Shipped", tone: "new" },
-  "out-for-delivery": { label: "Out for delivery", tone: "new" },
-  delivered: { label: "Delivered", tone: "stock" },
-  cancelled: { label: "Cancelled", tone: "soldout" },
+type Tone = "stock" | "neutral" | "new" | "soldout";
+
+/** A tone per order status; the labels come from `lib/orders/orderFlow`. */
+const TONES: Record<OrderStatus, Tone> = {
+  pending: "neutral",
+  confirmed: "new",
+  processing: "new",
+  packed: "new",
+  shipped: "new",
+  "in-transit": "new",
+  "out-for-delivery": "new",
+  delivered: "stock",
+  cancelled: "soldout",
+  returned: "soldout",
 };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const entry = STATUS[status] ?? STATUS.placed;
-  return <Badge tone={entry.tone}>{entry.label}</Badge>;
+  return <Badge tone={TONES[status] ?? "neutral"}>{customerStageLabel(status)}</Badge>;
 }
 
-/** The happy-path stages, in order, for the tracker on an order page. */
-export const ORDER_TIMELINE: OrderStatus[] = [
-  "confirmed",
-  "shipped",
-  "out-for-delivery",
-  "delivered",
-];
+/** Every stage, in order, for the tracker on an order page. */
+export const ORDER_TIMELINE: OrderStatus[] = [...ORDER_FLOW];
 
 export function statusLabel(status: OrderStatus): string {
-  return (STATUS[status] ?? STATUS.placed).label;
+  return customerStageLabel(status);
 }

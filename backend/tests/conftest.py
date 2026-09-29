@@ -38,6 +38,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
+import app.models  # noqa: F401 — every table registered before the schema is built
 from app.core import database as db_module
 from app.core.config import settings
 from app.core.database import Base

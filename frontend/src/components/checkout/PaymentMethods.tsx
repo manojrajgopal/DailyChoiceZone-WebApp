@@ -324,6 +324,15 @@ export function PaymentMethods({
             moves on by itself — nothing to type, and no window opens.
           </p>
 
+          <Button
+            fullWidth
+            disabled={isPaying}
+            onClick={() => pay({ kind: "upi-qr" })}
+            className="mt-3 gap-2"
+          >
+            <QrCode className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+            Show QR code · Pay {total}
+          </Button>
         </Panel>
       ) : null}
 

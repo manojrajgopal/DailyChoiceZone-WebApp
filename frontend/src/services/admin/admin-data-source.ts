@@ -113,6 +113,8 @@ export interface AdminDataSource {
     status: AdminOrderStatus,
     note: string,
     by: string,
+    /** Required by the server to skip stages or move backwards. */
+    confirm?: boolean,
   ): Promise<AdminOrder>;
   updatePaymentStatus(id: string, status: PaymentStatus): Promise<AdminOrder>;
   /** Raise a Razorpay Payment Link for a confirmed, unpaid cash-on-delivery order. */

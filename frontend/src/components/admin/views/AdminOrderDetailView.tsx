@@ -1,5 +1,6 @@
 "use client";
 
+import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -12,16 +13,18 @@ import {
   AdminButtonLink,
   AdminCard,
   AdminPageHeader,
+  ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
-import { AdminSelect, AdminTextarea } from "@/components/admin/ui/AdminForm";
+import { AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { DomainStatus, humanStatus } from "@/components/admin/ui/StatusBadge";
 import { OrderBillingPanel } from "@/components/admin/views/OrderBillingPanel";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
+import { ORDER_FLOW, ORDER_STAGES, flowIndex, needsConfirmation, stageLabel } from "@/lib/orders/orderFlow";
 import {
-  allowedTransitions,
+  availableMovesFor,
   canSendPaymentLink,
   getOrder,
   sendPaymentLink,
@@ -30,7 +33,15 @@ import {
 import { toast } from "@/store/toastStore";
 
 /** The happy path, for the progress tracker. */
-const FUNNEL: AdminOrderStatus[] = ["pending", "confirmed", "processing", "shipped", "delivered"];
+const FUNNEL: readonly AdminOrderStatus[] = ORDER_FLOW;
+
+const MOVE_GROUPS = [
+  { kind: "next", label: "Next step" },
+  { kind: "skip", label: "Skip ahead — asks to confirm" },
+  { kind: "back", label: "Move back — asks to confirm" },
+  { kind: "cancel", label: "End the order" },
+  { kind: "return", label: "End the order" },
+] as const;
 
 /**
  * One order in full, with the ability to advance its status.
@@ -52,6 +63,7 @@ export function AdminOrderDetailView() {
   const [nextStatus, setNextStatus] = useState<AdminOrderStatus | "">("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [sendingLink, setSendingLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
 
@@ -86,26 +98,92 @@ export function AdminOrderDetailView() {
     );
   }
 
-  const transitions = allowedTransitions(order.status);
-  const currentIndex = FUNNEL.indexOf(order.status);
-  const isTerminal = transitions.length === 0;
+  const moves = availableMovesFor(order);
+  const currentIndex = flowIndex(order.status);
+  const isTerminal = moves.length === 0;
+  const chosen = moves.find((move) => move.target === nextStatus);
 
-  const onUpdateStatus = async () => {
+  /**
+   * The next stage goes straight through. Skipping a stage, going back, or
+   * ending the order asks first — the server insists on `confirm` for the
+   * first two as well, so a stray selection cannot rewrite an order's history.
+   */
+  const onRequestUpdate = () => {
+    if (!chosen) return;
+    if (chosen.kind === "next") void onUpdateStatus(false);
+    else setConfirming(true);
+  };
+
+  const onUpdateStatus = async (confirm: boolean) => {
     if (!nextStatus) return;
     setSaving(true);
-    const result = await updateOrderStatus(order.id, nextStatus, note.trim(), currentActorId());
+    const result = await updateOrderStatus(
+      order.id,
+      nextStatus,
+      note.trim(),
+      currentActorId(),
+      confirm,
+    );
     setSaving(false);
+    setConfirming(false);
 
     if (!result.ok) {
       toast.error(result.reason);
       return;
     }
 
-    toast.success(`Order ${order.orderNumber} is now ${humanStatus(nextStatus).toLowerCase()}`);
+    toast.success(`Order ${order.orderNumber} is now ${stageLabel(nextStatus).toLowerCase()}`);
     setNextStatus("");
     setNote("");
     await reload();
   };
+
+  const confirmCopy = chosen
+    ? {
+        skip: {
+          title: "Skip ahead?",
+          message: (
+            <>
+              This moves the order from <strong>{stageLabel(order.status)}</strong> straight to{" "}
+              <strong>{stageLabel(chosen.target)}</strong>. {chosen.detail}. The timeline will
+              record that these stages were skipped.
+            </>
+          ),
+          label: `Skip to ${stageLabel(chosen.target)}`,
+          destructive: false,
+        },
+        back: {
+          title: "Move this order back?",
+          message: (
+            <>
+              This moves the order back from <strong>{stageLabel(order.status)}</strong> to{" "}
+              <strong>{stageLabel(chosen.target)}</strong>. The customer&rsquo;s tracking will
+              show the earlier stage, and the timeline will record the change.
+            </>
+          ),
+          label: `Move back to ${stageLabel(chosen.target)}`,
+          destructive: true,
+        },
+        cancel: {
+          title: "Cancel this order?",
+          message: (
+            <>
+              The items go back into stock and anything paid is refunded. A cancelled order
+              cannot be reopened.
+            </>
+          ),
+          label: "Cancel order",
+          destructive: true,
+        },
+        return: {
+          title: "Record a return?",
+          message: <>The order will be marked returned. This cannot be undone.</>,
+          label: "Mark returned",
+          destructive: true,
+        },
+        next: { title: "", message: null, label: "", destructive: false },
+      }[chosen.kind]
+    : null;
 
   const onSendPaymentLink = async () => {
     setSendingLink(true);
@@ -213,7 +291,7 @@ export function AdminOrderDetailView() {
                   <span className="h-14 w-11 shrink-0 overflow-hidden rounded-[2px] bg-admin-raised">
                     {line.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={line.image} alt="" className="h-full w-full object-cover" />
+                      <img src={mediaUrl(line.image)} alt="" className="h-full w-full object-cover" />
                     ) : null}
                   </span>
 
@@ -318,16 +396,52 @@ export function AdminOrderDetailView() {
               </p>
             ) : (
               <div className="flex flex-col gap-3">
-                <AdminSelect
-                  label="Move to"
-                  value={nextStatus}
-                  onChange={(event) => setNextStatus(event.target.value as AdminOrderStatus)}
-                  placeholder="Choose a status"
-                  options={transitions.map((option) => ({
-                    value: option,
-                    label: humanStatus(option),
-                  }))}
-                />
+                <p className="text-[0.6875rem] leading-relaxed text-admin-muted">
+                  Now <strong className="text-admin-ink">{stageLabel(order.status)}</strong>
+                  {" — "}
+                  {ORDER_STAGES[order.status]?.description}
+                </p>
+
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-admin-ink">Move to</span>
+                  <select
+                    value={nextStatus}
+                    onChange={(event) => setNextStatus(event.target.value as AdminOrderStatus)}
+                    className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface px-2.5 text-xs text-admin-ink focus:border-copper-500 focus:outline-none"
+                  >
+                    <option value="">Choose a status</option>
+                    {MOVE_GROUPS.filter(
+                      (group, index, all) =>
+                        all.findIndex((entry) => entry.label === group.label) === index,
+                    ).map((group) => {
+                      const inGroup = moves.filter(
+                        (move) =>
+                          MOVE_GROUPS.find((entry) => entry.kind === move.kind)?.label ===
+                          group.label,
+                      );
+                      if (!inGroup.length) return null;
+                      return (
+                        <optgroup key={group.label} label={group.label}>
+                          {inGroup.map((move) => (
+                            <option key={move.target} value={move.target}>
+                              {stageLabel(move.target)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
+                </label>
+
+                {chosen && chosen.kind !== "next" ? (
+                  <p className="rounded-[3px] bg-[#fdf3e3] px-2.5 py-2 text-[0.6875rem] leading-relaxed text-[#8a5a12]">
+                    {chosen.kind === "skip"
+                      ? `${chosen.detail}. You will be asked to confirm.`
+                      : chosen.kind === "back"
+                        ? `Moves the order backwards. You will be asked to confirm.`
+                        : "Ends the order. You will be asked to confirm."}
+                  </p>
+                ) : null}
 
                 <AdminTextarea
                   label="Note"
@@ -339,12 +453,25 @@ export function AdminOrderDetailView() {
 
                 <AdminButton
                   variant="primary"
-                  onClick={() => void onUpdateStatus()}
+                  onClick={onRequestUpdate}
                   disabled={!nextStatus}
-                  loading={saving}
+                  loading={saving && !confirming}
                 >
                   Update status
                 </AdminButton>
+
+                {confirmCopy && needsConfirmation(chosen) !== undefined ? (
+                  <ConfirmDialog
+                    open={confirming}
+                    onOpenChange={setConfirming}
+                    title={confirmCopy.title}
+                    message={confirmCopy.message}
+                    confirmLabel={confirmCopy.label}
+                    destructive={confirmCopy.destructive}
+                    loading={saving}
+                    onConfirm={() => void onUpdateStatus(needsConfirmation(chosen))}
+                  />
+                ) : null}
               </div>
             )}
           </AdminCard>

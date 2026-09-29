@@ -17,7 +17,7 @@
  *   read as text. A CSV export is a real attack surface, and this is the fix.
  */
 
-function escapeCell(value: unknown): string {
+export function escapeCell(value: unknown): string {
   const raw = value === null || value === undefined ? "" : String(value);
 
   // Neutralise anything a spreadsheet would treat as a formula.

@@ -1,6 +1,7 @@
 import type { Product } from "@/types";
 
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
+import { expandVariants } from "@/lib/products/colourImages";
 import { cn } from "@/lib/utils/cn";
 
 import { ProductCard } from "./ProductCard";
@@ -17,6 +18,12 @@ export interface ProductGridProps {
   columns?: 3 | 4;
   /** Eagerly load the first row's images. On for above-the-fold grids. */
   prioritiseFirstRow?: boolean;
+  /**
+   * One card per photographed colour (see `expandVariants`). On by default;
+   * `colourFilter` narrows it to the colours the shopper filtered by.
+   */
+  expandColours?: boolean;
+  colourFilter?: string[];
   className?: string;
 }
 
@@ -31,6 +38,8 @@ export function ProductGrid({
   skeletonCount = 8,
   columns = 4,
   prioritiseFirstRow = false,
+  expandColours = true,
+  colourFilter = [],
   className,
 }: ProductGridProps) {
   const grid = cn(
@@ -56,10 +65,14 @@ export function ProductGrid({
 
   return (
     <div className={grid}>
-      {products.map((product, index) => (
+      {(expandColours
+        ? expandVariants(products, colourFilter)
+        : products.map((product) => ({ product, color: null }))
+      ).map(({ product, color }, index) => (
         <ProductCard
-          key={product.id}
+          key={`${product.id}:${color ?? ""}`}
           product={product}
+          color={color}
           sizes={sizes}
           priority={prioritiseFirstRow && index < columns}
         />

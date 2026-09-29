@@ -11,6 +11,7 @@ import { ColorPicker, QuantityStepper, SizePicker } from "@/components/common/Va
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Price } from "@/components/ui/Price";
+import { useProductColour } from "@/components/products/ProductColourScope";
 import { ShareButton } from "@/components/products/ShareButton";
 import { Rating } from "@/components/ui/Rating";
 import { useAddToCart } from "@/hooks/useCart";
@@ -62,7 +63,12 @@ export function ProductPurchasePanel({
   const { isWishlisted, toggle } = useWishlistItem(product.id);
 
   const [size, setSize] = useState<string | null>(null);
-  const [color, setColor] = useState<string | null>(product.colors[0]?.name ?? null);
+  // Shared with the gallery when the page provides a colour scope, so
+  // choosing a colour shows its photographs; local otherwise.
+  const scope = useProductColour();
+  const [localColor, setLocalColor] = useState<string | null>(product.colors[0]?.name ?? null);
+  const color = scope ? scope.color : localColor;
+  const setColor = scope ? scope.setColor : setLocalColor;
   const [quantity, setQuantity] = useState(1);
   const [sizeError, setSizeError] = useState(false);
 
@@ -204,7 +210,12 @@ export function ProductPurchasePanel({
 
       {/* -------------------------------------------------------- actions */}
       <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
-        <Button size="lg" onClick={onAddToBag} disabled={outOfStock} className="flex-1">
+        {/*
+          `sm:flex-1`, not `flex-1`: stacked on a phone the row is a column, and
+          a zero flex-basis there overrides the height and crushes each button
+          to the height of its label.
+        */}
+        <Button size="lg" onClick={onAddToBag} disabled={outOfStock} className="w-full sm:w-auto sm:flex-1">
           {outOfStock ? "Out of stock" : "Add to bag"}
         </Button>
 
@@ -213,7 +224,7 @@ export function ProductPurchasePanel({
           variant="outline"
           onClick={onBuyNow}
           disabled={outOfStock}
-          className="flex-1"
+          className="w-full sm:w-auto sm:flex-1"
         >
           Buy now
         </Button>

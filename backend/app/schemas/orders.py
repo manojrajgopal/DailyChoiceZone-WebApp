@@ -93,6 +93,9 @@ class OrderOut(CamelModel):
     coupon_code: Optional[str] = None
     invoice_id: Optional[str] = None
     invoice_number: Optional[str] = None
+    # A checkout order whose stock is held for a payment that has not arrived.
+    # Only the payment can confirm it; the portal offers only "cancel".
+    awaiting_payment: bool = False
 
     @classmethod
     def from_model(cls, order, invoice=None) -> "OrderOut":
@@ -109,6 +112,11 @@ class OrderOut(CamelModel):
             delivery_method=order.delivery_method,
             expected_delivery=order.expected_delivery,
             tracking_number=order.tracking_number,
+            awaiting_payment=(
+                order.status == "pending"
+                and getattr(order, "stock_state", "") == "reserved"
+                and order.payment_status != "paid"
+            ),
             items=[OrderItemOut.model_validate(item) for item in order.items],
             totals=OrderTotals(
                 item_count=order.item_count,
@@ -139,6 +147,8 @@ class OrderOut(CamelModel):
 class OrderStatusUpdate(CamelModel):
     status: str
     note: str = ""
+    # Required to skip stages or move an order backwards.
+    confirm: bool = False
 
 
 class CancelOrderRequest(CamelModel):

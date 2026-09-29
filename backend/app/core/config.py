@@ -127,6 +127,10 @@ class Settings(BaseSettings):
     # production it must be HTTPS.
     STOREFRONT_URL: str = "http://localhost:3000"
 
+    # Where uploaded product photographs are written, relative to the backend
+    # folder unless absolute. Served read-only at /uploads.
+    UPLOAD_DIR: str = "uploads"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

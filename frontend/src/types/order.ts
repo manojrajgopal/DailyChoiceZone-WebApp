@@ -42,13 +42,22 @@ export interface PaymentMethod {
   description: string;
 }
 
+/**
+ * The server's own status vocabulary. It used to be a separate storefront list
+ * ("placed" …), and every status missing from it — processing, returned —
+ * showed the customer "Placed".
+ */
 export type OrderStatus =
-  | "placed"
+  | "pending"
   | "confirmed"
+  | "processing"
+  | "packed"
   | "shipped"
+  | "in-transit"
   | "out-for-delivery"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "returned";
 
 export interface OrderLine {
   productId: string;

@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/*
+ * `doc:` — the invoice's paper layout.
+ *
+ * Applies when printing, and inside `.pdf-capture`, the off-screen copy the
+ * PDF download draws. One set of rules, so the downloaded PDF and the printed
+ * page cannot drift apart.
+ */
+@custom-variant doc {
+  @media print {
+    @slot;
+  }
+  &:where(.pdf-capture, .pdf-capture *) {
+    @slot;
+  }
+}
+
 /* ==========================================================================
    Daily Choice Zone — design tokens
    --------------------------------------------------------------------------
@@ -518,43 +534,46 @@
 /*
  * Printing an invoice.
  *
- * A document people file has to come out of a printer looking like a document,
- * not like a web page with the header cropped. Everything outside the invoice
- * is removed rather than hidden behind a media query on each component: mark
- * the page with `.printing-invoice` and only the document survives.
+ * `useInvoicePrint` copies the invoice into `#invoice-print-root`, a direct
+ * child of <body>, and marks the body `.printing-invoice`. Everything else is
+ * `display: none` — not merely invisible, which would keep its height and
+ * print blank pages after the invoice.
+ *
+ * The browser's own header and footer (the page URL, the date, the title,
+ * "1/2") are drawn inside the page margin, so the invoice's pages have none:
+ * `@page invoice { margin: 0 }`, with the 14 mm margin moved onto the
+ * document itself. `box-decoration-break: clone` repeats that padding on
+ * every sheet of a long invoice. Other pages keep the browser's defaults.
  *
  * `print-color-adjust` keeps the status badges and rules from being dropped by
  * browsers that strip backgrounds to save ink — on an invoice those carry
  * meaning, not decoration.
  */
-@media print {
-  @page {
-    margin: 14mm;
-  }
+@page invoice {
+  size: A4;
+  margin: 0;
+}
 
+#invoice-print-root {
+  display: none;
+}
+
+@media print {
   html,
   body {
     background: #fff !important;
   }
 
-  body.printing-invoice *,
-  body.printing-invoice *::before,
-  body.printing-invoice *::after {
-    visibility: hidden;
+  body.printing-invoice > *:not(#invoice-print-root) {
+    display: none !important;
   }
 
-  body.printing-invoice .invoice-document,
-  body.printing-invoice .invoice-document * {
-    visibility: visible;
-  }
-
-  body.printing-invoice .invoice-document {
-    position: absolute;
-    inset-inline: 0;
-    top: 0;
-    margin: 0;
-    box-shadow: none !important;
-    border: 0 !important;
+  body.printing-invoice #invoice-print-root {
+    display: block;
+    page: invoice;
+    padding: 14mm;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   .invoice-document {
@@ -562,13 +581,32 @@
     print-color-adjust: exact;
   }
 
-  /* Never break a line item across two sheets. */
-  .invoice-document tr,
-  .invoice-document section {
-    break-inside: avoid;
-  }
-
   .print-hidden {
     display: none !important;
+  }
+}
+
+/* The paper layout, on screen or in the PDF copy. */
+.invoice-document.pdf-capture,
+#invoice-print-root .invoice-document {
+  margin: 0;
+  max-width: none;
+  box-shadow: none;
+  border: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/*
+ * Never break a line item, the totals, or a small section across two sheets.
+ * The items section itself may break — between rows — or a long invoice would
+ * push the whole table to page two and leave page one nearly empty.
+ */
+@media print {
+  .invoice-document tr,
+  .invoice-document dl,
+  .invoice-document header,
+  .invoice-document section:not(:has(table)) {
+    break-inside: avoid;
   }
 }

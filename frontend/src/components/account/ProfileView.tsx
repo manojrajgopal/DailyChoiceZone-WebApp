@@ -92,7 +92,7 @@ export function ProfileView() {
           value={addressCount}
         />
         <StatCard
-          href="/wishlist"
+          href="/account/wishlist"
           icon={<Heart className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />}
           label="Wishlist"
           value={wishlistCount}

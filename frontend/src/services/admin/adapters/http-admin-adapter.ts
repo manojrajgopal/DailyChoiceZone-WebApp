@@ -49,6 +49,15 @@ const AUTH = { auth: "admin" } as const;
  */
 const navigation = pageCache(() => apiGet<AdminNavGroup[]>("/admin/navigation", AUTH));
 
+/**
+ * Forget the cached sidebar. The menu depends on who is signed in — each
+ * administrator sees what their permissions allow — so it is dropped on every
+ * sign-in and sign-out rather than carried over to the next person.
+ */
+export function invalidateAdminNavigation(): void {
+  navigation.invalidate();
+}
+
 /* ------------------------------------------------------------------- shapes */
 
 interface ApiInventoryRow {
@@ -270,6 +279,7 @@ export const httpAdminAdapter: AdminDataSource = {
     status: AdminOrderStatus,
     note: string,
     by: string,
+    confirm = false,
   ): Promise<AdminOrder> {
     // `by` is not sent: the server takes the actor from the token. A client
     // that could name the actor could name somebody else.
@@ -277,7 +287,7 @@ export const httpAdminAdapter: AdminDataSource = {
     return toAdminOrder(
       await apiPut<ApiAdminOrder>(
         `/admin/orders/${encodeURIComponent(id)}/status`,
-        { status, note },
+        { status, note, confirm },
         AUTH,
       ),
     );

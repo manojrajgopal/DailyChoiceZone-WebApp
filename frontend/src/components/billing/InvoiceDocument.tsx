@@ -15,7 +15,7 @@ import logo from "@/../public/brand/logo.png";
  * One component renders it for the customer and for the administrator, because
  * an invoice the two parties see differently is not an invoice. It is also the
  * thing that gets printed, so it is laid out for paper first: fixed proportions,
- * no interactive affordances, and a `print:` pass that strips the page chrome
+ * no interactive affordances, and a `doc:` pass that strips the page chrome
  * around it.
  *
  * The tax section shows CGST and SGST separately for a supply inside the
@@ -45,9 +45,9 @@ export function InvoiceDocument({
   const halfRate = tax.ratePercent / 2;
 
   return (
-    <article className="invoice-document mx-auto w-full max-w-[52rem] bg-white text-ink print:max-w-none">
+    <article className="invoice-document mx-auto w-full max-w-[52rem] bg-white text-ink doc:max-w-none">
       {/* ------------------------------------------------------------ header */}
-      <header className="flex flex-wrap items-start justify-between gap-6 border-b border-ink-200 p-8 print:p-0 print:pb-6">
+      <header className="flex flex-wrap items-start justify-between gap-6 border-b border-ink-200 p-8 doc:p-0 doc:pb-4">
         <div className="flex items-start gap-4">
           <Image
             src={logo}
@@ -91,7 +91,7 @@ export function InvoiceDocument({
       </header>
 
       {/* --------------------------------------------------------- addresses */}
-      <section className="grid gap-8 border-b border-ink-200 p-8 sm:grid-cols-3 print:p-0 print:py-6">
+      <section className="grid gap-8 border-b border-ink-200 p-8 sm:grid-cols-3 doc:grid-cols-3 doc:p-0 doc:py-4">
         <AddressBlock title="Bill to" address={invoice.billingAddress} />
         <AddressBlock title="Ship to" address={invoice.shippingAddress} />
         <div>
@@ -105,7 +105,7 @@ export function InvoiceDocument({
       </section>
 
       {/* ------------------------------------------------------------- items */}
-      <section className="p-8 print:p-0 print:py-6">
+      <section className="p-8 doc:p-0 doc:py-4">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[40rem] border-collapse text-xs">
             <thead>
@@ -236,7 +236,7 @@ export function InvoiceDocument({
       </section>
 
       {/* ----------------------------------------------------------- payment */}
-      <section className="grid gap-6 border-t border-ink-200 p-8 sm:grid-cols-2 print:p-0 print:py-6">
+      <section className="grid gap-6 border-t border-ink-200 p-8 sm:grid-cols-2 doc:grid-cols-2 doc:p-0 doc:py-4">
         <div>
           <h2 className="label-wide text-ink-400">Payment</h2>
           <dl className="mt-2.5 flex flex-col gap-1 text-xs text-ink-700">
@@ -257,7 +257,7 @@ export function InvoiceDocument({
         </div>
       </section>
 
-      <footer className="border-t border-ink-200 px-8 py-5 text-center text-[0.6875rem] text-ink-400 print:px-0">
+      <footer className="border-t border-ink-200 px-8 py-5 text-center text-[0.6875rem] text-ink-400 doc:px-0 doc:py-3">
         {config.invoice.footer}
       </footer>
     </article>

@@ -7,13 +7,13 @@ import { Download } from "lucide-react";
 import type { Invoice } from "@/types";
 
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
-import { downloadInvoiceCsv } from "@/components/billing/InvoiceActions";
+import { InvoiceDownloadMenu } from "@/components/billing/InvoiceActions";
 import { EmptyState } from "@/components/common/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
+import { useBillingConfig, useTaxConfig } from "@/hooks/useBillingConfig";
 import { getMyInvoices } from "@/services/billing/invoiceService";
-import { toast } from "@/store/toastStore";
 
 /**
  * A customer's invoices.
@@ -26,6 +26,8 @@ import { toast } from "@/store/toastStore";
 export function InvoicesView() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const config = useBillingConfig();
+  const taxConfig = useTaxConfig();
 
   useEffect(() => {
     let active = true;
@@ -108,17 +110,23 @@ export function InvoicesView() {
               View invoice
             </Link>
 
-            <button
-              type="button"
-              onClick={() => {
-                downloadInvoiceCsv(invoice);
-                toast.success(`${invoice.invoiceNumber} downloaded`);
-              }}
-              className="inline-flex items-center gap-1.5 text-ink-500 transition-colors hover:text-ink"
-            >
-              <Download className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
-              Download
-            </button>
+            <InvoiceDownloadMenu
+              invoice={invoice}
+              config={config}
+              gstin={taxConfig?.gstin ?? ""}
+              pdfHref={`/account/invoice?id=${invoice.id}&download=pdf`}
+              renderTrigger={({ busy, ...props }) => (
+                <button
+                  type="button"
+                  {...props}
+                  disabled={busy}
+                  className="inline-flex min-h-8 items-center gap-1.5 text-ink-500 transition-colors hover:text-ink disabled:opacity-50"
+                >
+                  <Download className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
+                  Download
+                </button>
+              )}
+            />
 
             <span className="text-ink-400">
               {invoice.breakdown.itemCount}{" "}

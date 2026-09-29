@@ -67,7 +67,7 @@ def update_status(
     rather than implied by which URL was called.
     """
     order = service.update_status(
-        db, order_id, payload.status, note=payload.note, actor=admin.id
+        db, order_id, payload.status, note=payload.note, actor=admin.id, confirm=payload.confirm
     )
     invoice = db.execute(
         select(Invoice).where(Invoice.order_id == order.id)

@@ -1,5 +1,6 @@
 "use client";
 
+import { imagesFor, productHref } from "@/lib/products/colourImages";
 import Link from "next/link";
 import { Heart, Trash2 } from "lucide-react";
 
@@ -35,13 +36,13 @@ export function CartLineRow({
   return (
     <li className="flex gap-4 py-5">
       <Link
-        href={`/product/${product.id}`}
+        href={productHref(product, line.color)}
         className="shrink-0"
         aria-label={product.name}
         tabIndex={-1}
       >
         <ProductImage
-          src={product.images[0]}
+          src={imagesFor(product, line.color)[0]}
           alt=""
           sizes="112px"
           wrapperClassName="h-32 w-24 rounded-card sm:h-36 sm:w-28"
@@ -53,7 +54,7 @@ export function CartLineRow({
           <div className="min-w-0">
             <p className="label-wide text-ink-400">{humanize(product.subcategory)}</p>
             <h3 className="mt-1 text-[0.9375rem] leading-snug text-ink">
-              <Link href={`/product/${product.id}`} className="transition-colors hover:text-copper-700">
+              <Link href={productHref(product, line.color)} className="transition-colors hover:text-copper-700">
                 {product.name}
               </Link>
             </h3>

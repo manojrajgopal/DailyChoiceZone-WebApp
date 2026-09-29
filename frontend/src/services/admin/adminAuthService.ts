@@ -1,5 +1,6 @@
 import type { AdminResult, AdminRole, AdminSession, AdminUser } from "@/types/admin";
 
+import { invalidateAdminNavigation } from "@/services/admin/adapters/http-admin-adapter";
 import { ApiError, apiGet, apiPost, setToken } from "@/services/api/client";
 import { useAdminAuthStore } from "@/store/adminAuthStore";
 
@@ -79,6 +80,7 @@ export async function signIn(
     });
 
     setToken(payload.token.accessToken, "admin");
+    invalidateAdminNavigation();
 
     return {
       ok: true,
@@ -111,6 +113,7 @@ export async function signOut(): Promise<void> {
     /* signing out has to succeed even when the request does not */
   }
   setToken(null, "admin");
+  invalidateAdminNavigation();
   useAdminAuthStore.getState().signOut();
 }
 

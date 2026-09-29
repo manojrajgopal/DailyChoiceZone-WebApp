@@ -32,7 +32,7 @@ export function Pagination({ page, totalPages, onPageChange, className }: Pagina
   const window = buildPageWindow(page, totalPages);
 
   const arrow =
-    "inline-flex h-9 w-9 items-center justify-center rounded-control border border-ink-200 " +
+    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-ink-200 sm:h-9 sm:w-9 " +
     "text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream " +
     "disabled:cursor-not-allowed disabled:border-ink-100 disabled:text-ink-300 " +
     "disabled:hover:bg-transparent disabled:hover:text-ink-300";
@@ -49,6 +49,15 @@ export function Pagination({ page, totalPages, onPageChange, className }: Pagina
         <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
       </button>
 
+      {/*
+        A phone has room for the arrows and a label, not for seven page
+        buttons: squeezed into 288px they crushed the arrows to 18px wide.
+      */}
+      <span className="px-3 text-sm tabular-nums text-ink-700 sm:hidden" aria-live="polite">
+        Page {page} of {totalPages}
+      </span>
+
+      <span className="hidden sm:contents">
       {window.map((entry, index) =>
         entry === "gap" ? (
           <span
@@ -76,6 +85,7 @@ export function Pagination({ page, totalPages, onPageChange, className }: Pagina
           </button>
         ),
       )}
+      </span>
 
       <button
         type="button"

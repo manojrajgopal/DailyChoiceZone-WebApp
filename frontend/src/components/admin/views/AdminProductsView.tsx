@@ -1,5 +1,6 @@
 "use client";
 
+import { mediaUrl } from "@/lib/media";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -161,7 +162,7 @@ export function AdminProductsView() {
               // A plain img: product images can be any host the admin pasted,
               // and next/image would reject one not in remotePatterns.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.images[0]} alt="" className="h-full w-full object-cover" />
+              <img src={mediaUrl(product.images[0])} alt="" className="h-full w-full object-cover" />
             ) : null}
           </span>
           <span className="min-w-0">

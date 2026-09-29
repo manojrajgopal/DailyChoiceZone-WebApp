@@ -38,7 +38,13 @@ export function pageCache<T>(fetcher: () => Promise<T>): PageCache<T> {
   return {
     read: () => {
       if (typeof window === "undefined") return perRequest();
-      inDocument ??= fetcher();
+      // A failure is not kept: a request made with an expired session would
+      // otherwise be the answer for the rest of the page's life, however many
+      // times the user signed in again.
+      inDocument ??= fetcher().catch((error: unknown) => {
+        inDocument = null;
+        throw error;
+      });
       return inDocument;
     },
     invalidate: () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { imagesFor } from "@/lib/products/colourImages";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
@@ -116,7 +117,7 @@ export function CheckoutShell({
     lines.map((line) => ({
       key: line.lineId,
       name: line.product.name,
-      image: line.product.images[0],
+      image: imagesFor(line.product, line.color)[0],
       detail: [line.size, line.color].filter(Boolean).join(" · ") || line.product.brand,
       quantity: line.quantity,
       lineTotal: line.lineTotal,

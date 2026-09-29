@@ -51,8 +51,10 @@ export function ProductRail({
     return (
       <ul
         className={cn(
-          "no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4",
-          "sm:mx-0 sm:px-0",
+          // `scroll-px-4` matches the inset: without it, snapping aligns the first card
+          // to the scroller's edge on load and it sits flush against the screen.
+          "no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4",
+          "sm:mx-0 sm:scroll-px-0 sm:px-0",
           className,
         )}
       >

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { ProductGallery } from "@/components/products/ProductGallery";
+import { ProductColourGallery, ProductColourScope } from "@/components/products/ProductColourScope";
 import { ProductPurchasePanel } from "@/components/products/ProductPurchasePanel";
 import { ProductRail } from "@/components/products/ProductRail";
 import { ProductReviews } from "@/components/products/ProductReviews";
@@ -16,6 +16,8 @@ import { formatPrice, humanize } from "@/lib/utils/format";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  /** `?color=` opens the product in that colour — see `ProductColourScope`. */
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 /**
@@ -76,14 +78,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ProductPage({ params }: PageProps) {
+export default async function ProductPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const colorParam = (await searchParams).color;
+  const requestedColor = typeof colorParam === "string" ? colorParam : null;
   const product = await getProduct(id);
 
   if (!product) notFound();
 
-  // Reached by an old slug link: send them to the canonical address.
-  if (product.id !== id) permanentRedirect(`/product/${product.id}`);
+  // Reached by an old slug link: send them to the canonical address, keeping
+  // the colour they were sent to.
+  if (product.id !== id) {
+    permanentRedirect(
+      requestedColor
+        ? `/product/${product.id}?color=${encodeURIComponent(requestedColor)}`
+        : `/product/${product.id}`,
+    );
+  }
 
   const [related, reviews, summary, config] = await Promise.all([
     getRelatedProducts(product.id, 6),
@@ -154,8 +165,10 @@ export default async function ProductPage({ params }: PageProps) {
 
         {/* ---------------------------------------------- gallery + buy box */}
         <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-14">
-          <ProductGallery images={product.images} name={product.name} />
-          <ProductPurchasePanel product={product} config={config} />
+          <ProductColourScope product={product} requestedColor={requestedColor}>
+            <ProductColourGallery product={product} />
+            <ProductPurchasePanel product={product} config={config} />
+          </ProductColourScope>
         </div>
 
         {/* ----------------------------------------------------- detail tabs */}

@@ -194,7 +194,11 @@ export function ProductListing({
             />
           ) : (
             <>
-              <ProductGrid products={page?.items ?? []} prioritiseFirstRow />
+              <ProductGrid
+                products={page?.items ?? []}
+                colourFilter={query.color ?? []}
+                prioritiseFirstRow
+              />
 
               {total > 1 ? (
                 <Pagination

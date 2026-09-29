@@ -235,7 +235,7 @@ def dashboard(db: Session) -> dict:
     open_orders = db.execute(
         select(func.count())
         .select_from(Order)
-        .where(Order.status.in_(("pending", "confirmed", "processing")))
+        .where(Order.status.in_(("pending", "confirmed", "processing", "packed")))
     ).scalar_one()
 
     pending_reviews = db.execute(

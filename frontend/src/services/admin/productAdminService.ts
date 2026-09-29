@@ -1,3 +1,4 @@
+import { ApiError, apiPost } from "@/services/api/client";
 import type { AdminProduct, AdminResult, ProductDraft, ProductStatus } from "@/types/admin";
 
 import { discountPercent } from "@/lib/utils/format";
@@ -41,7 +42,19 @@ export function validateProduct(draft: ProductDraft): Record<string, string> {
     if (draft.originalPrice < draft.price) {
       errors.originalPrice = "Original price cannot be below the selling price.";
     }
-    if (draft.images.length === 0) errors.images = "Add at least one image.";
+    // Photographs: either shared ones, or one set per colour — and if some
+    // colours have their own, all of them must, or choosing the others on
+    // the product page would show a different colour's photos.
+    const photographed = draft.colors.filter((colour) => colour.images?.length);
+    if (photographed.length > 0 && photographed.length < draft.colors.length) {
+      const missing = draft.colors
+        .filter((colour) => !colour.images?.length)
+        .map((colour) => colour.name);
+      errors.colors = `Add photos for ${missing.join(", ")}, or remove the photos from every colour.`;
+    }
+    if (draft.images.length === 0 && photographed.length === 0) {
+      errors.images = "Add at least one image, shared or for a colour.";
+    }
     if (draft.brand.trim().length < 2) errors.brand = "Enter a brand.";
     if (draft.description.trim().length < 20) {
       errors.description = "Write at least a couple of sentences.";
@@ -146,6 +159,9 @@ export async function duplicateProduct(
 
   const copy: AdminProduct = {
     ...source,
+    // The stored shared photos, not the storefront's fallback to the first
+    // colour's — or the copy would hold that colour's photos twice.
+    images: source.sharedImages ?? source.images,
     // Blank, so the server issues them — see `createProduct`.
     id: "",
     name: `${source.name} (copy)`,
@@ -224,4 +240,35 @@ export function emptyProductDraft(): ProductDraft {
     taxRatePercent: 5,
     seo: { metaTitle: "", metaDescription: "" },
   };
+}
+
+/**
+ * Upload a product photograph; returns the address to store for it.
+ *
+ * The server checks it is really an image and re-encodes it, so what is kept
+ * is never the file as sent. See `backend/app/api/routes/admin/uploads.py`.
+ */
+export async function uploadProductImage(file: File): Promise<AdminResult<string>> {
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, reason: `${file.name} is not an image.` };
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    return { ok: false, reason: `${file.name} is larger than 8 MB.` };
+  }
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const { url } = await apiPost<{ url: string }>("/admin/uploads/images", form, {
+      auth: "admin",
+    });
+    return { ok: true, data: url };
+  } catch (error) {
+    return {
+      ok: false,
+      reason:
+        error instanceof ApiError && error.message
+          ? `${file.name}: ${error.message}`
+          : `${file.name} could not be uploaded.`,
+    };
+  }
 }

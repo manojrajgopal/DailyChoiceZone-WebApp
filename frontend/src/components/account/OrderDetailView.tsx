@@ -146,7 +146,7 @@ export function OrderDetailView() {
             aria-label="Delivery progress"
             className="rounded-card border border-ink-200 bg-shell p-5"
           >
-            <ol className="flex flex-col gap-0 sm:flex-row sm:items-start">
+            <ol className="flex flex-col gap-0 lg:flex-row lg:items-start">
               {ORDER_TIMELINE.map((stage, index) => {
                 const currentIndex = ORDER_TIMELINE.indexOf(order.status);
                 const reached = currentIndex >= index && currentIndex !== -1;
@@ -155,10 +155,10 @@ export function OrderDetailView() {
                 return (
                   <li
                     key={stage}
-                    className="flex flex-1 gap-3 sm:flex-col sm:gap-2"
+                    className="flex flex-1 gap-3 lg:flex-col lg:gap-2"
                     aria-current={currentIndex === index ? "step" : undefined}
                   >
-                    <div className="flex flex-col items-center sm:w-full sm:flex-row">
+                    <div className="flex flex-col items-center lg:w-full lg:flex-row">
                       <span
                         className={cn(
                           "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-[0.625rem] tabular-nums",
@@ -176,14 +176,14 @@ export function OrderDetailView() {
                         <span
                           aria-hidden="true"
                           className={cn(
-                            "my-1 w-px flex-1 sm:my-0 sm:mx-2 sm:h-px sm:w-auto sm:flex-1",
+                            "my-1 w-px flex-1 lg:my-0 lg:mx-2 lg:h-px lg:w-auto lg:flex-1",
                             currentIndex > index ? "bg-sage-500" : "bg-ink-200",
                           )}
                         />
                       ) : null}
                     </div>
 
-                    <div className="pb-5 sm:pb-0">
+                    <div className="pb-5 lg:pb-0">
                       <p
                         className={cn(
                           "text-xs font-medium",

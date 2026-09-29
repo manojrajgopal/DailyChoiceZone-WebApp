@@ -245,3 +245,115 @@ class TestCancelling:
         db.flush()
 
         assert client.post("/api/orders/ORD901/cancel", headers=ready, json={"reason": ""}).status_code == 404
+
+
+class TestTheFulfilmentPipeline:
+    """
+    An order moves one stage at a time. Skipping a stage or stepping back is
+    allowed only when the request says `confirm`, and is written into the
+    timeline; some moves are never allowed at all.
+    """
+
+    def _move(self, client, admin_auth, order_id, status, confirm=False):
+        return client.put(
+            f"/api/admin/orders/{order_id}/status",
+            headers=admin_auth,
+            json={"status": status, "note": "", "confirm": confirm},
+        )
+
+    @pytest.fixture()
+    def order_id(self, client, ready):
+        # Cash on delivery: confirmed on placement.
+        return place(client, ready).json()["data"]["order"]["id"]
+
+    def test_every_stage_in_order_needs_no_confirmation(self, client, admin_auth, order_id):
+        for status in ("processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"):
+            response = self._move(client, admin_auth, order_id, status)
+            assert response.status_code == 200, (status, response.text)
+            assert response.json()["data"]["status"] == status
+
+    def test_skipping_a_stage_needs_confirmation(self, client, admin_auth, order_id):
+        refused = self._move(client, admin_auth, order_id, "shipped")
+        assert refused.status_code == 409
+        assert refused.json()["error_code"] == "CONFIRMATION_REQUIRED"
+
+        confirmed = self._move(client, admin_auth, order_id, "shipped", confirm=True)
+        assert confirmed.status_code == 200
+        latest = confirmed.json()["data"]["timeline"][-1]
+        assert latest["status"] == "shipped"
+        assert "Skipped Processing, Packed" in latest["note"]
+
+    def test_going_back_needs_confirmation(self, client, admin_auth, order_id):
+        for status in ("processing", "packed", "shipped"):
+            self._move(client, admin_auth, order_id, status)
+
+        refused = self._move(client, admin_auth, order_id, "packed")
+        assert refused.status_code == 409
+        assert refused.json()["error_code"] == "CONFIRMATION_REQUIRED"
+
+        confirmed = self._move(client, admin_auth, order_id, "packed", confirm=True)
+        assert confirmed.status_code == 200
+        assert "Moved back from Shipped" in confirmed.json()["data"]["timeline"][-1]["note"]
+
+    @pytest.mark.parametrize(
+        ("path", "target"),
+        [
+            (("processing",), "pending"),  # only a payment leaves pending
+            (("processing", "packed", "shipped"), "cancelled"),  # dispatched: a return
+            (("processing",), "returned"),  # never dispatched: a cancellation
+        ],
+    )
+    def test_moves_that_are_never_allowed(self, client, admin_auth, order_id, path, target):
+        for status in path:
+            self._move(client, admin_auth, order_id, status)
+        response = self._move(client, admin_auth, order_id, target, confirm=True)
+        assert response.status_code == 409
+        assert response.json()["error_code"] == "INVALID_TRANSITION"
+
+    def test_a_delivered_order_cannot_go_back(self, client, admin_auth, order_id):
+        self._move(client, admin_auth, order_id, "delivered", confirm=True)
+        response = self._move(client, admin_auth, order_id, "shipped", confirm=True)
+        assert response.status_code == 409
+        # …but it can be returned.
+        assert self._move(client, admin_auth, order_id, "returned").status_code == 200
+
+    def test_a_finished_order_is_final(self, client, admin_auth, order_id):
+        self._move(client, admin_auth, order_id, "cancelled")
+        response = self._move(client, admin_auth, order_id, "confirmed", confirm=True)
+        assert response.status_code == 409
+
+    def test_the_customer_can_cancel_while_packed(self, client, admin_auth, ready, order_id):
+        self._move(client, admin_auth, order_id, "processing")
+        self._move(client, admin_auth, order_id, "packed")
+        response = client.post(f"/api/orders/{order_id}/cancel", headers=ready, json={"reason": ""})
+        assert response.status_code == 200
+
+    def test_an_unknown_status_is_refused(self, client, admin_auth, order_id):
+        response = self._move(client, admin_auth, order_id, "teleported", confirm=True)
+        assert response.status_code == 422
+
+
+class TestSavedAddresses:
+    """Checkout saves the address it shipped to — once, not once per order."""
+
+    def test_ordering_twice_to_the_same_address_saves_it_once(self, client, auth, catalogue, settings_documents):
+        for _ in range(2):
+            add(client, auth, "PRD001", 1)
+            assert place(client, auth, saveAddress=True).status_code == 201
+        saved = client.get("/api/account/addresses", headers=auth).json()["data"]
+        assert len(saved) == 1
+
+    def test_the_same_address_written_differently_is_still_the_same(self, client, auth, catalogue, settings_documents):
+        add(client, auth, "PRD001", 1)
+        place(client, auth, saveAddress=True)
+        add(client, auth, "PRD001", 1)
+        shouty = {**ADDRESS, "line1": "  4, BRIGADE road ", "city": "bengaluru", "phone": "+91 98765 00001"}
+        place(client, auth, saveAddress=True, shippingAddress=shouty)
+        assert len(client.get("/api/account/addresses", headers=auth).json()["data"]) == 1
+
+    def test_a_different_address_is_saved(self, client, auth, catalogue, settings_documents):
+        add(client, auth, "PRD001", 1)
+        place(client, auth, saveAddress=True)
+        add(client, auth, "PRD001", 1)
+        place(client, auth, saveAddress=True, shippingAddress={**ADDRESS, "line1": "9 MG Road"})
+        assert len(client.get("/api/account/addresses", headers=auth).json()["data"]) == 2

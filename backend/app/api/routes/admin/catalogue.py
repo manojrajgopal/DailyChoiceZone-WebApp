@@ -9,6 +9,7 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.catalogue import images_for
 from app.core.database import get_db
 from app.dependencies.auth import get_current_admin, require_permission
 from app.models import AdminUser, Product, StockAdjustment
@@ -125,7 +126,7 @@ def _inventory_row(product: Product) -> dict:
         "name": product.name,
         "sku": product.sku,
         "category": product.category.slug if product.category else "",
-        "image": product.images[0].url if product.images else "",
+        "image": next(iter(images_for(product)), ""),
         "stock": product.stock,
         "reserved": product.reserved_stock,
         "available": available,

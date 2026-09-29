@@ -11,11 +11,10 @@ import { DataTable, type Column } from "@/components/admin/ui/DataTable";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate, formatPrice, humanize } from "@/lib/utils/format";
+import { ORDER_FLOW } from "@/lib/orders/orderFlow";
 import { listOrders } from "@/services/admin/orderAdminService";
 
-const ORDER_STATUSES: AdminOrderStatus[] = [
-  "pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned",
-];
+const ORDER_STATUSES: AdminOrderStatus[] = [...ORDER_FLOW, "cancelled", "returned"];
 
 const PAYMENT_STATUSES: PaymentStatus[] = [
   "paid", "pending", "cod-pending", "failed", "refunded",
