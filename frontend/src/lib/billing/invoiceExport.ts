@@ -81,6 +81,9 @@ export function invoiceSheet(invoice: Invoice, config: BillingConfig, gstin = ""
       -rupees(breakdown.couponDiscount),
     ]);
   }
+  if ((breakdown.memberDiscount ?? 0) > 0) {
+    totals.push(["Member savings", -rupees(breakdown.memberDiscount ?? 0)]);
+  }
   totals.push(["Shipping", breakdown.shipping === 0 ? "Free" : rupees(breakdown.shipping)]);
   if (breakdown.otherCharges > 0) totals.push(["Other charges", rupees(breakdown.otherCharges)]);
   totals.push(["Taxable value", rupees(tax.taxableAmount)]);

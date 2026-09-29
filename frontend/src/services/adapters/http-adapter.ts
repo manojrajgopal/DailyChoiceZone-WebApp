@@ -135,7 +135,9 @@ export const httpAdapter: DataSource = {
   },
 
   listCoupons(): Promise<Coupon[]> {
-    return apiGet<Coupon[]>("/coupons");
+    // Signed in, the list includes the coupons meant for this shopper —
+    // members' codes, ones picked for them, a first-order welcome.
+    return apiGet<Coupon[]>("/coupons", { auth: "customer" });
   },
 
   getSiteConfig(): Promise<SiteConfig> {

@@ -335,6 +335,13 @@ export function AdminOrderDetailView() {
                   positive
                 />
               ) : null}
+              {(order.totals.memberDiscount ?? 0) > 0 ? (
+                <Row
+                  label="Member savings"
+                  value={`− ${formatPrice(order.totals.memberDiscount ?? 0)}`}
+                  positive
+                />
+              ) : null}
               <Row
                 label="Delivery"
                 value={order.totals.deliveryFee === 0 ? "Free" : formatPrice(order.totals.deliveryFee)}

@@ -87,6 +87,10 @@ class Order(Base, TimestampMixin):
     catalogue_savings: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     coupon_code: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     coupon_discount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    # The membership the order was placed under, and what it saved.
+    membership_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    member_discount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    member_free_delivery: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     tax_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
 

@@ -38,6 +38,16 @@ export type CheckoutOutcome =
  * A failed load clears it, so the next attempt can retry rather than
  * inheriting the failure.
  */
+/**
+ * Razorpay ships two scripts that both define `window.Razorpay`: Standard
+ * Checkout (`checkout.js`, which has `open()`) and Custom Checkout
+ * (`razorpay.js`, which has `createPayment()` and no `open()`). Whichever
+ * loads second replaces the first, so each loader keeps its own constructor
+ * instead of trusting the global — trusting it is what made the card button
+ * fail with "o.open is not a function" after a UPI panel had loaded the other.
+ */
+type RazorpayConstructor = NonNullable<Window["Razorpay"]>;
+let Standard: RazorpayConstructor | null = null;
 let loading: Promise<void> | null = null;
 
 function loadCheckout(): Promise<void> {
@@ -45,27 +55,30 @@ function loadCheckout(): Promise<void> {
     return Promise.reject(new Error("Secure payment isn't available here. Please try again in your browser."));
   }
 
-  if (window.Razorpay) return Promise.resolve();
+  if (Standard) return Promise.resolve();
 
   loading ??= new Promise<void>((resolve, reject) => {
-    const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
-
     const onError = () => {
       loading = null;
       reject(new Error("We couldn't load secure payment. Please refresh the page and try again."));
     };
+    const onLoad = () => {
+      if (!window.Razorpay || typeof window.Razorpay.prototype?.open !== "function") {
+        onError();
+        return;
+      }
+      Standard = window.Razorpay;
+      resolve();
+    };
 
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", onError, { once: true });
-      return;
-    }
-
+    // Always a fresh tag: an existing one may have loaded before the other
+    // script replaced the global, and its constructor is no longer reachable.
+    document.getElementById(SCRIPT_ID)?.remove();
     const script = document.createElement("script");
     script.id = SCRIPT_ID;
     script.src = SCRIPT_URL;
     script.async = true;
-    script.addEventListener("load", () => resolve(), { once: true });
+    script.addEventListener("load", onLoad, { once: true });
     script.addEventListener("error", onError, { once: true });
     document.head.append(script);
   });
@@ -131,7 +144,7 @@ export async function openRazorpayCheckout(
       resolve(outcome);
     };
 
-    const checkout = new window.Razorpay!({
+    const checkout = new Standard!({
       key: handoff.keyId,
       order_id: handoff.orderReference,
       amount: handoff.amount,

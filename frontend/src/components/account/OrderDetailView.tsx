@@ -299,6 +299,15 @@ export function OrderDetailView() {
                   </div>
                 ) : null}
 
+                {(order.totals.memberDiscount ?? 0) > 0 ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-ink-500">Member savings</dt>
+                    <dd className="text-sage-600 tabular-nums">
+                      − {formatPrice(order.totals.memberDiscount ?? 0)}
+                    </dd>
+                  </div>
+                ) : null}
+
                 <div className="flex justify-between gap-4">
                   <dt className="text-ink-500">Delivery</dt>
                   <dd className="text-ink tabular-nums">

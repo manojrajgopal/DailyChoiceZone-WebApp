@@ -17,6 +17,7 @@ import {
   FormGrid,
 } from "@/components/admin/ui/AdminForm";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { CouponAudienceFields } from "@/components/admin/views/CouponAudienceFields";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -165,6 +166,19 @@ export function AdminCouponsView() {
           <span className="text-admin-faint">
             {coupon.usageLimit !== null ? ` / ${coupon.usageLimit}` : ""}
           </span>
+          {coupon.customersUsed ? (
+            <span className="block text-[0.625rem] text-admin-faint">
+              {coupon.customersUsed} {coupon.customersUsed === 1 ? "customer" : "customers"}
+              {coupon.perCustomerLimit ? ` · ${coupon.perCustomerLimit} each` : ""}
+            </span>
+          ) : coupon.perCustomerLimit ? (
+            <span className="block text-[0.625rem] text-admin-faint">{coupon.perCustomerLimit} per customer</span>
+          ) : null}
+          {coupon.audience && coupon.audience !== "everyone" ? (
+            <span className="block text-[0.625rem] text-copper-700">
+              {coupon.audience === "members" ? "Members only" : coupon.audience === "selected" ? `${coupon.customerIds?.length ?? 0} selected` : "First order only"}
+            </span>
+          ) : null}
         </span>
       ),
     },
@@ -320,7 +334,7 @@ export function AdminCouponsView() {
               />
 
               <AdminInput
-                label="Usage limit"
+                label="Total limit"
                 type="number"
                 min={0}
                 value={editing.usageLimit ?? ""}
@@ -330,8 +344,10 @@ export function AdminCouponsView() {
                     usageLimit: event.target.value === "" ? null : Number(event.target.value),
                   })
                 }
-                hint="Total redemptions. Blank for unlimited."
+                hint="All customers together. Blank for unlimited."
               />
+
+              <CouponAudienceFields coupon={editing} onChange={setEditing} />
 
               <AdminInput
                 label="Starts"

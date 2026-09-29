@@ -131,6 +131,13 @@ class Settings(BaseSettings):
     # production it must be HTTPS.
     STOREFRONT_URL: str = "http://localhost:3000"
 
+    # Email credentials are stored encrypted with a key derived from this, or
+    # from JWT_SECRET_KEY when it is empty. See app/services/email/crypto.py.
+    EMAIL_ENCRYPTION_KEY: str = ""
+    # This API's public address, for Google's OAuth redirect
+    # (<PUBLIC_API_URL>/auth/callback). Empty: taken from the incoming request.
+    PUBLIC_API_URL: str = ""
+
     # Days after delivery in which a return or replacement can be requested.
     RETURN_WINDOW_DAYS: int = 15
 

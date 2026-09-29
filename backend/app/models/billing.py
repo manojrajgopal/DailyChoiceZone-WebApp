@@ -81,6 +81,7 @@ class Invoice(Base, TimestampMixin):
     product_discount: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     coupon_code: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     coupon_discount: Mapped[int] = mapped_column(Money, nullable=False, default=0)
+    member_discount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
     shipping: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     other_charges: Mapped[int] = mapped_column(Money, nullable=False, default=0)
 

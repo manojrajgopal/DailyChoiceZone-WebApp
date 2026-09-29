@@ -170,12 +170,20 @@ def get_cart(
     live = [item for item in items if item.product and item.product.status in ("active", "out-of-stock")]
 
     coupon = None
+    coupon_error = None
     if coupon_code:
         subtotal_guess = sum(
             billing.to_minor(float(i.product.price)) * i.quantity for i in live
         )
         result = validate_coupon(db, coupon_code, subtotal_guess, customer_id=customer.id)
         coupon = result if result.get("valid") else None
+        # Said, not swallowed: a code that silently stops applying reads as a
+        # broken store.
+        coupon_error = None if coupon else result.get("reason")
+
+    from app.services import membership as membership_service
+
+    perks = membership_service.order_benefits(db, customer.id, delivery_method=delivery_method)
 
     lines = [
         billing.BillingLine(
@@ -201,11 +209,17 @@ def get_cart(
         item_count=item_count,
         method=delivery_method,
         coupon_waives_shipping=bool(coupon and coupon.get("type") == "free-shipping"),
+        member_waives_shipping=perks["freeDelivery"],
     )
 
     state = place_of_supply or billing.tax_config(db).get("originState", "")
     result = billing.calculate(
-        db, lines, place_of_supply=state, shipping=shipping, coupon=coupon
+        db,
+        lines,
+        place_of_supply=state,
+        shipping=shipping,
+        coupon=coupon,
+        member_discount_percent=perks["discountPercent"],
     )
 
     # How much more to spend to earn free delivery — a merchandising prompt,
@@ -230,6 +244,19 @@ def get_cart(
         "breakdown": result["breakdown"],
         "freeDeliveryShortfall": max(0, threshold - subtotal),
         "appliedCoupon": coupon,
+        "couponError": coupon_error,
+        "membership": (
+            {
+                "name": membership_service.programme(db)["name"],
+                "planName": perks["membership"].plan_name,
+                "endsAt": perks["membership"].ends_at,
+                "discountPercent": perks["discountPercent"],
+                "freeDelivery": perks["freeDelivery"],
+                "freeDeliveriesLeft": perks["freeDeliveriesLeft"],
+            }
+            if perks["membership"]
+            else None
+        ),
     }
 
 

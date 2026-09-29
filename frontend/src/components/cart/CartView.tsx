@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Lock } from "lucide-react";
 
 import { CartLineRow } from "@/components/cart/CartLineRow";
+import { MemberPerksNote } from "@/components/cart/MemberPerksNote";
 import { CouponForm } from "@/components/cart/CouponForm";
 import { OrderSummary } from "@/components/cart/OrderSummary";
 import { EmptyState } from "@/components/common/States";
@@ -26,6 +27,9 @@ export function CartView() {
     totals,
     breakdown,
     coupon,
+    couponCode,
+    couponError,
+    membership,
     isLoading,
     isEmpty,
     remove,
@@ -104,9 +108,13 @@ export function CartView() {
               subtotal={totals.subtotal}
               onApply={applyCode}
               onRemove={removeCode}
+              pendingCode={couponCode}
+              error={couponError}
             />
 
             <OrderSummary breakdown={breakdown} totals={totals} />
+
+            <MemberPerksNote membership={membership} />
 
             {hasOutOfStock ? (
               <div className="rounded-card border border-danger/30 bg-danger-bg p-3.5">

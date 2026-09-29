@@ -53,16 +53,26 @@ export interface UpiIntentApp {
  * display strings. Offered only on a device that could have them installed —
  * a `upi://` intent on a desktop opens nothing and looks broken.
  */
+/**
+ * The apps Razorpay's mobile-web intent can open, by Razorpay's own codes
+ * (`createPayment(data, { app })`). "any" — the phone's own app picker — is
+ * Android-only.
+ */
 export const UPI_APPS: UpiIntentApp[] = [
-  { code: "com.google.android.apps.nbu.paisa.user", name: "Google Pay" },
-  { code: "com.phonepe.app", name: "PhonePe" },
-  { code: "net.one97.paytm", name: "Paytm" },
-  { code: "in.org.npci.upiapp", name: "BHIM" },
-  { code: "in.amazon.mShop.android.shopping", name: "Amazon Pay" },
+  { code: "gpay", name: "Google Pay" },
+  { code: "phonepe", name: "PhonePe" },
+  { code: "paytm", name: "Paytm" },
+  { code: "bhim", name: "BHIM" },
+  { code: "cred", name: "CRED" },
 ];
 
+export function isAndroid(): boolean {
+  return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent);
+}
+
 export type PaymentSelection =
-  | { method: "upi"; flow: "intent"; app?: string }
+  /** `tappedAt`: `performance.now()` at the shopper's tap — see `startCustomPayment`. */
+  | { method: "upi"; flow: "intent"; app?: string; tappedAt?: number }
   | { method: "upi"; flow: "qr" }
   | { method: "upi"; flow: "collect"; vpa: string }
   | { method: "netbanking"; bank: string }
@@ -80,9 +90,33 @@ export type CustomPaymentEvent =
   /** Waiting on the shopper — in their UPI app, their bank, their wallet. */
   | { type: "waiting"; message: string }
   | { type: "success"; response: RazorpaySuccess }
-  | { type: "error"; reason: string };
+  | { type: "error"; reason: string }
+  /**
+   * The app must be opened by a fresh tap: too long has passed since the
+   * shopper's own, and the browser would block the hand-off. Show a button
+   * that calls `open`.
+   */
+  | { type: "tap-to-open"; appName: string; open: () => void };
 
+/**
+ * Razorpay ships two scripts that both define `window.Razorpay`: Standard
+ * Checkout (`checkout.js`, which has `open()`) and Custom Checkout
+ * (`razorpay.js`, which has `createPayment()` and no `open()`). Whichever
+ * loads second replaces the first, so each loader keeps its own constructor
+ * instead of trusting the global — trusting it is what made the card button
+ * fail with "o.open is not a function" after a UPI panel had loaded the other.
+ */
+type RazorpayConstructor = NonNullable<Window["Razorpay"]>;
+let Custom: RazorpayConstructor | null = null;
 let loading: Promise<void> | null = null;
+
+/**
+ * Load Custom Checkout ahead of time. The payment page calls this on arrival,
+ * so the tap on a UPI app is not spent waiting for a script to download.
+ */
+export function preloadCustomCheckout(): void {
+  void loadCustomCheckout().catch(() => undefined);
+}
 
 /**
  * Load the script once per document.
@@ -95,26 +129,28 @@ function loadCustomCheckout(): Promise<void> {
     return Promise.reject(new Error("Secure payment isn't available here. Please try again in your browser."));
   }
 
-  if (window.Razorpay) return Promise.resolve();
+  if (Custom) return Promise.resolve();
 
   loading ??= new Promise<void>((resolve, reject) => {
     const fail = () => {
       loading = null;
       reject(new Error("We couldn't load secure payment. Please refresh the page and try again."));
     };
+    const onLoad = () => {
+      if (!window.Razorpay || typeof window.Razorpay.prototype?.createPayment !== "function") {
+        fail();
+        return;
+      }
+      Custom = window.Razorpay;
+      resolve();
+    };
 
-    const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", fail, { once: true });
-      return;
-    }
-
+    document.getElementById(SCRIPT_ID)?.remove();
     const script = document.createElement("script");
     script.id = SCRIPT_ID;
     script.src = SCRIPT_URL;
     script.async = true;
-    script.addEventListener("load", () => resolve(), { once: true });
+    script.addEventListener("load", onLoad, { once: true });
     script.addEventListener("error", fail, { once: true });
     document.head.append(script);
   });
@@ -147,7 +183,7 @@ export async function startCustomPayment(
 ): Promise<() => void> {
   await loadCustomCheckout();
 
-  const razorpay = new window.Razorpay!({
+  const razorpay = new Custom!({
     key: handoff.keyId,
     // No `order_id` here: Custom Checkout takes it inside createPayment.
     amount: handoff.amount,
@@ -190,14 +226,19 @@ export async function startCustomPayment(
     method: selection.method,
   };
 
-  if (selection.method === "upi") {
-    request.upi =
-      selection.flow === "collect"
-        ? { flow: "collect", vpa: selection.vpa }
-        : selection.flow === "intent"
-          ? { flow: "intent", ...(selection.app ? { app: selection.app } : {}) }
-          : { flow: "qr" };
+  // UPI intent takes no `upi` block: the app goes in createPayment's second
+  // argument, by Razorpay's code (see UPI_APPS).
+  const intentApp =
+    selection.method === "upi" && selection.flow === "intent"
+      ? selection.app || (isAndroid() ? "any" : "gpay")
+      : null;
 
+  if (selection.method === "upi" && selection.flow !== "intent") {
+    request.upi =
+      selection.flow === "collect" ? { flow: "collect", vpa: selection.vpa } : { flow: "qr" };
+  }
+
+  if (selection.method === "upi") {
     emit({
       type: "waiting",
       message:
@@ -219,9 +260,42 @@ export async function startCustomPayment(
     emit({ type: "waiting", message: "Taking you to your wallet to approve…" });
   }
 
-  try {
-    const attempt = razorpay.createPayment!(request);
+  const launch = () => {
+    try {
+      const attempt = intentApp
+        ? razorpay.createPayment!(request, { app: intentApp })
+        : razorpay.createPayment!(request);
+      wire(attempt);
+    } catch (error) {
+      emit({
+        type: "error",
+        reason:
+          error instanceof Error && error.message
+            ? error.message
+            : "The payment could not be started.",
+      });
+    }
+  };
 
+  /**
+   * A browser opens another app only in answer to a tap, and a tap stops
+   * counting after a few seconds. Placing the order can take that long; when
+   * it has, the shopper is asked to tap once more and the app opens from that.
+   */
+  const TAP_WINDOW_MS = 3500;
+  const tappedAt = selection.method === "upi" && selection.flow === "intent" ? selection.tappedAt : undefined;
+  if (intentApp && tappedAt !== undefined && performance.now() - tappedAt > TAP_WINDOW_MS) {
+    const appName = UPI_APPS.find((app) => app.code === intentApp)?.name ?? "your UPI app";
+    emit({ type: "tap-to-open", appName, open: launch });
+  } else {
+    launch();
+  }
+
+  return () => {
+    abandoned = true;
+  };
+
+  function wire(attempt: ReturnType<NonNullable<typeof razorpay.createPayment>>) {
     // A QR flow answers with an image to render; the others redirect or hand
     // off to an app and come back through `payment.success`.
     attempt?.on?.("payment.qr", (event) => {
@@ -235,17 +309,5 @@ export async function startCustomPayment(
         reason: event?.error?.description || "The payment could not be started.",
       });
     });
-  } catch (error) {
-    emit({
-      type: "error",
-      reason:
-        error instanceof Error && error.message
-          ? error.message
-          : "The payment could not be started.",
-    });
   }
-
-  return () => {
-    abandoned = true;
-  };
 }

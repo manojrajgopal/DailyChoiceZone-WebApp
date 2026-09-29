@@ -258,6 +258,7 @@ def calculate(
     shipping: Money = 0,
     other_charges: Money = 0,
     coupon: Optional[dict] = None,
+    member_discount_percent: float = 0,
 ) -> dict:
     """
     The one calculation: a breakdown, and the invoice lines that make it up.
@@ -281,9 +282,16 @@ def calculate(
     )
 
     coupon_discount = calculate_coupon_discount(subtotal, coupon)
+    # The membership's own saving, on what is left after the coupon — so the
+    # two never add up to more than the goods are worth.
+    member_discount = (
+        percent_of(max(0, subtotal - coupon_discount), float(member_discount_percent))
+        if member_discount_percent
+        else 0
+    )
 
     line_values = [line.unit_price * line.quantity for line in lines]
-    line_discounts = allocate(coupon_discount, line_values)
+    line_discounts = allocate(coupon_discount + member_discount, line_values)
 
     invoice_lines: List[dict] = []
     tax_totals = {"taxableAmount": 0, "cgst": 0, "sgst": 0, "igst": 0, "totalTax": 0, "ratePercent": 0}
@@ -319,7 +327,7 @@ def calculate(
             }
         )
 
-    goods = max(0, subtotal - coupon_discount)
+    goods = max(0, subtotal - coupon_discount - member_discount)
     # When prices include tax it is already inside `goods`; adding it again
     # would charge it twice.
     grand_total = goods + shipping + other_charges + (0 if prices_include_tax else tax_totals["totalTax"])
@@ -331,6 +339,7 @@ def calculate(
         "productDiscount": product_discount,
         "couponDiscount": coupon_discount,
         "couponCode": (coupon or {}).get("code"),
+        "memberDiscount": member_discount,
         "shipping": shipping,
         "otherCharges": other_charges,
         "taxableAmount": tax_totals["taxableAmount"],
@@ -381,6 +390,7 @@ def calculate_shipping(
     item_count: int,
     method: str = "standard",
     coupon_waives_shipping: bool = False,
+    member_waives_shipping: bool = False,
 ) -> Money:
     """
     Delivery.
@@ -405,7 +415,7 @@ def calculate_shipping(
     if method == "express":
         return express
 
-    if coupon_waives_shipping:
+    if coupon_waives_shipping or member_waives_shipping:
         return 0
 
     if threshold is not None and subtotal >= to_minor(threshold):

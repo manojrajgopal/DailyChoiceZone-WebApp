@@ -469,6 +469,10 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
     invoice.amount_refunded += refund.amount
     invoice.payment_status = payment.status
 
+    from app.services.email.notifications import notify_refund
+
+    notify_refund(db, refund, invoice.customer_email)
+
     order = db.get(Order, invoice.order_id)
     if order and payment.status == "refunded":
         order.payment_status = "refunded"

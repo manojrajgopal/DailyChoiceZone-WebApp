@@ -39,6 +39,22 @@ export interface ServerCart {
   breakdown: BillingBreakdown;
   freeDeliveryShortfall: number;
   appliedCoupon: (Coupon & { discount: number }) | null;
+  /** Why the code in the bag does not apply (any more), if it does not. */
+  couponError?: string | null;
+  membership?: MemberPerks | null;
+}
+
+/** The shopper's membership, as it applies to this bag. */
+export interface MemberPerks {
+  /** The programme's name, e.g. "Choice Circle". */
+  name: string;
+  planName: string;
+  endsAt: string;
+  discountPercent: number;
+  /** Standard delivery is free on this bag. */
+  freeDelivery: boolean;
+  /** Left this membership month; null when unlimited. */
+  freeDeliveriesLeft: number | null;
 }
 
 export interface CartView {
@@ -46,6 +62,8 @@ export interface CartView {
   breakdown: BillingBreakdown;
   totals: CartTotals;
   coupon: Coupon | null;
+  couponError: string | null;
+  membership: MemberPerks | null;
 }
 
 /* -------------------------------------------------------------- conversion */
@@ -100,6 +118,8 @@ function toView(cart: ServerCart): CartView {
     breakdown: cart.breakdown,
     totals: toTotals(cart),
     coupon: toTotals(cart).appliedCoupon,
+    couponError: cart.couponError ?? null,
+    membership: cart.membership ?? null,
   };
 }
 

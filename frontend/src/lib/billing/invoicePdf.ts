@@ -15,6 +15,8 @@
  * Both libraries are loaded only when somebody asks for a PDF.
  */
 
+import { inlineImages } from "@/lib/billing/inlineImages";
+
 /** A4 at 96 CSS px per inch. */
 const PAGE_W = 794;
 const PAGE_H = 1123;
@@ -34,18 +36,13 @@ export async function downloadInvoicePdf(source: HTMLElement, filename: string):
   const clone = source.cloneNode(true) as HTMLElement;
   clone.classList.add("pdf-capture");
   clone.querySelectorAll(".print-hidden").forEach((node) => node.remove());
-  // Lazy images off-screen may never load; the clone is the one being drawn.
-  clone.querySelectorAll("img").forEach((img) => img.setAttribute("loading", "eager"));
   host.appendChild(clone);
   document.body.appendChild(host);
 
   try {
     await document.fonts?.ready;
-    await Promise.all(
-      Array.from(clone.querySelectorAll("img")).map((img) =>
-        img.complete ? Promise.resolve() : img.decode().catch(() => undefined),
-      ),
-    );
+    // Embedded and loaded, so the logo appears on phones too.
+    await inlineImages(clone);
 
     // Where a page may end: under any row, section, header or footer.
     const top = clone.getBoundingClientRect().top;

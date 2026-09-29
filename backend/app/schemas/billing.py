@@ -32,6 +32,7 @@ class BillingBreakdown(CamelModel):
     product_discount: int
     coupon_discount: int
     coupon_code: Optional[str] = None
+    member_discount: int = 0
     shipping: int
     other_charges: int
     taxable_amount: int
@@ -108,6 +109,7 @@ class InvoiceOut(CamelModel):
                 product_discount=invoice.product_discount,
                 coupon_discount=invoice.coupon_discount,
                 coupon_code=invoice.coupon_code,
+                member_discount=getattr(invoice, "member_discount", 0) or 0,
                 shipping=invoice.shipping,
                 other_charges=invoice.other_charges,
                 taxable_amount=invoice.taxable_amount,

@@ -7,6 +7,8 @@ import { useEffect } from "react";
 import { ArrowLeft, Lock } from "lucide-react";
 
 import { CheckoutSteps } from "@/components/checkout/CheckoutSteps";
+import { CouponForm } from "@/components/cart/CouponForm";
+import { MemberPerksNote } from "@/components/cart/MemberPerksNote";
 import { OrderSummary } from "@/components/cart/OrderSummary";
 import { ProductImage } from "@/components/common/ProductImage";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -95,7 +97,19 @@ export function CheckoutShell({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { lines, totals, breakdown, isLoading, isEmpty } = useCart();
+  const {
+    lines,
+    totals,
+    breakdown,
+    isLoading,
+    isEmpty,
+    coupon,
+    couponCode,
+    couponError,
+    membership,
+    applyCode,
+    removeCode,
+  } = useCart();
   const { isSignedIn, isPending } = useCustomerStatus();
 
   /**
@@ -165,6 +179,25 @@ export function CheckoutShell({
 
         {/* ------------------------------------------------- order summary */}
         <div className="lg:sticky lg:top-28">
+          {/*
+            The coupon box, on every step until the order is placed — it used
+            to exist only in the bag, so a shopper who went straight to
+            checkout had nowhere to enter a code.
+          */}
+          {summary === undefined && !isLoading && lines.length > 0 ? (
+            <div className="mb-4 rounded-card border border-ink-200 bg-shell p-4">
+              <CouponForm
+                compact
+                applied={coupon}
+                subtotal={totals.subtotal}
+                onApply={applyCode}
+                onRemove={removeCode}
+                pendingCode={couponCode}
+                error={couponError}
+              />
+            </div>
+          ) : null}
+
           {summary === null || (summary === undefined && isLoading) ? (
             <Skeleton className="h-80 w-full" />
           ) : (
@@ -198,6 +231,12 @@ export function CheckoutShell({
               </ul>
             </OrderSummary>
           )}
+
+          {summary === undefined && !isLoading ? (
+            <div className="mt-4">
+              <MemberPerksNote membership={membership} />
+            </div>
+          ) : null}
 
           <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-ink-400">
             <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />

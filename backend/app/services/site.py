@@ -68,31 +68,36 @@ def navigation(db: Session) -> list:
     return _document(db, "navigation").get("items", [])
 
 
-RETURNS_NAV_ITEM = {
-    "id": "returns",
-    "label": "Returns",
-    "href": "/admin/returns",
-    "icon": "refunds",
-    "badge": "openReturns",
-}
+# Sections added after the sidebar document was first saved. Each is placed
+# after its anchor in what is served, when the saved menu lacks it; the saved
+# document itself is left as it is.
+ADDED_NAV_ITEMS = [
+    ("/admin/orders", {"id": "returns", "label": "Returns", "href": "/admin/returns",
+                       "icon": "refunds", "badge": "openReturns"}),
+    ("/admin/customers", {"id": "membership", "label": "Membership", "href": "/admin/membership",
+                          "icon": "customers"}),
+    ("/admin/settings/billing", {"id": "email", "label": "Email", "href": "/admin/settings/email",
+                                 "icon": "content"}),
+]
 
 
 def admin_navigation(db: Session) -> list:
-    """
-    The portal's sidebar, grouped.
-
-    A sidebar saved before returns existed has no link to them; one is placed
-    after Orders in what is served — the saved document is left as it is.
-    """
+    """The portal's sidebar, grouped, with any newer sections added."""
     groups = _document(db, "admin_navigation").get("groups", [])
-    hrefs = {item.get("href") for group in groups for item in group.get("items", [])}
-    if "/admin/returns" not in hrefs:
+    for anchor, entry in ADDED_NAV_ITEMS:
+        hrefs = {item.get("href") for group in groups for item in group.get("items", [])}
+        if entry["href"] in hrefs:
+            continue
+        placed = False
         for group in groups:
             items = group.get("items", [])
-            at = next((i for i, item in enumerate(items) if item.get("href") == "/admin/orders"), None)
+            at = next((i for i, item in enumerate(items) if item.get("href") == anchor), None)
             if at is not None:
-                group["items"] = items[: at + 1] + [dict(RETURNS_NAV_ITEM)] + items[at + 1 :]
+                group["items"] = items[: at + 1] + [dict(entry)] + items[at + 1 :]
+                placed = True
                 break
+        if not placed and groups:
+            groups[-1]["items"] = groups[-1].get("items", []) + [dict(entry)]
     return groups
 
 

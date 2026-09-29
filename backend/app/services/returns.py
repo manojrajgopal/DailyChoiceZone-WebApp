@@ -105,6 +105,19 @@ def window_days(db: Session) -> int:
     return days if days > 0 else settings.RETURN_WINDOW_DAYS
 
 
+def _member_extra_days(db: Session, order: Order) -> int:
+    """Extra return days the membership the order was placed under carries."""
+    if not getattr(order, "membership_id", None):
+        return 0
+    from app.models import CustomerMembership
+
+    membership = db.get(CustomerMembership, order.membership_id)
+    try:
+        return int(((membership.benefits or {}) if membership else {}).get("extraReturnDays") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def delivered_at(order: Order) -> Optional[datetime]:
     """When the order was delivered — the latest `delivered` event."""
     times = [event.occurred_at for event in order.events if event.status == "delivered"]
@@ -160,7 +173,7 @@ def eligibility(db: Session, order: Order, now: Optional[datetime] = None) -> di
     `reason` is written for the customer and is empty when something qualifies.
     """
     now = now or datetime.utcnow()
-    days = window_days(db)
+    days = window_days(db) + _member_extra_days(db, order)
     ends = window_ends(order, days)
     claimed = _claimed(db, order)
 
@@ -383,6 +396,11 @@ def _move(db: Session, request: ReturnRequest, status: str, *, note: str, actor:
     request.events.append(
         ReturnEvent(status=status, note=note.strip()[:500], actor=actor, occurred_at=now)
     )
+    from app.services.email.notifications import notify_return
+
+    order = db.get(Order, request.order_id)
+    if order is not None:
+        notify_return(db, request, order.customer_email)
     db.commit()
     db.refresh(request)
     return request

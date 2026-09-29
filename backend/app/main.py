@@ -95,6 +95,12 @@ register_error_handlers(app)
 for router in all_routers:
     app.include_router(router, prefix=settings.API_PREFIX)
 
+# Google's OAuth redirect lands outside /api, at the address the OAuth client
+# is registered with (GOOGLE_REDIRECT_URI = <api>/auth/callback).
+from app.api.routes.email import callback_router  # noqa: E402
+
+app.include_router(callback_router)
+
 
 @app.get("/health", tags=["Health"], summary="Liveness and database check")
 def health():

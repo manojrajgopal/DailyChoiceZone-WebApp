@@ -448,16 +448,33 @@ def place_order(
                                   error_code="COUPON_INVALID")
         coupon = result
 
+    from app.services import membership as membership_service
+
+    perks = membership_service.order_benefits(db, customer.id, delivery_method=delivery_method)
+    coupon_ships_free = bool(coupon and coupon.get("type") == "free-shipping")
+
     shipping = billing.calculate_shipping(
         db,
         subtotal=subtotal,
         item_count=item_count,
         method=delivery_method,
-        coupon_waives_shipping=bool(coupon and coupon.get("type") == "free-shipping"),
+        coupon_waives_shipping=coupon_ships_free,
+        member_waives_shipping=perks["freeDelivery"],
     )
+    # Counted against the monthly quota only when the membership is what made
+    # delivery free — not when the basket or a coupon already had.
+    standard_fee = billing.calculate_shipping(
+        db, subtotal=subtotal, item_count=item_count, method=delivery_method
+    )
+    member_free_delivery = bool(perks["freeDelivery"] and standard_fee > 0 and not coupon_ships_free)
 
     priced = billing.calculate(
-        db, lines, place_of_supply=place_of_supply, shipping=shipping, coupon=coupon
+        db,
+        lines,
+        place_of_supply=place_of_supply,
+        shipping=shipping,
+        coupon=coupon,
+        member_discount_percent=perks["discountPercent"],
     )
     breakdown = priced["breakdown"]
 
@@ -485,6 +502,9 @@ def place_order(
             catalogue_savings=billing.to_major(breakdown["productDiscount"]),
             coupon_code=coupon["code"] if coupon else None,
             coupon_discount=billing.to_major(breakdown["couponDiscount"]),
+            membership_id=perks["membership"].id if perks["membership"] else None,
+            member_discount=billing.to_major(breakdown["memberDiscount"]),
+            member_free_delivery=member_free_delivery,
             tax_amount=billing.to_major(breakdown["tax"]["totalTax"]),
             total=billing.to_major(breakdown["grandTotal"]),
             shipping_name=shipping_address.get("fullName", ""),
@@ -566,6 +586,7 @@ def place_order(
             product_discount=breakdown["productDiscount"],
             coupon_code=breakdown["couponCode"],
             coupon_discount=breakdown["couponDiscount"],
+            member_discount=breakdown["memberDiscount"],
             shipping=breakdown["shipping"],
             other_charges=breakdown["otherCharges"],
             taxable_amount=breakdown["tax"]["taxableAmount"],
@@ -690,6 +711,9 @@ def place_order(
                     occurred_at=now,
                 )
             )
+            from app.services import email as email_service
+
+            email_service.notify_order(db, order, "confirmed")
 
         # --- coupon ------------------------------------------------------
         if coupon:
@@ -792,6 +816,10 @@ def update_status(
     now = datetime.utcnow()
     order.events.append(OrderEvent(status=status, note=note, actor=actor, occurred_at=now))
 
+    from app.services import email as email_service
+
+    email_service.notify_order(db, order, status)
+
     # Cash on delivery settles when the courier hands it over.
     if status == "delivered" and order.payment_status == "cod-pending":
         order.payment_status = "paid"
@@ -813,9 +841,12 @@ def update_status(
                 invoice.amount_paid = invoice.grand_total
 
     # Cancelling before dispatch returns the stock — but *which* return
-    # depends on what the order did with it. See `return_stock`.
+    # depends on what the order did with it. See `return_stock`. The coupon
+    # use comes back too, so a one-time code isn't burnt by an order that
+    # never went ahead.
     if status == "cancelled":
         return_stock(db, order, note="Order cancelled")
+        coupon_service.release_usage(db, order.id)
 
     db.commit()
 

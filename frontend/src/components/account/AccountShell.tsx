@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Heart, LogOut, MapPin, Package, Settings, User } from "lucide-react";
+import { Crown, FileText, Heart, LogOut, MapPin, Package, Settings, User } from "lucide-react";
 
 import { AuthPanel } from "@/components/account/AuthPanel";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -24,6 +24,7 @@ const ICONS: Record<string, typeof User> = {
   "file-text": FileText,
   "map-pin": MapPin,
   heart: Heart,
+  crown: Crown,
   settings: Settings,
 };
 
@@ -51,9 +52,20 @@ export function AccountShell({
   // The menu is a content document an administrator can edit. Stores set up
   // before the account wishlist existed link "/wishlist" (the full page); inside
   // the account area it opens the account preview instead, which links on.
-  const accountNav = (useSiteContent()?.accountNavigation ?? []).map((item) =>
+  const remapped = (useSiteContent()?.accountNavigation ?? []).map((item) =>
     item.href === "/wishlist" ? { ...item, href: "/account/wishlist" } : item,
   );
+  // Menus saved before memberships existed have no entry for them: add one
+  // after the wishlist (or at the end), unless the store already lists it.
+  const accountNav =
+    remapped.length === 0 || remapped.some((item) => item.href === "/account/membership")
+      ? remapped
+      : (() => {
+          const entry = { href: "/account/membership", label: "Membership", icon: "crown" };
+          const after = remapped.findIndex((item) => item.href === "/account/wishlist");
+          const at = after === -1 ? remapped.length : after + 1;
+          return [...remapped.slice(0, at), entry, ...remapped.slice(at)];
+        })();
 
   if (isLoading) {
     return (

@@ -69,6 +69,15 @@ export function BillingBreakdownRows({
         />
       ) : null}
 
+      {(breakdown.memberDiscount ?? 0) > 0 ? (
+        <Row
+          label="Member savings"
+          value={`− ${formatMoney(breakdown.memberDiscount ?? 0)}`}
+          muted={muted}
+          strong={positive}
+        />
+      ) : null}
+
       <Row
         label="Shipping"
         value={breakdown.shipping === 0 ? "Free" : formatMoney(breakdown.shipping)}

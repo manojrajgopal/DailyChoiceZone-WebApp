@@ -78,6 +78,10 @@ export function emptyCoupon(): AdminCoupon {
     endsAt: null,
     usageLimit: null,
     usageCount: 0,
+    perCustomerLimit: 1,
+    audience: "everyone",
+    customerIds: [],
+    showInStore: true,
     status: "active",
     createdAt: now.toISOString(),
   };

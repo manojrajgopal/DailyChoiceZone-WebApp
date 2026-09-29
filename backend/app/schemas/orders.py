@@ -71,6 +71,7 @@ class OrderTotals(CamelModel):
     subtotal: float
     catalogue_savings: float
     coupon_discount: float
+    member_discount: float = 0
     delivery_fee: float
     tax_amount: float
     total: float
@@ -126,6 +127,7 @@ class OrderOut(CamelModel):
                 subtotal=float(order.subtotal),
                 catalogue_savings=float(order.catalogue_savings),
                 coupon_discount=float(order.coupon_discount),
+                member_discount=float(getattr(order, "member_discount", 0) or 0),
                 delivery_fee=float(order.delivery_fee),
                 tax_amount=float(order.tax_amount),
                 total=float(order.total),

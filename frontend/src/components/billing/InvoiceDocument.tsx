@@ -55,6 +55,9 @@ export function InvoiceDocument({
             aria-hidden="true"
             className="h-14 w-14 shrink-0 rounded-pill object-contain"
             sizes="56px"
+            // Loaded at once, not lazily: this document is printed and
+            // turned into PDFs, where a lazy image may never arrive.
+            priority
           />
           <div>
             <p className="font-display text-xl leading-tight text-ink">
@@ -192,6 +195,12 @@ export function InvoiceDocument({
               <TotalRow
                 label={`Coupon${breakdown.couponCode ? ` (${breakdown.couponCode})` : ""}`}
                 value={`− ${formatMoney(breakdown.couponDiscount, { showDecimals: true })}`}
+              />
+            ) : null}
+            {(breakdown.memberDiscount ?? 0) > 0 ? (
+              <TotalRow
+                label="Member savings"
+                value={`− ${formatMoney(breakdown.memberDiscount ?? 0, { showDecimals: true })}`}
               />
             ) : null}
             <TotalRow

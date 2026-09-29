@@ -81,3 +81,6 @@ __all__ = [
     "WishlistItem",
 ]
 from app.models.returns import ReturnEvent, ReturnRequest, ReturnRequestItem  # noqa: E402
+from app.models.membership import CustomerMembership, MembershipPlan  # noqa: E402
+from app.models.commerce import CouponCustomer  # noqa: E402
+from app.models.email import CustomerEmailPreference, EmailAccount, EmailLog  # noqa: E402

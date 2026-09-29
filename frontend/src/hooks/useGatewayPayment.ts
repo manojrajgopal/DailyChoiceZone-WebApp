@@ -46,6 +46,8 @@ export function useGatewayPayment() {
   const [stage, setStage] = useState<Stage>("choosing");
   const [qr, setQr] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  /** Set when the UPI app must be opened by a fresh tap — see `startCustomPayment`. */
+  const [tapToOpen, setTapToOpen] = useState<{ appName: string; open: () => void } | null>(null);
 
   /**
    * When the window closes, on this browser's clock.
@@ -70,6 +72,7 @@ export function useGatewayPayment() {
   useEffect(() => () => abandon.current?.(), []);
 
   const reset = useCallback(() => {
+    setTapToOpen(null);
     setStage("choosing");
     setQr(null);
     setMessage("");
@@ -194,12 +197,27 @@ export function useGatewayPayment() {
           }
 
           if (event.type === "error") {
+            setTapToOpen(null);
             reset();
             toast.error(event.reason);
             finish("failed");
             return;
           }
 
+          if (event.type === "tap-to-open") {
+            setMessage(`Tap below to open ${event.appName} and approve the payment.`);
+            setTapToOpen({
+              appName: event.appName,
+              open: () => {
+                setTapToOpen(null);
+                setMessage(`Complete the payment in ${event.appName}.`);
+                event.open();
+              },
+            });
+            return;
+          }
+
+          setTapToOpen(null);
           abandon.current = null;
           void confirm(handoff.paymentId, event.response).then(finish);
         })
@@ -308,7 +326,12 @@ export function useGatewayPayment() {
           // `createQr`. It works on accounts whose Checkout UPI is off.
           return payByQr(handoff);
         case "upi-intent":
-          return payCustom(handoff, { method: "upi", flow: "intent", app: choice.app });
+          return payCustom(handoff, {
+            method: "upi",
+            flow: "intent",
+            app: choice.app,
+            tappedAt: choice.tappedAt,
+          });
         case "upi-vpa":
           return payCustom(handoff, { method: "upi", flow: "collect", vpa: choice.vpa });
         case "netbanking":
@@ -356,6 +379,7 @@ export function useGatewayPayment() {
   return {
     pay,
     cancel,
+    tapToOpen,
     stage,
     qr,
     message,

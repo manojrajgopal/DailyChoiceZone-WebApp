@@ -93,6 +93,8 @@ export interface BillingBreakdown {
   /** Savings already reflected in selling prices, against list price. */
   productDiscount: Money;
   couponDiscount: Money;
+  /** The membership's own saving on this order, after any coupon. */
+  memberDiscount?: Money;
   couponCode: string | null;
   shipping: Money;
   /** Anything the catalogue does not price — handling, gift wrap, COD fee. */

@@ -21,11 +21,20 @@ export function CouponForm({
   subtotal,
   onApply,
   onRemove,
+  pendingCode = null,
+  error = null,
+  compact = false,
 }: {
   applied: Coupon | null;
   subtotal: number;
   onApply: (code: string) => Promise<unknown>;
   onRemove: () => void;
+  /** A code saved in the bag that is not currently applied. */
+  pendingCode?: string | null;
+  /** Why `pendingCode` doesn't apply — e.g. the basket fell below its minimum. */
+  error?: string | null;
+  /** Smaller, for the checkout summary. */
+  compact?: boolean;
 }) {
   const [code, setCode] = useState("");
   const [isApplying, setIsApplying] = useState(false);
@@ -80,8 +89,37 @@ export function CouponForm({
     );
   }
 
+  const applyNow = async (value: string) => {
+    setIsApplying(true);
+    try {
+      await onApply(value);
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
   return (
     <div>
+      {compact ? <p className="label-wide mb-2 text-ink-700">Coupon</p> : null}
+
+      {pendingCode && error ? (
+        <div
+          role="status"
+          className="mb-2.5 flex items-start justify-between gap-3 rounded-card border border-clay-200 bg-clay-50 px-3.5 py-2.5"
+        >
+          <p className="text-xs leading-relaxed text-ink-700">
+            <span className="font-medium text-ink">{pendingCode}</span> isn&rsquo;t applied: {error}
+          </p>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="shrink-0 text-xs font-medium text-clay-700 underline underline-offset-2 hover:text-ink"
+          >
+            Remove
+          </button>
+        </div>
+      ) : null}
+
       <form onSubmit={onSubmit} className="flex gap-2">
         <label className="flex-1">
           <span className="sr-only">Coupon code</span>
@@ -102,15 +140,24 @@ export function CouponForm({
       </form>
 
       {available.length > 0 ? (
-        <ul className="mt-2.5 flex flex-wrap gap-1.5">
+        <ul className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Coupons you can use">
           {available.map((coupon) => {
             const eligible = subtotal >= coupon.minSubtotal;
+            const tag =
+              coupon.audience === "members"
+                ? "Members"
+                : coupon.audience === "selected"
+                  ? "Just for you"
+                  : coupon.audience === "first-order"
+                    ? "First order"
+                    : null;
             return (
               <li key={coupon.code}>
                 <button
                   type="button"
-                  onClick={() => setCode(coupon.code)}
-                  disabled={!eligible}
+                  // One tap applies it: typing a code shown on screen is busywork.
+                  onClick={() => void applyNow(coupon.code)}
+                  disabled={!eligible || isApplying}
                   title={
                     eligible
                       ? coupon.description
@@ -126,6 +173,11 @@ export function CouponForm({
                   className="rounded-pill border border-dashed border-ink-300 px-2.5 py-1 text-[0.6875rem] tracking-wider text-ink-700 transition-colors hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:border-ink-100 disabled:text-ink-300"
                 >
                   {coupon.code}
+                  {tag ? (
+                    <span className="ml-1.5 rounded-pill bg-copper-50 px-1.5 py-px text-[0.5625rem] font-medium uppercase tracking-wide text-copper-700">
+                      {tag}
+                    </span>
+                  ) : null}
                 </button>
               </li>
             );

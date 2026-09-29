@@ -102,7 +102,11 @@ interface RazorpayInstance {
    * Custom Checkout only. Present when `razorpay.js` was loaded rather than
    * `checkout.js`, which is why both it and `on` are optional here.
    */
-  createPayment?(request: Record<string, unknown>): RazorpayAttempt | undefined;
+  createPayment?(
+    request: Record<string, unknown>,
+    /** UPI intent on mobile web: which app to open, by Razorpay's code. */
+    options?: { app: string },
+  ): RazorpayAttempt | undefined;
 }
 
 interface Window {

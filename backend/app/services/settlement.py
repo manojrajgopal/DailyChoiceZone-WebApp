@@ -326,6 +326,11 @@ def _apply_paid(db: Session, payment: Payment, result: PaymentResult) -> None:
                     occurred_at=now,
                 )
             )
+            from app.services import email as email_service
+            from app.services.email.notifications import notify_payment
+
+            email_service.notify_order(db, order, "confirmed")
+            notify_payment(db, order, payment.amount)
 
     # Every code minted for this payment is now spent. Close them, so none can
     # be scanned again — see `apply_result`.
@@ -695,6 +700,13 @@ def settle_from_webhook(db: Session, body: dict) -> str:
     entity = (payload.get("payment") or {}).get("entity") or {}
     if not entity:
         return "ignored: no payment entity"
+
+    # A membership purchase: no order or invoice behind it, just the plan.
+    membership_id = (entity.get("notes") or {}).get("membershipId")
+    if membership_id:
+        from app.services import membership as membership_service
+
+        return membership_service.settle_from_gateway(db, membership_id, entity)
 
     payment = _payment_for(db, event, entity, payload)
     if payment is None:

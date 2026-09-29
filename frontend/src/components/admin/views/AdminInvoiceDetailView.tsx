@@ -21,6 +21,7 @@ import { getCreditNotesForOrder } from "@/services/billing/creditNoteService";
 import { amountDue, getInvoiceById, markInvoicePaid } from "@/services/billing/invoiceService";
 import { capturePayment, getPaymentById } from "@/services/billing/paymentService";
 import { getRefundsForOrder } from "@/services/billing/refundService";
+import { sendInvoiceEmail } from "@/services/emailSettingsService";
 import { toast } from "@/store/toastStore";
 
 /**
@@ -41,6 +42,7 @@ function AdminInvoiceDetail() {
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const [refundOpen, setRefundOpen] = useState(false);
   const [creditNoteOpen, setCreditNoteOpen] = useState(false);
@@ -92,6 +94,23 @@ function AdminInvoiceDetail() {
     await load();
     setBusy(false);
     toast.success(`${invoice.invoiceNumber} marked as paid`);
+  };
+
+  const onSendInvoice = async () => {
+    if (!invoice) return;
+    setSending(true);
+    try {
+      await sendInvoiceEmail(invoice.id);
+      toast.success(`Invoice sent to ${invoice.customerEmail}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "The invoice couldn't be sent. Please try again.",
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   if (isLoading || !config) {
@@ -167,15 +186,10 @@ function AdminInvoiceDetail() {
         <AdminButton
           size="sm"
           variant="ghost"
-          onClick={() =>
-            // No mail is sent and none can be: there is no server to send it.
-            // Saying so is better than a button that pretends.
-            toast.info(
-              `Emailing invoices isn't available yet. Download or print it to share with ${invoice.customerEmail}.`,
-            )
-          }
+          loading={sending}
+          onClick={() => void onSendInvoice()}
         >
-          <Mail className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+          {sending ? null : <Mail className="h-3 w-3" strokeWidth={2} aria-hidden="true" />}
           Send invoice
         </AdminButton>
 

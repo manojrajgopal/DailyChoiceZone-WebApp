@@ -181,9 +181,21 @@ export interface AdminCoupon {
   maxDiscount: number | null;
   startsAt: string;
   endsAt: string | null;
-  /** `null` means unlimited. */
+  /** `null` means unlimited. All customers together. */
   usageLimit: number | null;
   usageCount: number;
+  /** Times each customer may use it; `null` for no limit. */
+  perCustomerLimit?: number | null;
+  /** Who may use it. */
+  audience?: "everyone" | "selected" | "members" | "first-order";
+  /** Customers a `selected` coupon is for. */
+  customerIds?: string[];
+  /** Listed in the store for eligible shoppers. */
+  showInStore?: boolean;
+  /** How many different customers have used it. */
+  customersUsed?: number;
+  /** Total discount given, in rupees. */
+  totalDiscount?: number;
   status: CouponStatus;
   createdAt: string;
 }

@@ -25,9 +25,16 @@ class ValidateCoupon(CamelModel):
 
 
 @router.get("", summary="Coupons a shopper can use")
-def list_coupons(db: Session = Depends(get_db)):
-    """Only live ones — an expired code in the list is an invitation to fail."""
-    coupons = service.list_coupons(db, active_only=True)
+def list_coupons(
+    db: Session = Depends(get_db),
+    customer: Optional[Customer] = Depends(get_optional_customer),
+):
+    """
+    Only live ones, and only those this shopper may use — a members' code is
+    listed to members, a selected customer's to that customer, and a code
+    handed out privately to nobody.
+    """
+    coupons = service.coupons_for(db, customer.id if customer else None)
     return ok_list(
         [
             {
@@ -38,6 +45,9 @@ def list_coupons(db: Session = Depends(get_db)):
                 "value": float(coupon.value),
                 "minSubtotal": float(coupon.min_subtotal),
                 "maxDiscount": float(coupon.max_discount) if coupon.max_discount is not None else None,
+                "audience": coupon.audience,
+                "endsAt": coupon.ends_at,
+                "perCustomerLimit": coupon.per_customer_limit,
             }
             for coupon in coupons
         ]

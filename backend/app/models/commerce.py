@@ -48,8 +48,34 @@ class Coupon(Base, TimestampMixin):
 
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
 
+    # Who may use it:
+    #   everyone     — any shopper (the default, and what every coupon was)
+    #   selected     — only the customers listed in `coupon_customers`
+    #   members      — only customers with an active membership
+    #   first-order  — only customers who have never placed an order
+    audience: Mapped[str] = mapped_column(String(20), nullable=False, default="everyone", server_default="everyone")
+    # Listed on the storefront for those who may use it; off for codes handed
+    # out privately (an apology, an influencer's code).
+    show_in_store: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+
     usages: Mapped[List["CouponUsage"]] = relationship(
         back_populates="coupon", cascade="all, delete-orphan"
+    )
+    customers: Mapped[List["CouponCustomer"]] = relationship(
+        cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class CouponCustomer(Base):
+    """A customer a `selected`-audience coupon is meant for."""
+
+    __tablename__ = "coupon_customers"
+
+    coupon_id: Mapped[str] = mapped_column(
+        BusinessId, ForeignKey("coupons.id", ondelete="CASCADE"), primary_key=True
+    )
+    customer_id: Mapped[str] = mapped_column(
+        BusinessId, ForeignKey("customers.id", ondelete="CASCADE"), primary_key=True, index=True
     )
 
 

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { Radio } from "@/components/ui/Field";
 import { cn } from "@/lib/utils/cn";
 import { getPaymentMethods, type AvailableMethods } from "@/services/payments/paymentGatewayService";
-import { UPI_APPS, supportsUpiIntent } from "@/services/payments/razorpayCustom";
+import { UPI_APPS, supportsUpiIntent, isAndroid } from "@/services/payments/razorpayCustom";
 
 /**
  * Choosing how to pay, in our own interface.
@@ -45,7 +45,7 @@ import { UPI_APPS, supportsUpiIntent } from "@/services/payments/razorpayCustom"
  */
 
 export type Choice =
-  | { kind: "upi-intent"; app?: string }
+  | { kind: "upi-intent"; app?: string; tappedAt?: number }
   | { kind: "upi-qr" }
   | { kind: "upi-vpa"; vpa: string }
   /**
@@ -105,12 +105,10 @@ export function describe(choice: Choice, methods: AvailableMethods | null): stri
  */
 function upiSubtitle(onPhone: boolean, methods: AvailableMethods): string {
   if (onPhone && methods.upiIntent) return "Google Pay, PhonePe, Paytm and any other UPI app";
-  if (methods.upiQr) return "Scan a QR code, or enter your UPI ID";
+  if (methods.upiQr) return "Scan a QR code with any UPI app";
   if (methods.upiIntent) return "Available when you pay from a phone";
   return "Not available at the moment";
 }
-
-const VPA_PATTERN = /^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/;
 
 export function PaymentMethods({
   onPay,
@@ -156,10 +154,13 @@ export function PaymentMethods({
    * rendered first and corrected on the first paint.
    */
   const [onPhone, setOnPhone] = useState(false);
-  useEffect(() => setOnPhone(supportsUpiIntent()), []);
+  const [onAndroid, setOnAndroid] = useState(false);
+  useEffect(() => {
+    setOnPhone(supportsUpiIntent());
+    setOnAndroid(isAndroid());
+  }, []);
 
   const [open, setOpen] = useState<string | null>(null);
-  const [vpa, setVpa] = useState("");
   const [bank, setBank] = useState("");
   const [wallet, setWallet] = useState("");
   const [bankQuery, setBankQuery] = useState("");
@@ -225,7 +226,7 @@ export function PaymentMethods({
                     key={app.code}
                     type="button"
                     disabled={isPaying}
-                    onClick={() => pay({ kind: "upi-intent", app: app.code })}
+                    onClick={() => pay({ kind: "upi-intent", app: app.code, tappedAt: performance.now() })}
                     className="rounded-control border border-ink-200 px-3 py-2.5 text-xs font-medium text-ink transition-colors hover:border-copper-400 hover:bg-copper-50 disabled:opacity-50"
                   >
                     {app.name}
@@ -233,15 +234,18 @@ export function PaymentMethods({
                 ))}
               </div>
 
-              <Button
-                variant="outline"
-                fullWidth
-                disabled={isPaying}
-                onClick={() => pay({ kind: "upi-intent" })}
-                className="mt-2"
-              >
-                Any other UPI app
-              </Button>
+              {/* The phone's own app picker exists on Android only. */}
+              {onAndroid ? (
+                <Button
+                  variant="outline"
+                  fullWidth
+                  disabled={isPaying}
+                  onClick={() => pay({ kind: "upi-intent", tappedAt: performance.now() })}
+                  className="mt-2"
+                >
+                  Any other UPI app
+                </Button>
+              ) : null}
             </>
           ) : null}
 
@@ -258,39 +262,10 @@ export function PaymentMethods({
             </Button>
           ) : null}
 
-          {methods.upiQr ? (
-            <div className="mt-3">
-              <label
-                htmlFor="vpa"
-                className="label-wide block text-ink-500"
-              >
-                Or enter your UPI ID
-              </label>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="vpa"
-                  value={vpa}
-                  onChange={(event) => setVpa(event.target.value)}
-                  placeholder="yourname@bank"
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="min-w-0 flex-1 rounded-control border border-ink-200 bg-shell px-3 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-ink-300 focus:border-copper-500"
-                />
-                <Button
-                  disabled={isPaying || !VPA_PATTERN.test(vpa.trim())}
-                  onClick={() => pay({ kind: "upi-vpa", vpa: vpa.trim() })}
-                  className="shrink-0"
-                >
-                  Send request
-                </Button>
-              </div>
-              {vpa && !VPA_PATTERN.test(vpa.trim()) ? (
-                <p className="mt-1.5 text-xs text-clay-600">
-                  Please enter a valid UPI ID, for example name@okbank.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          {/*
+            No "enter your UPI ID" option: UPI collect requests were withdrawn
+            on 28 February 2026, and Razorpay no longer completes them.
+          */}
 
           {/*
             Nothing to offer. Which of the two reasons it is matters to the

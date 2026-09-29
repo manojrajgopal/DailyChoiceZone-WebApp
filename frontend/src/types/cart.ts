@@ -36,6 +36,9 @@ export interface Coupon {
   minSubtotal: number;
   /** Cap on the discount for percent coupons, in rupees. */
   maxDiscount?: number;
+  /** Who it is for: everyone, selected customers, members, first order. */
+  audience?: "everyone" | "selected" | "members" | "first-order";
+  endsAt?: string | null;
 }
 
 /** The fully computed money picture for a cart. Produced by cartService. */
@@ -45,6 +48,8 @@ export interface CartTotals {
   /** Savings already baked into list prices. */
   catalogueSavings: number;
   couponDiscount: number;
+  /** What a membership saved on the order, in rupees. */
+  memberDiscount?: number;
   deliveryFee: number;
   total: number;
   /** How much more to spend to earn free delivery; zero once earned. */

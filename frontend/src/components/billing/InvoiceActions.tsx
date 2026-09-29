@@ -7,6 +7,7 @@ import { Download, FileSpreadsheet, FileText, Loader2, Printer, Table } from "lu
 import type { BillingConfig, Invoice } from "@/types";
 
 import { Button } from "@/components/ui/Button";
+import { inlineImages } from "@/lib/billing/inlineImages";
 import { invoiceCsv, invoiceSheet, invoiceWorkbook, saveBlob } from "@/lib/billing/invoiceExport";
 import { cn } from "@/lib/utils/cn";
 import { toast } from "@/store/toastStore";
@@ -50,7 +51,7 @@ export function prepareInvoicePrint(): (() => void) | null {
 }
 
 export function useInvoicePrint() {
-  return useCallback(() => {
+  return useCallback(async () => {
     if (typeof document === "undefined") return;
 
     const undo = prepareInvoicePrint();
@@ -58,6 +59,11 @@ export function useInvoicePrint() {
       window.print();
       return;
     }
+
+    // The logo and any other image in the copy, loaded before the print
+    // dialog opens — see `inlineImages`.
+    const root = document.getElementById("invoice-print-root");
+    if (root) await inlineImages(root);
 
     let restored = false;
     const restore = () => {
@@ -70,8 +76,15 @@ export function useInvoicePrint() {
 
     window.print();
 
-    // Safari does not always fire afterprint; this is the belt to that braces.
-    window.setTimeout(restore, 1500);
+    // Safari does not always fire afterprint. On a phone `print()` returns at
+    // once while the preview is still being built, so the copy must not be
+    // removed on a short timer — only when the shopper is back on the page.
+    const onReturn = () => {
+      window.setTimeout(restore, 500);
+      window.removeEventListener("focus", onReturn);
+    };
+    window.setTimeout(() => window.addEventListener("focus", onReturn), 1000);
+    window.setTimeout(restore, 120_000);
   }, []);
 }
 

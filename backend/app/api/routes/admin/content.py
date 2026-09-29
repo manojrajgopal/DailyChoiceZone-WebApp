@@ -203,6 +203,10 @@ def list_coupons(
                 "usageLimit": coupon.usage_limit,
                 "usageCount": coupon.usage_count,
                 "perCustomerLimit": coupon.per_customer_limit,
+                "audience": coupon.audience,
+                "showInStore": coupon.show_in_store,
+                "customerIds": [entry.customer_id for entry in coupon.customers],
+                **coupon_service.usage_summary(db, coupon),
                 # Derived, so a scheduled coupon goes live on its own and an
                 # expired one stops being offered without anyone editing it.
                 "status": coupon_service.effective_status(coupon),

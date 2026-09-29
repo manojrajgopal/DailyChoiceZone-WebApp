@@ -324,6 +324,11 @@ export function useCart() {
     /** The billing breakdown, in minor units. Calculated by the server. */
     breakdown,
     coupon: totals.appliedCoupon,
+    /** The code in the bag, applied or not. */
+    couponCode: guestCoupon,
+    /** Why that code does not apply, when it does not. */
+    couponError: isSignedIn ? (view?.couponError ?? null) : null,
+    membership: isSignedIn ? (view?.membership ?? null) : null,
     isLoading: !hydrated || isPending || isLoading,
     isEmpty: hydrated && !isPending && !isLoading && lines.length === 0,
     hydrated,

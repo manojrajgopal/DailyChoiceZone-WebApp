@@ -27,6 +27,8 @@ PREFIXES = {
     "address": "ADR",
     "section": "SEC",
     "return_request": "RET",
+    "membership_plan": "MBP",
+    "membership": "MEM",
 }
 
 _PATTERN = re.compile(r"^([A-Z]{3})(\d+)$")

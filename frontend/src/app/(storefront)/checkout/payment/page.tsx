@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
 
+import { Button } from "@/components/ui/Button";
 import {
   CheckoutShell,
   summaryLinesFromOrder,
@@ -21,9 +22,10 @@ import { useCart } from "@/hooks/useCart";
 import { useGatewayPayment } from "@/hooks/useGatewayPayment";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
 import { formatPrice } from "@/lib/utils/format";
-import { getInvoiceById } from "@/services/billing/invoiceService";
+import { getMyInvoice } from "@/services/billing/invoiceService";
 import { addToCart } from "@/services/cartService";
 import { getPaymentSession } from "@/services/payments/paymentGatewayService";
+import { preloadCustomCheckout } from "@/services/payments/razorpayCustom";
 import { cancelOrder, getOrder, placeOrder } from "@/services/orderService";
 import { getDeliveryMethod, getPaymentMethod } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
@@ -123,8 +125,11 @@ function PaymentStep() {
    */
   const [amountDue, setAmountDue] = useState<number | null>(null);
 
-  const { pay, cancel, stage, qr, message, isPaying, deadline, startClock, expire } =
+  const { pay, cancel, tapToOpen, stage, qr, message, isPaying, deadline, startClock, expire } =
     useGatewayPayment();
+
+  // Load the UPI script now, so a tap on a UPI app is not spent downloading it.
+  useEffect(() => preloadCustomCheckout(), []);
 
   /** The gateway order for an existing payment, when settling one. */
   const [existing, setExisting] = useState<GatewayHandoff | null>(null);
@@ -172,7 +177,7 @@ function PaymentStep() {
       return;
     }
     // The invoice is the authority on what is owed.
-    void getInvoiceById(id)
+    void getMyInvoice(id)
       .then((invoice) => {
         if (invoice) setSummary({ ...base, breakdown: invoice.breakdown });
         else if (!fallback) setSummary(undefined);
@@ -595,6 +600,12 @@ function PaymentStep() {
           <p className="mt-4 text-xs leading-relaxed text-ink-500" role="status">
             {message}
           </p>
+
+          {tapToOpen ? (
+            <Button onClick={tapToOpen.open} className="mt-4" size="lg">
+              Open {tapToOpen.appName}
+            </Button>
+          ) : null}
 
           {stage === "confirming" ? (
             <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-400">
