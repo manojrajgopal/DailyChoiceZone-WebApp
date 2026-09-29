@@ -24,7 +24,7 @@ import type {
 import { pageCache } from "@/services/api/cache";
 import { apiDelete, apiGet, apiGetPage, apiPost, apiPut, query } from "@/services/api/client";
 
-import type { AdminDataSource, NavCounts } from "../admin-data-source";
+import type { AdminDataSource, NavCounts, PaymentLinkSent } from "../admin-data-source";
 
 /**
  * The portal, over the REST API.
@@ -293,6 +293,16 @@ export const httpAdminAdapter: AdminDataSource = {
         { status, note: `Payment marked ${status}.` },
         AUTH,
       ),
+    );
+  },
+
+  sendPaymentLink(id: string) {
+    // The order is marked paid by the gateway's confirmation, never by this
+    // call: sending a link is a request for money, not a receipt of it.
+    return apiPost<PaymentLinkSent>(
+      `/admin/orders/${encodeURIComponent(id)}/payment-link`,
+      {},
+      AUTH,
     );
   },
 

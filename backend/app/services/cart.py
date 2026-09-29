@@ -59,16 +59,33 @@ def add_item(
     if product is None:
         raise NotFoundError("That product is not available.", error_code="PRODUCT_NOT_FOUND")
 
-    if product.stock <= 0:
+    # Available, not merely on the shelf: a unit held for someone else's
+    # payment in progress is not for sale.
+    available = product.available_stock
+    if available <= 0:
         raise ConflictError(f"{product.name} is out of stock.", error_code="OUT_OF_STOCK")
+
+    if quantity <= 0:
+        raise ValidationError("A quantity must be at least 1.", error_code="INVALID_QUANTITY")
 
     # A product with sizes must be ordered in one — otherwise the warehouse
     # has no idea what to pick.
     if product.sizes and not size:
         raise ValidationError("Choose a size first.", error_code="SIZE_REQUIRED")
 
+    # And it must be one the product comes in. An order for a size or colour
+    # that does not exist is an order the warehouse cannot fill, and nothing
+    # stops a client naming one.
+    size_labels = [entry.label for entry in (product.sizes or [])]
+    if size and size_labels and size not in size_labels:
+        raise ValidationError(f"{product.name} does not come in {size}.", error_code="SIZE_UNAVAILABLE")
+
+    colour_names = [entry.name for entry in (product.colors or [])]
+    if color and colour_names and color not in colour_names:
+        raise ValidationError(f"{product.name} does not come in {color}.", error_code="COLOR_UNAVAILABLE")
+
     size = size or ""
-    color = color or (product.colors[0].name if product.colors else "")
+    color = color or (colour_names[0] if colour_names else "")
 
     existing = db.execute(
         select(CartItem).where(
@@ -80,7 +97,7 @@ def add_item(
     ).scalar_one_or_none()
 
     wanted = (existing.quantity if existing else 0) + quantity
-    capped = max(1, min(wanted, MAX_QUANTITY_PER_LINE, product.stock))
+    capped = max(1, min(wanted, MAX_QUANTITY_PER_LINE, available))
 
     if existing:
         existing.quantity = capped
@@ -111,7 +128,7 @@ def update_quantity(db: Session, customer: Customer, item_id: int, quantity: int
         db.commit()
         return None
 
-    item.quantity = min(quantity, MAX_QUANTITY_PER_LINE, max(1, item.product.stock))
+    item.quantity = min(quantity, MAX_QUANTITY_PER_LINE, max(1, item.product.available_stock))
     db.commit()
     db.refresh(item)
     return item

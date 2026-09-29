@@ -83,8 +83,10 @@ class TestAddingAndRemoving:
         db.add(theirs)
         db.flush()
 
+        # A quantity inside the per-line bound, so what is being tested is the
+        # ownership check and not the validation that now sits in front of it.
         assert client.put(f"/api/cart/items/{theirs.id}", headers=auth,
-                          json={"quantity": 99}).status_code == 404
+                          json={"quantity": 2}).status_code == 404
         assert client.delete(f"/api/cart/items/{theirs.id}", headers=auth).status_code == 404
 
 

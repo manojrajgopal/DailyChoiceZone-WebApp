@@ -102,7 +102,7 @@ export function OrderDetailView() {
       ) : !order ? (
         <EmptyState
           title="Order not found"
-          description="We could not find that order number. Sample orders are stored on the device that placed them, so it may have been placed in another browser."
+          description="We could not find that order number on this account. It may have been placed from a different account."
           action={{ label: "Back to orders", href: "/account/orders" }}
         />
       ) : (

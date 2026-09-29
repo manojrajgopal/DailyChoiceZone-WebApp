@@ -8,12 +8,14 @@ not exist.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
 from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.config import settings
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import (
     Customer,
@@ -43,8 +45,93 @@ ALLOWED_TRANSITIONS = {
     "returned": set(),
 }
 
+logger = logging.getLogger(__name__)
+
 # Once it has left the warehouse, cancelling is a return, not a cancellation.
 CUSTOMER_CANCELLABLE = {"pending", "confirmed", "processing"}
+
+
+# The delivery methods the shipping calculation understands. Anything else
+# used to fall through to the standard fee — harmless for the price, but it
+# recorded a delivery method the warehouse had never heard of.
+DELIVERY_METHODS = {"standard", "express"}
+
+# The payment methods this system knows how to take. The store's own settings
+# choose which of these are offered; this is the outer bound on what they can
+# name.
+KNOWN_PAYMENT_METHODS = {"upi", "card", "debit-card", "netbanking", "wallet", "cod"}
+
+
+def _require_payment_method(config: dict, method: str) -> None:
+    """
+    The method must be one the store has switched on.
+
+    This is the check whose absence let a client choose cash on delivery on a
+    store that does not offer it — an order confirmed with nothing paid and
+    nothing to be collected. An unconfigured store offers everything known,
+    which is the only sensible default for a fresh installation.
+    """
+    if method not in KNOWN_PAYMENT_METHODS:
+        raise ValidationError("That payment method is not recognised.", error_code="PAYMENT_METHOD_INVALID")
+
+    enabled = set(((config or {}).get("payment") or {}).get("enabledMethods") or [])
+    # "card" and "debit-card" are one rail at the gateway; either switches both.
+    if method in {"card", "debit-card"} and enabled & {"card", "debit-card"}:
+        return
+    if enabled and method not in enabled:
+        raise ValidationError(
+            "That payment method is not available for this store.",
+            error_code="PAYMENT_METHOD_UNAVAILABLE",
+        )
+
+
+def _require_delivery_method(method: str) -> None:
+    if method not in DELIVERY_METHODS:
+        raise ValidationError("That delivery method is not available.", error_code="DELIVERY_METHOD_INVALID")
+
+
+def _settles_later(provider, method: str) -> bool:
+    """
+    Will this payment arrive after the order is placed?
+
+    True for any prepaid method through a real gateway: the shopper has not
+    been shown a payment screen yet. Such an order *holds* its stock rather
+    than taking it, and has a window in which to be paid.
+
+    False for cash on delivery — confirmed now, collected later by the courier
+    — and for a provider that settles synchronously, which is only the mock.
+    """
+    if method == "cod":
+        return False
+    return getattr(provider, "name", "") != "mock"
+
+
+def _refuse_if_hoarding(db: Session, customer: Customer, now: datetime) -> None:
+    """
+    Cap how much stock one account can hold without paying.
+
+    A hold costs nothing to create. Without a limit an account could place
+    order after order and never pay, keeping a product sold out for every other
+    shopper five minutes at a time. The cap counts only holds that are still
+    live; an expired one is the sweeper's to cancel and does not count against
+    anybody.
+    """
+    open_holds = db.execute(
+        select(func.count())
+        .select_from(Order)
+        .where(
+            Order.customer_id == customer.id,
+            Order.stock_state == "reserved",
+            Order.status == "pending",
+            Order.payment_expires_at > now,
+        )
+    ).scalar_one()
+
+    if open_holds >= settings.MAX_UNPAID_ORDERS_PER_CUSTOMER:
+        raise ConflictError(
+            "You have unpaid orders waiting. Please pay for or cancel one of them first.",
+            error_code="TOO_MANY_UNPAID_ORDERS",
+        )
 
 
 def _generate_order_number(db: Session, config: dict) -> str:
@@ -67,11 +154,15 @@ def _generate_order_number(db: Session, config: dict) -> str:
     # order after the first then asked for a number that already existed and
     # the unique index refused it.
     suffix = func.substr(Order.order_number, len(prefix) + 1)
+    # Locking read — see `next_id`. A plain read would come from this
+    # transaction's snapshot and miss an order committed a moment ago.
     highest = db.execute(
-        select(func.max(func.cast(suffix, Integer))).where(
+        select(func.max(func.cast(suffix, Integer)))
+        .where(
             Order.order_number.like(f"{prefix}%"),
             suffix.regexp_match("^[0-9]+$"),
         )
+        .with_for_update()
     ).scalar()
 
     number = max(start, int(highest) + 1 if highest else start)
@@ -79,7 +170,7 @@ def _generate_order_number(db: Session, config: dict) -> str:
     # Belt and braces: a gap in the series is fine, a collision is a failed
     # checkout. Nothing here should loop more than once.
     while db.execute(
-        select(Order.id).where(Order.order_number == f"{prefix}{number}")
+        select(Order.id).where(Order.order_number == f"{prefix}{number}").with_for_update()
     ).scalar_one_or_none():
         number += 1
 
@@ -98,8 +189,12 @@ def _next_invoice_number(db: Session, config: dict, issued: datetime) -> str:
     prefix = str(invoice_cfg.get("prefix") or "")
     padding = int(invoice_cfg.get("padding") or 1)
 
+    # Locking read, for the same reason as the order number. Invoice numbers
+    # must also be gapless and unique — a tax requirement, not a preference.
     highest = db.execute(
-        select(func.max(Invoice.invoice_number)).where(Invoice.invoice_number.like(f"{prefix}-%"))
+        select(func.max(Invoice.invoice_number))
+        .where(Invoice.invoice_number.like(f"{prefix}-%"))
+        .with_for_update()
     ).scalar()
 
     number = int(invoice_cfg.get("startNumber") or 1)
@@ -187,21 +282,50 @@ def place_order(
     if not items:
         raise ValidationError("Your bag is empty.", error_code="CART_EMPTY")
 
-    place_of_supply = (billing_address or shipping_address).get("state", "")
     config = billing.billing_config(db)
     now = datetime.utcnow()
 
-    # --- price it, from the catalogue ------------------------------------
+    # --- what the client chose, checked against what the store offers -----
+    #
+    # Both used to be free strings. `payment_method: "cod"` produced a confirmed,
+    # unpaid order even on a store with cash on delivery switched off, because
+    # nothing compared the choice with the store's own settings.
+    _require_payment_method(config, payment_method)
+    _require_delivery_method(delivery_method)
+
+    provider = get_provider()
+    holds_stock = _settles_later(provider, payment_method)
+
+    # --- one customer cannot hold the shelf hostage -----------------------
+    if holds_stock:
+        _refuse_if_hoarding(db, customer, now)
+
+    place_of_supply = (billing_address or shipping_address).get("state", "")
+
+    # --- lock, then price, from the catalogue ------------------------------
+    #
+    # Locked before anything is read, so the price and the stock this order is
+    # built from are the ones that are true when it commits. Two orders for the
+    # last unit now queue here rather than both reading "one left".
+    locked = product_service.lock_products(db, [item.product_id for item in items])
+
     lines: List[billing.BillingLine] = []
     for item in items:
-        product = item.product
+        product = locked.get(item.product_id)
         if product is None or product.status not in ("active", "out-of-stock"):
             raise ConflictError(
                 "An item in your bag is no longer available.", error_code="PRODUCT_UNAVAILABLE"
             )
-        if product.stock < item.quantity:
+
+        available = product.available_stock
+        if item.quantity <= 0:
+            raise ValidationError("A quantity in your bag is not valid.", error_code="INVALID_QUANTITY")
+        if item.quantity > available:
             raise ConflictError(
-                f"Only {product.stock} of {product.name} left.", error_code="INSUFFICIENT_STOCK"
+                f"Only {available} of {product.name} left."
+                if available
+                else f"{product.name} has just sold out.",
+                error_code="INSUFFICIENT_STOCK",
             )
 
         lines.append(
@@ -305,8 +429,21 @@ def place_order(
         db.flush()
 
         # --- stock -------------------------------------------------------
-        for line in lines:
-            product_service.consume_stock(db, line.product_id, line.quantity, order.id)
+        #
+        # Held, not taken, when the money has not arrived yet. A prepaid order
+        # whose payment never comes must not have moved anything off the shelf
+        # — it reserves, and the reservation becomes a sale on payment or is
+        # released when the window closes. Cash on delivery takes the stock at
+        # once, because that order is already confirmed.
+        if holds_stock:
+            for line in lines:
+                product_service.reserve_stock(db, line.product_id, line.quantity, order.id)
+            order.stock_state = "reserved"
+            order.payment_expires_at = now + timedelta(seconds=settings.PAYMENT_WINDOW_SECONDS)
+        else:
+            for line in lines:
+                product_service.consume_stock(db, line.product_id, line.quantity, order.id)
+            order.stock_state = "consumed"
 
         # --- invoice -----------------------------------------------------
         issued = now
@@ -352,7 +489,6 @@ def place_order(
         db.flush()
 
         # --- payment -----------------------------------------------------
-        provider = get_provider()
         result = provider.create(
             PaymentRequest(
                 order_id=order.id,
@@ -566,13 +702,42 @@ def update_status(
                 invoice.payment_status = "paid"
                 invoice.amount_paid = invoice.grand_total
 
-    # Cancelling before dispatch returns the stock to the shelf.
+    # Cancelling before dispatch returns the stock — but *which* return
+    # depends on what the order did with it. See `return_stock`.
     if status == "cancelled":
-        _restock(db, order, note="Order cancelled")
+        return_stock(db, order, note="Order cancelled")
 
     db.commit()
+
+    # Money collected for an order that will not be fulfilled goes back.
+    #
+    # After the cancellation is committed, not inside it: the order is
+    # cancelled whatever the gateway says. If the refund cannot be sent, it is
+    # still *recorded* as owed — see `refund_if_collected` — so it can be
+    # retried rather than silently forgotten, which is what used to happen:
+    # cancelling a paid order put the stock back and kept the money.
+    if status == "cancelled":
+        refund_if_collected(db, order, reason=note or "Order cancelled")
+
+    # A payment link outstanding for an order that is cancelled, or whose cash
+    # has just been collected, must stop being payable — otherwise the
+    # customer can still pay it and be charged for something already settled.
+    if status in ("cancelled", "delivered"):
+        _retire_payment_link(db, order)
+
     db.refresh(order)
     return order
+
+
+def _retire_payment_link(db: Session, order: Order) -> None:
+    payment = db.execute(select(Payment).where(Payment.order_id == order.id)).scalars().first()
+    if payment is None or not payment.payment_link_id:
+        return
+
+    provider = get_provider()
+    cancel = getattr(provider, "cancel_payment_link", None)
+    if cancel is not None:
+        cancel(payment.payment_link_id)
 
 
 def cancel_order(db: Session, order_id: str, customer: Customer, reason: str = "") -> Order:
@@ -598,6 +763,81 @@ def cancel_order(db: Session, order_id: str, customer: Customer, reason: str = "
         note=reason or "Cancelled by the customer.",
         actor="customer",
     )
+
+
+def return_stock(db: Session, order: Order, *, note: str) -> None:
+    """
+    Give an order's stock back, in whichever way matches how it took it.
+
+    - **reserved** — a prepaid order still waiting for its payment. Nothing
+      ever left the shelf, so the *hold* is released. Restocking it instead
+      would add units that were never removed, conjuring stock out of nothing.
+    - **consumed** — cash on delivery, a paid order, or anything placed before
+      reservations existed. The units really were taken, so they go back.
+    - **released** — already given back. Nothing to do, which is what keeps a
+      second call from returning the same units twice.
+
+    Called inside the caller's transaction; never commits.
+    """
+    if order.stock_state == "reserved":
+        for item in order.items:
+            product_service.release_reservation(db, item.product_id, item.quantity, order.id)
+        order.stock_state = "released"
+        return
+
+    if order.stock_state == "consumed":
+        _restock(db, order, note=note)
+        order.stock_state = "released"
+
+
+def refund_if_collected(db: Session, order: Order, *, reason: str) -> None:
+    """
+    Refund whatever has been collected for an order that is not going ahead.
+
+    Recorded first and sent second. The refund is written as `requested` and
+    committed, *then* sent to the gateway — so if the gateway refuses or is
+    unreachable, the debt is on record for someone to retry rather than lost.
+    Nothing is refunded twice: `create_refund` measures against what the
+    payment has left, and a payment with nothing collected is left alone.
+    """
+    from app.services import invoices as invoice_service
+
+    invoice = db.execute(select(Invoice).where(Invoice.order_id == order.id)).scalar_one_or_none()
+    if invoice is None:
+        return
+
+    payment = db.execute(select(Payment).where(Payment.invoice_id == invoice.id)).scalar_one_or_none()
+    if payment is None or payment.status not in ("paid", "partially-refunded"):
+        return
+
+    owed = invoice_service.refundable_amount(payment)
+    if owed <= 0:
+        return
+
+    try:
+        refund = invoice_service.create_refund(
+            db,
+            invoice_id=invoice.id,
+            amount=owed,
+            reason=reason[:200] or "Order cancelled",
+            initiated_by="system",
+            status="requested",
+        )
+    except (ConflictError, ValidationError) as error:
+        logger.warning("Order %s: no refund raised on cancellation: %s", order.id, error)
+        return
+
+    try:
+        invoice_service.set_refund_status(db, refund.id, "completed")
+    except ConflictError as error:
+        # Recorded and left for a person. Visible in the portal as requested.
+        db.rollback()
+        logger.error(
+            "Order %s: refund %s could not be sent (%s); left requested for retry.",
+            order.id,
+            refund.id,
+            error,
+        )
 
 
 def _restock(db: Session, order: Order, *, note: str) -> None:

@@ -36,9 +36,25 @@ def _seed(value: str) -> int:
 
 
 class MockPaymentProvider:
-    """The development provider."""
+    """The development provider. Refuses to exist in production."""
 
     name = "mock"
+
+    def __init__(self) -> None:
+        """
+        Belt and braces with `Settings.validate_production`.
+
+        That check stops the process starting with `PAYMENT_PROVIDER=mock`.
+        This one stops the provider being built at all under production, so no
+        code path — a test helper, a script, a mis-set override — can end up
+        confirming real orders against payments that never happened.
+        """
+        from app.core.config import settings
+
+        if settings.is_production:
+            raise RuntimeError(
+                "The mock payment provider takes no money and cannot run in production."
+            )
 
     def create(self, request: PaymentRequest) -> PaymentResult:
         seed = _seed(request.order_id)

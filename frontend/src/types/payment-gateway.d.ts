@@ -46,6 +46,8 @@ interface RazorpayOptions {
    * is the difference between a payment step and a popup.
    */
   parent?: string;
+  /** Seconds after which Checkout can no longer be used. */
+  timeout?: number;
   /**
    * Which rails the frame offers.
    *

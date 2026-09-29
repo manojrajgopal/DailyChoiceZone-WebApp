@@ -406,12 +406,39 @@ def create_refund(
 
 
 def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoice) -> None:
-    """Send the money back through the provider and adjust both records."""
+    """
+    Send the money back through the provider and adjust both records.
+
+    ## What the refund's status means afterwards
+
+    A real gateway refunds **asynchronously**. Razorpay answers `pending` at
+    once and reports `processed` or `failed` later, by webhook — and a failure
+    can come days afterwards. So the refund is left `processing`, not
+    `completed`, until the gateway says so; only a gateway that confirms on the
+    spot produces `completed` here.
+
+    The amount is counted against the payment **now**, while it is still
+    processing. That is what stops a second refund being raised against money
+    already on its way back: `refundable_amount` sees it. If the gateway later
+    fails it, `apply_refund_outcome` hands the amount back.
+
+    The gateway's own refund id is kept, because that id is the only thing its
+    webhook can be matched on.
+    """
     result = get_provider().refund(payment.transaction_id, refund.amount, refund.reason)
     if not result.ok:
         raise ConflictError("The payment provider refused the refund.", error_code="PROVIDER_REFUSED")
 
     now = datetime.utcnow()
+    refund.gateway_reference = result.reference or None
+
+    if result.status == "completed":
+        refund.status = "completed"
+        refund.processed_at = now
+    else:
+        refund.status = "processing"
+        refund.processed_at = None
+
     payment.refunded_amount = min(payment.amount, payment.refunded_amount + refund.amount)
     payment.status = (
         "refunded" if payment.refunded_amount >= payment.amount else "partially-refunded"
@@ -419,7 +446,10 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
     payment.events.append(
         PaymentEvent(
             status="refunded",
-            note=f"{'Full' if payment.status == 'refunded' else 'Partial'} refund — {refund.reason}.",
+            note=(
+                f"{'Full' if payment.status == 'refunded' else 'Partial'} refund "
+                f"{'sent' if refund.status == 'completed' else 'initiated'} — {refund.reason}."
+            ),
             occurred_at=now,
         )
     )
@@ -432,12 +462,84 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
         order.payment_status = "refunded"
 
 
+def apply_refund_outcome(db: Session, gateway_reference: str, outcome: str) -> Optional[Refund]:
+    """
+    The gateway has finished with a refund. Record how it ended.
+
+    `processed` completes it. `failed` is the one that matters: the money did
+    not go back, so the amount counted against the payment when the refund
+    was initiated is returned to it, the payment's status is recomputed, and
+    the order is no longer shown as refunded. Idempotent — Razorpay delivers
+    webhooks more than once — so a refund already in its final state is left
+    alone.
+    """
+    refund = db.execute(
+        select(Refund).where(Refund.gateway_reference == gateway_reference).with_for_update()
+    ).scalar_one_or_none()
+    if refund is None:
+        return None
+
+    if refund.status in ("completed", "failed"):
+        return refund
+
+    now = datetime.utcnow()
+
+    if outcome == "processed":
+        refund.status = "completed"
+        refund.processed_at = now
+        return refund
+
+    if outcome != "failed":
+        return refund
+
+    refund.status = "failed"
+    payment = db.get(Payment, refund.payment_id)
+    invoice = db.get(Invoice, refund.invoice_id)
+
+    if payment is not None:
+        payment.refunded_amount = max(0, payment.refunded_amount - refund.amount)
+        payment.status = (
+            "paid"
+            if payment.refunded_amount == 0
+            else "refunded"
+            if payment.refunded_amount >= payment.amount
+            else "partially-refunded"
+        )
+        payment.events.append(
+            PaymentEvent(
+                status="refund-failed",
+                note=f"Refund {refund.refund_number} failed at the gateway; the amount is still held.",
+                occurred_at=now,
+            )
+        )
+
+    if invoice is not None:
+        invoice.amount_refunded = max(0, invoice.amount_refunded - refund.amount)
+        if payment is not None:
+            invoice.payment_status = payment.status
+
+    order = db.get(Order, refund.order_id)
+    if order is not None and payment is not None and order.payment_status == "refunded":
+        order.payment_status = payment.status
+
+    return refund
+
+
 def set_refund_status(db: Session, refund_id: str, status: str) -> Refund:
     """Move a refund along. Completing one settles it; rejecting leaves the money put."""
     refund = get_refund(db, refund_id)
 
     if refund.status == "completed":
         raise ConflictError("This refund is already complete.", error_code="REFUND_COMPLETE")
+
+    # A refund the gateway is already working on must not be sent again.
+    # Completing it here would call the gateway a second time and return the
+    # money twice; its outcome arrives by webhook instead.
+    if refund.status == "processing":
+        raise ConflictError(
+            "This refund is already on its way; the gateway will confirm it.",
+            error_code="REFUND_IN_PROGRESS",
+        )
 
     if status == "completed":
         payment = db.get(Payment, refund.payment_id)
@@ -452,9 +554,9 @@ def set_refund_status(db: Session, refund_id: str, status: str) -> Refund:
                                 error_code="REFUND_EXCEEDS_PAYMENT")
 
         _settle_refund(db, refund, payment, invoice)
-        refund.processed_at = datetime.utcnow()
+    else:
+        refund.status = status
 
-    refund.status = status
     db.commit()
     db.refresh(refund)
     return refund

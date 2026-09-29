@@ -132,6 +132,14 @@ export async function openRazorpayCheckout(
       name: handoff.merchantName || "Daily Choice Zone",
       description: handoff.description,
       ...(options.container ? { parent: options.container } : {}),
+      // Razorpay's own `timeout`, in seconds: after it the customer can no
+      // longer use Checkout. Set to what is left of the server's window, so
+      // the payment frame closes when the order's hold does. Advisory — a
+      // browser timer pauses in a background tab — which is why the server
+      // refunds anything that still lands late.
+      ...(typeof handoff.secondsLeft === "number" && handoff.secondsLeft > 0
+        ? { timeout: handoff.secondsLeft }
+        : {}),
       ...(options.only
         ? {
             config: {

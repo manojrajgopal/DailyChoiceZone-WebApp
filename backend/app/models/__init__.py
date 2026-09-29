@@ -13,6 +13,7 @@ from app.models.billing import (
     PaymentEvent,
     Refund,
     RefundItem,
+    WebhookEvent,
 )
 from app.models.catalogue import (
     Category,
@@ -73,5 +74,6 @@ __all__ = [
     "Review",
     "SettingDocument",
     "StockAdjustment",
+    "WebhookEvent",
     "WishlistItem",
 ]

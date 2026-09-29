@@ -413,41 +413,170 @@ def adjust_stock(
     return product
 
 
-def consume_stock(db: Session, product_id: str, quantity: int, order_id: str) -> None:
-    """
-    Take stock for a confirmed order.
+# --------------------------------------------------------------- stock
+#
+# Four operations, and every one of them reads the product row **under a lock**.
+#
+# The version these replace read the stock, checked it, and wrote it back — with
+# nothing stopping a second order reading the same row in between. Two shoppers
+# buying the last unit both read `stock = 1`, both passed the check, and both
+# wrote `0`: one unit sold twice, and invisibly, because the result was a
+# perfectly ordinary zero rather than a negative number anybody would notice.
+#
+# `SELECT … FOR UPDATE` makes the second reader wait until the first has
+# committed, so it sees the stock the first one left behind and fails the check
+# honestly. Callers lock their products in a single, sorted order —
+# `lock_products` — so two carts sharing items cannot each hold one lock the
+# other is waiting for.
+#
+# And the check is against **available** stock — what is on the shelf minus what
+# is held for payments still in progress — not the raw count. A unit someone is
+# paying for right now is not for sale.
 
-    Called inside the order transaction, so it does not commit: if anything
-    later in the order fails, this rolls back with it and the stock is never
-    quietly consumed by an order that does not exist.
 
-    Refuses to go negative — overselling is a promise the shop cannot keep.
+def lock_products(db: Session, product_ids) -> dict:
     """
-    product = db.get(Product, product_id)
+    Lock these products for the rest of the transaction, in id order.
+
+    The ordering is the point. Two transactions that lock the same rows in
+    different orders can each end up holding one lock the other needs, and the
+    database resolves that by killing one of them. Always taking them sorted
+    means the second simply waits its turn.
+    """
+    ids = sorted(set(product_ids))
+    if not ids:
+        return {}
+
+    rows = db.execute(
+        select(Product)
+        .where(Product.id.in_(ids))
+        .order_by(Product.id)
+        .with_for_update()
+        # Without this the lock is taken on the fresh row and the *stale* copy
+        # is handed back. The cart query that runs just before this loads each
+        # product into the session, and SQLAlchemy returns that cached object
+        # from a locking select rather than overwriting it — so the code would
+        # read the stock as it was before the other order committed, pass the
+        # check, and sell the same unit twice. The concurrency test caught
+        # exactly that.
+        .execution_options(populate_existing=True)
+    ).scalars().all()
+    return {row.id: row for row in rows}
+
+
+def _locked(db: Session, product_id: str) -> Product:
+    product = db.execute(
+        select(Product)
+        .where(Product.id == product_id)
+        .with_for_update()
+        # See `lock_products`: a locking read must refresh the cached copy.
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
     if product is None:
         raise NotFoundError(f"No product with id '{product_id}'.", error_code="PRODUCT_NOT_FOUND")
+    return product
 
-    if product.stock < quantity:
+
+def _available(product: Product) -> int:
+    return max(0, product.stock - (product.reserved_stock or 0))
+
+
+def _refuse_if_short(product: Product, quantity: int) -> None:
+    available = _available(product)
+    if quantity > available:
         raise ConflictError(
-            f"Only {product.stock} of {product.name} left.",
+            f"Only {available} of {product.name} left." if available else f"{product.name} is sold out.",
             error_code="INSUFFICIENT_STOCK",
         )
 
-    before = product.stock
-    product.stock -= quantity
 
-    if product.status == "active" and product.stock <= 0:
-        product.status = "out-of-stock"
-
+def _ledger(db: Session, product: Product, *, reason: str, before: int, delta: int, note: str) -> None:
     db.add(
         StockAdjustment(
             product_id=product.id,
-            reason="sale",
+            reason=reason,
             quantity_before=before,
             quantity_after=product.stock,
-            delta=-quantity,
-            note=f"Order {order_id}",
+            delta=delta,
+            note=note,
             actor="system",
             created_at=datetime.utcnow(),
         )
     )
+
+
+def _sync_status(product: Product) -> None:
+    """Keep the listing status in step with what can actually be bought."""
+    if product.status == "active" and product.stock <= 0:
+        product.status = "out-of-stock"
+    elif product.status == "out-of-stock" and product.stock > 0:
+        product.status = "active"
+
+
+def consume_stock(db: Session, product_id: str, quantity: int, order_id: str) -> None:
+    """
+    Take stock outright — cash on delivery, or a payment that settled at once.
+
+    Called inside the order transaction and never commits: if anything later in
+    the order fails, the stock comes back with the rollback.
+    """
+    if quantity <= 0:
+        raise ValidationError("A quantity must be positive.", error_code="INVALID_QUANTITY")
+
+    product = _locked(db, product_id)
+    _refuse_if_short(product, quantity)
+
+    before = product.stock
+    product.stock -= quantity
+    _sync_status(product)
+    _ledger(db, product, reason="sale", before=before, delta=-quantity, note=f"Order {order_id}")
+
+
+def reserve_stock(db: Session, product_id: str, quantity: int, order_id: str) -> None:
+    """
+    Hold stock for an order whose payment has not arrived yet.
+
+    Nothing leaves the shelf: `stock` is untouched and `reserved_stock` goes up,
+    so the unit stops being *available* without being *sold*. The inventory
+    screen already shows both figures. The hold becomes a sale when the money
+    arrives (`commit_reservation`) or is handed back if it never does
+    (`release_reservation`).
+
+    Not written to the ledger, because nothing has moved. The ledger records
+    the sale when there is one.
+    """
+    if quantity <= 0:
+        raise ValidationError("A quantity must be positive.", error_code="INVALID_QUANTITY")
+
+    product = _locked(db, product_id)
+    _refuse_if_short(product, quantity)
+    product.reserved_stock = (product.reserved_stock or 0) + quantity
+
+
+def commit_reservation(db: Session, product_id: str, quantity: int, order_id: str) -> None:
+    """
+    The payment arrived: the held units are sold.
+
+    Both figures move together — the stock goes down and the hold is released —
+    so the product's *available* count does not change at this moment. It
+    already changed when the hold was taken.
+    """
+    product = _locked(db, product_id)
+
+    before = product.stock
+    product.stock = max(0, product.stock - quantity)
+    product.reserved_stock = max(0, (product.reserved_stock or 0) - quantity)
+    _sync_status(product)
+    _ledger(db, product, reason="sale", before=before, delta=-quantity, note=f"Order {order_id}")
+
+
+def release_reservation(db: Session, product_id: str, quantity: int, order_id: str) -> None:
+    """
+    The payment never came: hand the held units back.
+
+    `stock` is untouched because nothing was ever taken from it. Clamped at
+    zero rather than trusted, so a release that somehow runs twice cannot drive
+    the hold negative and conjure stock that does not exist.
+    """
+    product = _locked(db, product_id)
+    product.reserved_stock = max(0, (product.reserved_stock or 0) - quantity)

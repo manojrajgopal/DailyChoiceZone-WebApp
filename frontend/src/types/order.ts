@@ -147,6 +147,20 @@ export interface GatewayHandoff {
   phone: string;
   description: string;
   /**
+   * When this order's payment window closes, as ISO 8601 UTC.
+   *
+   * Null for an order with no window. After it, no new payment can be
+   * started, and one completing much later is refunded rather than accepted.
+   */
+  expiresAt?: string | null;
+  /**
+   * Seconds left in the window, **as the server counted them**.
+   *
+   * Used for the countdown instead of `expiresAt`, because a shopper's clock
+   * can be minutes wrong and the server's is the one that decides.
+   */
+  secondsLeft?: number | null;
+  /**
    * The store's name, as the payment sheet shows it.
    *
    * From the billing document, so it reads as the store the shopper is buying

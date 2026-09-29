@@ -65,7 +65,7 @@ function InvoiceDetail() {
       <AccountShell title="Invoice" breadcrumb={[{ label: "Invoices", href: "/account/invoices" }]}>
         <EmptyState
           title="We could not find that invoice"
-          description="The link may be out of date, or the invoice belongs to an order placed in a different browser. Sample orders are stored on the device that placed them."
+          description="The link may be out of date, or the invoice belongs to a different account."
           action={{ label: "Your invoices", href: "/account/invoices" }}
         />
       </AccountShell>

@@ -18,23 +18,22 @@ export default async function PrivacyPage() {
     <ContentPage
       title="Privacy policy"
       intro="What we collect, why we collect it, and what you can do about it."
-      updated="21 September 2026"
+      updated="29 September 2026"
     >
       <section>
         <h2>The short version</h2>
         <p>
-          This is a demonstration store. It has no analytics, no advertising and no third-party
-          trackers, and no order placed here is ever fulfilled. What you do save — your account,
-          your bag, your addresses, your orders — is stored in our own database and nowhere else.
+          We run no analytics, no advertising and no third-party trackers. What you save — your
+          account, your bag, your addresses, your orders — is stored in our own database.
         </p>
         <p>
-          Your browser keeps only two things: proof of who you are signed in as, and a bag held
-          for you before you sign in. Clearing your browser data removes both and leaves your
-          account untouched.
+          Your browser keeps proof of who you are signed in as, a bag and wishlist held for you
+          before you sign in, a checkout you are part-way through and the products you recently
+          viewed. Clearing your browser data removes these and leaves your account untouched.
         </p>
         <p>
-          The section below describes how the live store handles data, so there are no surprises
-          later.
+          Payments are processed by Razorpay. Your card, UPI and bank details are entered on
+          Razorpay&rsquo;s own systems and never reach our servers.
         </p>
       </section>
 
@@ -50,8 +49,11 @@ export default async function PrivacyPage() {
             plus any addresses you choose to save.
           </li>
           <li>
-            <strong>Payment information</strong> — handled entirely by the payment provider. Card
-            numbers never reach our servers and we could not store them if we wanted to.
+            <strong>Payment information</strong> — handled entirely by our payment provider,
+            Razorpay. Card numbers, UPI PINs and bank log-ins never reach our servers. We keep
+            only what Razorpay tells us about the result: the payment reference, the amount, the
+            method used (for example &ldquo;UPI&rdquo; or &ldquo;card&rdquo;) and whether it
+            succeeded or was refunded.
           </li>
           <li>
             <strong>Browsing information</strong> — your bag, wishlist and recently viewed items,
@@ -76,8 +78,10 @@ export default async function PrivacyPage() {
         <h2>Who we share it with</h2>
         <p>
           Only the parties needed to complete your order: the courier that carries the parcel, and
-          the payment provider that processes the payment. Each receives the minimum required —
-          the courier gets an address, not your order history.
+          Razorpay, which processes the payment and receives your name, email, phone number and
+          the amount due. Each receives the minimum required — the courier gets an address, not
+          your order history. Razorpay&rsquo;s handling of your data is governed by its own
+          privacy policy.
         </p>
       </section>
 
@@ -107,9 +111,11 @@ export default async function PrivacyPage() {
       <section id="cookies" className="scroll-mt-28">
         <h2>Cookie policy</h2>
         <p>
-          This storefront currently sets no cookies at all. It uses your browser&rsquo;s local
-          storage for your bag, wishlist and preferences — which is not a cookie, is never sent to
-          a server, and is not readable by any other website.
+          This storefront sets no cookies of its own. It uses your browser&rsquo;s local storage
+          for your sign-in, bag, wishlist and preferences — which is not a cookie and is not
+          readable by any other website. Only your sign-in is sent to our server, to prove it is
+          you. When you pay, Razorpay&rsquo;s payment window loads from Razorpay and may set its
+          own cookies, which it uses to secure the payment.
         </p>
         <p>When the live store adds cookies, they will fall into three groups:</p>
         <ul>

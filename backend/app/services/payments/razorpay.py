@@ -38,6 +38,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import httpx
@@ -249,7 +250,13 @@ class RazorpayPaymentProvider:
     # ------------------------------------------------------------ qr codes
 
     def create_qr(
-        self, *, amount: int, name: str, description: str, notes: Dict[str, str]
+        self,
+        *,
+        amount: int,
+        name: str,
+        description: str,
+        notes: Dict[str, str],
+        close_by: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         A real, scannable UPI QR code.
@@ -280,6 +287,11 @@ class RazorpayPaymentProvider:
             "description": description[:120],
             "notes": notes,
         }
+
+        # Razorpay stops the code accepting payment at this moment. Its bounds
+        # are two minutes to two hours from now; the caller keeps inside them.
+        if close_by is not None:
+            payload["close_by"] = int(close_by.replace(tzinfo=timezone.utc).timestamp())
 
         qr = self._request("POST", "/payments/qr_codes", json=payload)
 
@@ -323,6 +335,85 @@ class RazorpayPaymentProvider:
         except RazorpayError:
             # Already closed or already paid. Neither is worth failing over.
             pass
+
+    # --------------------------------------------------------- payment links
+
+    def create_payment_link(
+        self,
+        *,
+        amount: int,
+        currency: str,
+        reference_id: str,
+        description: str,
+        customer: Dict[str, str],
+        expire_by: datetime,
+        callback_url: str,
+        notify: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        A Razorpay-hosted payment page, sent to the customer by SMS and email.
+
+        For orders that are already confirmed and not paid — cash on delivery,
+        chiefly, where a customer would rather pay now than hand the courier
+        cash. Not for the checkout itself: Razorpay requires a link to live at
+        least fifteen minutes, and a checkout hold lasts five.
+
+        `reference_id` is our own payment id. Razorpay enforces it unique per
+        link, which makes a second link for the same payment fail loudly rather
+        than exist quietly, and it is what the callback and the webhook are
+        matched on. `accept_partial` is off: a partly-paid order is not a paid
+        one, and there is no workflow here for the rest.
+        """
+        payload = {
+            "amount": amount,
+            "currency": currency,
+            "accept_partial": False,
+            "reference_id": reference_id[:40],
+            "description": description[:2048],
+            "customer": {key: value for key, value in customer.items() if value},
+            "notify": {"sms": notify and bool(customer.get("contact")), "email": notify and bool(customer.get("email"))},
+            "reminder_enable": notify,
+            "expire_by": int(expire_by.replace(tzinfo=timezone.utc).timestamp()),
+            "callback_url": callback_url,
+            "callback_method": "get",
+            "notes": {"paymentId": reference_id},
+        }
+
+        link = self._request("POST", "/payment_links", json=payload)
+        return {
+            "id": link["id"],
+            "shortUrl": link.get("short_url", ""),
+            "status": link.get("status", "created"),
+            "expireBy": link.get("expire_by"),
+        }
+
+    def cancel_payment_link(self, link_id: str) -> None:
+        """Retire a link, so it cannot be paid after the order is settled or cancelled."""
+        try:
+            self._request("POST", f"/payment_links/{link_id}/cancel")
+        except RazorpayError:
+            # Already paid, expired or cancelled. None of those is worth failing over.
+            pass
+
+    def verify_payment_link_signature(self, params: Dict[str, str]) -> bool:
+        """
+        The Payment Link callback's signature.
+
+        The message is `link_id|reference_id|status|payment_id`, keyed with the
+        API secret — taken from Razorpay's own SDK
+        (`razorpay.utility.verify_payment_link_signature`), since the docs
+        describe the fields but hide the order and separator behind it.
+        """
+        fields = (
+            params.get("razorpay_payment_link_id", ""),
+            params.get("razorpay_payment_link_reference_id", ""),
+            params.get("razorpay_payment_link_status", ""),
+            params.get("razorpay_payment_id", ""),
+        )
+        signature = params.get("razorpay_signature", "")
+        if not all(fields) or not signature:
+            return False
+        return self.verify_signature("|".join(fields), signature)
 
     # --------------------------------------------------------------- verify
 
@@ -488,6 +579,7 @@ class RazorpayPaymentProvider:
             provider_reference=payment.get("order_id"),
             failure_reason=payment.get("error_description") or None,
             amount=payment.get("amount"),
+            currency=payment.get("currency"),
         )
 
 

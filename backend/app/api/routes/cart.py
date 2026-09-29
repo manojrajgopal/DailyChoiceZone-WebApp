@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -14,20 +15,31 @@ from app.models import CartItem, Customer
 from app.schemas.base import CamelModel
 from app.schemas.catalogue import ProductOut
 from app.services import cart as service
+from app.services.cart import MAX_QUANTITY_PER_LINE
 from app.utils.response import ok
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
 
 class AddToCart(CamelModel):
-    product_id: str
-    size: Optional[str] = None
-    color: Optional[str] = None
-    quantity: int = 1
+    """
+    Bounded at the edge as well as in the service.
+
+    The service clamps a quantity it cannot honour, which is correct but
+    forgiving: a quantity of `-5` would quietly become `1`. Rejecting it here
+    means a malformed request is answered as one, and the lengths stop a
+    client posting a megabyte of "size".
+    """
+
+    product_id: str = Field(min_length=1, max_length=40)
+    size: Optional[str] = Field(default=None, max_length=30)
+    color: Optional[str] = Field(default=None, max_length=60)
+    quantity: int = Field(default=1, ge=1, le=MAX_QUANTITY_PER_LINE)
 
 
 class UpdateQuantity(CamelModel):
-    quantity: int
+    # Zero is allowed: it is how the stepper removes a line.
+    quantity: int = Field(ge=0, le=MAX_QUANTITY_PER_LINE)
 
 
 def _render(payload: dict) -> dict:

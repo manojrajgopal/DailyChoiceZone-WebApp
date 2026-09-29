@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -40,7 +41,25 @@ async def lifespan(_: FastAPI):
 
     prepare_database()
     logger.info("%s ready at %s", settings.APP_NAME, settings.API_PREFIX)
-    yield
+
+    # Unpaid orders hold stock for a few minutes; this is what gives it back
+    # when nobody pays. Only needed where a real gateway can leave a payment
+    # pending — the mock settles on the spot.
+    sweeper = None
+    if settings.PAYMENT_PROVIDER != "mock":
+        from app.services import payment_expiry
+
+        sweeper = asyncio.create_task(payment_expiry.run_forever())
+
+    try:
+        yield
+    finally:
+        if sweeper is not None:
+            sweeper.cancel()
+            try:
+                await sweeper
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(

@@ -58,6 +58,9 @@ class PaymentResult:
     # or, if it was opened with the wrong figure, for the wrong amount entirely.
     # `None` means the provider did not report one, and the check is skipped.
     amount: Optional[int] = None
+    # The currency the gateway says it was paid in. Checked alongside the
+    # amount: 40900 of the wrong currency is not ₹409.
+    currency: Optional[str] = None
 
 
 @dataclass

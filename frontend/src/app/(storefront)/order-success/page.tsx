@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import { formatMoney } from "@/lib/money";
 import { getMyInvoice } from "@/services/billing/invoiceService";
 import { getOrder } from "@/services/orderService";
+import { PAYMENT_LINK_PARAMS, settlePaymentLink } from "@/services/payments/paymentGatewayService";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 
 /**
@@ -45,6 +46,29 @@ function OrderSuccess() {
   const [isLoading, setIsLoading] = useState(true);
 
 
+  /**
+   * Back from a Razorpay payment link.
+   *
+   * Razorpay appends five signed parameters. They are handed to the server to
+   * verify before the order is read, so the page shows what the gateway
+   * confirmed rather than what the URL claims. A forged or tampered set is
+   * simply refused, and the order is shown as it really stands.
+   */
+  const linkParams = Object.fromEntries(
+    PAYMENT_LINK_PARAMS.map((key) => [key, searchParams?.get(key) ?? ""]),
+  ) as Record<(typeof PAYMENT_LINK_PARAMS)[number], string>;
+  const fromPaymentLink = Boolean(linkParams.razorpay_payment_link_id);
+
+  /**
+   * What the server concluded about the link, independently of the order.
+   *
+   * A link is often paid on another phone, where nobody is signed in and the
+   * order itself cannot be read. The payment has still been verified and
+   * recorded, and the customer deserves to be told that much.
+   */
+  const [linkOutcome, setLinkOutcome] = useState<{ orderNumber: string; paid: boolean } | null>(null);
+  const linkKey = fromPaymentLink ? linkParams.razorpay_signature : "";
+
   useEffect(() => {
     if (!orderNumber) {
       setIsLoading(false);
@@ -52,7 +76,17 @@ function OrderSuccess() {
     }
 
     let active = true;
-    getOrder(orderNumber)
+    const settled = fromPaymentLink
+      ? settlePaymentLink(linkParams)
+          .then((outcome) => {
+            if (active) setLinkOutcome(outcome);
+            return outcome;
+          })
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    settled
+      .then(() => getOrder(orderNumber))
       .then((result) => {
         if (active) setOrder(result);
       })
@@ -66,7 +100,10 @@ function OrderSuccess() {
     return () => {
       active = false;
     };
-  }, [orderNumber]);
+    // `linkKey` stands in for the link parameters: it changes exactly when they
+    // do, and a fresh object each render would re-run this for nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderNumber, linkKey]);
 
   /**
    * The invoice raised for this order.
@@ -111,11 +148,30 @@ function OrderSuccess() {
     );
   }
 
+  // Paid by link on a device where the order itself cannot be read.
+  if (!order && linkOutcome?.paid) {
+    return (
+      <div className="page-shell max-w-xl py-16 text-center">
+        <span className="inline-flex h-14 w-14 items-center justify-center rounded-pill bg-sage-100">
+          <Check className="h-6 w-6 text-sage-600" strokeWidth={2} aria-hidden="true" />
+        </span>
+        <h1 className="mt-6 font-display text-2xl leading-tight text-ink sm:text-3xl">
+          Payment received
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-ink-500">
+          Thank you — order{" "}
+          <span className="font-medium text-ink">{linkOutcome.orderNumber}</span> is paid.
+          Sign in to see its details and track delivery.
+        </p>
+      </div>
+    );
+  }
+
   if (!order) {
     return (
       <EmptyState
         title="We could not find that order"
-        description="The order number may be wrong, or it was placed in a different browser. Sample orders are stored locally on the device that placed them."
+        description="The order number may be wrong, or it belongs to a different account. Sign in with the account you ordered from to see it."
         action={{ label: "Back to shopping", href: "/shop" }}
       />
     );

@@ -39,13 +39,28 @@ import { toast } from "@/store/toastStore";
  * Nothing here decides whether money arrived.
  */
 
-export type Stage = "choosing" | "waiting" | "qr" | "card" | "confirming";
+export type Stage = "choosing" | "waiting" | "qr" | "card" | "confirming" | "expired";
 export type Outcome = "paid" | "abandoned" | "failed";
 
 export function useGatewayPayment() {
   const [stage, setStage] = useState<Stage>("choosing");
   const [qr, setQr] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+
+  /**
+   * When the window closes, on this browser's clock.
+   *
+   * Built from the server's `secondsLeft` rather than its `expiresAt`, so a
+   * shopper whose clock is wrong still sees the right amount of time. Set when
+   * a payment starts; the page counts down to it.
+   */
+  const [deadline, setDeadline] = useState<number | null>(null);
+
+  const startClock = useCallback((handoff: GatewayHandoff) => {
+    if (typeof handoff.secondsLeft === "number") {
+      setDeadline(Date.now() + handoff.secondsLeft * 1000);
+    }
+  }, []);
   /**
    * Set by `startCustomPayment`, so leaving the page stops the listeners and
    * retires a QR code nobody scanned.
@@ -111,6 +126,7 @@ export function useGatewayPayment() {
       setMessage("Enter your card details below.");
 
       try {
+        startClock(handoff);
         const outcome = await openRazorpayCheckout(handoff, {
           container,
           only: "card",
@@ -139,12 +155,13 @@ export function useGatewayPayment() {
         return "failed";
       }
     },
-    [confirm, reset],
+    [confirm, reset, startClock],
   );
 
   /** UPI, net banking and wallets: our interface throughout. */
   const payCustom = useCallback(
     async (handoff: GatewayHandoff, selection: PaymentSelection): Promise<Outcome> => {
+      startClock(handoff);
       setStage("waiting");
       setMessage("Starting the payment…");
 
@@ -190,7 +207,7 @@ export function useGatewayPayment() {
           });
       });
     },
-    [confirm, reset],
+    [confirm, reset, startClock],
   );
 
   /**
@@ -203,6 +220,7 @@ export function useGatewayPayment() {
    */
   const payByQr = useCallback(
     async (handoff: GatewayHandoff): Promise<Outcome> => {
+      startClock(handoff);
       setStage("qr");
       setMessage("Generating a code…");
 
@@ -261,7 +279,7 @@ export function useGatewayPayment() {
         };
       });
     },
-    [reset],
+    [reset, startClock],
   );
 
   /** Route a choice to the right flow. */
@@ -290,5 +308,27 @@ export function useGatewayPayment() {
     [payByCard, payByQr, payCustom],
   );
 
-  return { pay, stage, qr, message, isPaying: stage !== "choosing" };
+  /**
+   * The window closed while they were paying. Stop, and say so.
+   *
+   * Leaving the page's listeners running would keep polling a QR code the
+   * server has already retired; `abandon` closes it and stops the poll.
+   */
+  const expire = useCallback(() => {
+    abandon.current?.();
+    setQr(null);
+    setStage("expired");
+    setMessage("The time to pay ran out, so the items have been released.");
+  }, []);
+
+  return {
+    pay,
+    stage,
+    qr,
+    message,
+    deadline,
+    startClock,
+    expire,
+    isPaying: stage !== "choosing" && stage !== "expired",
+  };
 }

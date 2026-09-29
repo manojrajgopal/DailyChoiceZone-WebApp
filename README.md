@@ -85,7 +85,7 @@ renders.
 | Backend | |
 |---|---|
 | `uvicorn app.main:app --reload` | Development server |
-| `pytest` | The whole suite (351 tests) |
+| `pytest` | The whole suite (400 tests) |
 | `alembic upgrade head` | Apply migrations |
 | `alembic revision --autogenerate -m "…"` | New migration |
 
@@ -545,11 +545,17 @@ server verifies the signature with the key secret, reads the payment back from
 the gateway, and checks the amount against the invoice. `usePayment` reports
 success only once the server has agreed.
 
-**An unpaid order is not a lost order.** Dismissing the payment sheet leaves a
-real order with an unpaid invoice — the stock is committed and the bag has been
-emptied, so stranding it would be the worst outcome. Both the confirmation page
-and the account order page offer to finish paying, and both reopen the *same*
-gateway order rather than a new one.
+**An unpaid order has five minutes.** Placing a prepaid order *holds* its
+stock rather than taking it, and the payment page shows the time left. Dismissing
+the payment sheet leaves the order open for the rest of that window, and
+returning to it reopens the *same* gateway order rather than a new one. Once
+the window closes the order is cancelled and the stock goes back on sale; a
+payment that arrives after that is refunded, never used to revive the order.
+
+**You must be signed in to check out.** A signed-out shopper who reaches any
+checkout step is sent to sign in and brought back to that exact step. The `next`
+parameter is checked by `src/lib/utils/safeRedirect.ts`, which accepts only a
+path on this site, so the sign-in page cannot be used as an open redirect.
 
 **The publishable key is served, not bundled.** `GET /api/payments/config`
 hands over the key id, whether a gateway is live at all, and whether it is in
@@ -575,7 +581,9 @@ The properties, and where each is enforced. The backend README has the detail.
 | Secrets | `.env`, never the bundle. No database password or JWT secret reaches the browser |
 | Errors | Driver messages and stack traces are logged, never returned — they describe your schema to whoever asked |
 | Roles | Assigned by the server on registration. The request cannot influence it |
-| Production | Refuses to start with a default JWT secret, `DEBUG` on, or wildcard CORS |
+| Production | Refuses to start with a default JWT secret, `DEBUG` on, wildcard CORS, the mock gateway, a test key, no webhook secret, or a non-https storefront URL |
+| Stock | Checked and held under row locks at order time; a race for the last unit has exactly one winner |
+| Payments | Signature, gateway read-back, amount and currency all checked; late, duplicate and stray payments refunded; webhook deliveries deduplicated |
 | Migrations | Upgrade only. Nothing drops a table automatically |
 
 ---
@@ -586,12 +594,15 @@ The properties, and where each is enforced. The backend README has the detail.
 cd backend && pytest
 ```
 
-351 tests against MySQL, in a database of their own. Money and tax arithmetic
+400 tests against MySQL, in a database of their own. Money and tax arithmetic
 against worked examples, password hashing and token forgery, registration and
 sign-in, catalogue filtering and paging, the cart and its pricing, the
 wishlist's uniqueness, the order transaction and what the client is not allowed
 to decide, coupons, inventory and its ledger, refunds and credit notes, and —
-endpoint by endpoint — who is allowed to call what.
+endpoint by endpoint — who is allowed to call what. `test_payment_security.py`
+covers the payment module's attacks: forged signatures, tampered prices and
+quantities, replayed webhooks, late and duplicate payments, the five-minute
+window, and two real connections racing for the last unit.
 
 The frontend is checked with `npm run typecheck` and `npm run lint`.
 
@@ -631,13 +642,12 @@ CDN: change the URLs and add the host to `remotePatterns` in `next.config.ts`.
 
 Honest about it in the UI rather than pretending:
 
-- **The payment gateway is in test mode.** Razorpay is genuinely connected and
-  genuinely takes the payment — but against test keys, so no real money moves.
-  Swapping `rzp_test_…` for `rzp_live_…` is the only change needed, and the
-  checkout notices and the terms page follow the keys rather than stating a
-  mode of their own.
-- **Nothing is fulfilled.** Orders are real records with real stock movements
-  and real invoices. No parcel leaves anywhere.
+- **The gateway mode follows the keys.** With `rzp_test_…` keys no real money
+  moves; with `rzp_live_…` keys it does. The checkout notices and the terms page
+  read the mode from the API rather than stating one of their own.
+- **Fulfilment is yours.** Orders are real records with real stock movements
+  and real invoices; shipping the parcel happens outside this application and is
+  recorded from the portal.
 - **Forms do not send.** The contact form and newsletter confirm and clear.
 - **The tax figures are not a compliance calculation.** [Details](#tax).
 - **There are no seeded accounts.** The first person to register is the

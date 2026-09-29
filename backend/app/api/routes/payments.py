@@ -12,15 +12,17 @@ only trusted because every delivery is signature-checked before it is read.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import NotFoundError, ValidationError
 from app.dependencies.auth import get_current_customer
-from app.models import Customer, Invoice, Order
+from app.models import Customer, Invoice, Order, WebhookEvent
 from app.schemas.base import CamelModel
 from app.schemas.billing import PaymentOut
 from app.services import billing as billing_service, settlement
@@ -30,6 +32,10 @@ from app.utils.response import ok
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/payments", tags=["Billing"])
+
+# Razorpay's webhook bodies are a few kilobytes. This is generous headroom and a
+# firm ceiling on what an unauthenticated endpoint will hash.
+MAX_WEBHOOK_BYTES = 256 * 1024
 
 
 class VerifyPayment(CamelModel):
@@ -228,6 +234,15 @@ def payment_session(
     order = db.get(Order, payment.order_id)
     invoice = db.get(Invoice, payment.invoice_id)
 
+    # Enforced here as well as by the sweeper. Somebody returning to pay after
+    # the hold has lapsed finds it released now, not whenever the sweeper next
+    # runs — and is told so, rather than offered a payment that would only be
+    # refunded.
+    if settlement.hold_lapsed(order):
+        settlement.expire_payment(db, payment)
+        db.refresh(payment)
+        db.refresh(order)
+
     return ok(
         {
             "status": payment.status,
@@ -261,9 +276,9 @@ def create_qr(
     """
     payment = settlement.get_payment(db, payment_id, customer_id=customer.id)
 
-    if payment.status in settlement.SETTLED:
-        raise ValidationError("That payment is already settled.", error_code="ALREADY_PAID")
-
+    # Settled, expired, or past its window: `open_qr` refuses each of them
+    # under the payment's lock, so a code cannot be minted for an order that
+    # is being settled or cancelled at the same moment.
     code = settlement.open_qr(db, payment)
 
     # The page is given our own URL, not Razorpay's. Theirs serves a poster
@@ -352,10 +367,46 @@ def close_qr(
     return ok({"closed": True})
 
 
+@router.get("/link-callback", summary="The customer returned from a payment link")
+def payment_link_callback(
+    razorpay_payment_id: str = Query("", max_length=40),
+    razorpay_payment_link_id: str = Query("", max_length=40),
+    razorpay_payment_link_reference_id: str = Query("", max_length=40),
+    razorpay_payment_link_status: str = Query("", max_length=20),
+    razorpay_signature: str = Query("", max_length=128),
+    db: Session = Depends(get_db),
+):
+    """
+    Settle a payment link on the strength of Razorpay's signed redirect.
+
+    No session is required, deliberately: a link is sent by SMS and is often
+    paid on a different phone from the one the customer shops on. The
+    signature, keyed with the API secret, is what authenticates this — and the
+    payment is read back from the gateway before anything is recorded.
+
+    Reveals only the order number and whether it is paid.
+    """
+    payment = settlement.settle_payment_link_callback(
+        db,
+        {
+            "razorpay_payment_id": razorpay_payment_id,
+            "razorpay_payment_link_id": razorpay_payment_link_id,
+            "razorpay_payment_link_reference_id": razorpay_payment_link_reference_id,
+            "razorpay_payment_link_status": razorpay_payment_link_status,
+            "razorpay_signature": razorpay_signature,
+        },
+    )
+    if payment is None:
+        raise NotFoundError("No such payment link.", error_code="LINK_NOT_FOUND")
+
+    return ok({"orderNumber": payment.order_number, "paid": payment.status in settlement.SETTLED})
+
+
 @router.post("/webhook/razorpay", summary="Razorpay's own account of what happened")
 async def razorpay_webhook(
     request: Request,
     x_razorpay_signature: str = Header(default=""),
+    x_razorpay_event_id: str = Header(default=""),
     db: Session = Depends(get_db),
 ):
     """
@@ -366,19 +417,26 @@ async def razorpay_webhook(
     settled even if the shopper closed the tab on the payment screen, lost
     connectivity, or never came back at all.
 
+    ## What Razorpay's own guidance requires of it
+
+    - **Duplicates are expected.** Razorpay says so in as many words, and gives
+      each event an `x-razorpay-event-id`. Every processed id is recorded in
+      `webhook_events`, in the same transaction as what it changed; a second
+      delivery is acknowledged and not applied.
+    - **Five seconds to answer**, or it is treated as a failure and resent.
+      Processing is a lock, a few rows and at most one gateway call.
+    - **A day of failures disables the webhook** until someone re-enables it in
+      the dashboard. So anything that is not a bad signature is answered 2xx —
+      including events this system does not model.
+    - **Events arrive out of order.** Handled in settlement: a `failed` for an
+      earlier attempt cannot undo a later capture.
+
     ## Why the raw body
 
     The signature is an HMAC over the exact bytes Razorpay sent. Re-serialising
     the JSON — a different key order, a space after a colon — produces a
     different digest and every delivery would fail. So the body is read as
     bytes, verified, and only then parsed.
-
-    ## Why an unknown event is still a 200
-
-    Razorpay retries anything that is not 2xx. An event this system does not
-    model is not a failure, and answering 4xx would have it redelivered on a
-    schedule for days. A *bad signature* is different: that is refused, because
-    an endpoint that marks orders paid on unverified input is an open door.
     """
     raw = await request.body()
 
@@ -386,6 +444,11 @@ async def razorpay_webhook(
         # Nothing here can be settled by Razorpay, so nothing here should
         # accept its webhooks either.
         raise ValidationError("Razorpay is not the active provider.", error_code="PROVIDER_INACTIVE")
+
+    # A payload this size is not a Razorpay webhook. Refused before any HMAC
+    # is computed over it.
+    if len(raw) > MAX_WEBHOOK_BYTES:
+        raise ValidationError("The webhook body is too large.", error_code="WEBHOOK_TOO_LARGE")
 
     from app.services.payments import get_provider
 
@@ -403,20 +466,39 @@ async def razorpay_webhook(
     except ValueError:
         raise ValidationError("The webhook body was not JSON.", error_code="WEBHOOK_MALFORMED")
 
-    event = body.get("event", "")
-    entity = (
-        (body.get("payload") or {}).get("payment", {}).get("entity")
-        or (body.get("payload") or {}).get("refund", {}).get("entity")
-        or {}
-    )
+    event = str(body.get("event", ""))[:60]
 
-    payment = settlement.settle_from_webhook(db, event, entity)
+    # --- seen it before? -----------------------------------------------
+    #
+    # Checked after the signature, never before: an unsigned request must not
+    # be able to learn which event ids have been processed.
+    event_id = x_razorpay_event_id.strip()[:64]
+    if event_id and db.get(WebhookEvent, event_id) is not None:
+        logger.info("Razorpay webhook %s (%s): duplicate, acknowledged", event, event_id)
+        return ok({"handled": False, "event": event, "duplicate": True})
 
-    logger.info(
-        "Razorpay webhook %s: %s",
-        event,
-        f"settled {payment.id} as {payment.status}" if payment else "no action",
-    )
+    result = settlement.settle_from_webhook(db, body)
 
-    # 200 whatever happened, having verified the sender — see the docstring.
-    return ok({"handled": payment is not None, "event": event})
+    if event_id:
+        # Its own small commit. The settlement above has already committed what
+        # it changed; recording the id here means a retry that races this one
+        # is refused by the primary key rather than applied twice.
+        db.add(
+            WebhookEvent(
+                event_id=event_id,
+                event=event,
+                result=result[:60],
+                received_at=datetime.utcnow(),
+            )
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            # The same event, delivered twice at once, both past the check
+            # above. The other one recorded it; this is the duplicate.
+            db.rollback()
+
+    logger.info("Razorpay webhook %s (%s): %s", event, event_id or "no id", result)
+
+    # 2xx whatever happened, having verified the sender — see the docstring.
+    return ok({"handled": not result.startswith("ignored"), "event": event})

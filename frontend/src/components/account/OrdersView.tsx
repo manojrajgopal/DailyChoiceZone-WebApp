@@ -56,7 +56,7 @@ export function OrdersView() {
       ) : orders.length === 0 ? (
         <EmptyState
           title="No orders yet"
-          description="When you place an order it will appear here with its delivery status. Sample orders are stored in this browser only."
+          description="When you place an order it will appear here with its delivery status."
           action={{ label: "Start shopping", href: "/shop" }}
         />
       ) : (

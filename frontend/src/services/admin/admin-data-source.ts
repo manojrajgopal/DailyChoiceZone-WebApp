@@ -115,6 +115,8 @@ export interface AdminDataSource {
     by: string,
   ): Promise<AdminOrder>;
   updatePaymentStatus(id: string, status: PaymentStatus): Promise<AdminOrder>;
+  /** Raise a Razorpay Payment Link for a confirmed, unpaid cash-on-delivery order. */
+  sendPaymentLink(id: string): Promise<PaymentLinkSent>;
 
   /* ------------------------------------------------------------- customers */
   listCustomers(): Promise<AdminCustomer[]>;
@@ -175,4 +177,13 @@ export interface AdminDataSource {
    * the orders and the reviews to render three small numbers.
    */
   getNavCounts(): Promise<NavCounts>;
+}
+
+/** A payment link Razorpay has sent to the customer. */
+export interface PaymentLinkSent {
+  id: string;
+  shortUrl: string;
+  status: string;
+  /** Epoch seconds. */
+  expireBy?: number | null;
 }

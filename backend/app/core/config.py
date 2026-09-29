@@ -87,6 +87,46 @@ class Settings(BaseSettings):
     def razorpay_configured(self) -> bool:
         return bool(self.RAZOR_KEY_ID and self.RAZOR_KEY_SECRET)
 
+    @property
+    def razorpay_live(self) -> bool:
+        """Live keys, which take real money. Read from the key's own prefix."""
+        return self.RAZOR_KEY_ID.startswith("rzp_live_")
+
+    # How long an unpaid prepaid order holds its stock.
+    #
+    # The order is created, its items are reserved, and the shopper has this
+    # long to pay. After that the sweeper cancels it and releases the hold, and
+    # a payment that arrives later is refunded rather than allowed to confirm
+    # an order that no longer exists. Five minutes, per the store's own rule.
+    PAYMENT_WINDOW_SECONDS: int = 300
+
+    # Slack after the window before a hold is actually released.
+    #
+    # The window is when a shopper may *start* paying; a payment begun at 4:58
+    # can take a minute to be confirmed by the bank. Cancelling at exactly
+    # 5:00 would refund people who did everything right. So new payments are
+    # refused at the window, and the stock is released — and anything arriving
+    # later refunded — only once this has passed as well.
+    PAYMENT_GRACE_SECONDS: int = 90
+
+    # How often the sweeper looks for expired holds. The window is enforced
+    # lazily as well — every verify, poll and session call checks it — so this
+    # only bounds how long an abandoned order can sit before its stock returns.
+    PAYMENT_SWEEP_SECONDS: int = 30
+
+    # The most unpaid, stock-holding orders one customer may have open at once.
+    #
+    # Without a cap, holding stock is free: an account can place orders it
+    # never means to pay for and keep a product "sold out" for everyone else,
+    # five minutes at a time, indefinitely. Three leaves room for a genuine
+    # retry after a declined card.
+    MAX_UNPAID_ORDERS_PER_CUSTOMER: int = 3
+
+    # The storefront's public origin. Payment Links send the shopper back here
+    # after paying, so it must be where the site is actually served — and in
+    # production it must be HTTPS.
+    STOREFRONT_URL: str = "http://localhost:3000"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -132,6 +172,34 @@ class Settings(BaseSettings):
             problems.append("DEBUG is on, which leaks internals in error responses.")
         if "*" in self.CORS_ORIGINS:
             problems.append("CORS_ORIGINS contains a wildcard.")
+
+        # --- payments ------------------------------------------------------
+        #
+        # A production store must take real money through a real gateway,
+        # verify what it is told, and never quietly fall back to something that
+        # takes nothing. Each of these is a way that could happen.
+        if self.PAYMENT_PROVIDER != "razorpay":
+            problems.append(
+                f"PAYMENT_PROVIDER is '{self.PAYMENT_PROVIDER}'. Production takes real "
+                "payments, so it must be 'razorpay'."
+            )
+        else:
+            if not self.razorpay_configured:
+                problems.append("RAZOR_KEY_ID and RAZOR_KEY_SECRET must both be set.")
+            elif not self.razorpay_live:
+                problems.append(
+                    "RAZOR_KEY_ID is a test key (rzp_test_…). Production needs the live "
+                    "key (rzp_live_…) — test keys take no money, and orders would be "
+                    "confirmed for payments that never happened."
+                )
+            if not self.RAZOR_WEBHOOK_SECRET:
+                problems.append(
+                    "RAZOR_WEBHOOK_SECRET is empty. Without it no webhook can be "
+                    "trusted, and an order paid by someone who closes the tab is never "
+                    "confirmed."
+                )
+        if not self.STOREFRONT_URL.startswith("https://"):
+            problems.append("STOREFRONT_URL must be HTTPS in production.")
 
         return problems
 

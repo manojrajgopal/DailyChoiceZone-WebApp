@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { ArrowLeft, Lock } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { OrderSummary } from "@/components/cart/OrderSummary";
 import { ProductImage } from "@/components/common/ProductImage";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useCart } from "@/hooks/useCart";
+import { useCustomerStatus } from "@/hooks/useSession";
 import { formatPrice } from "@/lib/utils/format";
 
 /**
@@ -48,11 +49,36 @@ export function CheckoutShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { lines, totals, breakdown, isLoading, isEmpty } = useCart();
+  const { isSignedIn, isPending } = useCustomerStatus();
+
+  /**
+   * Checkout needs an account, and says so before anything is filled in.
+   *
+   * The API already refuses an order without one — that is the boundary that
+   * matters. This is what stops a shopper completing every step and only
+   * then being told. They are sent to sign in with the step they were on as
+   * `next`, and brought straight back to it afterwards, query string and all:
+   * `/checkout/payment?payment=…` returns to that exact payment.
+   *
+   * Waits for the session check to finish, or a signed-in shopper with a
+   * token still being confirmed would be bounced to sign in on every refresh.
+   */
+  const needsSignIn = !isPending && !isSignedIn;
 
   useEffect(() => {
+    if (!needsSignIn) return;
+    const here = `${pathname ?? "/checkout"}${searchParams?.size ? `?${searchParams}` : ""}`;
+    router.replace(`/account?next=${encodeURIComponent(here)}`);
+  }, [needsSignIn, pathname, searchParams, router]);
+
+  useEffect(() => {
+    // Only once signed in — a guest's empty bag is not the reason to leave.
+    if (needsSignIn || isPending) return;
     if (isEmpty && !suppressEmptyRedirect) router.replace("/cart");
-  }, [isEmpty, suppressEmptyRedirect, router]);
+  }, [needsSignIn, isPending, isEmpty, suppressEmptyRedirect, router]);
 
   return (
     <div className="page-shell py-8 sm:py-10">

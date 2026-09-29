@@ -59,6 +59,22 @@ class Order(Base, TimestampMixin):
     payment_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     payment_method: Mapped[str] = mapped_column(String(40), nullable=False, default="")
 
+    # consumed | reserved | released
+    #
+    # Whether this order has *taken* its stock, or is only *holding* it while a
+    # payment is pending. A prepaid order holds (`products.reserved_stock`) and
+    # takes the stock only when the money arrives; if the payment window runs
+    # out the hold is released instead. Cash on delivery consumes at once. Every
+    # order placed before reservations existed consumed at creation, which is
+    # what the server default records for them.
+    stock_state: Mapped[str] = mapped_column(
+        String(12), nullable=False, default="consumed", server_default="consumed"
+    )
+    # When an unpaid order's hold runs out. Null for anything not holding stock
+    # — including every order placed before this existed, which is what keeps
+    # the expiry sweeper from ever touching them.
+    payment_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     delivery_method: Mapped[str] = mapped_column(String(30), nullable=False, default="standard")
     delivery_fee: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     expected_delivery: Mapped[str] = mapped_column(String(60), nullable=False, default="")

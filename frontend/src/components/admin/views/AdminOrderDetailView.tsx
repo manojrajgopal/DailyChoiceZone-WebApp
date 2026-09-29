@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Check, Loader2, Package, Truck } from "lucide-react";
+import { Check, Link2, Loader2, Package, Truck } from "lucide-react";
 
 import type { AdminOrderStatus } from "@/types/admin";
 
@@ -22,7 +22,9 @@ import { formatDate, formatPrice } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
 import {
   allowedTransitions,
+  canSendPaymentLink,
   getOrder,
+  sendPaymentLink,
   updateOrderStatus,
 } from "@/services/admin/orderAdminService";
 import { toast } from "@/store/toastStore";
@@ -50,6 +52,8 @@ export function AdminOrderDetailView() {
   const [nextStatus, setNextStatus] = useState<AdminOrderStatus | "">("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sendingLink, setSendingLink] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
 
   if (isLoading) {
     return (
@@ -100,6 +104,21 @@ export function AdminOrderDetailView() {
     toast.success(`Order ${order.orderNumber} is now ${humanStatus(nextStatus).toLowerCase()}`);
     setNextStatus("");
     setNote("");
+    await reload();
+  };
+
+  const onSendPaymentLink = async () => {
+    setSendingLink(true);
+    const result = await sendPaymentLink(order.id);
+    setSendingLink(false);
+
+    if (!result.ok) {
+      toast.error(result.reason);
+      return;
+    }
+
+    setLinkUrl(result.data.shortUrl);
+    toast.success(`Payment link sent to ${order.customerName}`);
     await reload();
   };
 
@@ -387,6 +406,37 @@ export function AdminOrderDetailView() {
                 </dd>
               </div>
             </dl>
+
+            {canSendPaymentLink(order) ? (
+              <div className="mt-4 border-t border-admin-border pt-4">
+                <p className="mb-3 text-[0.6875rem] leading-relaxed text-admin-muted">
+                  Razorpay texts and emails the customer a link to pay now instead of in cash. It
+                  stays open for 24 hours. The order is marked paid only when Razorpay confirms the
+                  payment.
+                </p>
+                <AdminButton
+                  variant="secondary"
+                  onClick={() => void onSendPaymentLink()}
+                  loading={sendingLink}
+                >
+                  <Link2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                  Send payment link
+                </AdminButton>
+                {linkUrl ? (
+                  <p className="mt-2 break-all text-[0.6875rem] text-admin-muted">
+                    Sent:{" "}
+                    <a
+                      href={linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-copper-700 hover:text-admin-ink"
+                    >
+                      {linkUrl}
+                    </a>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </AdminCard>
         </div>
       </div>

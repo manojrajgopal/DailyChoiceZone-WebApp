@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { useSession } from "@/hooks/useSession";
+import { safeRedirect } from "@/lib/utils/safeRedirect";
 
 /**
  * Sign in and register, on one panel.
@@ -13,7 +15,21 @@ import { useSession } from "@/hooks/useSession";
  * server and is never held in the browser — what comes back is a token.
  */
 export function AuthPanel() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn, register } = useSession();
+
+  /**
+   * Where they were going before being asked to sign in.
+   *
+   * Checkout sends people here with `?next=` set to the step they left.
+   * Passed through `safeRedirect` so it can only ever be a path on this site
+   * — a sign-in page that forwards to wherever its URL says is an open
+   * redirect, and the one moment somebody trusts a page most is right after
+   * they have just signed in to it.
+   */
+  const next = searchParams?.get("next");
+  const returnTo = next ? safeRedirect(next, "/account") : null;
   const [mode, setMode] = useState<"signin" | "register">("signin");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,11 +42,13 @@ export function AuthPanel() {
     event.preventDefault();
     setIsSubmitting(true);
     try {
-      if (mode === "signin") {
-        await signIn({ email, password });
-      } else {
-        await register({ firstName, lastName, email, password });
-      }
+      const result =
+        mode === "signin"
+          ? await signIn({ email, password })
+          : await register({ firstName, lastName, email, password });
+
+      // Back to the checkout step they came from, now that they can finish it.
+      if (result.ok && returnTo) router.replace(returnTo);
     } finally {
       setIsSubmitting(false);
     }
@@ -38,6 +56,13 @@ export function AuthPanel() {
 
   return (
     <div className="mx-auto max-w-md">
+      {returnTo?.startsWith("/checkout") ? (
+        <p className="mb-6 rounded-card border border-copper-200 bg-copper-50 p-4 text-sm leading-relaxed text-ink-700">
+          <span className="font-medium text-ink">Sign in to check out.</span> Your bag is
+          saved — you will go straight back to where you were.
+        </p>
+      ) : null}
+
       <div className="mb-8 flex gap-6 border-b border-ink-200">
         {(
           [

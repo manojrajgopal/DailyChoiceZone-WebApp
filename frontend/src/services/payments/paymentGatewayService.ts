@@ -191,3 +191,27 @@ export function getPaymentSession(paymentId: string): Promise<PaymentSession> {
     AUTH,
   );
 }
+
+/** The five parameters Razorpay appends when it sends a customer back from a payment link. */
+export const PAYMENT_LINK_PARAMS = [
+  "razorpay_payment_id",
+  "razorpay_payment_link_id",
+  "razorpay_payment_link_reference_id",
+  "razorpay_payment_link_status",
+  "razorpay_signature",
+] as const;
+
+/**
+ * Settle a payment link from Razorpay's signed redirect.
+ *
+ * The redirect itself proves nothing — anyone can type those parameters into
+ * a URL. The server checks the signature with the API secret and reads the
+ * payment back from the gateway before recording anything. No session is
+ * needed, because a link sent by SMS is often paid on a different phone.
+ */
+export function settlePaymentLink(
+  params: Record<(typeof PAYMENT_LINK_PARAMS)[number], string>,
+): Promise<{ orderNumber: string; paid: boolean }> {
+  const query = new URLSearchParams(params).toString();
+  return apiGet<{ orderNumber: string; paid: boolean }>(`/payments/link-callback?${query}`);
+}

@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
 
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
+import { PaymentCountdown } from "@/components/checkout/PaymentCountdown";
 import {
   PaymentMethods,
   methodFor,
@@ -116,6 +117,8 @@ function PaymentStep() {
    */
   const [amountDue, setAmountDue] = useState<number | null>(null);
 
+  const { pay, stage, qr, message, isPaying, deadline, startClock, expire } = useGatewayPayment();
+
   /** The gateway order for an existing payment, when settling one. */
   const [existing, setExisting] = useState<GatewayHandoff | null>(null);
   const [orderNumber, setOrderNumber] = useState("");
@@ -143,6 +146,7 @@ function PaymentStep() {
         }
 
         setExisting(session.gateway);
+        startClock(session.gateway);
         // The handoff carries minor units; the display works in major.
         setAmountDue(session.gateway.amount / 100);
       })
@@ -153,9 +157,8 @@ function PaymentStep() {
     return () => {
       active = false;
     };
-  }, [settling, existingPaymentId, router]);
+  }, [settling, existingPaymentId, router, startClock]);
 
-  const { pay, stage, qr, message, isPaying } = useGatewayPayment();
 
   const busy = isPlacing || isPaying;
 
@@ -280,6 +283,34 @@ function PaymentStep() {
       suppressEmptyRedirect={settling || busy || placed}
       detailedTax
     >
+
+      {/*
+        The window, counting down, whenever an order is holding stock for this
+        payment. Hidden once it is paid or has already run out.
+      */}
+      {deadline !== null && stage !== "expired" && stage !== "confirming" ? (
+        <div className="mb-5">
+          <PaymentCountdown deadline={deadline} onExpire={expire} />
+        </div>
+      ) : null}
+
+      {/* ----------------------------------------------- the window closed */}
+      {stage === "expired" ? (
+        <div className="max-w-2xl rounded-card border border-clay-200 bg-clay-50 p-5">
+          <p className="text-sm font-medium text-ink">The time to pay has run out</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-ink-700">
+            Nothing was charged. We held the items for you while you paid, and have now
+            released them. If you completed a payment in the last moments, it will be
+            refunded automatically.
+          </p>
+          <a
+            href="/shop"
+            className="mt-4 inline-block text-sm font-medium text-copper-700 underline underline-offset-2"
+          >
+            Continue shopping
+          </a>
+        </div>
+      ) : null}
 
       {loadFailed ? (
         <p className="max-w-2xl rounded-card border border-clay-200 bg-clay-50 p-4 text-sm text-ink-700">

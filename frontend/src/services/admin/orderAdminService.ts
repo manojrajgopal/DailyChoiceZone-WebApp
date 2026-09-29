@@ -5,6 +5,9 @@ import type {
   PaymentStatus,
 } from "@/types/admin";
 
+import { ApiError } from "@/services/api/client";
+
+import type { PaymentLinkSent } from "./admin-data-source";
 import { adminDataSource } from "./admin-data-source.instance";
 
 /**
@@ -69,6 +72,35 @@ export async function updatePaymentStatus(
   const order = await adminDataSource.getOrder(id);
   if (!order) return { ok: false, reason: "That order no longer exists." };
   return { ok: true, data: await adminDataSource.updatePaymentStatus(id, status) };
+}
+
+/**
+ * Whether a payment link can be offered for this order.
+ *
+ * Mirrors the server's rule so the button only appears where it can work:
+ * cash on delivery, not yet paid, and not finished. The server checks again —
+ * this decides what to show, not what is allowed.
+ */
+export function canSendPaymentLink(order: AdminOrder): boolean {
+  return (
+    order.paymentMethod === "cod" &&
+    order.paymentStatus !== "paid" &&
+    !["cancelled", "returned", "delivered"].includes(order.status)
+  );
+}
+
+export async function sendPaymentLink(id: string): Promise<AdminResult<PaymentLinkSent>> {
+  try {
+    return { ok: true, data: await adminDataSource.sendPaymentLink(id) };
+  } catch (error) {
+    return {
+      ok: false,
+      reason:
+        error instanceof ApiError && error.message
+          ? error.message
+          : "The payment link could not be sent.",
+    };
+  }
 }
 
 /** Orders still needing action. Drives the sidebar badge. */

@@ -71,17 +71,28 @@ def next_id(db: Session, model, entity: str) -> str:
     to the same width — and would go wrong the moment one is not, which is
     exactly the bug this replaced.
 
-    **Not safe under concurrent inserts.** Two requests reading the same maximum
-    will build the same id and the second will fail its unique constraint. That
-    is the correct failure — a duplicate id is worse than a rejected request —
-    and the fix when write volume warrants it is a per-entity counter row
-    updated inside the transaction.
+    ## Safe under concurrent inserts, because the read locks
+
+    Two checkouts at once used to read the same maximum, build the same id, and
+    have the second fail its unique constraint — a customer's checkout
+    rejected for no reason of theirs.
+
+    `FOR UPDATE` fixes it in two ways at once. It takes next-key locks on the
+    range, so a second transaction building an id for the same table waits
+    until the first commits. And it is a *locking* read, which under MySQL's
+    REPEATABLE READ sees the latest committed rows rather than the snapshot the
+    transaction began with — without that, the waiting transaction would wake
+    up and still read the old maximum.
+
+    The cost is that inserts into one table are serialised for the length of
+    the transaction. For orders at this store's volume that is milliseconds,
+    and correctness is not negotiable for the table money hangs off.
     """
     prefix = PREFIXES[entity]
     digits = func.cast(func.substr(model.id, len(prefix) + 1), Integer)
 
     highest = db.execute(
-        select(func.max(digits)).where(model.id.like(f"{prefix}%"))
+        select(func.max(digits)).where(model.id.like(f"{prefix}%")).with_for_update()
     ).scalar()
 
     return build_id(entity, (highest or 0) + 1)

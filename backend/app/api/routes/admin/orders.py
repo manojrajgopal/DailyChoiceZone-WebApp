@@ -76,3 +76,33 @@ def update_status(
         OrderOut.from_model(order, invoice).model_dump(by_alias=True),
         message=f"Order is now {payload.status}.",
     )
+
+
+@router.post("/{order_id}/payment-link", status_code=201, summary="Send a payment link")
+def send_payment_link(
+    order_id: str,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(require_permission("orders")),
+):
+    """
+    Raise a Razorpay Payment Link for a confirmed, unpaid order and send it.
+
+    Razorpay delivers it to the customer by SMS and email. The order is marked
+    paid only when the gateway confirms the payment — by the link's callback
+    or its `payment_link.paid` webhook — never when the link is sent.
+
+    Cash-on-delivery orders only: see `settlement.open_payment_link` for why a
+    checkout order still holding stock cannot be paid this way.
+    """
+    from app.models import Payment
+    from app.services import settlement
+
+    order = service.get_order(db, order_id)
+    payment = db.execute(select(Payment).where(Payment.order_id == order.id)).scalars().first()
+    if payment is None:
+        from app.core.errors import NotFoundError
+
+        raise NotFoundError("That order has no payment record.", error_code="PAYMENT_NOT_FOUND")
+
+    link = settlement.open_payment_link(db, payment)
+    return ok(link, message="Payment link sent to the customer.")

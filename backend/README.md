@@ -321,7 +321,7 @@ exist:
 
 | `PAYMENT_PROVIDER` | What it does |
 |---|---|
-| `mock` | Moves no money, contacts nothing, returns believable references. Lets the whole order flow be exercised without an account anywhere. |
+| `mock` | Moves no money, contacts nothing, returns believable references. Lets the whole order flow be exercised without an account anywhere. Refuses to construct when `ENVIRONMENT=production`. |
 | `razorpay` | The real thing. Test keys and live keys take the same code path. |
 
 Nothing above that layer names a gateway, so switching between them changes no
@@ -444,7 +444,12 @@ and all four are in `app/services/settlement.py` and the Razorpay provider:
 ### The webhook is the reliable path
 
 `POST /api/payments/webhook/razorpay`, subscribed to `payment.captured`,
-`payment.authorized` and `payment.failed`.
+`payment.authorized`, `payment.failed`, `order.paid`, `qr_code.credited`,
+`payment_link.paid`, `refund.processed` and `refund.failed`.
+
+Each delivery's `x-razorpay-event-id` is recorded in `webhook_events`, so a
+redelivery is acknowledged without being applied twice. Body size is capped at
+256 KB before the signature is even computed.
 
 The browser's verify call is what makes the confirmation page correct
 immediately. The webhook is what makes the order correct when the shopper pays
@@ -460,6 +465,76 @@ Two rules there are easy to get wrong:
   redelivered on a schedule for days. A bad *signature* is refused, because an
   endpoint that marks orders paid on unverified input is an open door — and with
   `RAZOR_WEBHOOK_SECRET` unset, every delivery is refused.
+
+### Stock is held, not taken, while a customer pays
+
+A prepaid order does not take its stock at creation; it **reserves** it —
+`products.reserved_stock` rises and `available = stock − reserved_stock` falls,
+so nobody else can buy the last unit while somebody is on the payment screen.
+`orders.stock_state` records which it is: `reserved`, `consumed` or `released`.
+
+- **Paid in time** → the reservation is committed: stock falls, the hold is
+  cleared, the order is confirmed.
+- **Not paid within `PAYMENT_WINDOW_SECONDS` (5 minutes)** → after a
+  `PAYMENT_GRACE_SECONDS` grace for payments already in flight, the sweeper in
+  `app/services/payment_expiry.py` cancels the order and releases the hold. The
+  session endpoint also expires a lapsed order the moment anyone asks for it,
+  so correctness does not depend on the sweeper's timing.
+- **Paid after that** → never confirms the cancelled order. `_apply_paid`
+  sees the lapsed window and refunds the payment in full, with a timeline note.
+
+The gateway is told about the window too: Checkout is opened with `timeout`
+set to the seconds left, and a QR code with `close_by`, so neither will take
+money for an order that has already closed.
+
+Every stock change runs under `SELECT … FOR UPDATE` on the product rows, taken
+in id order so two checkouts cannot deadlock. The locking select uses
+`populate_existing` — without it SQLAlchemy returns the copy of the product it
+already loaded for the cart, stale by exactly the purchase that happened in
+between, and two buyers can both have the last unit.
+`tests/integration/test_payment_security.py::TestConcurrency` races two real
+connections for one unit and fails if both succeed.
+
+Cash-on-delivery orders consume stock immediately, as before; there is nothing
+to wait for.
+
+### Duplicates, stray payments and refunds
+
+- A second payment against an order that is already paid is **refunded**, not
+  kept: a customer who paid twice from two tabs is repaid automatically.
+- Settlement is idempotent: the browser's verify, the poll and the webhook can
+  all arrive, in any order, and exactly one of them settles the order.
+- Amount **and currency** must match the invoice.
+- Refunds are asynchronous at Razorpay. A refund Razorpay accepts is recorded
+  as `processing`; `refund.processed` completes it and `refund.failed`
+  reverses it, restoring the payment's refundable balance.
+- Cancelling a paid order releases its stock and refunds the payment.
+
+### Payment Links, for cash on delivery
+
+`POST /api/admin/orders/{id}/payment-link` (the order detail page's **Send
+payment link** button) asks Razorpay to text and email the customer a link to
+pay a confirmed, unpaid **cash-on-delivery** order now instead of in cash. It
+lives 24 hours. The order is marked paid only when the gateway confirms it —
+through the signed redirect to `GET /api/payments/link-callback` or the
+`payment_link.paid` webhook — never when the link is sent.
+
+Not offered at checkout, deliberately: Razorpay requires a link to live at
+least fifteen minutes, and a checkout hold lasts five. A link for a checkout
+order would be a guaranteed late payment.
+
+### Going live: what the API refuses
+
+With `ENVIRONMENT=production`, `validate_production()` stops the API from
+starting unless all of these hold:
+
+- `PAYMENT_PROVIDER=razorpay`, with a key id starting `rzp_live_` and its secret
+- `RAZOR_WEBHOOK_SECRET` set
+- `STOREFRONT_URL` is `https://`
+- a JWT secret that is not the default, `DEBUG=false`, no wildcard CORS
+
+A misconfigured store that fails to start is a better outcome than one that
+takes orders without taking money.
 
 ### Secrets
 
@@ -524,7 +599,7 @@ pytest -m integration     # the API and the database together
 pytest -k refund          # by name
 ```
 
-351 tests. They run against MySQL in a database of their own
+400 tests. They run against MySQL in a database of their own
 (`daily_choice_zone_test`, or `TEST_DATABASE_NAME`), created on first run and
 rebuilt from the models each session. The development database is never touched
 — the fixtures refuse to run if the two names coincide.

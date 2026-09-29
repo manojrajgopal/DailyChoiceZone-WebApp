@@ -96,9 +96,10 @@ export function SettingsView() {
       <section className="mt-5 rounded-card border border-ink-200 bg-shell p-5">
         <h2 className="label-wide text-ink">Data stored in this browser</h2>
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-700">
-          Your bag, wishlist, saved addresses, sample orders and recently viewed items are kept in
-          this browser&rsquo;s local storage. Nothing is sent to a server, and clearing your
-          browser data removes it all.
+          This browser keeps a few things for convenience: a bag and wishlist saved before you
+          signed in, the checkout details you are part-way through, and the products you recently
+          viewed. Your account, orders, invoices, addresses and saved wishlist are held on our
+          servers, and clearing this browser does not affect them.
         </p>
 
         <Button variant="outline" className="mt-5" onClick={() => setConfirmOpen(true)}>

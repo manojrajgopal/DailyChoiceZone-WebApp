@@ -195,6 +195,10 @@ class Payment(Base, TimestampMixin):
 
     instrument_hint: Mapped[str] = mapped_column(String(60), nullable=False, default="")
 
+    # A Razorpay Payment Link raised for this payment, if one was. Its webhook
+    # names the link, and this is how that finds its way back here.
+    payment_link_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True, index=True)
+
     created_at_utc: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     captured_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -263,6 +267,13 @@ class Refund(Base, TimestampMixin):
     processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     credit_note_id: Mapped[Optional[str]] = mapped_column(BusinessId, nullable=True)
+
+    # Razorpay's own refund id (`rfnd_…`). Refunds are asynchronous — the
+    # gateway answers `pending` and reports `processed` or `failed` later, by
+    # webhook — and this is the only thing that webhook can be matched on.
+    gateway_reference: Mapped[Optional[str]] = mapped_column(
+        String(60), nullable=True, index=True
+    )
     # An admin id, or "customer".
     initiated_by: Mapped[str] = mapped_column(String(40), nullable=False, default="customer")
 
@@ -322,3 +333,28 @@ class CreditNote(Base, TimestampMixin):
     issued_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     # draft | issued | cancelled
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="issued")
+
+
+class WebhookEvent(Base):
+    """
+    A gateway webhook delivery that has already been processed.
+
+    Keyed by Razorpay's `x-razorpay-event-id`. Razorpay documents duplicate
+    deliveries as *expected* — the same event can arrive more than once, and it
+    retries anything that does not answer 2xx within five seconds — so every
+    delivery is looked up here first and a second one is acknowledged without
+    being applied twice.
+
+    Written in the same transaction as whatever the event changed. If applying
+    it fails, the row is rolled back with the change and the retry is processed
+    properly, rather than being recorded as done when it was not.
+    """
+
+    __tablename__ = "webhook_events"
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event: Mapped[str] = mapped_column(String(60), nullable=False)
+    # What processing it concluded, for the audit trail: "settled PAY012",
+    # "ignored", "refunded late payment".
+    result: Mapped[str] = mapped_column(String(60), nullable=False, default="", server_default="")
+    received_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
