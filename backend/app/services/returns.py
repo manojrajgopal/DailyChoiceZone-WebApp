@@ -348,6 +348,10 @@ def create(
         ReturnEvent(status="requested", note=reason, actor="customer", occurred_at=now)
     )
     db.add(request)
+
+    from app.services.email.notifications import notify_return
+
+    notify_return(db, request, order.customer_email)
     db.commit()
     db.refresh(request)
     return request

@@ -21,7 +21,7 @@ import { CouponAudienceFields } from "@/components/admin/views/CouponAudienceFie
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatPrice } from "@/lib/utils/format";
 import {
   deleteCoupon,
   effectiveStatus,
@@ -30,14 +30,10 @@ import {
   saveCoupon,
   setCouponStatus,
 } from "@/services/admin/couponAdminService";
+import { endOfDay, formatLocalDate, startOfDay, toDateInput } from "@/lib/utils/dateInput";
 import { toast } from "@/store/toastStore";
 
-/** ISO timestamp to the `yyyy-MM-dd` a date input expects. */
-const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
 
-/** A date input's value back to an ISO timestamp, or null when cleared. */
-const fromDateInput = (value: string) =>
-  value ? new Date(`${value}T00:00:00.000Z`).toISOString() : null;
 
 /**
  * Coupon management.
@@ -149,9 +145,9 @@ export function AdminCouponsView() {
       sortValue: (coupon) => coupon.startsAt,
       cell: (coupon) => (
         <span className="whitespace-nowrap text-[0.6875rem] text-admin-muted">
-          {formatDate(coupon.startsAt)}
+          {formatLocalDate(coupon.startsAt)}
           {" → "}
-          {coupon.endsAt ? formatDate(coupon.endsAt) : "no end"}
+          {coupon.endsAt ? formatLocalDate(coupon.endsAt) : "no end"}
         </span>
       ),
     },
@@ -356,9 +352,10 @@ export function AdminCouponsView() {
                 onChange={(event) =>
                   setEditing({
                     ...editing,
-                    startsAt: fromDateInput(event.target.value) ?? editing.startsAt,
+                    startsAt: startOfDay(event.target.value) ?? editing.startsAt,
                   })
                 }
+                hint="Usable from the start of this day."
               />
 
               <AdminInput
@@ -366,9 +363,9 @@ export function AdminCouponsView() {
                 type="date"
                 value={toDateInput(editing.endsAt)}
                 onChange={(event) =>
-                  setEditing({ ...editing, endsAt: fromDateInput(event.target.value) })
+                  setEditing({ ...editing, endsAt: endOfDay(event.target.value) })
                 }
-                hint="Leave blank to run indefinitely."
+                hint="Runs until the end of this day. Leave blank to run indefinitely."
               />
 
               <AdminSelect

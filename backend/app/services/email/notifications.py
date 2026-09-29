@@ -23,6 +23,23 @@ def notify_payment(db: Session, order, amount_minor: int) -> None:
     )
 
 
+def notify_payment_failed(db: Session, order, payment) -> None:
+    esc = html_lib.escape
+    intro = (
+        f"Your payment for order <strong>{esc(order.order_number)}</strong> didn't go through, "
+        "and you haven't been charged. Your items are still held for you — you can try again "
+        "with the same or another payment method."
+    )
+    link = f"{_brand()['url']}/checkout/payment?payment={payment.id}"
+    notify(
+        db, "payment_failed", to=order.customer_email, customer_id=order.customer_id,
+        subject=f"Payment didn't go through — {order.order_number}",
+        html=layout("Your payment didn't go through", intro, _order_rows(order), ("Try again", link)),
+        text=f"Your payment for order {order.order_number} didn't go through. Try again: {link}",
+        reference=order.order_number,
+    )
+
+
 def notify_refund(db: Session, refund, email: str) -> None:
     esc = html_lib.escape
     amount = f"₹{refund.amount / 100:,.2f}"

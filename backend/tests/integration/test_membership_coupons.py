@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from tests.integration.test_orders import add, place
+from tests.integration.test_payment_security import gateway  # noqa: F401 — fixture
 
 pytestmark = pytest.mark.integration
 
@@ -73,6 +74,18 @@ class TestCouponLimits:
         client.post(f"/api/orders/{order['id']}/cancel", headers=auth, json={"reason": ""})
         assert order_with(client, auth, "SAVE10").status_code == 201
 
+    def test_an_unpaid_order_that_times_out_gives_the_use_back(
+        self, client, auth, admin_auth, gateway, catalogue, settings_documents, db
+    ):
+        from app.services.payment_expiry import sweep
+        from tests.integration.test_payment_security import lapse, place as place_prepaid
+
+        make_coupon(client, admin_auth, perCustomerLimit=1)
+        placed = place_prepaid(client, auth, couponCode="SAVE10").json()["data"]
+        lapse(db, placed["order"]["id"])
+        assert sweep(db) == 1
+        assert order_with(client, auth, "SAVE10").status_code == 201
+
     def test_the_bag_says_why_a_code_does_not_apply(self, client, auth, admin_auth, catalogue, settings_documents):
         make_coupon(client, admin_auth, minSubtotal=99999)
         add(client, auth, "PRD001", 1)
@@ -82,6 +95,41 @@ class TestCouponLimits:
 
 
 # ------------------------------------------------------------------ audiences
+
+
+class TestCouponDates:
+    """The admin picks days in India; the server keeps UTC."""
+
+    def test_a_coupon_started_today_in_india_works_today(
+        self, client, auth, admin_auth, catalogue, settings_documents
+    ):
+        # Midnight IST today is 18:30 UTC yesterday — the browser sends that.
+        today_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        start = datetime(today_ist.year, today_ist.month, today_ist.day) - timedelta(hours=5, minutes=30)
+        make_coupon(client, admin_auth, startsAt=start.strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+        assert order_with(client, auth, "SAVE10").status_code == 201
+
+    def test_a_zoned_time_is_stored_as_utc(self):
+        from app.utils.dates import parse_dt
+
+        assert parse_dt("2026-09-29T00:00:00+05:30") == datetime(2026, 9, 28, 18, 30)
+        assert parse_dt("2026-09-30T00:00:00Z") == datetime(2026, 9, 30, 0, 0)
+
+    def test_a_scheduled_code_says_when_it_starts(self, client, auth, admin_auth, catalogue, settings_documents):
+        make_coupon(client, admin_auth, startsAt="2099-03-04T18:30:00Z")  # 5 Mar 2099 in IST
+        response = order_with(client, auth, "SAVE10")
+        assert response.status_code == 422
+        assert "starts on 5 Mar 2099" in response.json()["message"]
+
+    def test_the_list_says_how_often_you_have_used_it(
+        self, client, auth, admin_auth, catalogue, settings_documents
+    ):
+        make_coupon(client, admin_auth, perCustomerLimit=2)
+        assert order_with(client, auth, "SAVE10").status_code == 201
+        listed = {c["code"]: c for c in client.get("/api/coupons", headers=auth).json()["data"]}
+        assert listed["SAVE10"]["timesUsed"] == 1 and listed["SAVE10"]["perCustomerLimit"] == 2
+        guest = {c["code"]: c for c in client.get("/api/coupons").json()["data"]}
+        assert guest["SAVE10"]["timesUsed"] is None
 
 
 class TestCouponAudiences:

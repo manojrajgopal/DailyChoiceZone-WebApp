@@ -16,7 +16,10 @@ import { cn } from "@/lib/utils/cn";
 import { formatMoney } from "@/lib/money";
 import { getMyInvoice } from "@/services/billing/invoiceService";
 import { getOrder } from "@/services/orderService";
-import { PAYMENT_LINK_PARAMS, settlePaymentLink } from "@/services/payments/paymentGatewayService";
+import {
+  PAYMENT_LINK_PARAMS,
+  settlePaymentLink,
+} from "@/services/payments/paymentGatewayService";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 
 /**
@@ -45,7 +48,6 @@ function OrderSuccess() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-
   /**
    * Back from a Razorpay payment link.
    *
@@ -66,7 +68,10 @@ function OrderSuccess() {
    * order itself cannot be read. The payment has still been verified and
    * recorded, and the customer deserves to be told that much.
    */
-  const [linkOutcome, setLinkOutcome] = useState<{ orderNumber: string; paid: boolean } | null>(null);
+  const [linkOutcome, setLinkOutcome] = useState<{
+    orderNumber: string;
+    paid: boolean;
+  } | null>(null);
   const linkKey = fromPaymentLink ? linkParams.razorpay_signature : "";
 
   useEffect(() => {
@@ -153,15 +158,21 @@ function OrderSuccess() {
     return (
       <div className="page-shell max-w-xl py-16 text-center">
         <span className="inline-flex h-14 w-14 items-center justify-center rounded-pill bg-sage-100">
-          <Check className="h-6 w-6 text-sage-600" strokeWidth={2} aria-hidden="true" />
+          <Check
+            className="h-6 w-6 text-sage-600"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
         </span>
         <h1 className="mt-6 font-display text-2xl leading-tight text-ink sm:text-3xl">
           Payment received
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-500">
           Thank you — order{" "}
-          <span className="font-medium text-ink">{linkOutcome.orderNumber}</span> is paid.
-          Sign in to see its details and track delivery.
+          <span className="font-medium text-ink">
+            {linkOutcome.orderNumber}
+          </span>{" "}
+          is paid. Sign in to see its details and track delivery.
         </p>
       </div>
     );
@@ -188,6 +199,8 @@ function OrderSuccess() {
     Boolean(pendingPaymentId) &&
     order.paymentStatus !== "paid" &&
     order.paymentStatus !== "cod-pending";
+  // Cash on delivery: nothing is paid yet, and nothing is overdue either.
+  const payOnDelivery = order.paymentStatus === "cod-pending";
 
   return (
     <div className="page-shell py-12 sm:py-16">
@@ -201,9 +214,17 @@ function OrderSuccess() {
             )}
           >
             {awaitingPayment ? (
-              <AlertCircle className="h-6 w-6 text-copper-700" strokeWidth={2} aria-hidden="true" />
+              <AlertCircle
+                className="h-6 w-6 text-copper-700"
+                strokeWidth={2}
+                aria-hidden="true"
+              />
             ) : (
-              <Check className="h-6 w-6 text-sage-600" strokeWidth={2} aria-hidden="true" />
+              <Check
+                className="h-6 w-6 text-sage-600"
+                strokeWidth={2}
+                aria-hidden="true"
+              />
             )}
           </span>
 
@@ -217,14 +238,21 @@ function OrderSuccess() {
             {awaitingPayment ? (
               <>
                 Nothing has been charged. We have held order{" "}
-                <span className="font-medium text-ink">{order.orderNumber}</span> and the items in
-                it, for a short while so you can complete your payment.
+                <span className="font-medium text-ink">
+                  {order.orderNumber}
+                </span>{" "}
+                and the items in it, for a short while so you can complete your
+                payment.
               </>
             ) : (
               <>
                 Thank you,{" "}
-                <span className="text-ink">{order.address.fullName}</span>. Your order number is{" "}
-                <span className="font-medium text-ink">{order.orderNumber}</span>.
+                <span className="text-ink">{order.address.fullName}</span>. Your
+                order number is{" "}
+                <span className="font-medium text-ink">
+                  {order.orderNumber}
+                </span>
+                .
               </>
             )}
           </p>
@@ -233,10 +261,12 @@ function OrderSuccess() {
         {/* ------------------------------------------------- pay what is due */}
         {awaitingPayment ? (
           <div className="mt-8 rounded-card border border-copper-200 bg-copper-50 p-5">
-            <p className="text-sm font-medium text-ink">Finish paying for this order</p>
+            <p className="text-sm font-medium text-ink">
+              Finish paying for this order
+            </p>
             <p className="mt-1.5 text-xs leading-relaxed text-ink-700">
-              You will go back to the payment step. It is the same payment — you will not be
-              charged twice.
+              You will go back to the payment step. It is the same payment — you
+              will not be charged twice.
             </p>
 
             <ButtonLink href={payHref} size="lg" className="mt-4">
@@ -249,7 +279,11 @@ function OrderSuccess() {
         <dl className="mt-10 grid gap-4 sm:grid-cols-2">
           <div className="rounded-card border border-ink-200 bg-shell p-4">
             <dt className="label-wide flex items-center gap-2 text-ink-500">
-              <Truck className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+              <Truck
+                className="h-3.5 w-3.5"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
               Expected delivery
             </dt>
             <dd className="mt-2 text-sm text-ink">{order.expectedDelivery}</dd>
@@ -260,12 +294,22 @@ function OrderSuccess() {
 
           <div className="rounded-card border border-ink-200 bg-shell p-4">
             <dt className="label-wide flex items-center gap-2 text-ink-500">
-              <Package className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+              <Package
+                className="h-3.5 w-3.5"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
               Order placed
             </dt>
-            <dd className="mt-2 text-sm text-ink">{formatDate(order.placedAt)}</dd>
+            <dd className="mt-2 text-sm text-ink">
+              {formatDate(order.placedAt)}
+            </dd>
             <dd className="mt-0.5 text-xs text-ink-400">
-              {awaitingPayment ? "Awaiting" : "Paid by"}{" "}
+              {awaitingPayment
+                ? "Awaiting"
+                : payOnDelivery
+                  ? "Paying by"
+                  : "Paid by"}{" "}
               {order.paymentMethod.name}
             </dd>
           </div>
@@ -275,7 +319,11 @@ function OrderSuccess() {
         {invoice ? (
           <div className="mt-4 rounded-card border border-ink-200 bg-shell p-4">
             <h2 className="label-wide flex items-center gap-2 text-ink-500">
-              <FileText className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+              <FileText
+                className="h-3.5 w-3.5"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
               Invoice
             </h2>
 
@@ -295,7 +343,10 @@ function OrderSuccess() {
               <div>
                 <dt className="text-xs text-ink-400">Payment status</dt>
                 <dd className="mt-1">
-                  <BillingStatusBadge domain="payment" status={invoice.paymentStatus} />
+                  <BillingStatusBadge
+                    domain="payment"
+                    status={invoice.paymentStatus}
+                  />
                 </dd>
               </div>
             </dl>
@@ -314,7 +365,11 @@ function OrderSuccess() {
                 key={`${line.productId}-${line.size ?? ""}-${index}`}
                 className="flex items-center gap-3.5 py-3 first:pt-0"
               >
-                <Link href={`/product/${line.productId}`} className="shrink-0" tabIndex={-1}>
+                <Link
+                  href={`/product/${line.productId}`}
+                  className="shrink-0"
+                  tabIndex={-1}
+                >
                   <ProductImage
                     src={line.image}
                     alt=""
@@ -351,7 +406,11 @@ function OrderSuccess() {
 
           <div className="mt-4 flex items-baseline justify-between border-t border-ink-200 pt-4">
             <span className="text-sm font-medium text-ink">
-              {awaitingPayment ? "Total due" : "Total paid"}
+              {awaitingPayment
+                ? "Total due"
+                : payOnDelivery
+                  ? "To pay on delivery"
+                  : "Total paid"}
             </span>
             <span className="font-display text-xl text-ink tabular-nums">
               {formatPrice(order.totals.total)}
@@ -360,11 +419,17 @@ function OrderSuccess() {
         </div>
 
         <div className="mt-8 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
-          <ButtonLink href={`/account/order?number=${order.orderNumber}`} variant="outline">
+          <ButtonLink
+            href={`/account/order?number=${order.orderNumber}`}
+            variant="outline"
+          >
             View order
           </ButtonLink>
           {invoice ? (
-            <ButtonLink href={`/account/invoice?id=${invoice.id}`} variant="outline">
+            <ButtonLink
+              href={`/account/invoice?id=${invoice.id}`}
+              variant="outline"
+            >
               View invoice
             </ButtonLink>
           ) : null}

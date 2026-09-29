@@ -230,6 +230,14 @@ class TestCancelling:
         db.expire_all()
         assert db.get(Product, "PRD001").stock == 10
 
+    def test_an_unpaid_invoice_is_voided_with_its_order(self, client, ready, db):
+        from app.models import Invoice
+
+        placed = place(client, ready).json()["data"]
+        client.post(f"/api/orders/{placed['order']['id']}/cancel", headers=ready, json={"reason": ""})
+        db.expire_all()
+        assert db.get(Invoice, placed["invoiceId"]).status == "cancelled"
+
     def test_a_delivered_order_cannot_be_cancelled(self, client, ready, db):
         from app.models import Order
 

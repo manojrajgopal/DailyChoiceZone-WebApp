@@ -7,6 +7,7 @@ import type {
 } from "@/types";
 
 import { apiGet, apiGetOrNull, apiPost } from "@/services/api/client";
+import { paymentMethodLabel } from "@/services/billing/paymentService";
 
 /**
  * Orders.
@@ -41,6 +42,24 @@ export function setDeliveryMethods(methods: DeliveryMethod[]): void {
 
 export function setPaymentMethods(methods: PaymentMethod[]): void {
   paymentMethods = methods;
+}
+
+/**
+ * Wait for the method lists before mapping an order.
+ *
+ * A page that reads an order straight away — the order confirmation, opened
+ * fresh after checkout — used to map it before the site content arrived, and
+ * showed "Paid by cod" and "standard ·" instead of the methods' names.
+ * Imported lazily: `siteService` imports this module to fill the lists.
+ */
+async function methodsLoaded(): Promise<void> {
+  if (paymentMethods.length && deliveryMethods.length) return;
+  try {
+    const { getSiteContent } = await import("./siteService");
+    await getSiteContent();
+  } catch {
+    /* the ids still read, just less nicely */
+  }
 }
 
 /** What the API returns for an order. */
@@ -177,36 +196,39 @@ function toOrder(payload: ApiOrder): Order {
  * provider that settled it synchronously.
  */
 export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder> {
-  const payload = await apiPost<{
-    order: ApiOrder;
-    invoiceId: string;
-    invoiceNumber: string;
-    paymentId: string;
-    paymentStatus: string;
-    gateway: GatewayHandoff | null;
-  }>(
-    "/orders",
-    {
-      shippingAddress: {
-        fullName: input.address.fullName,
-        phone: input.address.phone,
-        line1: input.address.line1,
-        line2: input.address.line2,
-        city: input.address.city,
-        state: input.address.state,
-        pincode: input.address.pincode,
-        country: "India",
+  const [payload] = await Promise.all([
+    apiPost<{
+      order: ApiOrder;
+      invoiceId: string;
+      invoiceNumber: string;
+      paymentId: string;
+      paymentStatus: string;
+      gateway: GatewayHandoff | null;
+    }>(
+      "/orders",
+      {
+        shippingAddress: {
+          fullName: input.address.fullName,
+          phone: input.address.phone,
+          line1: input.address.line1,
+          line2: input.address.line2,
+          city: input.address.city,
+          state: input.address.state,
+          pincode: input.address.pincode,
+          country: "India",
+          email: input.email,
+        },
+        billingAddress: input.billingAddress ?? null,
+        deliveryMethod: input.deliveryMethod.id,
+        paymentMethod: input.paymentMethod.id,
+        couponCode: input.totals.appliedCoupon?.code ?? null,
         email: input.email,
+        saveAddress: true,
       },
-      billingAddress: input.billingAddress ?? null,
-      deliveryMethod: input.deliveryMethod.id,
-      paymentMethod: input.paymentMethod.id,
-      couponCode: input.totals.appliedCoupon?.code ?? null,
-      email: input.email,
-      saveAddress: true,
-    },
-    AUTH,
-  );
+      AUTH,
+    ),
+    methodsLoaded(),
+  ]);
 
   return {
     order: toOrder(payload.order),
@@ -220,7 +242,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder> {
 
 export async function getOrders(): Promise<Order[]> {
   try {
-    const orders = await apiGet<ApiOrder[]>("/orders", AUTH);
+    const [orders] = await Promise.all([
+      apiGet<ApiOrder[]>("/orders", AUTH),
+      methodsLoaded(),
+    ]);
     return orders.map(toOrder);
   } catch {
     return [];
@@ -228,10 +253,10 @@ export async function getOrders(): Promise<Order[]> {
 }
 
 export async function getOrder(identifier: string): Promise<Order | null> {
-  const payload = await apiGetOrNull<ApiOrder>(
-    `/orders/${encodeURIComponent(identifier)}`,
-    AUTH,
-  );
+  const [payload] = await Promise.all([
+    apiGetOrNull<ApiOrder>(`/orders/${encodeURIComponent(identifier)}`, AUTH),
+    methodsLoaded(),
+  ]);
   return payload ? toOrder(payload) : null;
 }
 
@@ -241,12 +266,18 @@ export async function getOrder(identifier: string): Promise<Order | null> {
  * Refused by the server once the parcel has been dispatched — at that point it
  * is a return, which is a different process.
  */
-export async function cancelOrder(identifier: string, reason = ""): Promise<Order> {
-  const payload = await apiPost<ApiOrder>(
-    `/orders/${encodeURIComponent(identifier)}/cancel`,
-    { reason },
-    AUTH,
-  );
+export async function cancelOrder(
+  identifier: string,
+  reason = "",
+): Promise<Order> {
+  const [payload] = await Promise.all([
+    apiPost<ApiOrder>(
+      `/orders/${encodeURIComponent(identifier)}/cancel`,
+      { reason },
+      AUTH,
+    ),
+    methodsLoaded(),
+  ]);
   return toOrder(payload);
 }
 
@@ -259,11 +290,22 @@ export async function cancelOrder(identifier: string, reason = ""): Promise<Orde
  */
 export function getDeliveryMethod(id: string): DeliveryMethod {
   return (
-    deliveryMethods.find((method) => method.id === id) ??
-    { id, name: id, description: "", fee: 0, estimate: "" }
+    deliveryMethods.find((method) => method.id === id) ?? {
+      id,
+      name: id,
+      description: "",
+      fee: 0,
+      estimate: "",
+    }
   );
 }
 
 export function getPaymentMethod(id: string): PaymentMethod {
-  return paymentMethods.find((method) => method.id === id) ?? { id, name: id, description: "" };
+  return (
+    paymentMethods.find((method) => method.id === id) ?? {
+      id,
+      name: paymentMethodLabel(id),
+      description: "",
+    }
+  );
 }

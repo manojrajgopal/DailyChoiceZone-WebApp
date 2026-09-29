@@ -56,9 +56,14 @@ TYPES: Dict[str, dict] = {
         "description": "When an online payment for an order succeeds.",
         "enabled": True, "optOut": False,
     },
+    "payment_failed": {
+        "label": "Payment didn't go through",
+        "description": "When an online payment fails, with a link to try again before the order is released.",
+        "enabled": True, "optOut": False,
+    },
     "order_updates": {
         "label": "Shipping updates",
-        "description": "When an order is shipped, out for delivery and delivered.",
+        "description": "Each step after confirmation: processing, packed, shipped, in transit, out for delivery, delivered and returned.",
         "enabled": True, "optOut": True,
     },
     "order_cancelled": {
@@ -78,7 +83,7 @@ TYPES: Dict[str, dict] = {
     },
     "membership": {
         "label": "Membership",
-        "description": "Membership welcome and renewal reminders.",
+        "description": "When your membership starts, with its benefits and end date.",
         "enabled": True, "optOut": True,
     },
     "invoice": {
@@ -384,15 +389,27 @@ def _order_link(order) -> str:
 
 STAGE_COPY = {
     "confirmed": ("Your order is confirmed", "Thank you for shopping with us. We're getting your order ready."),
+    "processing": ("We're preparing your order", "We've started getting your order ready."),
+    "packed": ("Your order is packed", "Your order is packed and will be handed to the courier soon."),
     "shipped": ("Your order is on its way", "Your order has left our warehouse and is with the courier."),
+    "in-transit": ("Your order is in transit", "Your order is moving through the courier's network towards you."),
     "out-for-delivery": ("Arriving today", "Your order is out for delivery and will reach you today."),
     "delivered": ("Your order has been delivered", "We hope you love it. If anything isn't right, you can request a return or replacement from your account."),
     "cancelled": ("Your order has been cancelled", "Your order has been cancelled. If you had paid online, your refund is on its way."),
+    "returned": ("Your order has been returned", "Your order has been returned to us. Any refund due will follow shortly."),
 }
 
+# An unpaid online order that ran out of time: nothing was charged, so the
+# usual "your refund is on its way" would be wrong and worrying.
+PAYMENT_EXPIRED_COPY = (
+    "Your order has been cancelled",
+    "We didn't receive the payment in time, so your order has been cancelled and "
+    "the items released. You haven't been charged. You're welcome to order again.",
+)
 
-def render_order(order, stage: str) -> tuple:
-    title, intro = STAGE_COPY.get(stage, ("Update on your order", "There's an update on your order."))
+
+def render_order(order, stage: str, copy: Optional[tuple] = None) -> tuple:
+    title, intro = copy or STAGE_COPY.get(stage, ("Update on your order", "There's an update on your order."))
     esc = html_lib.escape
     intro_full = f"{esc(intro)} Order <strong>{esc(order.order_number)}</strong>."
     html = layout(title, intro_full, _order_rows(order), ("View your order", _order_link(order)))
@@ -444,17 +461,21 @@ def notify(
     return True
 
 
-def notify_order(db: Session, order, stage: str) -> None:
+def notify_order(db: Session, order, stage: str, *, copy: Optional[tuple] = None) -> None:
     key = {
         "confirmed": "order_confirmation",
         "cancelled": "order_cancelled",
+        "processing": "order_updates",
+        "packed": "order_updates",
         "shipped": "order_updates",
+        "in-transit": "order_updates",
         "out-for-delivery": "order_updates",
         "delivered": "order_updates",
+        "returned": "order_updates",
     }.get(stage)
     if not key:
         return
-    subject, html, text = render_order(order, stage)
+    subject, html, text = render_order(order, stage, copy)
     notify(db, key, to=order.customer_email, customer_id=order.customer_id,
            subject=subject, html=html, text=text, reference=order.order_number)
 

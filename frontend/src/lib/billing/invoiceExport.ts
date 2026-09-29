@@ -58,12 +58,20 @@ function address(prefix: string, value: BillingAddress): KeyValueSection {
 }
 
 export function paymentStatusLabel(invoice: Invoice): string {
-  if (invoice.paymentStatus === "paid") return "Paid in full";
-  if (invoice.paymentStatus === "pending") return "Payable on delivery";
-  if (invoice.paymentStatus === "partially-refunded") return "Partially refunded";
-  if (invoice.paymentStatus === "refunded") return "Refunded";
-  if (invoice.paymentStatus === "failed") return "Payment failed";
-  return "Authorised";
+  // The API also sends states the type does not list ("expired"); anything
+  // unrecognised must not fall through to a reassuring "Authorised".
+  const status: string = invoice.paymentStatus;
+  if (status === "paid") return "Paid in full";
+  if (status === "partially-refunded") return "Partially refunded";
+  if (status === "refunded") return "Refunded";
+  if (invoice.status === "cancelled") return "Cancelled — nothing to pay";
+  if (status === "expired") return "Not paid in time";
+  if (status === "pending" || status === "cod-pending") {
+    return invoice.paymentMethod === "cod" ? "Payable on delivery" : "Awaiting payment";
+  }
+  if (status === "failed") return "Payment failed";
+  if (status === "authorized") return "Authorised";
+  return status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/-/g, " ") : "—";
 }
 
 export function invoiceSheet(invoice: Invoice, config: BillingConfig, gstin = ""): InvoiceSheet {

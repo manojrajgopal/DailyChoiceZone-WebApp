@@ -21,7 +21,13 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
-import { ORDER_FLOW, ORDER_STAGES, flowIndex, needsConfirmation, stageLabel } from "@/lib/orders/orderFlow";
+import {
+  ORDER_FLOW,
+  ORDER_STAGES,
+  flowIndex,
+  needsConfirmation,
+  stageLabel,
+} from "@/lib/orders/orderFlow";
 import {
   availableMovesFor,
   canSendPaymentLink,
@@ -30,6 +36,7 @@ import {
   updateOrderStatus,
 } from "@/services/admin/orderAdminService";
 import { toast } from "@/store/toastStore";
+import { paymentMethodLabel } from "@/services/billing/paymentService";
 
 /** The happy path, for the progress tracker. */
 const FUNNEL: readonly AdminOrderStatus[] = ORDER_FLOW;
@@ -54,7 +61,11 @@ export function AdminOrderDetailView() {
   const searchParams = useSearchParams();
   const orderId = searchParams?.get("id") ?? "";
 
-  const { data: order, isLoading, reload } = useAdminResource(
+  const {
+    data: order,
+    isLoading,
+    reload,
+  } = useAdminResource(
     () => (orderId ? getOrder(orderId) : Promise.resolve(null)),
     [orderId],
   );
@@ -69,7 +80,10 @@ export function AdminOrderDetailView() {
   if (isLoading) {
     return (
       <div className="flex min-h-64 items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-admin-faint" aria-label="Loading order" />
+        <Loader2
+          className="h-5 w-5 animate-spin text-admin-faint"
+          aria-label="Loading order"
+        />
       </div>
     );
   }
@@ -89,7 +103,11 @@ export function AdminOrderDetailView() {
           <p className="text-sm text-admin-ink">
             We couldn&rsquo;t find this order.
           </p>
-          <AdminButtonLink href="/admin/orders" variant="secondary" className="mt-5">
+          <AdminButtonLink
+            href="/admin/orders"
+            variant="secondary"
+            className="mt-5"
+          >
             Back to orders
           </AdminButtonLink>
         </div>
@@ -131,7 +149,9 @@ export function AdminOrderDetailView() {
       return;
     }
 
-    toast.success(`Order ${order.orderNumber} is now ${stageLabel(nextStatus).toLowerCase()}`);
+    toast.success(
+      `Order ${order.orderNumber} is now ${stageLabel(nextStatus).toLowerCase()}`,
+    );
     setNextStatus("");
     setNote("");
     await reload();
@@ -143,9 +163,10 @@ export function AdminOrderDetailView() {
           title: "Skip ahead?",
           message: (
             <>
-              This moves the order from <strong>{stageLabel(order.status)}</strong> straight to{" "}
-              <strong>{stageLabel(chosen.target)}</strong>. {chosen.detail}. The timeline will
-              record that these stages were skipped.
+              This moves the order from{" "}
+              <strong>{stageLabel(order.status)}</strong> straight to{" "}
+              <strong>{stageLabel(chosen.target)}</strong>. {chosen.detail}. The
+              timeline will record that these stages were skipped.
             </>
           ),
           label: `Skip to ${stageLabel(chosen.target)}`,
@@ -155,9 +176,11 @@ export function AdminOrderDetailView() {
           title: "Move this order back?",
           message: (
             <>
-              This moves the order back from <strong>{stageLabel(order.status)}</strong> to{" "}
-              <strong>{stageLabel(chosen.target)}</strong>. The customer&rsquo;s tracking will
-              show the earlier stage, and the timeline will record the change.
+              This moves the order back from{" "}
+              <strong>{stageLabel(order.status)}</strong> to{" "}
+              <strong>{stageLabel(chosen.target)}</strong>. The customer&rsquo;s
+              tracking will show the earlier stage, and the timeline will record
+              the change.
             </>
           ),
           label: `Move back to ${stageLabel(chosen.target)}`,
@@ -167,8 +190,8 @@ export function AdminOrderDetailView() {
           title: "Cancel this order?",
           message: (
             <>
-              The items go back into stock and anything paid is refunded. A cancelled order
-              cannot be reopened.
+              The items go back into stock and anything paid is refunded. A
+              cancelled order cannot be reopened.
             </>
           ),
           label: "Cancel order",
@@ -176,7 +199,9 @@ export function AdminOrderDetailView() {
         },
         return: {
           title: "Record a return?",
-          message: <>The order will be marked returned. This cannot be undone.</>,
+          message: (
+            <>The order will be marked returned. This cannot be undone.</>
+          ),
           label: "Mark returned",
           destructive: true,
         },
@@ -236,11 +261,17 @@ export function AdminOrderDetailView() {
                   <span
                     className={cn(
                       "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-[0.625rem] tabular-nums",
-                      reached ? "bg-[#0ca30c] text-white" : "bg-admin-border text-admin-muted",
+                      reached
+                        ? "bg-[#0ca30c] text-white"
+                        : "bg-admin-border text-admin-muted",
                     )}
                   >
                     {reached ? (
-                      <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
+                      <Check
+                        className="h-3.5 w-3.5"
+                        strokeWidth={3}
+                        aria-hidden="true"
+                      />
                     ) : (
                       index + 1
                     )}
@@ -251,7 +282,9 @@ export function AdminOrderDetailView() {
                       aria-hidden="true"
                       className={cn(
                         "my-1 w-px flex-1 sm:my-0 sm:mx-2 sm:h-px sm:w-auto sm:flex-1",
-                        currentIndex > index ? "bg-[#0ca30c]" : "bg-admin-border",
+                        currentIndex > index
+                          ? "bg-[#0ca30c]"
+                          : "bg-admin-border",
                       )}
                     />
                   ) : null}
@@ -280,7 +313,9 @@ export function AdminOrderDetailView() {
       <div className="grid gap-4 xl:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-4">
           {/* --------------------------------------------------------- items */}
-          <AdminCard title={`${order.lines.length} ${order.lines.length === 1 ? "item" : "items"}`}>
+          <AdminCard
+            title={`${order.lines.length} ${order.lines.length === 1 ? "item" : "items"}`}
+          >
             <ul className="flex flex-col divide-y divide-admin-border">
               {order.lines.map((line, index) => (
                 <li
@@ -290,7 +325,11 @@ export function AdminOrderDetailView() {
                   <span className="h-14 w-11 shrink-0 overflow-hidden rounded-[2px] bg-admin-raised">
                     {line.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={line.image} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={line.image}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
                     ) : null}
                   </span>
 
@@ -301,7 +340,9 @@ export function AdminOrderDetailView() {
                     >
                       {line.name}
                     </Link>
-                    <span className="block text-[0.625rem] text-admin-faint">{line.sku}</span>
+                    <span className="block text-[0.625rem] text-admin-faint">
+                      {line.sku}
+                    </span>
                     <span className="mt-0.5 block text-[0.625rem] text-admin-muted">
                       {[line.size ? `Size ${line.size}` : null, line.color]
                         .filter(Boolean)
@@ -320,7 +361,10 @@ export function AdminOrderDetailView() {
 
             {/* ------------------------------------------------------ totals */}
             <dl className="mt-4 flex flex-col gap-1.5 border-t border-admin-border pt-4 text-xs">
-              <Row label="Subtotal" value={formatPrice(order.totals.subtotal)} />
+              <Row
+                label="Subtotal"
+                value={formatPrice(order.totals.subtotal)}
+              />
               {order.totals.catalogueSavings > 0 ? (
                 <Row
                   label="Catalogue savings"
@@ -344,10 +388,15 @@ export function AdminOrderDetailView() {
               ) : null}
               <Row
                 label="Delivery"
-                value={order.totals.deliveryFee === 0 ? "Free" : formatPrice(order.totals.deliveryFee)}
+                value={
+                  order.totals.deliveryFee === 0
+                    ? "Free"
+                    : formatPrice(order.totals.deliveryFee)
+                }
               />
               <Row
-                label={`Tax included (${order.totals.taxAmount > 0 ? "5%" : "0%"})`}
+                // Rates differ by item (GST slabs); the invoice below breaks it down.
+                label="Tax included"
                 value={formatPrice(order.totals.taxAmount)}
                 muted
               />
@@ -368,7 +417,10 @@ export function AdminOrderDetailView() {
           <AdminCard title="Timeline" description="Every update to this order.">
             <ol className="flex flex-col gap-3">
               {[...order.timeline].reverse().map((event, index) => (
-                <li key={`${event.status}-${event.at}-${index}`} className="flex gap-2.5">
+                <li
+                  key={`${event.status}-${event.at}-${index}`}
+                  className="flex gap-2.5"
+                >
                   <span
                     aria-hidden="true"
                     className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-pill bg-copper-500"
@@ -397,32 +449,42 @@ export function AdminOrderDetailView() {
           <AdminCard title="Update status">
             {isTerminal ? (
               <p className="text-xs leading-relaxed text-admin-muted">
-                This order is {order.status}, so its status can no longer be changed.
+                This order is {order.status}, so its status can no longer be
+                changed.
               </p>
             ) : (
               <div className="flex flex-col gap-3">
                 <p className="text-[0.6875rem] leading-relaxed text-admin-muted">
-                  Now <strong className="text-admin-ink">{stageLabel(order.status)}</strong>
+                  Now{" "}
+                  <strong className="text-admin-ink">
+                    {stageLabel(order.status)}
+                  </strong>
                   {" — "}
                   {ORDER_STAGES[order.status]?.description}
                 </p>
 
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-admin-ink">Move to</span>
+                  <span className="text-xs font-medium text-admin-ink">
+                    Move to
+                  </span>
                   <select
                     value={nextStatus}
-                    onChange={(event) => setNextStatus(event.target.value as AdminOrderStatus)}
+                    onChange={(event) =>
+                      setNextStatus(event.target.value as AdminOrderStatus)
+                    }
                     className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface px-2.5 text-xs text-admin-ink focus:border-copper-500 focus:outline-none"
                   >
                     <option value="">Choose a status</option>
                     {MOVE_GROUPS.filter(
                       (group, index, all) =>
-                        all.findIndex((entry) => entry.label === group.label) === index,
+                        all.findIndex(
+                          (entry) => entry.label === group.label,
+                        ) === index,
                     ).map((group) => {
                       const inGroup = moves.filter(
                         (move) =>
-                          MOVE_GROUPS.find((entry) => entry.kind === move.kind)?.label ===
-                          group.label,
+                          MOVE_GROUPS.find((entry) => entry.kind === move.kind)
+                            ?.label === group.label,
                       );
                       if (!inGroup.length) return null;
                       return (
@@ -474,7 +536,9 @@ export function AdminOrderDetailView() {
                     confirmLabel={confirmCopy.label}
                     destructive={confirmCopy.destructive}
                     loading={saving}
-                    onConfirm={() => void onUpdateStatus(needsConfirmation(chosen))}
+                    onConfirm={() =>
+                      void onUpdateStatus(needsConfirmation(chosen))
+                    }
                   />
                 ) : null}
               </div>
@@ -482,7 +546,9 @@ export function AdminOrderDetailView() {
           </AdminCard>
 
           <AdminCard title="Customer">
-            <p className="text-xs font-medium text-admin-ink">{order.customerName}</p>
+            <p className="text-xs font-medium text-admin-ink">
+              {order.customerName}
+            </p>
             <p className="mt-0.5 break-words text-[0.6875rem] text-admin-muted">
               {order.customerEmail}
             </p>
@@ -500,7 +566,9 @@ export function AdminOrderDetailView() {
                 {order.shippingAddress.fullName}
               </span>
               {order.shippingAddress.line1}
-              {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ""}
+              {order.shippingAddress.line2
+                ? `, ${order.shippingAddress.line2}`
+                : ""}
               <br />
               {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
               {order.shippingAddress.pincode}
@@ -513,7 +581,9 @@ export function AdminOrderDetailView() {
             <dl className="flex flex-col gap-2 text-xs">
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-admin-muted">Method</dt>
-                <dd className="text-admin-ink">{order.paymentMethod}</dd>
+                <dd className="text-admin-ink">
+                  {paymentMethodLabel(order.paymentMethod)}
+                </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-admin-muted">Payment</dt>
@@ -523,15 +593,25 @@ export function AdminOrderDetailView() {
               </div>
               <div className="flex items-start justify-between gap-3">
                 <dt className="flex items-center gap-1.5 text-admin-muted">
-                  <Truck className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
+                  <Truck
+                    className="h-3 w-3"
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
                   Tracking
                 </dt>
                 <dd className="text-right text-admin-ink">
                   {order.trackingNumber ? (
-                    <span className="font-mono text-[0.625rem]">{order.trackingNumber}</span>
+                    <span className="font-mono text-[0.625rem]">
+                      {order.trackingNumber}
+                    </span>
                   ) : (
                     <span className="flex items-center gap-1 text-admin-faint">
-                      <Package className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
+                      <Package
+                        className="h-3 w-3"
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                      />
                       Not shipped
                     </span>
                   )}
@@ -542,16 +622,20 @@ export function AdminOrderDetailView() {
             {canSendPaymentLink(order) ? (
               <div className="mt-4 border-t border-admin-border pt-4">
                 <p className="mb-3 text-[0.6875rem] leading-relaxed text-admin-muted">
-                  Razorpay texts and emails the customer a link to pay now instead of in cash. It
-                  stays open for 24 hours. The order is marked paid only when Razorpay confirms the
-                  payment.
+                  Razorpay texts and emails the customer a link to pay now
+                  instead of in cash. It stays open for 24 hours. The order is
+                  marked paid only when Razorpay confirms the payment.
                 </p>
                 <AdminButton
                   variant="secondary"
                   onClick={() => void onSendPaymentLink()}
                   loading={sendingLink}
                 >
-                  <Link2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                  <Link2
+                    className="h-3.5 w-3.5"
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
                   Send payment link
                 </AdminButton>
                 {linkUrl ? (
@@ -593,7 +677,11 @@ function Row({
       <dd
         className={cn(
           "tabular-nums",
-          positive ? "text-[#0a6b0a]" : muted ? "text-admin-faint" : "text-admin-ink",
+          positive
+            ? "text-[#0a6b0a]"
+            : muted
+              ? "text-admin-faint"
+              : "text-admin-ink",
         )}
       >
         {value}

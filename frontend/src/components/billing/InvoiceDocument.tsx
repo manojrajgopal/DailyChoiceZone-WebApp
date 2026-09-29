@@ -6,6 +6,7 @@ import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
 import { paymentMethodLabel } from "@/services/billing/paymentService";
+import { paymentStatusLabel } from "@/lib/billing/invoiceExport";
 
 import logo from "@/../public/brand/logo.png";
 
@@ -338,12 +339,5 @@ function formatRate(rate: number): string {
   return Number.isInteger(rate) ? String(rate) : rate.toFixed(2).replace(/0$/, "");
 }
 
-function paymentStatusLabel(invoice: Invoice): string {
-  if (invoice.paymentStatus === "paid") return "Paid in full";
-  if (invoice.paymentStatus === "pending") return "Payable on delivery";
-  if (invoice.paymentStatus === "partially-refunded") return "Partially refunded";
-  if (invoice.paymentStatus === "refunded") return "Refunded";
-  if (invoice.paymentStatus === "failed") return "Payment failed";
-  return "Authorised";
-}
+
 

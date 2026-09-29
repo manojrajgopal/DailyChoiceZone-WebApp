@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -32,5 +32,9 @@ def parse_dt(value: Optional[str]) -> Optional[datetime]:
     return (
         parsed.replace(tzinfo=None)
         if parsed.tzinfo is None
-        else parsed.astimezone().replace(tzinfo=None)
+        # To UTC — not `astimezone()` with no argument, which converts to the
+        # *server's* zone: on a machine set to IST that stored every admin date
+        # 5½ hours late, so a coupon starting "today" did not start until
+        # after midnight.
+        else parsed.astimezone(timezone.utc).replace(tzinfo=None)
     )

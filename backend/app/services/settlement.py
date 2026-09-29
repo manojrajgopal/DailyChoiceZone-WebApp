@@ -400,10 +400,14 @@ def expire_payment(
     if order is None or order.status != "pending" or order.stock_state != "reserved":
         return False
 
+    from app.services import coupons as coupon_service
     from app.services.orders import return_stock
 
     now = datetime.utcnow()
     return_stock(db, order, note="Payment window closed")
+    # The order never went ahead, so neither did its coupon: a one-time code
+    # must not be burnt by a payment that timed out.
+    coupon_service.release_usage(db, order.id)
 
     order.status = "cancelled"
     order.payment_status = "expired"
@@ -414,6 +418,11 @@ def expire_payment(
 
     payment.status = "expired"
     payment.events.append(PaymentEvent(status="expired", note=reason, occurred_at=now))
+
+    from app.services import email as email_service
+
+    # Queued on the session; sent only once this cancellation commits.
+    email_service.notify_order(db, order, "cancelled", copy=email_service.PAYMENT_EXPIRED_COPY)
 
     invoice = db.get(Invoice, payment.invoice_id)
     if invoice is not None:
@@ -475,7 +484,13 @@ def _apply_failed(db: Session, payment: Payment, result: PaymentResult) -> None:
 
     order = db.get(Order, payment.order_id)
     if order is not None:
+        # One email per order, not one per declined retry.
+        first_failure = order.payment_status != "failed"
         order.payment_status = "failed"
+        if first_failure and order.status == "pending":
+            from app.services.email.notifications import notify_payment_failed
+
+            notify_payment_failed(db, order, payment)
 
 
 def _adopt_reference(payment: Payment, result: PaymentResult) -> None:

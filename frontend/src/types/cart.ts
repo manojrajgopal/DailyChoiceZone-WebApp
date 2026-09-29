@@ -39,6 +39,12 @@ export interface Coupon {
   /** Who it is for: everyone, selected customers, members, first order. */
   audience?: "everyone" | "selected" | "members" | "first-order";
   endsAt?: string | null;
+  /** How many times each customer may use it; null when unlimited. */
+  perCustomerLimit?: number | null;
+  /** Signed in: how often this shopper has used it already. */
+  timesUsed?: number | null;
+  /** Every copy of a limited code has been claimed. */
+  soldOut?: boolean;
 }
 
 /** The fully computed money picture for a cart. Produced by cartService. */

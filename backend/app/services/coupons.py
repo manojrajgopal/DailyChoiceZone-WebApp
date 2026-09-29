@@ -7,7 +7,7 @@ is turned into money off.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from sqlalchemy import func, select
@@ -90,7 +90,9 @@ def validate_coupon(
     if status == "disabled":
         return {"valid": False, "reason": "That code is no longer available."}
     if status == "scheduled":
-        return {"valid": False, "reason": "That code is not active yet."}
+        # The shop is in India: say the day in IST, as the admin picked it.
+        starts = coupon.starts_at + timedelta(hours=5, minutes=30)
+        return {"valid": False, "reason": f"That code starts on {starts.day} {starts:%b %Y}."}
     if status == "expired":
         return {"valid": False, "reason": "That code has expired."}
     if status == "exhausted":
@@ -338,6 +340,18 @@ def coupons_for(db: Session, customer_id: Optional[str]) -> List[Coupon]:
     """The live coupons this shopper may use and that are listed in the store."""
     shown = [c for c in list_coupons(db, active_only=True) if c.show_in_store]
     return [c for c in shown if audience_refusal(db, c, customer_id) is None]
+
+
+def uses_by(db: Session, customer_id: Optional[str]) -> dict:
+    """How many times this shopper has used each coupon, by coupon id."""
+    if not customer_id:
+        return {}
+    rows = db.execute(
+        select(CouponUsage.coupon_id, func.count())
+        .where(CouponUsage.customer_id == customer_id)
+        .group_by(CouponUsage.coupon_id)
+    ).all()
+    return {coupon_id: int(count) for coupon_id, count in rows}
 
 
 def release_usage(db: Session, order_id: str) -> None:

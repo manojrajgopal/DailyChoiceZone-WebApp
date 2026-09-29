@@ -847,6 +847,14 @@ def update_status(
     if status == "cancelled":
         return_stock(db, order, note="Order cancelled")
         coupon_service.release_usage(db, order.id)
+        # An invoice nobody paid is void with its order — it used to stay
+        # "issued, payable on delivery" for an order that was never coming.
+        # A paid one stands: the refund and its credit note answer it.
+        invoice = db.execute(
+            select(Invoice).where(Invoice.order_id == order.id)
+        ).scalar_one_or_none()
+        if invoice is not None and invoice.status not in ("paid", "cancelled") and not invoice.amount_paid:
+            invoice.status = "cancelled"
 
     db.commit()
 

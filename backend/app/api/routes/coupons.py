@@ -35,6 +35,7 @@ def list_coupons(
     handed out privately to nobody.
     """
     coupons = service.coupons_for(db, customer.id if customer else None)
+    used = service.uses_by(db, customer.id if customer else None)
     return ok_list(
         [
             {
@@ -48,6 +49,10 @@ def list_coupons(
                 "audience": coupon.audience,
                 "endsAt": coupon.ends_at,
                 "perCustomerLimit": coupon.per_customer_limit,
+                # Signed in: how often this shopper has already used it.
+                "timesUsed": used.get(coupon.id, 0) if customer else None,
+                # Every copy of a limited code claimed — shown, but not usable.
+                "soldOut": coupon.usage_limit is not None and coupon.usage_count >= coupon.usage_limit,
             }
             for coupon in coupons
         ]

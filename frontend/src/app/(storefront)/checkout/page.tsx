@@ -7,6 +7,7 @@ import { CheckoutShell } from "@/components/checkout/CheckoutShell";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { useSession } from "@/hooks/useSession";
+import { getAddresses } from "@/services/accountService";
 import { useCheckoutStore } from "@/store/checkoutStore";
 
 import Link from "next/link";
@@ -33,6 +34,25 @@ export default function CheckoutContactPage() {
     setEmail((current) => current || contact.email || user?.email || "");
     setPhone((current) => current || contact.phone || user?.phone || "");
   }, [contact.email, contact.phone, user?.email, user?.phone]);
+
+  /**
+   * A returning shopper without a phone on their profile — accounts are
+   * created with just an email — has one on their saved address. Asking for
+   * it again on every order is busywork.
+   */
+  useEffect(() => {
+    if (!isSignedIn || contact.phone || user?.phone) return;
+    let active = true;
+    void getAddresses()
+      .then((addresses) => {
+        const saved = addresses.find((address) => address.isDefault) ?? addresses[0];
+        if (active && saved?.phone) setPhone((current) => current || saved.phone);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [isSignedIn, contact.phone, user?.phone]);
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();

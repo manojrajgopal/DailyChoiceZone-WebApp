@@ -111,25 +111,35 @@ export function AdminMembershipView() {
 
 function ProgrammeSettings() {
   const [draft, setDraft] = useState<MembershipProgramme | null>(null);
+  // What the store is showing now — the draft's toggle is unsaved until Save.
+  const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
     getMembershipProgramme()
-      .then((value) => active && setDraft(value))
+      .then((value) => {
+        if (!active) return;
+        setDraft(value);
+        setIsOpen(value.enabled);
+      })
       .catch(() => active && setFailed(true));
     return () => {
       active = false;
     };
   }, []);
 
-  const save = async () => {
-    if (!draft) return;
+  const save = async (next: MembershipProgramme | null = draft) => {
+    if (!next) return;
     setSaving(true);
     try {
-      setDraft(await saveMembershipProgramme(draft));
-      toast.success("Membership settings saved");
+      const saved = await saveMembershipProgramme(next);
+      setDraft(saved);
+      setIsOpen(saved.enabled);
+      toast.success(
+        saved.enabled ? "Saved — membership is open to shoppers" : "Saved — membership is closed",
+      );
     } catch (error) {
       toast.error(messageOf(error, "We couldn't save the settings. Please try again."));
     } finally {
@@ -158,6 +168,29 @@ function ProgrammeSettings() {
           }}
           className="flex flex-col gap-4"
         >
+          {isOpen === false ? (
+            // Saving plans with the programme closed looked like a bug from
+            // the storefront: the plans simply weren't there. Say so plainly.
+            <div
+              role="status"
+              className="flex flex-col gap-3 rounded-[3px] border border-[#f2d9a8] bg-[#fdf3e3] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="text-xs leading-relaxed text-[#6b4510]">
+                <span className="font-semibold">Membership is closed.</span> Shoppers can&rsquo;t see
+                your plans or join until you open it.
+              </p>
+              <AdminButton
+                type="button"
+                variant="primary"
+                loading={saving}
+                onClick={() => void save({ ...draft, enabled: true })}
+                className="shrink-0"
+              >
+                Open membership
+              </AdminButton>
+            </div>
+          ) : null}
+
           <FormGrid>
             <AdminInput
               label="Programme name"

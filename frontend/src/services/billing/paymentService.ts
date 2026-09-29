@@ -38,9 +38,25 @@ export function setPaymentMethodLabels(next: Record<string, string>): void {
   labels = next;
 }
 
-/** The method's own id if the store has no name for it — never a wrong name. */
+/**
+ * Names for the standard methods, used until the store's own have loaded —
+ * a page rendered before then showed "cod" and "netbanking".
+ */
+const DEFAULT_LABELS: Record<string, string> = {
+  upi: "UPI",
+  card: "Card",
+  "credit-card": "Credit card",
+  "debit-card": "Debit card",
+  netbanking: "Net banking",
+  wallet: "Wallet",
+  cod: "Cash on delivery",
+  qr: "UPI QR code",
+  "payment-link": "Payment link",
+};
+
+/** The store's name for a method, a standard name, or its own id — never a wrong name. */
 export function paymentMethodLabel(method: PaymentMethodKey | string): string {
-  return labels[method] ?? method;
+  return labels[method] ?? DEFAULT_LABELS[method] ?? method;
 }
 
 export function getPayments(query?: PaymentQuery): Promise<Payment[]> {

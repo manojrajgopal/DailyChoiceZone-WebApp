@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 from tests.integration.test_orders import add, place
+from tests.integration.test_payment_security import gateway  # noqa: F401 — fixture
 
 pytestmark = pytest.mark.integration
 
@@ -176,3 +177,65 @@ class TestWhoGetsWhat:
         response = client.post(f"/api/admin/billing/invoices/{invoice_id}/send", headers=admin_auth)
         assert response.status_code == 200, response.text
         assert outbox and "invoice" in outbox[0]["subject"].lower()
+
+
+class TestEveryStepSendsSomething:
+    """Each thing that happens to a shopper's order reaches their inbox."""
+
+    def test_every_stage_after_confirmation(
+        self, client, auth, admin_auth, outbox, catalogue, settings_documents
+    ):
+        connect(client, admin_auth)
+        add(client, auth, "PRD001", 1)
+        order = place(client, auth).json()["data"]["order"]
+        stages = ["processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"]
+        for stage in stages:
+            outbox.clear()
+            response = client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
+                                  json={"status": stage})
+            assert response.status_code == 200, response.text
+            assert len(outbox) == 1, f"no email for {stage}"
+            assert order["orderNumber"] in outbox[0]["subject"]
+
+    def test_asking_for_a_return(self, client, auth, admin_auth, outbox, catalogue, settings_documents):
+        from tests.integration.test_returns import ask
+
+        connect(client, admin_auth)
+        add(client, auth, "PRD001", 1)
+        order = place(client, auth).json()["data"]["order"]
+        client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
+                   json={"status": "delivered", "confirm": True})
+        outbox.clear()
+        assert ask(client, auth, order).status_code == 201
+        assert len(outbox) == 1 and "return" in outbox[0]["subject"].lower()
+
+    def test_a_payment_that_ran_out_of_time(
+        self, client, auth, admin_auth, outbox, gateway, catalogue, settings_documents, db
+    ):
+        from app.services.payment_expiry import sweep
+        from tests.integration.test_payment_security import lapse, place as place_prepaid
+
+        connect(client, admin_auth)
+        placed = place_prepaid(client, auth).json()["data"]
+        assert not outbox[1:], "an unpaid order is not confirmed"
+        outbox.clear()
+        lapse(db, placed["order"]["id"])
+        assert sweep(db) == 1
+        assert len(outbox) == 1 and "cancelled" in outbox[0]["subject"].lower()
+
+    def test_a_declined_payment_once_not_per_retry(
+        self, client, auth, admin_auth, outbox, gateway, catalogue, settings_documents
+    ):
+        from tests.integration.test_payment_security import place as place_prepaid, webhook
+
+        connect(client, admin_auth)
+        placed = place_prepaid(client, auth).json()["data"]
+        outbox.clear()
+        for attempt in (1, 2):
+            response = webhook(client, {"event": "payment.failed", "payload": {"payment": {"entity": {
+                "id": f"pay_declined{attempt}", "order_id": placed["gateway"]["orderReference"],
+                "status": "failed", "amount": placed["amount"], "method": "card",
+                "error_description": "Insufficient funds.",
+            }}}}, event_id=f"evt_declined{attempt}")
+            assert response.status_code == 200, response.text
+        assert len(outbox) == 1 and "didn't go through" in outbox[0]["subject"]

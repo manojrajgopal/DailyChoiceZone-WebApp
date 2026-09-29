@@ -26,16 +26,36 @@ export function formatNumber(value: number): string {
   return INR_COMPACT.format(Math.round(value));
 }
 
-/** `2026-04-11` becomes `11 Apr 2026`. */
+/**
+ * `2026-04-11` becomes `11 Apr 2026`.
+ *
+ * The API sends timestamps in UTC without a zone marker
+ * (`2026-09-29T18:41:58`). Those are read as UTC and shown as the day in
+ * India, where the store and its shoppers are — an order placed at 00:11 on
+ * 30 Sept IST is dated the 30th, not the 29th. A fixed zone (rather than the
+ * viewer's) also keeps the server render and the browser render identical.
+ * A bare date (`2026-10-06`) is a calendar day and stays that day.
+ */
 export function formatDate(input: string | number | Date): string {
-  const date = input instanceof Date ? input : new Date(input);
+  const date = input instanceof Date ? input : new Date(asUtc(input));
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
-    timeZone: "UTC",
+    timeZone: typeof input === "string" && DATE_ONLY.test(input) ? "UTC" : STORE_TIME_ZONE,
   }).format(date);
+}
+
+/** Where the store trades; dates and times are shown in its clock. */
+export const STORE_TIME_ZONE = "Asia/Kolkata";
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A zone-less server timestamp, marked as the UTC it is. */
+function asUtc(input: string | number): string | number {
+  if (typeof input !== "string" || DATE_ONLY.test(input)) return input;
+  return /T\d{2}:\d{2}/.test(input) && !/(Z|[+-]\d{2}:?\d{2})$/.test(input) ? `${input}Z` : input;
 }
 
 /** `438` becomes `438`; `1280` becomes `1.3k`. Keeps review counts compact. */

@@ -16,7 +16,6 @@ import { StatusBadge } from "@/components/admin/ui/StatusBadge";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
-import { formatDate } from "@/lib/utils/format";
 import {
   deleteBanner,
   emptyBanner,
@@ -26,11 +25,9 @@ import {
   saveBanner,
   toggleBanner,
 } from "@/services/admin/bannerAdminService";
+import { endOfDay, formatLocalDate, startOfDay, toDateInput } from "@/lib/utils/dateInput";
 import { toast } from "@/store/toastStore";
 
-const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
-const fromDateInput = (value: string) =>
-  value ? new Date(`${value}T00:00:00.000Z`).toISOString() : null;
 
 /**
  * Promotional banners.
@@ -185,8 +182,8 @@ export function AdminBannersView() {
                       {banner.subtitle}
                     </span>
                     <span className="mt-0.5 block text-[0.625rem] text-admin-faint">
-                      {formatDate(banner.startsAt)} →{" "}
-                      {banner.endsAt ? formatDate(banner.endsAt) : "no end"}
+                      {formatLocalDate(banner.startsAt)} →{" "}
+                      {banner.endsAt ? formatLocalDate(banner.endsAt) : "no end"}
                       {banner.buttonText ? ` · ${banner.buttonText} → ${banner.buttonLink}` : ""}
                     </span>
                   </span>
@@ -295,7 +292,7 @@ export function AdminBannersView() {
                 onChange={(event) =>
                   setEditing({
                     ...editing,
-                    startsAt: fromDateInput(event.target.value) ?? editing.startsAt,
+                    startsAt: startOfDay(event.target.value) ?? editing.startsAt,
                   })
                 }
               />
@@ -305,7 +302,7 @@ export function AdminBannersView() {
                 type="date"
                 value={toDateInput(editing.endsAt)}
                 onChange={(event) =>
-                  setEditing({ ...editing, endsAt: fromDateInput(event.target.value) })
+                  setEditing({ ...editing, endsAt: endOfDay(event.target.value) })
                 }
                 hint="Blank to run indefinitely."
               />
