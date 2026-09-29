@@ -87,6 +87,15 @@ export interface Order {
   paymentId?: string | null;
   /** Denormalised for the order list, which shows it without a second read. */
   invoiceNumber?: string | null;
+  /**
+   * Where the money stands: pending | paid | failed | cod-pending | refunded.
+   *
+   * Separate from `status`, because an order's progress and its payment are
+   * two different things: a prepaid order sits at `pending` until the gateway
+   * settles it, and a cash-on-delivery order is confirmed and shipped while
+   * still unpaid.
+   */
+  paymentStatus: string;
 }
 
 /**
@@ -106,4 +115,42 @@ export interface PlaceOrderInput {
   deliveryMethod: DeliveryMethod;
   paymentMethod: PaymentMethod;
   email: string;
+}
+
+/* --------------------------------------------------------- payment gateway */
+
+/**
+ * What the server hands the browser so it can open the payment sheet.
+ *
+ * `null` from the API means no handoff is needed: cash on delivery, or a
+ * provider that settled the payment synchronously. The caller goes straight to
+ * the confirmation page.
+ *
+ * Everything in here is publishable or already the shopper's own. There is no
+ * secret and no signature — the only signature in the flow is the one the
+ * gateway produces and the server checks. See `gateway_handoff` on the API
+ * side.
+ */
+export interface GatewayHandoff {
+  provider: "razorpay";
+  /** The publishable key id. */
+  keyId: string;
+  /** The gateway's own order reference. */
+  orderReference: string;
+  /** Our payment record, so the verify call knows what it is settling. */
+  paymentId: string;
+  /** Minor units. What the sheet displays; the gateway charges its own figure. */
+  amount: number;
+  currency: string;
+  name: string;
+  email: string;
+  phone: string;
+  description: string;
+  /**
+   * The store's name, as the payment sheet shows it.
+   *
+   * From the billing document, so it reads as the store the shopper is buying
+   * from rather than as whatever the gateway account is called.
+   */
+  merchantName: string;
 }

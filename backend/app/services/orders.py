@@ -251,7 +251,11 @@ def place_order(
             customer_name=customer.full_name,
             customer_email=email or customer.email,
             placed_at=now,
-            status="confirmed",
+            # Confirmed further down, once the payment outcome is known. A
+            # prepaid order stays pending until the gateway settles it —
+            # confirming first would mean an abandoned Checkout left a
+            # confirmed order nobody ever paid for.
+            status="pending",
             payment_status="pending",
             payment_method=payment_method,
             delivery_method=delivery_method,
@@ -295,9 +299,6 @@ def place_order(
 
         order.events.append(
             OrderEvent(status="pending", note="Order placed.", actor="customer", occurred_at=now)
-        )
-        order.events.append(
-            OrderEvent(status="confirmed", note="", actor="system", occurred_at=now)
         )
 
         db.add(order)
@@ -362,6 +363,7 @@ def place_order(
                 amount=breakdown["grandTotal"],
                 currency=breakdown["currency"],
                 method=payment_method,
+                notes={"orderNumber": order.order_number},
             )
         )
 
@@ -417,6 +419,7 @@ def place_order(
         # Close the loop so either record reaches the other.
         invoice.payment_id = payment.id
         invoice.payment_status = payment.status
+
         if payment.status == "paid":
             invoice.status = "paid"
             invoice.amount_paid = breakdown["grandTotal"]
@@ -425,6 +428,33 @@ def place_order(
             order.payment_status = "cod-pending"
         elif payment.status == "failed":
             order.payment_status = "failed"
+
+        # Confirm the order, unless it is waiting for a gateway.
+        #
+        # Cash on delivery confirms immediately — the arrangement is with the
+        # courier, and there is nothing to wait for. So does a provider that
+        # settles synchronously, which is what the mock does.
+        #
+        # A prepaid order with an unsettled payment stays `pending`.
+        # `settlement.apply_result` confirms it when the money arrives, from
+        # either the browser's verify call or the webhook. This is the whole
+        # reason a real gateway needs a two-step flow: at this point in the
+        # request the shopper has not been shown a payment screen yet.
+        awaiting_gateway = payment_method != "cod" and payment.status not in (
+            "paid",
+            "authorized",
+        )
+
+        if not awaiting_gateway:
+            order.status = "confirmed"
+            order.events.append(
+                OrderEvent(
+                    status="confirmed",
+                    note="Payment received." if payment.status == "paid" else "",
+                    actor="system",
+                    occurred_at=now,
+                )
+            )
 
         # --- coupon ------------------------------------------------------
         if coupon:

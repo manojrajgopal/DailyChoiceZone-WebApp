@@ -50,6 +50,14 @@ class PaymentResult:
     instrument_hint: str = ""
     provider_reference: Optional[str] = None
     failure_reason: Optional[str] = None
+    # What the gateway says was paid, in minor units, when it says anything.
+    #
+    # Checked against the amount owed before a payment is settled. A signature
+    # that verifies proves the payment belongs to the order; it says nothing
+    # about how much of it was paid, and a gateway order can be paid partially
+    # or, if it was opened with the wrong figure, for the wrong amount entirely.
+    # `None` means the provider did not report one, and the check is skipped.
+    amount: Optional[int] = None
 
 
 @dataclass

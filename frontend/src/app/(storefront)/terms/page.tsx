@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ContentPage } from "@/components/layout/ContentPage";
+import { getPaymentConfig } from "@/services/payments/paymentGatewayService";
 import { getSiteConfig } from "@/services/siteService";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TermsPage() {
-  const config = await getSiteConfig();
+  const [config, payments] = await Promise.all([getSiteConfig(), getPaymentConfig()]);
 
   return (
     <ContentPage
@@ -20,14 +21,31 @@ export default async function TermsPage() {
       intro="The terms that apply when you buy from Daily Choice Zone."
       updated="21 September 2026"
     >
-      <section>
-        <h2>Please note</h2>
-        <p>
-          This storefront is a demonstration. It has no payment gateway connected, no orders are
-          fulfilled and no money changes hands. The terms below describe how the live store will
-          operate, and are not a binding contract in its current state.
-        </p>
-      </section>
+      {/*
+        Whether real money is taken, said plainly and read from the live
+        configuration rather than written here. The sentence has to follow the
+        gateway keys: a terms page that still says "no money changes hands"
+        after the live keys go in is the worst kind of stale.
+      */}
+      {payments.mode === "live" ? null : (
+        <section>
+          <h2>Please note</h2>
+          {payments.mode === "test" ? (
+            <p>
+              This storefront is running its payment gateway in <strong>test mode</strong>. Card,
+              UPI and bank payments are processed by Razorpay against test credentials, so no real
+              money changes hands and no order is fulfilled. The terms below describe how the live
+              store operates.
+            </p>
+          ) : (
+            <p>
+              This storefront has no payment gateway connected, so no orders are fulfilled and no
+              money changes hands. The terms below describe how the live store will operate, and
+              are not a binding contract in its current state.
+            </p>
+          )}
+        </section>
+      )}
 
       <section>
         <h2>1. Who we are</h2>

@@ -116,7 +116,7 @@ export function CheckoutShell({
 
           <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-ink-400">
             <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
-            This is a demo checkout — no payment is taken
+            Secure checkout · your details are encrypted
           </p>
         </div>
       </div>

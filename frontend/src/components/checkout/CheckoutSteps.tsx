@@ -6,12 +6,19 @@ import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 
-/** The four checkout steps, in order. */
+/**
+ * The four checkout steps, in order.
+ *
+ * Payment is last, and deliberately after review. Paying is the step nobody
+ * wants to take twice, so it comes once everything else is settled — and it is
+ * also where the order is created, because a gateway needs an order to charge
+ * against. See the payment page.
+ */
 export const CHECKOUT_STEPS = [
   { href: "/checkout", label: "Contact" },
   { href: "/checkout/address", label: "Delivery" },
-  { href: "/checkout/payment", label: "Payment" },
   { href: "/checkout/review", label: "Review" },
+  { href: "/checkout/payment", label: "Payment" },
 ] as const;
 
 /**

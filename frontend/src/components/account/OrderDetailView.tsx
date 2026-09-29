@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Check, FileText } from "lucide-react";
+import { AlertCircle, Check, FileText } from "lucide-react";
 
 import type { Order } from "@/types";
 
@@ -13,6 +13,7 @@ import {
   OrderStatusBadge,
   statusLabel,
 } from "@/components/account/OrderStatusBadge";
+import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/common/States";
 import { ProductImage } from "@/components/common/ProductImage";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -36,6 +37,24 @@ export function OrderDetailView() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+
+  /**
+   * Still owed for.
+   *
+   * The durable place to finish paying. The confirmation page offers this too,
+   * but its URL is transient — this is where somebody comes back to two days
+   * later, and an order they can see but cannot pay for is a dead end.
+   *
+   * Cash on delivery is excluded: it is unpaid by arrangement, and there is
+   * nothing to pay online.
+   */
+  const awaitingPayment =
+    order !== null &&
+    Boolean(order.paymentId) &&
+    order.paymentStatus !== "paid" &&
+    order.paymentStatus !== "cod-pending" &&
+    order.paymentStatus !== "refunded";
+
   useEffect(() => {
     if (!isSignedIn || !orderNumber) return;
     let active = true;
@@ -55,6 +74,17 @@ export function OrderDetailView() {
       active = false;
     };
   }, [orderNumber, isSignedIn]);
+
+  /**
+   * Back to the payment step, rather than a payment window.
+   *
+   * The same page the checkout uses, so there is one payment interface in the
+   * whole application. It reopens the same gateway order, so returning here
+   * days later cannot produce a second charge.
+   */
+  const payHref = order?.paymentId
+    ? `/checkout/payment?payment=${encodeURIComponent(order.paymentId)}`
+    : "";
 
   return (
     <AccountShell
@@ -80,11 +110,36 @@ export function OrderDetailView() {
           {/* ------------------------------------------------------ header */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-ink-500">
-              Placed {formatDate(order.placedAt)} &middot; Paid by{" "}
+              Placed {formatDate(order.placedAt)} &middot;{" "}
+              {awaitingPayment ? "Awaiting" : "Paid by"}{" "}
               {order.paymentMethod.name.toLowerCase()}
             </p>
             <OrderStatusBadge status={order.status} />
           </div>
+
+          {/* --------------------------------------------- payment still due */}
+          {awaitingPayment ? (
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-copper-200 bg-copper-50 p-5">
+              <div className="flex items-start gap-3">
+                <AlertCircle
+                  className="mt-0.5 h-4 w-4 shrink-0 text-copper-700"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+                <div className="text-xs leading-relaxed text-ink-700">
+                  <p className="text-sm font-medium text-ink">Payment is still due</p>
+                  <p className="mt-1">
+                    Nothing has been charged and the items are held for you. It is the same
+                    payment as before &mdash; you will not be charged twice.
+                  </p>
+                </div>
+              </div>
+
+              <ButtonLink href={payHref}>
+                Pay {formatPrice(order.totals.total)}
+              </ButtonLink>
+            </div>
+          ) : null}
 
           {/* ----------------------------------------------------- tracker */}
           <section
@@ -258,8 +313,9 @@ export function OrderDetailView() {
               </div>
 
               <p className="mt-3 text-xs text-ink-400">
-                Paid by {order.paymentMethod.name.toLowerCase()}. This is a sample order — no
-                payment was taken.
+                {awaitingPayment
+                  ? `Awaiting payment by ${order.paymentMethod.name.toLowerCase()}.`
+                  : `Paid by ${order.paymentMethod.name.toLowerCase()}.`}
               </p>
 
               {/*

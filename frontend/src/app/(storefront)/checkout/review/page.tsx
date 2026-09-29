@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Loader2, Pencil } from "lucide-react";
+import { useEffect } from "react";
+import { Pencil } from "lucide-react";
 
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
 import { ProductImage } from "@/components/common/ProductImage";
@@ -11,102 +11,47 @@ import { Button } from "@/components/ui/Button";
 import { useCart } from "@/hooks/useCart";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
 import { formatPrice } from "@/lib/utils/format";
-import {
-  getDeliveryMethod,
-  getPaymentMethod,
-  placeOrder,
-} from "@/services/orderService";
+import { getDeliveryMethod } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
-import { toast } from "@/store/toastStore";
 
 /** Step 4 — confirm everything, then place the order. */
 export default function CheckoutReviewPage() {
   const router = useRouter();
   const checkoutHydrated = useCheckoutHydrated();
-  const { lines, totals, clear } = useCart();
+  const { lines, totals } = useCart();
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
   const billingSame = useCheckoutStore((state) => state.billingSameAsShipping);
   const storedBilling = useCheckoutStore((state) => state.billingAddress);
   const deliveryMethodId = useCheckoutStore((state) => state.deliveryMethodId);
-  const paymentMethodId = useCheckoutStore((state) => state.paymentMethodId);
-  const resetCheckout = useCheckoutStore((state) => state.reset);
 
-  const [isPlacing, setIsPlacing] = useState(false);
+
 
   /**
    * Prerequisite guard for deep links.
    *
-   * Skipped in two cases: before the store has rehydrated (or a refresh would
-   * discard a valid checkout), and once a submit is in flight (because
-   * clearing the store is part of placing the order, and must not be mistaken
-   * for someone arriving here with nothing filled in).
+   * Waits for rehydration, or a refresh would discard a valid checkout. This
+   * step no longer places the order — the payment step does — so there is no
+   * in-flight submit to make an exception for.
    */
   useEffect(() => {
-    if (!checkoutHydrated || isPlacing) return;
+    if (!checkoutHydrated) return;
     if (!contact.email) router.replace("/checkout");
     else if (!address) router.replace("/checkout/address");
-  }, [checkoutHydrated, contact.email, address, isPlacing, router]);
+  }, [checkoutHydrated, contact.email, address, router]);
 
   const deliveryMethod = getDeliveryMethod(deliveryMethodId);
-  const paymentMethod = getPaymentMethod(paymentMethodId);
 
-  const onPlaceOrder = async () => {
-    if (!address || lines.length === 0) return;
+  const onContinue = () => router.push("/checkout/payment");
 
-    setIsPlacing(true);
-    try {
-      /**
-       * One call.
-       *
-       * The server creates the order, takes the stock, records the payment and
-       * issues the invoice inside a single transaction — which is precisely
-       * what this page could not do when it was orchestrating four steps in a
-       * browser that might be closed between any two of them.
-       */
-      const order = await placeOrder({
-        lines,
-        totals,
-        address: { ...address, id: "" },
-        billingAddress: billingSame ? null : storedBilling,
-        deliveryMethod,
-        paymentMethod,
-        email: contact.email,
-      });
-
-      // The address is saved by the same request, so there is nothing to do
-      // here but clear what the checkout was holding.
-      clear();
-      resetCheckout();
-
-      router.push(
-        `/order-success?order=${encodeURIComponent(order.orderNumber)}` +
-          (order.invoiceId ? `&invoice=${encodeURIComponent(order.invoiceId)}` : ""),
-      );
-    } catch (error) {
-      // The API's message says what actually went wrong — an item that sold
-      // out, a coupon that stopped applying — which is far more use than
-      // "please try again".
-      toast.error(
-        error instanceof Error && error.message
-          ? error.message
-          : "We could not place your order. Please try again.",
-      );
-      setIsPlacing(false);
-    }
-  };
-
-  // Nothing to review yet, or the store has just been cleared post-submit.
+  // Nothing to review yet.
   if (!address) return null;
 
   return (
     <CheckoutShell
       title="Review your order"
       description="One last look before it goes to our warehouse."
-      // Placing the order empties the bag on purpose; without this the
-      // empty-bag guard would redirect away from the confirmation page.
-      suppressEmptyRedirect={isPlacing}
       // About to commit: show how the tax splits.
       detailedTax
     >
@@ -154,10 +99,6 @@ export default function CheckoutReviewPage() {
           </p>
         </ReviewCard>
 
-        <ReviewCard title="Payment method" editHref="/checkout/payment">
-          <p className="font-medium text-ink">{paymentMethod.name}</p>
-          <p className="mt-0.5">{paymentMethod.description}</p>
-        </ReviewCard>
 
         {/* ------------------------------------------------------ the items */}
         <div className="rounded-card border border-ink-200 bg-shell p-4">
@@ -197,25 +138,12 @@ export default function CheckoutReviewPage() {
           </ul>
         </div>
 
-        <Button
-          size="lg"
-          onClick={onPlaceOrder}
-          disabled={isPlacing || lines.length === 0}
-          className="mt-2"
-          fullWidth
-        >
-          {isPlacing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden="true" />
-              Placing order…
-            </>
-          ) : (
-            <>Place order · {formatPrice(totals.total)}</>
-          )}
+        <Button size="lg" onClick={onContinue} disabled={lines.length === 0} fullWidth>
+          Continue to payment · {formatPrice(totals.total)}
         </Button>
 
         <p className="text-center text-xs leading-relaxed text-ink-400">
-          By placing this order you agree to our{" "}
+          By continuing you agree to our{" "}
           <Link href="/terms" className="underline underline-offset-2 hover:text-ink">
             terms
           </Link>{" "}
@@ -223,8 +151,9 @@ export default function CheckoutReviewPage() {
           <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">
             privacy policy
           </Link>
-          . No payment will be taken.
+          . Your order is placed on the next step, when you pay.
         </p>
+
       </div>
     </CheckoutShell>
   );

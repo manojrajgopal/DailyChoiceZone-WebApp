@@ -15,6 +15,17 @@
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api").replace(/\/$/, "");
 
+/**
+ * An API path as a URL a browser can load directly.
+ *
+ * For the handful of things that are not `fetch` calls — an `<img src>`, a
+ * download link — which cannot go through this module's request helpers and
+ * still need to point at the API rather than at the site.
+ */
+export function apiUrl(path: string): string {
+  return `${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 /** Where the token lives. Not business data — see `docs` in the README. */
 const TOKEN_KEYS = {
   customer: "dcz:auth-token",

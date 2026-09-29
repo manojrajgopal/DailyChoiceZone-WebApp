@@ -1,94 +1,418 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { Info } from "lucide-react";
-
-import type { PaymentMethodId } from "@/types";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
 
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
-import { Button } from "@/components/ui/Button";
-import { Radio } from "@/components/ui/Field";
-import { useSiteContent } from "@/hooks/useSiteContent";
+import {
+  PaymentMethods,
+  methodFor,
+  type Choice,
+} from "@/components/checkout/PaymentMethods";
+
+import type { GatewayHandoff } from "@/types";
+import { useCart } from "@/hooks/useCart";
+import { useGatewayPayment } from "@/hooks/useGatewayPayment";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
+import { formatPrice } from "@/lib/utils/format";
+import { getPaymentSession } from "@/services/payments/paymentGatewayService";
+import { placeOrder } from "@/services/orderService";
+import { getDeliveryMethod, getPaymentMethod } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
+import { toast } from "@/store/toastStore";
 
 /**
- * Step 3 — payment method.
+ * Step 4 — payment. The last step, and the only one that takes money.
  *
- * Deliberately collects no payment credentials. There is no gateway behind
- * this, so asking for a card number would mean putting real card data into a
- * demo with nowhere safe to send it. The shopper picks a *method*; the real
- * integration would hand off to the provider's own hosted fields from here,
- * which is also how it should work in production.
+ * ## Why this is last, and why it places the order
+ *
+ * It used to sit before the review step, which meant choosing a *method* early
+ * and then confirming an order that had already been priced around it. Paying
+ * is the last thing anybody wants to do, so it is the last step — and because
+ * a gateway needs an order to charge against, this page is where the order is
+ * created: picking a method and pressing pay does both, in that order, in one
+ * action.
+ *
+ * The consequence to be careful about is that leaving this page after pressing
+ * pay leaves a real, unpaid order. That is handled rather than avoided: the
+ * confirmation page and the account order page both offer to finish paying,
+ * and both reopen the same gateway order so nobody is charged twice.
+ *
+ * ## Why the interface is ours
+ *
+ * Every panel here is this store's own markup. Razorpay's modal is not opened
+ * for UPI, net banking or wallets — `useGatewayPayment` drives their Custom
+ * Checkout, which renders nothing and only exposes the rails. What the shopper
+ * sees is this site until their own bank or their own UPI app asks them to
+ * authorise, which is the one step that cannot happen anywhere else.
+ *
+ * Cards are the exception and say so on the panel: a card number entered into
+ * this page would put PANs in this application's JavaScript, and that is a
+ * PCI-DSS decision rather than a design one.
  */
-export default function CheckoutPaymentPage() {
-  const router = useRouter();
-  const checkoutHydrated = useCheckoutHydrated();
+/**
+ * The element the processor draws its card field into.
+ *
+ * A constant because two places need to agree on it: this page renders the
+ * container, and the card choice carries the selector down to Checkout.
+ */
+const CARD_CONTAINER_ID = "card-field";
 
-  // Only the methods the store has switched on. An option somebody can pick
-  // and the server then refuses is worse than one that is not offered.
-  const content = useSiteContent();
-  const paymentMethods = (content?.paymentMethods ?? []).filter((method) =>
-    (content?.enabledPaymentMethods ?? []).includes(method.id),
+export default function CheckoutPaymentPage() {
+  return (
+    <Suspense fallback={null}>
+      <PaymentStep />
+    </Suspense>
   );
+}
+
+function PaymentStep() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  /**
+   * Paying for an order that already exists, rather than placing one.
+   *
+   * The confirmation page and the account order page send people here with
+   * `?payment=…` when a payment was left unfinished. They used to open
+   * Razorpay's own modal instead, which meant one checkout with two different
+   * interfaces — the custom panels on the way through, and a floating window
+   * with somebody else's branding on the way back. This is the same page
+   * either way; only where the gateway order comes from differs.
+   */
+  const existingPaymentId = searchParams?.get("payment") ?? "";
+  const settling = Boolean(existingPaymentId);
+  const checkoutHydrated = useCheckoutHydrated();
+  const { lines, totals, clear } = useCart();
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
-  const paymentMethodId = useCheckoutStore((state) => state.paymentMethodId);
+  const billingSame = useCheckoutStore((state) => state.billingSameAsShipping);
+  const storedBilling = useCheckoutStore((state) => state.billingAddress);
+  const deliveryMethodId = useCheckoutStore((state) => state.deliveryMethodId);
   const setPaymentMethod = useCheckoutStore((state) => state.setPaymentMethod);
+  const resetCheckout = useCheckoutStore((state) => state.reset);
 
-  // Earlier steps are prerequisites; send deep-links back to the first gap.
-  // Waits for rehydration, or a refresh would discard a valid checkout.
+  const [isPlacing, setIsPlacing] = useState(false);
+
+  /**
+   * Latched once the order exists, and never cleared.
+   *
+   * Placing an order empties the bag on purpose, and the shell's empty-bag
+   * guard would then redirect to /cart — racing the navigation to the
+   * confirmation page and usually winning. `isPlacing` is not enough on its
+   * own, because it goes false the moment the request returns and the guard
+   * fires in the gap before the push lands.
+   */
+  const [placed, setPlaced] = useState(false);
+
+  /**
+   * The amount being collected, captured before the bag is emptied.
+   *
+   * `totals.total` comes from the cart, and placing the order empties it — so
+   * by the time the QR code or the waiting panel is on screen the cart says
+   * zero. The figure shown has to be the one the order was placed for.
+   */
+  const [amountDue, setAmountDue] = useState<number | null>(null);
+
+  /** The gateway order for an existing payment, when settling one. */
+  const [existing, setExisting] = useState<GatewayHandoff | null>(null);
+  const [orderNumber, setOrderNumber] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+
   useEffect(() => {
-    if (!checkoutHydrated) return;
+    if (!settling) return;
+
+    let active = true;
+    void getPaymentSession(existingPaymentId)
+      .then((session) => {
+        if (!active) return;
+
+        setOrderNumber(session.orderNumber);
+
+        if (!session.gateway) {
+          // Settled while they were away — very likely the webhook. Nothing
+          // to pay, so show them the order rather than a payment screen.
+          router.replace(
+            session.orderNumber
+              ? `/order-success?order=${encodeURIComponent(session.orderNumber)}`
+              : "/account/orders",
+          );
+          return;
+        }
+
+        setExisting(session.gateway);
+        // The handoff carries minor units; the display works in major.
+        setAmountDue(session.gateway.amount / 100);
+      })
+      .catch(() => {
+        if (active) setLoadFailed(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [settling, existingPaymentId, router]);
+
+  const { pay, stage, qr, message, isPaying } = useGatewayPayment();
+
+  const busy = isPlacing || isPaying;
+
+  /**
+   * Earlier steps are prerequisites; send deep links back to the first gap.
+   *
+   * Skipped once an order is in flight, because emptying the bag is part of
+   * placing one and must not read as somebody arriving with nothing filled in.
+   */
+  useEffect(() => {
+    // Settling an existing payment needs no cart and no checkout state — the
+    // order it belongs to was placed long before this visit.
+    if (settling || !checkoutHydrated || busy || placed) return;
     if (!contact.email) router.replace("/checkout");
     else if (!address) router.replace("/checkout/address");
-  }, [checkoutHydrated, contact.email, address, router]);
+  }, [settling, checkoutHydrated, busy, placed, contact.email, address, router]);
+
+  const onPay = async (choice: Choice) => {
+    /**
+     * Settling an existing payment: the gateway order is already open, so
+     * there is nothing to place and nothing to clear. Straight to the rails.
+     */
+    if (settling) {
+      if (!existing) return;
+
+      const outcome = await pay(existing, choice);
+
+      if (!orderNumber) {
+        router.push("/account/orders");
+        return;
+      }
+
+      const confirmation = `/order-success?order=${encodeURIComponent(orderNumber)}`;
+      router.push(
+        outcome === "paid"
+          ? confirmation
+          : `${confirmation}&payment=${encodeURIComponent(existing.paymentId)}`,
+      );
+      return;
+    }
+
+    if (!address || lines.length === 0) return;
+
+    const method = methodFor(choice);
+    setPaymentMethod(method);
+    setIsPlacing(true);
+
+    let placed;
+    try {
+      /**
+       * The order, then the money — in one press, in that order.
+       *
+       * The server prices the cart it holds and creates the order, the
+       * invoice and the payment in a single transaction. Nothing this page
+       * says about money is read; `choice` contributes a *method*, not a
+       * total.
+       */
+      placed = await placeOrder({
+        lines,
+        totals,
+        address: { ...address, id: "" },
+        billingAddress: billingSame ? null : storedBilling,
+        deliveryMethod: getDeliveryMethod(deliveryMethodId),
+        paymentMethod: getPaymentMethod(method),
+        email: contact.email,
+      });
+    } catch (error) {
+      setIsPlacing(false);
+      // The API's message names what actually went wrong — an item that sold
+      // out, a coupon that stopped applying.
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "We could not place your order. Please try again.",
+      );
+      return;
+    }
+
+    const confirmation =
+      `/order-success?order=${encodeURIComponent(placed.order.orderNumber)}` +
+      (placed.invoiceId ? `&invoice=${encodeURIComponent(placed.invoiceId)}` : "");
+
+    /**
+     * The bag is emptied before the payment is attempted, not after.
+     *
+     * The order already owns these items — the stock is committed and the
+     * invoice is issued. Leaving them in the bag would let somebody abandon
+     * the payment and buy the same things twice, and an unpaid order is
+     * recoverable from the confirmation page either way.
+     */
+    setPlaced(true);
+    setAmountDue(totals.total);
+    clear();
+    resetCheckout();
+    setIsPlacing(false);
+
+    // Nothing to pay: cash on delivery, or a provider that settled it.
+    if (!placed.gateway) {
+      router.push(confirmation);
+      return;
+    }
+
+    const outcome = await pay(placed.gateway, choice);
+
+    router.push(
+      outcome === "paid"
+        ? confirmation
+        : `${confirmation}&payment=${encodeURIComponent(placed.paymentId)}`,
+    );
+  };
 
   return (
     <CheckoutShell
-      title="Payment method"
-      description="Choose how you would like to pay. You will confirm everything on the next step."
+      title={settling ? "Finish paying" : "Payment"}
+      description={
+        settling
+          ? `Nothing has been charged yet${orderNumber ? ` for order ${orderNumber}` : ""}. Choose how you would like to pay.`
+          : "Choose how you would like to pay. Your order is placed and paid in one step."
+      }
+      // Settling an existing payment happens with an empty bag by definition,
+      // so the empty-bag guard must never fire in that mode.
+      suppressEmptyRedirect={settling || busy || placed}
+      detailedTax
     >
-      <fieldset className="max-w-2xl">
-        <legend className="sr-only">Payment method</legend>
 
-        <div className="flex flex-col gap-2.5">
-          {paymentMethods.map((method) => (
-            <Radio
-              key={method.id}
-              name="payment"
-              value={method.id}
-              checked={paymentMethodId === method.id}
-              onChange={() => setPaymentMethod(method.id as PaymentMethodId)}
-              label={method.name}
-              description={method.description}
-            />
-          ))}
+      {loadFailed ? (
+        <p className="max-w-2xl rounded-card border border-clay-200 bg-clay-50 p-4 text-sm text-ink-700">
+          We could not reopen that payment. Please check it from{" "}
+          <a href="/account/orders" className="underline underline-offset-2">
+            your orders
+          </a>
+          .
+        </p>
+      ) : null}
+      {/*
+        The card field is drawn into this element by the processor, which is
+        what keeps that step inside the page. It is always mounted, because
+        Checkout needs the container to exist before it is told to use it —
+        and it is only visible while a card is being entered.
+      */}
+      <div
+        id={CARD_CONTAINER_ID}
+        aria-live="polite"
+        className={stage === "card" ? "max-w-2xl" : "hidden"}
+      />
+
+      {stage === "card" ? (
+        <p className="mt-4 max-w-2xl text-xs leading-relaxed text-ink-500">
+          Your card details are entered on a secure field provided by our payment
+          processor. This site never sees, handles or stores a card number.
+        </p>
+      ) : null}
+
+      {/* ------------------------------------------------------ scan, or wait */}
+      {stage === "qr" || stage === "waiting" || stage === "confirming" ? (
+        <div className="max-w-2xl rounded-card border border-ink-200 bg-shell p-6 text-center">
+          {qr ? (
+            <>
+              <p className="text-sm font-medium text-ink">
+                Scan to pay {formatPrice(amountDue ?? totals.total)}
+              </p>
+              <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-ink-500">
+                Open any UPI app on your phone, scan this code, and approve the payment.
+                This page will move on by itself.
+              </p>
+
+              {/*
+                Rendered at its natural size, and never scaled down.
+
+                A QR is a grid of hard edges. Downscaling it — even with
+                `image-rendering: pixelated` — lands module boundaries between
+                device pixels at any non-integer ratio, and a decoder that
+                managed the full-size image can fail on the shrunk one. The
+                served code is around 440px square, which fits this panel, so
+                the honest thing is to show it as it is and let it shrink only
+                when the viewport genuinely cannot hold it.
+
+                eslint-disable-next-line @next/next/no-img-element -- the
+                optimiser must not resample or cache a single-use payment
+                artefact, and this is already a ~2 KB bitonal PNG.
+              */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qr}
+                alt={`QR code to pay ${formatPrice(amountDue ?? totals.total)}`}
+                decoding="sync"
+                className="mx-auto mt-5 block h-auto w-auto max-w-full rounded-card border border-ink-200 bg-white [image-rendering:pixelated]"
+              />
+
+              <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-ink-400">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} aria-hidden="true" />
+                Waiting for your payment
+              </p>
+            </>
+          ) : (
+            <>
+              <Loader2
+                className="mx-auto h-6 w-6 animate-spin text-copper-600"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              />
+              <p className="mt-4 text-sm font-medium text-ink">
+                {stage === "confirming" ? "Confirming your payment…" : "Waiting for you"}
+              </p>
+            </>
+          )}
+
+          <p className="mt-4 text-xs leading-relaxed text-ink-500" role="status">
+            {message}
+          </p>
+
+          {stage === "confirming" ? (
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-400">
+              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+              Do not close this page
+            </p>
+          ) : null}
         </div>
-      </fieldset>
+      ) : null}
 
-      <div className="mt-6 flex max-w-2xl items-start gap-3 rounded-card border border-copper-200 bg-copper-50 p-4">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-copper-700" strokeWidth={1.75} aria-hidden="true" />
-        <div className="text-xs leading-relaxed text-ink-700">
-          <p className="font-medium text-ink">No payment will be taken</p>
-          <p className="mt-1">
-            This storefront has no payment gateway connected, so no card, UPI or bank details are
-            requested, stored or transmitted. Placing the order creates a sample order record in
-            this browser only.
+      {/* -------------------------------------------------------- the choices */}
+      {stage === "choosing" && settling && !existing && !loadFailed ? (
+        <div className="max-w-2xl" aria-busy="true">
+          <div className="h-16 animate-pulse rounded-card bg-ink-100" />
+        </div>
+      ) : null}
+
+      {stage === "choosing" && (!settling || existing) ? (
+        <div className="max-w-2xl">
+          <PaymentMethods
+            onPay={onPay}
+            isPaying={busy}
+            total={formatPrice(totals.total)}
+            cardContainer={`#${CARD_CONTAINER_ID}`}
+          />
+
+          <div className="mt-6 flex items-start gap-3 rounded-card border border-sage-200 bg-sage-50 p-4">
+            <ShieldCheck
+              className="mt-0.5 h-4 w-4 shrink-0 text-sage-600"
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+            <p className="text-xs leading-relaxed text-ink-700">
+              <span className="font-medium text-ink">You are paying on this page.</span>{" "}
+              Your bank or UPI app asks you to authorise — that is the only step that
+              happens anywhere else, and no card number, UPI PIN or bank password is ever
+              sent to, seen by or stored on this site.
+            </p>
+          </div>
+
+          <p className="mt-4 flex items-center gap-1.5 text-xs text-ink-400">
+            <Lock className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
+            Encrypted end to end
           </p>
         </div>
-      </div>
+      ) : null}
 
-      <Button
-        size="lg"
-        className="mt-8 sm:w-auto"
-        fullWidth
-        onClick={() => router.push("/checkout/review")}
-      >
-        Review order
-      </Button>
     </CheckoutShell>
   );
 }

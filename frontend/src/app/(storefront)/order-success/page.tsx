@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { Check, FileText, Package, Truck } from "lucide-react";
+import { AlertCircle, Check, FileText, Package, Truck } from "lucide-react";
 
 import type { Invoice, Order } from "@/types";
 
@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/common/States";
 import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
+import { cn } from "@/lib/utils/cn";
 import { formatMoney } from "@/lib/money";
 import { getMyInvoice } from "@/services/billing/invoiceService";
 import { getOrder } from "@/services/orderService";
@@ -30,9 +31,19 @@ function OrderSuccess() {
 
   const invoiceId = searchParams?.get("invoice") ?? "";
 
+  /**
+   * Present only when the shopper arrived here without having paid.
+   *
+   * The review step adds it after a dismissed or failed payment, because the
+   * order exists either way and this is the only page that can offer to
+   * finish paying for it. An order that was paid has no `payment` in its URL.
+   */
+  const pendingPaymentId = searchParams?.get("payment") ?? "";
+
   const [order, setOrder] = useState<Order | null>(null);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
 
   useEffect(() => {
     if (!orderNumber) {
@@ -79,6 +90,16 @@ function OrderSuccess() {
     };
   }, [invoiceId]);
 
+  /**
+   * Back to the payment step, rather than a payment window.
+   *
+   * This used to open Razorpay's own modal, which meant one checkout with two
+   * interfaces: the store's own panels on the way through, and a floating
+   * window with somebody else's branding on the way back. `/checkout/payment`
+   * handles both, and reopens the same gateway order so nobody pays twice.
+   */
+  const payHref = `/checkout/payment?payment=${encodeURIComponent(pendingPaymentId)}`;
+
   if (isLoading) {
     return (
       <div className="page-shell max-w-2xl py-16">
@@ -100,25 +121,73 @@ function OrderSuccess() {
     );
   }
 
+  /**
+   * Whether there is still money owed.
+   *
+   * The URL says the shopper *left* without paying; the order says whether
+   * that is still true. Trusting only the URL would keep offering to pay for
+   * an order the webhook settled a second later.
+   */
+  const awaitingPayment =
+    Boolean(pendingPaymentId) &&
+    order.paymentStatus !== "paid" &&
+    order.paymentStatus !== "cod-pending";
+
   return (
     <div className="page-shell py-12 sm:py-16">
       <div className="mx-auto max-w-2xl">
         {/* -------------------------------------------------- confirmation */}
         <div className="text-center">
-          <span className="inline-flex h-14 w-14 items-center justify-center rounded-pill bg-sage-100">
-            <Check className="h-6 w-6 text-sage-600" strokeWidth={2} aria-hidden="true" />
+          <span
+            className={cn(
+              "inline-flex h-14 w-14 items-center justify-center rounded-pill",
+              awaitingPayment ? "bg-copper-100" : "bg-sage-100",
+            )}
+          >
+            {awaitingPayment ? (
+              <AlertCircle className="h-6 w-6 text-copper-700" strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <Check className="h-6 w-6 text-sage-600" strokeWidth={2} aria-hidden="true" />
+            )}
           </span>
 
           <h1 className="mt-6 font-display text-2xl leading-tight text-ink sm:text-3xl">
-            Thank you — your order is confirmed
+            {awaitingPayment
+              ? "Your order is saved — payment is still due"
+              : "Thank you — your order is confirmed"}
           </h1>
 
           <p className="mt-3 text-sm leading-relaxed text-ink-500">
-            We have emailed a confirmation to{" "}
-            <span className="text-ink">{order.address.fullName}</span>. Your order number is{" "}
-            <span className="font-medium text-ink">{order.orderNumber}</span>.
+            {awaitingPayment ? (
+              <>
+                Nothing has been charged. We have held order{" "}
+                <span className="font-medium text-ink">{order.orderNumber}</span> and the items in
+                it, so you can pay whenever you are ready.
+              </>
+            ) : (
+              <>
+                We have emailed a confirmation to{" "}
+                <span className="text-ink">{order.address.fullName}</span>. Your order number is{" "}
+                <span className="font-medium text-ink">{order.orderNumber}</span>.
+              </>
+            )}
           </p>
         </div>
+
+        {/* ------------------------------------------------- pay what is due */}
+        {awaitingPayment ? (
+          <div className="mt-8 rounded-card border border-copper-200 bg-copper-50 p-5">
+            <p className="text-sm font-medium text-ink">Finish paying for this order</p>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-700">
+              You will go back to the payment step. It is the same payment — you will not be
+              charged twice.
+            </p>
+
+            <ButtonLink href={payHref} size="lg" className="mt-4">
+              Pay {formatPrice(order.totals.total)}
+            </ButtonLink>
+          </div>
+        ) : null}
 
         {/* ----------------------------------------------------- key facts */}
         <dl className="mt-10 grid gap-4 sm:grid-cols-2">
@@ -140,7 +209,8 @@ function OrderSuccess() {
             </dt>
             <dd className="mt-2 text-sm text-ink">{formatDate(order.placedAt)}</dd>
             <dd className="mt-0.5 text-xs text-ink-400">
-              Paid by {order.paymentMethod.name.toLowerCase()}
+              {awaitingPayment ? "Awaiting" : "Paid by"}{" "}
+              {order.paymentMethod.name.toLowerCase()}
             </dd>
           </div>
         </dl>
@@ -224,7 +294,9 @@ function OrderSuccess() {
           </ul>
 
           <div className="mt-4 flex items-baseline justify-between border-t border-ink-200 pt-4">
-            <span className="text-sm font-medium text-ink">Total paid</span>
+            <span className="text-sm font-medium text-ink">
+              {awaitingPayment ? "Total due" : "Total paid"}
+            </span>
             <span className="font-display text-xl text-ink tabular-nums">
               {formatPrice(order.totals.total)}
             </span>

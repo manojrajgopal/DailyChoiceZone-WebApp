@@ -172,7 +172,7 @@ export default function CheckoutAddressPage() {
     setBillingAddress(
       billingSame ? null : { ...billing, phone: billing.phone.replace(/\D/g, "") },
     );
-    router.push("/checkout/payment");
+    router.push("/checkout/review");
   };
 
   return (
@@ -433,7 +433,7 @@ export default function CheckoutAddressPage() {
         </fieldset>
 
         <Button type="submit" size="lg" className="mt-8 sm:w-auto" fullWidth>
-          Continue to payment
+          Continue to review
         </Button>
       </form>
     </CheckoutShell>

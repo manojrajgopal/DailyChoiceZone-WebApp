@@ -316,13 +316,176 @@ demo data it existed to reload.
 ## Payments
 
 `PaymentProvider` is an interface with four methods — `create`, `verify`,
-`fetch` and `refund` — and `PAYMENT_PROVIDER` picks the implementation.
+`fetch` and `refund` — and `PAYMENT_PROVIDER` picks the implementation. Two
+exist:
 
-The one that ships is `mock`: it moves no money and returns believable
-transaction ids, which is what lets the whole order flow be exercised without an
-account anywhere. Adding Razorpay, Cashfree, PayU or Stripe means writing one
-class in `app/services/payments/` and changing one environment variable.
-Nothing above that layer names a gateway, so nothing above it changes.
+| `PAYMENT_PROVIDER` | What it does |
+|---|---|
+| `mock` | Moves no money, contacts nothing, returns believable references. Lets the whole order flow be exercised without an account anywhere. |
+| `razorpay` | The real thing. Test keys and live keys take the same code path. |
+
+Nothing above that layer names a gateway, so switching between them changes no
+route, service or schema. Adding Cashfree, PayU or Stripe is one more class in
+`app/services/payments/` and one environment variable.
+
+### Checkout is two steps, because a gateway makes it two
+
+With `mock`, `POST /api/orders` is the whole of checkout: the payment settles
+synchronously and the order is confirmed before the response is written. A real
+gateway cannot work that way, because the shopper has to be shown a payment
+screen and the order has to exist before there is anything to pay for.
+
+So:
+
+```
+POST /api/orders               order + invoice + payment, order held `pending`
+      ↓ returns a gateway handoff
+Razorpay Checkout              in the browser, on Razorpay's origin
+      ↓ returns three references
+POST /api/payments/{id}/verify signature checked, gateway read back, order confirmed
+```
+
+An order awaiting a gateway stays at status `pending` and is confirmed by
+settlement. Confirming it at creation would mean an abandoned payment screen
+left behind a confirmed order nobody ever paid for.
+
+`GET /api/payments/{id}/session` re-opens the **same** gateway order for a
+payment that was left unpaid — two open gateway orders against one invoice is
+how a customer gets charged twice.
+
+### What the payment page may offer
+
+`GET /api/payments/methods` intersects two lists: the methods the store has
+switched on in the billing document, and the ones `Razorpay.methods()` reports
+the account can take. Only the intersection is offered.
+
+This matters because the two disagree silently. A method switched on in our own
+settings but off in the Razorpay account fails at the payment screen, *after*
+the shopper has chosen it — and an account can be subtler than on/off: this one
+has `upi: false` with `upi_intent: true`, meaning it can hand off to a UPI app
+but cannot produce a QR code or a collect request. The endpoint reports both
+flags separately so the page can offer app handoffs on a phone and say plainly
+that a QR is unavailable.
+
+`cod` is exempt: it is an arrangement with a courier, not a gateway rail, so it
+comes from the store's settings alone.
+
+### Scan to pay is a different product
+
+`POST /api/payments/{id}/qr` mints a UPI QR code through Razorpay's **QR Codes**
+API, which is enabled separately from Checkout's `upi` method — an account can
+have one without the other. That is why the payment page can offer scan-to-pay
+on a Checkout-UPI-disabled account, and why `qrCodes` is reported on its own
+footing rather than behind the `upi` flag.
+
+The code is `single_use` and `fixed_amount`, so it is worth exactly this invoice,
+once. A reusable code for a variable amount is a code that can be scanned again
+tomorrow.
+
+### The code has to be cut out of their poster
+
+Razorpay serves exactly one image per code, and it is not a QR code: it is a
+674×1644 **poster** with a 378px code a third of the way down it, under a
+"Powered by Razorpay" banner, between BHIM/UPI marks and GPay/PhonePe/Paytm
+logos, above the merchant's name. Every documented and undocumented query
+parameter returns the same PNG.
+
+Shown in a square payment panel, that poster shrinks the code to about a fifth
+of its real size and squashes it out of square — and **no UPI app can read it**.
+The failure is silent, because the page still shows an image.
+
+So `app/services/payments/qr_image.py` locates the code inside the poster and
+`GET /api/payments/qr-image/{qr_id}` serves that square alone: bitonal, with a
+quiet zone pasted on rather than cropped in, about 2 KB instead of 396 KB.
+
+It *measures* rather than assuming a rectangle, because a hard-coded crop is a
+guess about someone else's template that breaks silently. Near-black and
+unsaturated pixels only — the artwork is a saturated blue dark enough to pass a
+brightness test and it spans the full width — then the dense column span for the
+width, then the row run whose height matches it, since a QR is square and the
+logo strip is not. No square run means no code, and the poster is returned
+whole: worse than a bare code, far better than a broken image.
+
+That route is the one payment route with no session behind it. An `<img src>`
+cannot carry an `Authorization` header, and Razorpay serves the same poster on
+an unauthenticated URL of its own — so the code's id is the secret either way,
+and the route is keyed on the code alone and reveals no order or customer.
+
+The consequence to understand is that **a QR payment is not attached to a
+gateway order**. Scanning produces a payment of its own, so it cannot be settled
+by the order signature the card and net banking flows use. Two things bind it
+back instead, and both are checked:
+
+- the code is minted with `notes.paymentId`, and a scan whose notes name a
+  different payment is refused;
+- the payment must have **captured**, read from the gateway with the secret key.
+
+It settles two ways for the same reason every other rail does: `GET
+/api/payments/{id}/qr/{qr_id}` is polled while the code is on screen so the page
+moves the moment somebody pays, and the `qr_code.credited` webhook settles it
+when they close the tab instead. `DELETE` on the same path retires a code nobody
+used.
+
+### What makes a payment real
+
+A browser saying "this succeeded" is a claim. Four things turn it into a fact,
+and all four are in `app/services/settlement.py` and the Razorpay provider:
+
+1. **The signature.** `HMAC-SHA256("{order_id}|{payment_id}")` under the key
+   secret. Only Razorpay and this process know that secret.
+2. **The order must be ours.** The order id the signature is checked against
+   comes from our own payment record, never from the request — otherwise a real
+   signature for a cheaper order of one's own would settle an expensive one.
+3. **A read back from the gateway.** A valid signature says the payment belongs
+   to the order. It says nothing about whether it succeeded.
+4. **The amount must match the invoice.** A payment that verifies for the wrong
+   amount is not a paid order.
+
+### The webhook is the reliable path
+
+`POST /api/payments/webhook/razorpay`, subscribed to `payment.captured`,
+`payment.authorized` and `payment.failed`.
+
+The browser's verify call is what makes the confirmation page correct
+immediately. The webhook is what makes the order correct when the shopper pays
+and then closes the tab. Both settle the same payment on purpose, and
+`settlement` is idempotent so whichever arrives first wins and the other is a
+no-op — Razorpay retries deliveries and may send one twice.
+
+Two rules there are easy to get wrong:
+
+- **The signature is over the raw bytes.** Re-serialising the JSON changes the
+  digest, so the route reads `await request.body()` and verifies before parsing.
+- **An unknown event still answers 200.** Anything that is not 2xx is
+  redelivered on a schedule for days. A bad *signature* is refused, because an
+  endpoint that marks orders paid on unverified input is an open door — and with
+  `RAZOR_WEBHOOK_SECRET` unset, every delivery is refused.
+
+### Secrets
+
+`RAZOR_KEY_ID` is publishable and is served to the browser by
+`GET /api/payments/config`; Razorpay Checkout cannot open without it, and on its
+own it can only start a payment. `RAZOR_KEY_SECRET` and `RAZOR_WEBHOOK_SECRET`
+can take money and never leave this process. Neither has a `NEXT_PUBLIC_`
+counterpart and neither may be given one.
+
+### References on a payment record
+
+`transaction_id` holds the gateway's **order** id until a payment exists, then
+becomes the **payment** id — which is the reference a refund is issued against.
+The order id moves to `provider_reference`, because the signature is computed
+over it. A webhook may arrive either side of that swap, so both columns are
+searched when one is matched.
+
+### Testing it
+
+`tests/integration/test_payments_razorpay.py` covers all of the above against a
+stubbed transport — no network, so the suite does not depend on Razorpay's
+uptime. The signature checks themselves are not stubbed: a test that faked an
+HMAC would be testing nothing.
+
+An autouse fixture forces `mock` for the whole suite even when `.env` names a
+real provider, so a test run never opens gateway orders in a live account.
 
 ---
 
@@ -361,7 +524,7 @@ pytest -m integration     # the API and the database together
 pytest -k refund          # by name
 ```
 
-294 tests. They run against MySQL in a database of their own
+351 tests. They run against MySQL in a database of their own
 (`daily_choice_zone_test`, or `TEST_DATABASE_NAME`), created on first run and
 rebuilt from the models each session. The development database is never touched
 — the fixtures refuse to run if the two names coincide.
@@ -379,7 +542,8 @@ sorting and paging, the cart and its pricing, the wishlist's uniqueness, the
 order transaction and what the client is not allowed to decide, coupons,
 inventory and its ledger, refunds and credit notes, order numbering and what a
 configuration save may not delete, the narrow reads above against the wide ones
-they replaced, and — endpoint by endpoint — who is allowed to call what.
+they replaced, the Razorpay flow end to end including every way a payment can
+fail to verify, and — endpoint by endpoint — who is allowed to call what.
 
 ---
 

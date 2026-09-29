@@ -138,6 +138,35 @@ def _no_real_database(monkeypatch, db):
     monkeypatch.setattr(db_module, "SessionLocal", lambda: db)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_gateway(monkeypatch):
+    """
+    Stop the suite from reaching a payment gateway.
+
+    `.env` may well name a real provider — that is the point of configuring
+    one — and `place_order` calls whichever is active. A test run that opened
+    real gateway orders would be slow, would depend on somebody else's uptime,
+    and would leave a trail of abandoned orders in a live account.
+
+    The mock is forced instead, and `get_provider` is `lru_cache`d so its cache
+    is cleared around each test. Razorpay's own behaviour is tested directly in
+    `test_payments_razorpay.py`, against a stubbed transport rather than the
+    network.
+    """
+    from app.core.config import settings
+    from app.services import payments
+
+    def clear_cache() -> None:
+        # A test may have substituted `get_provider` with its own stub, which
+        # is not an `lru_cache` and has nothing to clear.
+        getattr(payments.get_provider, "cache_clear", lambda: None)()
+
+    monkeypatch.setattr(settings, "PAYMENT_PROVIDER", "mock")
+    clear_cache()
+    yield
+    clear_cache()
+
+
 # ---------------------------------------------------------------- fixtures
 
 

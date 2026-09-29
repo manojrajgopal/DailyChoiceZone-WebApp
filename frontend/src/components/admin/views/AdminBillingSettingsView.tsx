@@ -433,8 +433,9 @@ export function AdminBillingSettingsView() {
             />
 
             <p className="text-[0.6875rem] leading-relaxed text-admin-faint">
-              There is no payment gateway behind these. A provider is added by implementing
-              <code className="mx-1">PaymentProvider</code>; nothing in the interface changes.
+              Which methods are offered at checkout. The gateway decides which of them it can
+              actually take — switching one on here does not switch it on in the Razorpay
+              account, and one that is on here but off there fails at the payment sheet.
             </p>
           </div>
         </AdminCard>

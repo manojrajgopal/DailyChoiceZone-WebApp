@@ -1,5 +1,6 @@
 import type {
   DeliveryMethod,
+  GatewayHandoff,
   Order,
   PaymentMethod,
   PlaceOrderInput,
@@ -94,6 +95,14 @@ export interface PlacedOrder {
   invoiceNumber: string;
   paymentId: string;
   paymentStatus: string;
+  /**
+   * How to pay for it, or null when there is nothing to pay.
+   *
+   * With a real gateway, placing an order is only half of checkout: the order
+   * exists and the invoice is issued before any money moves. Null means cash
+   * on delivery, or a provider that settled it synchronously.
+   */
+  gateway: GatewayHandoff | null;
 }
 
 function toOrder(payload: ApiOrder): Order {
@@ -142,6 +151,7 @@ function toOrder(payload: ApiOrder): Order {
       appliedCoupon: null,
     },
     expectedDelivery: payload.expectedDelivery,
+    paymentStatus: payload.paymentStatus,
     invoiceId: payload.invoiceId,
     invoiceNumber: payload.invoiceNumber,
   };
@@ -155,13 +165,25 @@ function toOrder(payload: ApiOrder): Order {
  * it holds. They stay in the signature because the checkout builds them for
  * display, and removing them would mean changing every caller for no gain.
  */
-export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
+/**
+ * Place the order, and find out whether it still has to be paid for.
+ *
+ * Returns the gateway handoff alongside the order rather than a bare `Order`,
+ * because with a real gateway placing an order is only half of checkout: the
+ * order exists, the invoice is issued, and the money has not moved yet. The
+ * caller opens the payment sheet with what comes back.
+ *
+ * `gateway: null` means there is nothing to pay — cash on delivery, or a
+ * provider that settled it synchronously.
+ */
+export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder> {
   const payload = await apiPost<{
     order: ApiOrder;
     invoiceId: string;
     invoiceNumber: string;
     paymentId: string;
     paymentStatus: string;
+    gateway: GatewayHandoff | null;
   }>(
     "/orders",
     {
@@ -186,7 +208,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<Order> {
     AUTH,
   );
 
-  return toOrder(payload.order);
+  return {
+    order: toOrder(payload.order),
+    paymentId: payload.paymentId,
+    paymentStatus: payload.paymentStatus,
+    invoiceId: payload.invoiceId,
+    invoiceNumber: payload.invoiceNumber,
+    gateway: payload.gateway,
+  };
 }
 
 export async function getOrders(): Promise<Order[]> {

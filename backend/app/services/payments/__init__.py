@@ -16,10 +16,11 @@ from app.services.payments.base import (
     RefundResult,
 )
 from app.services.payments.mock import MockPaymentProvider
+from app.services.payments.razorpay import RazorpayPaymentProvider
 
 _PROVIDERS = {
     "mock": MockPaymentProvider,
-    # "razorpay": RazorpayPaymentProvider,
+    "razorpay": RazorpayPaymentProvider,
     # "stripe": StripePaymentProvider,
 }
 
@@ -37,6 +38,7 @@ def get_provider() -> PaymentProvider:
 
 __all__ = [
     "PaymentProvider",
+    "RazorpayPaymentProvider",
     "PaymentRequest",
     "PaymentResult",
     "RefundResult",

@@ -12,6 +12,7 @@ from app.models import Customer, Invoice
 from app.schemas.auth import AddressWrite
 from app.schemas.orders import CancelOrderRequest, OrderOut, PlaceOrderRequest
 from app.services import auth as auth_service, orders as service
+from app.services.settlement import gateway_handoff
 from app.utils.response import ok, ok_list
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -93,9 +94,11 @@ def place_order(
             "paymentId": payment.id,
             "paymentStatus": payment.status,
             "amount": invoice.grand_total,
+            "gateway": gateway_handoff(db, order, invoice, payment),
         },
         message="Order placed.",
     )
+
 
 
 @router.get("/{identifier}", summary="One of your orders")

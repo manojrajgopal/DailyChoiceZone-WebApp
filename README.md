@@ -85,7 +85,7 @@ renders.
 | Backend | |
 |---|---|
 | `uvicorn app.main:app --reload` | Development server |
-| `pytest` | The whole suite (294 tests) |
+| `pytest` | The whole suite (351 tests) |
 | `alembic upgrade head` | Apply migrations |
 | `alembic revision --autogenerate -m "…"` | New migration |
 
@@ -481,16 +481,82 @@ actually collected.
 
 ### Payments
 
-`PaymentProvider` is an interface — create, verify, fetch, refund — and
-`PAYMENT_PROVIDER` picks the implementation. The one that ships moves no money
-and returns believable transaction ids, which is what lets the whole order flow
-be exercised without an account anywhere.
+Razorpay, live. `PAYMENT_PROVIDER` picks the implementation — `razorpay` for the
+real gateway, `mock` for a provider that moves no money and lets the whole order
+flow be exercised without an account anywhere. Nothing above
+`backend/app/services/payments/` names a gateway, so switching between them
+changes no route, service or schema.
 
-Adding Razorpay, Cashfree, PayU or Stripe is one class in
-`backend/app/services/payments/` and one environment variable. **It is all
-server-side**, because creating a payment, verifying a signature and handling a
-webhook are secret-key operations, and a secret key in a browser bundle is not a
-secret. Nothing in the frontend names a gateway.
+The backend README has the full account: the two-step checkout, what turns a
+browser's claim into a settled payment, and why the webhook is the reliable
+path. What matters on this side:
+
+**Payment is the last step, and the page is ours.** Checkout runs Contact →
+Delivery → Review → **Payment**, and the payment step is where the order is
+created: choosing a method and pressing pay does both, in that order, in one
+action. Every method is a panel of our own markup — `PaymentMethods.tsx` — with
+no modal, no iframe and no other company's branding, driven by Razorpay's
+Custom Checkout, which renders nothing and only exposes the rails. The shopper
+authorises in their own bank's page or their own UPI app, which is the one step
+that cannot happen anywhere else.
+
+**The methods offered are the methods that will work.**
+`GET /api/payments/methods` intersects what the store has switched on with what
+the Razorpay account can actually take, and the page renders the result — so a
+method a shopper picks is never one the gateway then refuses. UPI adapts to the
+device: a phone gets app handoffs (Google Pay, PhonePe, Paytm, BHIM, Amazon
+Pay), a computer gets a QR code and a UPI-ID request, because a `upi://` intent
+on a laptop opens nothing.
+
+**Nothing opens in a floating window.** Razorpay's Standard Checkout is given a
+`parent` container, so the one frame that has to be theirs renders *inside* the
+payment step rather than as a modal over the site — and a `config.display` block
+limits it to cards alone, since every other rail is already a panel of ours.
+`hide_topbar` and a matched backdrop take their chrome off it. The "Test Mode"
+ribbon that used to sit over the page belonged to that modal and went with it.
+
+**Scan to pay is in the page too.** A UPI QR is minted server-side through
+Razorpay's QR Codes API and rendered in our own panel while the page polls for
+the scan. No popup, nothing to type.
+
+The code is **cut out of Razorpay's poster** before it is served. Theirs is a
+tall poster with the code a third of the way down it between two rows of logos;
+sized to fit a payment panel the modules end up too small for a camera and no
+UPI app can read it. The backend README explains how the code is located. The
+page then renders it at its natural size and never scales it down — a QR is a
+grid of hard edges, and downscaling lands those edges between device pixels.
+
+**Cards are the one exception, and it is a compliance one.** A card number
+entered into our own markup would put PANs and CVVs in this application's
+JavaScript, which moves the whole site from PCI-DSS SAQ-A to SAQ-D and is gated
+behind a PCI certification on the gateway account. So the card panel uses the
+processor's secure field and says so. Everything else — UPI, net banking,
+wallets — passes only a bank code, a wallet name or a UPI address, none of them
+a credential, and stays entirely in our interface.
+
+**No payment credentials touch this application.** The card number, the UPI PIN
+and the bank login are collected by Razorpay Checkout, inside Razorpay's own
+iframe, on Razorpay's origin. `src/services/payments/razorpayCheckout.ts` loads
+their script and receives three opaque references back — a field this code could
+read is a field this code would be responsible for.
+
+**The browser does not decide whether a payment succeeded.** It reports; the
+server verifies the signature with the key secret, reads the payment back from
+the gateway, and checks the amount against the invoice. `usePayment` reports
+success only once the server has agreed.
+
+**An unpaid order is not a lost order.** Dismissing the payment sheet leaves a
+real order with an unpaid invoice — the stock is committed and the bag has been
+emptied, so stranding it would be the worst outcome. Both the confirmation page
+and the account order page offer to finish paying, and both reopen the *same*
+gateway order rather than a new one.
+
+**The publishable key is served, not bundled.** `GET /api/payments/config`
+hands over the key id, whether a gateway is live at all, and whether it is in
+test or live mode. Rotating a key or going live is a restart of the API, not a
+rebuild of the storefront — and the checkout notices and the terms page read
+that mode rather than stating it, so a page cannot go on saying "no money
+changes hands" after the live keys go in.
 
 ---
 
@@ -520,7 +586,7 @@ The properties, and where each is enforced. The backend README has the detail.
 cd backend && pytest
 ```
 
-294 tests against MySQL, in a database of their own. Money and tax arithmetic
+351 tests against MySQL, in a database of their own. Money and tax arithmetic
 against worked examples, password hashing and token forgery, registration and
 sign-in, catalogue filtering and paging, the cart and its pricing, the
 wishlist's uniqueness, the order transaction and what the client is not allowed
@@ -565,11 +631,11 @@ CDN: change the URLs and add the host to `remotePatterns` in `next.config.ts`.
 
 Honest about it in the UI rather than pretending:
 
-- **No payment gateway.** Checkout collects a payment *method*, never a card
-  number, CVV or UPI ID. A real integration hands off to the provider's own
-  hosted fields — which is also how it should work in production.
-- **No money moves.** The mock provider returns a plausible reference and
-  nothing else. Refunds adjust records; no funds are returned.
+- **The payment gateway is in test mode.** Razorpay is genuinely connected and
+  genuinely takes the payment — but against test keys, so no real money moves.
+  Swapping `rzp_test_…` for `rzp_live_…` is the only change needed, and the
+  checkout notices and the terms page follow the keys rather than stating a
+  mode of their own.
 - **Nothing is fulfilled.** Orders are real records with real stock movements
   and real invoices. No parcel leaves anywhere.
 - **Forms do not send.** The contact form and newsletter confirm and clear.

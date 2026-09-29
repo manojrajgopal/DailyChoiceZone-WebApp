@@ -67,6 +67,26 @@ class Settings(BaseSettings):
     # Which PaymentProvider implementation to use. "mock" moves no money.
     PAYMENT_PROVIDER: str = "mock"
 
+    # Razorpay. Only used when PAYMENT_PROVIDER is "razorpay".
+    #
+    # The key **id** is publishable: Razorpay Checkout runs in the browser and
+    # needs it, and it is served to the client by `GET /api/payments/config`.
+    # The key **secret** and the webhook secret never leave this process — they
+    # sign requests to the gateway and verify what comes back, so anything
+    # holding them can take money. Neither has a NEXT_PUBLIC_ counterpart, and
+    # neither may ever be added to one.
+    RAZOR_KEY_ID: str = ""
+    RAZOR_KEY_SECRET: str = ""
+
+    # Set this to the signing secret from the Razorpay dashboard webhook page.
+    # Without it the webhook endpoint refuses every delivery, because an
+    # unverified webhook is an open endpoint for marking orders paid.
+    RAZOR_WEBHOOK_SECRET: str = ""
+
+    @property
+    def razorpay_configured(self) -> bool:
+        return bool(self.RAZOR_KEY_ID and self.RAZOR_KEY_SECRET)
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

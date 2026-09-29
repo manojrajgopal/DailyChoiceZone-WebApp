@@ -12,6 +12,7 @@ from app.api.routes import (
     catalogue,
     coupons,
     orders,
+    payments,
     products,
     reports,
     reviews,
@@ -40,6 +41,7 @@ all_routers = [
     wishlist.router,
     orders.router,
     billing.router,
+    payments.router,
     site.router,
     # --- portal ----------------------------------------------------------
     auth.admin_auth_router,
