@@ -61,7 +61,9 @@ export function benefitLines(benefits: Partial<MembershipBenefits>): string[] {
     );
   }
   if (benefits.memberDiscountPercent && benefits.memberDiscountPercent > 0) {
-    lines.push(`An extra ${percent(benefits.memberDiscountPercent)}% off every order`);
+    lines.push(
+      `An extra ${percent(benefits.memberDiscountPercent)}% off every order`,
+    );
   }
   if (benefits.extraReturnDays && benefits.extraReturnDays > 0) {
     lines.push(
@@ -88,8 +90,14 @@ const STATUS_TONE: Record<MembershipStatus, string> = {
 };
 
 /** Whether an active membership is an extension that has not begun yet. */
-export function isUpcoming(membership: MembershipSummary, now: number = Date.now()): boolean {
-  return membership.status === "active" && new Date(membership.startsAt).getTime() > now;
+export function isUpcoming(
+  membership: MembershipSummary,
+  now: number = Date.now(),
+): boolean {
+  return (
+    membership.status === "active" &&
+    new Date(membership.startsAt).getTime() > now
+  );
 }
 
 export function MembershipStatusPill({
@@ -104,7 +112,9 @@ export function MembershipStatusPill({
     <span
       className={cn(
         "inline-flex items-center whitespace-nowrap rounded-pill px-2.5 py-1 text-[0.6875rem] font-medium ring-1 ring-inset",
-        upcoming ? STATUS_TONE.pending : (STATUS_TONE[status] ?? STATUS_TONE.expired),
+        upcoming
+          ? STATUS_TONE.pending
+          : (STATUS_TONE[status] ?? STATUS_TONE.expired),
       )}
     >
       {upcoming ? "Upcoming" : (MEMBERSHIP_STATUS_LABELS[status] ?? status)}
@@ -123,7 +133,9 @@ function highlights(plans: MembershipPlan[]) {
   const items: { icon: typeof Truck; title: string; text: string }[] = [];
   const delivery = plans.filter((plan) => plan.freeDelivery);
   if (delivery.length) {
-    const unlimited = delivery.some((plan) => plan.freeDeliveriesPerMonth === null);
+    const unlimited = delivery.some(
+      (plan) => plan.freeDeliveriesPerMonth === null,
+    );
     items.push({
       icon: Truck,
       title: "Free delivery",
@@ -132,7 +144,10 @@ function highlights(plans: MembershipPlan[]) {
         : "Standard delivery on us, every month.",
     });
   }
-  const discount = Math.max(0, ...plans.map((plan) => plan.memberDiscountPercent));
+  const discount = Math.max(
+    0,
+    ...plans.map((plan) => plan.memberDiscountPercent),
+  );
   if (discount > 0) {
     items.push({
       icon: Percent,
@@ -177,6 +192,15 @@ const SIGN_IN_HREF = `/account?next=${encodeURIComponent("/membership")}`;
  * their own membership first and can extend it; buying again adds the new
  * plan's time after the current one ends.
  */
+/**
+ * A monthly price, with paise when rounding would misstate it — a ₹3 yearly
+ * plan is "₹0.25 a month", not "₹0".
+ */
+function perMonth(value: number): string {
+  if (value >= 10 || Number.isInteger(value)) return formatPrice(value);
+  return `₹${value.toFixed(2)}`;
+}
+
 export function MembershipView() {
   const { isSignedIn, isPending } = useCustomerStatus();
   const [overview, setOverview] = useState<MembershipOverview | null>(null);
@@ -227,7 +251,10 @@ export function MembershipView() {
       if (outcome.status === "completed") {
         setStatus("Confirming your payment…");
         try {
-          await verifyMembershipPayment(checkout.membershipId, outcome.response);
+          await verifyMembershipPayment(
+            checkout.membershipId,
+            outcome.response,
+          );
           setStatus(`Welcome to ${name}.`);
           toast.success(`Welcome to ${name}!`);
           await load();
@@ -243,17 +270,29 @@ export function MembershipView() {
         return;
       }
 
-      await abandonMembershipCheckout(checkout.membershipId).catch(() => undefined);
+      await abandonMembershipCheckout(checkout.membershipId).catch(
+        () => undefined,
+      );
       setStatus("");
       if (outcome.status === "failed") {
-        toast.error(`${outcome.reason} You can try again whenever you're ready.`);
+        toast.error(
+          `${outcome.reason} You can try again whenever you're ready.`,
+        );
       } else {
-        toast.info("Payment not completed — no money has been taken. You can join whenever you're ready.");
+        toast.info(
+          "Payment not completed — no money has been taken. You can join whenever you're ready.",
+        );
       }
     } catch (error) {
-      if (membershipId) await abandonMembershipCheckout(membershipId).catch(() => undefined);
+      if (membershipId)
+        await abandonMembershipCheckout(membershipId).catch(() => undefined);
       setStatus("");
-      toast.error(messageOf(error, "We couldn't start your membership just now. Please try again."));
+      toast.error(
+        messageOf(
+          error,
+          "We couldn't start your membership just now. Please try again.",
+        ),
+      );
     } finally {
       setBuying(null);
     }
@@ -306,14 +345,6 @@ export function MembershipView() {
               {tagline}
             </p>
           ) : null}
-          {open && !isMember ? (
-            <div className="mt-8 flex justify-center">
-              <ButtonLink href="#plans" variant="primary" className="gap-2">
-                See the plans
-                <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-              </ButtonLink>
-            </div>
-          ) : null}
         </div>
       </section>
 
@@ -322,7 +353,9 @@ export function MembershipView() {
           {status}
         </p>
 
-        {membership ? <MemberCard membership={membership} programmeName={name} /> : null}
+        {membership ? (
+          <MemberCard membership={membership} programmeName={name} />
+        ) : null}
 
         {!open ? (
           <EmptyState
@@ -333,38 +366,20 @@ export function MembershipView() {
           />
         ) : (
           <>
-            {/* ------------------------------------------------- highlights */}
-            {perks.length > 0 && !isMember ? (
-              <section aria-labelledby="membership-benefits">
-                <h2 id="membership-benefits" className="sr-only">
-                  What you get
-                </h2>
-                <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
-                  {perks.map(({ icon: Icon, title, text }) => (
-                    <li key={title} className="flex gap-3.5 rounded-card border border-ink-100 bg-shell p-5">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-copper-50">
-                        <Icon className="h-[1.125rem] w-[1.125rem] text-copper-600" strokeWidth={1.5} aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block font-display text-base text-ink">{title}</span>
-                        <span className="mt-1 block text-[0.8125rem] leading-relaxed text-ink-500">
-                          {text}
-                        </span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
             {/* ------------------------------------------------------ plans */}
             <section
               id="plans"
               aria-labelledby="membership-plans"
-              className={cn("scroll-mt-24", (perks.length > 0 && !isMember) || membership ? "mt-12 sm:mt-16" : undefined)}
+              className={cn(
+                "scroll-mt-24",
+                membership ? "mt-12 sm:mt-16" : undefined,
+              )}
             >
               <div className="text-center">
-                <h2 id="membership-plans" className="font-display text-2xl text-ink sm:text-[1.75rem]">
+                <h2
+                  id="membership-plans"
+                  className="font-display text-2xl text-ink sm:text-[1.75rem]"
+                >
                   {isMember ? "Extend your membership" : "Choose your plan"}
                 </h2>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-ink-500">
@@ -393,13 +408,57 @@ export function MembershipView() {
               {!isSignedIn && !isPending ? (
                 <p className="mt-8 text-center text-sm text-ink-500">
                   Already have an account?{" "}
-                  <Link href={SIGN_IN_HREF} className="text-copper-700 underline underline-offset-4 hover:text-copper-600">
+                  <Link
+                    href={SIGN_IN_HREF}
+                    className="text-copper-700 underline underline-offset-4 hover:text-copper-600"
+                  >
                     Sign in
                   </Link>{" "}
                   to join.
                 </p>
               ) : null}
             </section>
+
+            {/* ------------------------------------------------- highlights */}
+            {perks.length > 0 && !isMember ? (
+              // After the plans: the shopper came to choose one, so the plans
+              // come first and the benefits explain them underneath.
+              <section
+                aria-labelledby="membership-benefits"
+                className="mt-12 sm:mt-16"
+              >
+                <h2
+                  id="membership-benefits"
+                  className="text-center font-display text-2xl text-ink sm:text-[1.75rem]"
+                >
+                  What every member gets
+                </h2>
+                <ul className="mt-8 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+                  {perks.map(({ icon: Icon, title, text }) => (
+                    <li
+                      key={title}
+                      className="flex gap-3.5 rounded-card border border-ink-100 bg-shell p-5"
+                    >
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-copper-50">
+                        <Icon
+                          className="h-[1.125rem] w-[1.125rem] text-copper-600"
+                          strokeWidth={1.5}
+                          aria-hidden="true"
+                        />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block font-display text-base text-ink">
+                          {title}
+                        </span>
+                        <span className="mt-1 block text-[0.8125rem] leading-relaxed text-ink-500">
+                          {text}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </>
         )}
       </div>
@@ -428,8 +487,11 @@ function PlanCard({
 }) {
   const lines = benefitLines(plan);
   const featured = Boolean(plan.badge);
-  const showCompare = plan.compareAtPrice !== null && plan.compareAtPrice > plan.price;
-  const actionLabel = isMember ? `Extend with ${plan.name}` : `Join ${plan.name}`;
+  const showCompare =
+    plan.compareAtPrice !== null && plan.compareAtPrice > plan.price;
+  const actionLabel = isMember
+    ? `Extend with ${plan.name}`
+    : `Join ${plan.name}`;
 
   return (
     <article
@@ -453,7 +515,9 @@ function PlanCard({
 
       <div className="mt-5">
         <p className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-          <span className="font-display text-[2rem] leading-none text-ink">{formatPrice(plan.price)}</span>
+          <span className="font-display text-[2rem] leading-none text-ink">
+            {formatPrice(plan.price)}
+          </span>
           {showCompare ? (
             <span className="text-sm text-ink-400 line-through">
               <span className="sr-only">Usually </span>
@@ -463,22 +527,33 @@ function PlanCard({
         </p>
         {plan.durationMonths > 1 ? (
           <p className="mt-1.5 text-[0.8125rem] text-ink-500">
-            That&rsquo;s {formatPrice(plan.pricePerMonth)} a month
+            That&rsquo;s {perMonth(plan.pricePerMonth)} a month
           </p>
         ) : (
-          <p className="mt-1.5 text-[0.8125rem] text-ink-500">Billed once, no renewal</p>
+          <p className="mt-1.5 text-[0.8125rem] text-ink-500">
+            Billed once, no renewal
+          </p>
         )}
       </div>
 
       {plan.description ? (
-        <p className="mt-4 text-sm leading-relaxed text-ink-600">{plan.description}</p>
+        <p className="mt-4 text-sm leading-relaxed text-ink-600">
+          {plan.description}
+        </p>
       ) : null}
 
       {lines.length > 0 ? (
         <ul className="mt-5 flex flex-col gap-2.5 border-t border-ink-100 pt-5">
           {lines.map((line) => (
-            <li key={line} className="flex gap-2.5 text-sm leading-snug text-ink-700">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-sage-600" strokeWidth={2} aria-hidden="true" />
+            <li
+              key={line}
+              className="flex gap-2.5 text-sm leading-snug text-ink-700"
+            >
+              <Check
+                className="mt-0.5 h-4 w-4 shrink-0 text-sage-600"
+                strokeWidth={2}
+                aria-hidden="true"
+              />
               {line}
             </li>
           ))}
@@ -532,7 +607,10 @@ function MemberCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="label-wide text-copper-700">Your {programmeName}</p>
-          <h2 id="your-membership" className="mt-2.5 font-display text-xl text-ink sm:text-2xl">
+          <h2
+            id="your-membership"
+            className="mt-2.5 font-display text-xl text-ink sm:text-2xl"
+          >
             {membership.planName}
           </h2>
           <p className="mt-1.5 text-sm text-ink-600">
@@ -547,17 +625,23 @@ function MemberCard({
       <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-copper-200 pt-5 sm:grid-cols-3">
         <div>
           <dt className="text-xs text-ink-500">Saved so far</dt>
-          <dd className="mt-1 font-display text-lg text-ink">{formatPrice(membership.savedOnOrders)}</dd>
+          <dd className="mt-1 font-display text-lg text-ink">
+            {formatPrice(membership.savedOnOrders)}
+          </dd>
         </div>
         {membership.benefits.freeDelivery ? (
           <div>
             <dt className="text-xs text-ink-500">Orders delivered free</dt>
-            <dd className="mt-1 font-display text-lg text-ink">{membership.freeDeliveryOrders}</dd>
+            <dd className="mt-1 font-display text-lg text-ink">
+              {membership.freeDeliveryOrders}
+            </dd>
           </div>
         ) : null}
         {active && left !== null ? (
           <div>
-            <dt className="text-xs text-ink-500">Free deliveries left this month</dt>
+            <dt className="text-xs text-ink-500">
+              Free deliveries left this month
+            </dt>
             <dd className="mt-1 font-display text-lg text-ink">{left}</dd>
           </div>
         ) : null}
@@ -569,7 +653,11 @@ function MemberCard({
           className="inline-flex items-center gap-1.5 text-sm text-copper-700 underline-offset-4 hover:underline"
         >
           View membership details
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+          <ArrowRight
+            className="h-3.5 w-3.5"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
         </Link>
       </div>
     </section>
