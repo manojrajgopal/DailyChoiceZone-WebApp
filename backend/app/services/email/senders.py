@@ -31,6 +31,9 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.send"
+# Read access, so bounce notices in the sending mailbox can be matched to the
+# emails they report on (see `services/email/bounces.py`).
+GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
 # access token cache: refresh token → (token, expires at)
 _tokens: Dict[str, Tuple[str, float]] = {}
@@ -190,7 +193,73 @@ def send_smtp(credentials: dict, message: EmailMessage) -> str:
     return message["Message-ID"] or ""
 
 
+# ------------------------------------------------------------ deliverability
+
+# Per domain: (reason it can't receive mail, or "" when it can; checked at).
+_domains: Dict[str, Tuple[str, float]] = {}
+_DOMAIN_TTL = 6 * 3600
+
+
+def undeliverable(address: str) -> str:
+    """Why `address` can't receive email, or "" when it can — see `check_domain`."""
+    return check_domain(address)
+
+
+def check_domain(address: str) -> str:
+    """
+    Why `address` can't receive email, or "" when it can (or we can't tell).
+
+    Gmail and most SMTP servers *accept* a message for a domain that doesn't
+    exist and bounce it later to the sending mailbox — so the log said "Sent"
+    for mail that went nowhere. A domain with no mail server (no MX record, no
+    address record, or a "null MX") is refused here instead, with the reason,
+    so the email history shows the real outcome. A DNS failure on our side is
+    not held against the address: only a definite answer blocks a send.
+    """
+    import dns.exception
+    import dns.resolver
+
+    domain = (address or "").rsplit("@", 1)[-1].strip().lower().rstrip(".")
+    if not domain:
+        return "The email address has no domain."
+    cached = _domains.get(domain)
+    if cached and time.time() - cached[1] < _DOMAIN_TTL:
+        return cached[0]
+
+    reason = ""
+    resolver = dns.resolver.Resolver()
+    resolver.lifetime = 5.0
+    try:
+        answers = resolver.resolve(domain, "MX")
+        hosts = [str(record.exchange).rstrip(".") for record in answers]
+        if hosts and all(host in ("", ".") for host in hosts):
+            reason = f"{domain} doesn't accept email (it publishes a null MX record)."
+    except dns.resolver.NXDOMAIN:
+        reason = f"The domain {domain} doesn't exist, so this address can't receive email."
+    except dns.resolver.NoAnswer:
+        # No MX: mail falls back to the domain's own address record, if any.
+        try:
+            resolver.resolve(domain, "A")
+        except dns.resolver.NoAnswer:
+            try:
+                resolver.resolve(domain, "AAAA")
+            except dns.resolver.NoAnswer:
+                reason = f"{domain} has no mail server, so this address can't receive email."
+            except dns.exception.DNSException:
+                reason = ""
+        except dns.exception.DNSException:
+            reason = ""
+    except dns.exception.DNSException:
+        # A timeout or resolver problem here says nothing about the address.
+        return ""
+    _domains[domain] = (reason, time.time())
+    return reason
+
+
 def deliver(provider: str, credentials: dict, message: EmailMessage) -> str:
+    reason = undeliverable(str(message.get("To", "")))
+    if reason:
+        raise SendError(reason)
     if provider == "gmail-oauth":
         return send_gmail(credentials, message)
     if provider == "smtp":
@@ -205,7 +274,7 @@ def consent_url(*, client_id: str, redirect_uri: str, state: str, login_hint: Op
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
-        "scope": GMAIL_SCOPE,
+        "scope": f"{GMAIL_SCOPE} {GMAIL_READ_SCOPE}",
         "access_type": "offline",
         "prompt": "consent",
         "include_granted_scopes": "true",

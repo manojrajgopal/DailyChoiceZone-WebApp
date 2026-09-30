@@ -278,9 +278,16 @@ function Row({ entry, typeLabel, open, onToggle }: { entry: EmailLogEntry; typeL
               </Detail>
               <Detail label={entry.status === "failed" ? "Why it failed" : "Result"} wide>
                 {entry.status === "failed" ? (
-                  <span className="text-[#a12b2b]">{entry.error || "The provider refused it without a reason."}</span>
+                  <span className="text-[#a12b2b]">
+                    {entry.error || "The provider refused it without a reason."}
+                    {entry.bouncedAt ? (
+                      <span className="mt-0.5 block text-admin-muted">
+                        Accepted at first, then bounced back {formatDateTime(entry.bouncedAt)}.
+                      </span>
+                    ) : null}
+                  </span>
                 ) : (
-                  "Accepted by the email provider for delivery."
+                  "Handed to the recipient's mail server. If it bounces back, this changes to Failed with the reason — bounces are checked every few minutes."
                 )}
               </Detail>
             </dl>

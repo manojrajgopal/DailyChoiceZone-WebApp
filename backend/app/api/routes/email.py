@@ -142,6 +142,7 @@ def _log_row(row) -> dict:
     return {
         "id": row.id, "type": row.email_type, "recipient": row.recipient, "subject": row.subject,
         "status": row.status, "error": row.error, "reference": row.reference, "at": row.created_at,
+        "bouncedAt": row.bounced_at,
     }
 
 

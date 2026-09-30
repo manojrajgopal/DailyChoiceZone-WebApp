@@ -34,6 +34,7 @@ from app.models import (
     SupportTeam,
     SupportTicket,
 )
+from app.services.email import senders
 from app.services.support import config
 
 VARIABLES = (
@@ -267,6 +268,18 @@ def staff(
         mine = db.get(AdminUser, exclude_admin_id)
         if mine is not None:
             emails.pop(mine.email.lower(), None)
+
+    # Nobody who can actually receive mail — every address is on a domain with
+    # no mail server (e.g. staff accounts on a domain that was never set up).
+    # The alert still reaches someone: the store's own sending mailbox. The
+    # undeliverable sends go ahead too, so the email history shows each one
+    # failing with the reason.
+    if emails and all(senders.undeliverable(address) for address in emails.values()):
+        from app.services import email as email_service
+
+        account = email_service.active_account(db)
+        if account is not None and account.sender_email and not senders.undeliverable(account.sender_email):
+            emails.setdefault(account.sender_email.lower(), account.sender_email)
 
     for address in emails.values():
         _send(db, key, ticket, address, values, internal=True)

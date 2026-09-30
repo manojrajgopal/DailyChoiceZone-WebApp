@@ -140,6 +140,19 @@ def _no_real_database(monkeypatch, db):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_dns(monkeypatch):
+    """
+    Treat every address as deliverable unless a test says otherwise.
+
+    The fixtures use reserved domains (`example.com`, `*.test`) that really do
+    refuse mail, and the suite must not depend on the network.
+    """
+    from app.services.email import senders
+
+    monkeypatch.setattr(senders, "undeliverable", lambda address: "")
+
+
+@pytest.fixture(autouse=True)
 def _no_real_gateway(monkeypatch):
     """
     Stop the suite from reaching a payment gateway.

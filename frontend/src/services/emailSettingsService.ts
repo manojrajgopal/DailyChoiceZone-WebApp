@@ -49,6 +49,14 @@ export interface EmailAccount {
   /** False when the saved credentials can no longer be read and must be re-entered. */
   readable?: boolean;
   fields?: EmailAccountFields;
+  /** Whether bounce notices in the sending mailbox are being read. */
+  bounceTracking?: {
+    enabled: boolean;
+    /** Why it's off, when it is. */
+    reason: string;
+    lastCheckedAt: string | null;
+    bouncesFound: number;
+  };
 }
 
 export interface EmailType {
@@ -102,6 +110,8 @@ export interface EmailLogEntry {
   error?: string | null;
   reference?: string | null;
   at: string;
+  /** Set when the provider accepted it but a bounce notice came back later. */
+  bouncedAt?: string | null;
 }
 
 export interface EmailPreference {

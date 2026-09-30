@@ -986,7 +986,9 @@ function EmailSettings() {
             content: (
             <AdminCard
               title="Recent emails"
-              description={`The ${RECENT_EMAILS} latest emails sent from your store, newest first.`}
+              description={`The ${RECENT_EMAILS} latest emails sent from your store, newest first.${
+                account.bounceTracking?.enabled ? " Emails that bounce back are marked Failed automatically." : ""
+              }`}
               padded={false}
               action={
                 <div className="flex flex-wrap gap-2">
@@ -1002,6 +1004,12 @@ function EmailSettings() {
                 </div>
               }
             >
+              {account.configured && account.bounceTracking && !account.bounceTracking.enabled && account.bounceTracking.reason ? (
+                <p className="flex items-start gap-2 border-b border-admin-border bg-[#fdf6e3] px-4 py-2.5 text-xs leading-relaxed text-[#8a5d00]">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  Bounce checking is off: {account.bounceTracking.reason}
+                </p>
+              ) : null}
               {log === null ? (
                 <div className="flex h-40 items-center justify-center">
                   <Loader2 className="h-5 w-5 animate-spin text-admin-faint" aria-label="Loading recent emails" />

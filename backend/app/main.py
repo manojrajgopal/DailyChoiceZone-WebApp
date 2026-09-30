@@ -56,10 +56,16 @@ async def lifespan(_: FastAPI):
 
     support_sweeper = asyncio.create_task(support_sla.run_forever())
 
+    # Emails the provider accepted but could not deliver: read the bounce
+    # notices and mark those emails failed, with the reason.
+    from app.services.email import bounces as email_bounces
+
+    bounce_sweeper = asyncio.create_task(email_bounces.run_forever())
+
     try:
         yield
     finally:
-        for task in (sweeper, support_sweeper):
+        for task in (sweeper, support_sweeper, bounce_sweeper):
             if task is None:
                 continue
             task.cancel()

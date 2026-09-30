@@ -239,3 +239,83 @@ class TestEveryStepSendsSomething:
             }}}}, event_id=f"evt_declined{attempt}")
             assert response.status_code == 200, response.text
         assert len(outbox) == 1 and "didn't go through" in outbox[0]["subject"]
+
+
+class TestUndeliverableAddresses:
+    """Mail to a domain that can't receive it is reported as failed, not "Sent"."""
+
+    @pytest.fixture()
+    def dns(self, monkeypatch):
+        import dns.resolver
+
+        from app.services.email import senders
+
+        senders._domains.clear()
+        answers = {}
+
+        class Resolver:
+            lifetime = 5.0
+
+            def resolve(self, domain, kind):
+                outcome = answers.get((domain, kind), dns.resolver.NoAnswer())
+                if isinstance(outcome, Exception):
+                    raise outcome
+                return outcome
+
+        monkeypatch.setattr(dns.resolver, "Resolver", Resolver)
+        yield answers
+        senders._domains.clear()
+
+    def test_the_domain_is_checked(self, dns):
+        import dns.resolver as resolver
+
+        from app.services.email.senders import check_domain
+
+        class MX:
+            def __init__(self, host):
+                self.exchange = host
+
+        dns[("gone.example", "MX")] = resolver.NXDOMAIN()
+        dns[("null.example", "MX")] = [MX(".")]
+        dns[("mail.example", "MX")] = [MX("mx1.mail.example.")]
+        dns[("bare.example", "A")] = ["203.0.113.5"]
+        dns[("slow.example", "MX")] = resolver.LifetimeTimeout(timeout=5, errors={})
+        assert "doesn't exist" in check_domain("a@gone.example")
+        assert "null MX" in check_domain("a@null.example")
+        assert check_domain("a@mail.example") == ""
+        # No MX but an address record: mail goes there, so it is allowed.
+        assert check_domain("a@bare.example") == ""
+        assert "no mail server" in check_domain("a@nowhere.example")
+        # Our own DNS trouble never blocks a send.
+        assert check_domain("a@slow.example") == ""
+
+    def test_delivery_is_refused_with_the_reason(self, monkeypatch):
+        from app.services.email import senders
+
+        monkeypatch.setattr(senders, "undeliverable", lambda address: "The domain gone.example doesn't exist.")
+        called = []
+        monkeypatch.setattr(senders, "send_gmail", lambda credentials, message: called.append(message) or "id")
+        message = senders.build_message(sender_email="shop@mail.example", sender_name="Shop", reply_to="",
+                                        to="a@gone.example", subject="Hi", html="<p>Hi</p>", text="Hi")
+        with pytest.raises(senders.SendError, match="doesn't exist"):
+            senders.deliver("gmail-oauth", {}, message)
+        assert called == []
+
+    def test_staff_alerts_reach_the_store_inbox_when_no_staff_address_works(
+        self, client, auth, admin_auth, outbox, monkeypatch, db,
+    ):
+        from app.services.email import senders
+        from app.support_defaults import install
+
+        install(db.connection())
+        db.flush()
+        connect(client, admin_auth)
+        # Every staff and admin address is on a domain that doesn't exist.
+        monkeypatch.setattr(senders, "undeliverable",
+                            lambda address: "" if address.endswith("@example.test") else "no such domain")
+        outbox.clear()
+        from tests.integration.test_support import raise_ticket
+
+        raise_ticket(client, auth, "Orders", "Order Status")
+        staff_alerts = [m for m in outbox if "New " in m["subject"] and "request" in m["subject"]]
+        assert "orders@example.test" in {m["to"] for m in staff_alerts}

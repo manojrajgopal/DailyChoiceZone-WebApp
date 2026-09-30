@@ -218,6 +218,12 @@ def active_account(db: Session) -> Optional[EmailAccount]:
     ).scalars().first()
 
 
+def _bounce_status(db: Session) -> dict:
+    from app.services.email import bounces
+
+    return bounces.status(db)
+
+
 def account_view(db: Session, redirect_uri: str) -> dict:
     account = active_account(db)
     base = {
@@ -240,6 +246,7 @@ def account_view(db: Session, redirect_uri: str) -> dict:
         "verifiedAt": account.verified_at,
         "updatedAt": account.updated_at,
         "readable": bool(values),
+        "bounceTracking": _bounce_status(db),
         # Hints only: enough to recognise what is saved, never to use it.
         "fields": {
             key: (str(values.get(key, "")) if key in SHOWN_FIELDS else crypto.mask(str(values.get(key, ""))))
@@ -547,9 +554,10 @@ def _worker(jobs: List[dict]) -> None:
     from app.core.database import SessionLocal
 
     for job in jobs:
-        status, error = "sent", ""
+        status, error, provider_id = "sent", "", None
         try:
-            _send_now(job["provider"], job["credentials"], job, job["to"], job["subject"], job["html"], job["text"])
+            provider_id = _send_now(job["provider"], job["credentials"], job, job["to"], job["subject"], job["html"],
+                                    job["text"]) or None
         except SendError as failure:
             status, error = "failed", str(failure)[:500]
         except Exception as failure:  # pragma: no cover — logged, never raised
@@ -560,6 +568,7 @@ def _worker(jobs: List[dict]) -> None:
                 log_db.add(EmailLog(
                     email_type=job["key"], recipient=job["to"], subject=job["subject"][:255],
                     status=status, error=error, reference=job["reference"][:40], created_at=datetime.utcnow(),
+                    provider_id=(provider_id or "")[:100] or None,
                 ))
                 log_db.commit()
         except Exception:
@@ -570,7 +579,11 @@ def _worker(jobs: List[dict]) -> None:
 def _flush_outgoing(session: Session) -> None:
     jobs = session.info.pop("outgoing_email", None)
     if jobs:
-        threading.Thread(target=_worker, args=(jobs,), daemon=True, name="email-sender").start()
+        # Not a daemon: a daemon thread is killed the instant the process
+        # exits, so every restart (a deploy, `--reload`) silently dropped the
+        # emails still being sent — with no log line to show they existed.
+        # Each send is bounded by its own timeout, so shutdown waits seconds.
+        threading.Thread(target=_worker, args=(jobs,), daemon=False, name="email-sender").start()
 
 
 @event.listens_for(Session, "after_rollback")
