@@ -2,10 +2,11 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Copy, Info, Loader2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Copy, History, Info, Loader2, RefreshCw, X } from "lucide-react";
 
 import {
   AdminButton,
+  AdminButtonLink,
   AdminCard,
   AdminPageHeader,
   ConfirmDialog,
@@ -106,6 +107,9 @@ function draftFrom(account: EmailAccount): Draft {
 }
 
 /** Server times are UTC without an offset; read them as UTC. */
+/** How many sends the settings page previews; the rest are on the history page. */
+const RECENT_EMAILS = 8;
+
 function toDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const hasZone = /(Z|[+-]\d{2}:?\d{2})$/.test(value);
@@ -178,7 +182,7 @@ function Switch({
   );
 }
 
-function LogStatusBadge({ status }: { status: EmailLogEntry["status"] }) {
+export function LogStatusBadge({ status }: { status: EmailLogEntry["status"] }) {
   return (
     <span
       className={cn(
@@ -275,7 +279,7 @@ function EmailSettings() {
 
   const loadLog = async () => {
     try {
-      applyLog(await getEmailLog());
+      applyLog(await getEmailLog(RECENT_EMAILS));
     } catch (error) {
       onLogError(error);
     }
@@ -286,7 +290,7 @@ function EmailSettings() {
     getEmailSettings()
       .then((settings) => active && applySettings(settings))
       .catch(() => active && setLoadFailed(true));
-    getEmailLog()
+    getEmailLog(RECENT_EMAILS)
       .then((entries) => active && applyLog(entries))
       .catch((error: unknown) => active && onLogError(error));
     return () => {
@@ -959,13 +963,20 @@ function EmailSettings() {
         {/* ------------------------------------------------------------ log */}
         <AdminCard
           title="Recent emails"
-          description="The latest emails sent from your store, newest first."
+          description={`The ${RECENT_EMAILS} latest emails sent from your store, newest first.`}
           padded={false}
           action={
-            <AdminButton size="sm" onClick={() => void onRefreshLog()} loading={refreshingLog}>
-              {refreshingLog ? null : <RefreshCw className="h-3 w-3" strokeWidth={2} aria-hidden="true" />}
-              Refresh
-            </AdminButton>
+            <div className="flex flex-wrap gap-2">
+              <AdminButton size="sm" onClick={() => void onRefreshLog()} loading={refreshingLog}>
+                {refreshingLog ? null : <RefreshCw className="h-3 w-3" strokeWidth={2} aria-hidden="true" />}
+                Refresh
+              </AdminButton>
+              <AdminButtonLink href="/admin/settings/email/history" size="sm" variant="primary">
+                <History className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                Open email history
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+              </AdminButtonLink>
+            </div>
           }
         >
           {log === null ? (

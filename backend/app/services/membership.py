@@ -475,11 +475,46 @@ def cancel_pending(db: Session, customer: Customer, membership_id: str) -> None:
 # ------------------------------------------------------------------- admin
 
 
-def list_members(db: Session, *, status: Optional[str] = None) -> List[CustomerMembership]:
-    query = select(CustomerMembership).where(CustomerMembership.status != "pending")
+def list_members(db: Session, *, status: Optional[str] = None, limit: int = 500) -> List[CustomerMembership]:
+    # Unpaid purchases stay out of the list unless asked for ("Awaiting payment").
+    query = select(CustomerMembership)
     if status:
         query = query.where(CustomerMembership.status == status)
-    return list(db.execute(query.order_by(CustomerMembership.created_at.desc()).limit(500)).scalars())
+    else:
+        query = query.where(CustomerMembership.status != "pending")
+    return list(db.execute(query.order_by(CustomerMembership.created_at.desc()).limit(limit)).scalars())
+
+
+def search_members(
+    db: Session, *, status: str = "", plan_id: str = "", query: str = "", page: int = 1, page_size: int = 25,
+) -> tuple:
+    """Every member, filtered and paged in the database. Returns (rows, total, counts by status)."""
+    from sqlalchemy import or_
+
+    conditions = []
+    if plan_id:
+        conditions.append(CustomerMembership.plan_id == plan_id)
+    text = (query or "").strip()
+    if text:
+        like = f"%{text}%"
+        people = select(Customer.id).where(or_(
+            Customer.email.ilike(like), Customer.first_name.ilike(like), Customer.last_name.ilike(like),
+            func.concat(Customer.first_name, " ", Customer.last_name).ilike(like),
+        ))
+        conditions.append(or_(CustomerMembership.customer_id.in_(people), CustomerMembership.id.ilike(like),
+                              CustomerMembership.plan_name.ilike(like)))
+    counts = dict(db.execute(
+        select(CustomerMembership.status, func.count()).where(*conditions).group_by(CustomerMembership.status)
+    ).all())
+    # Unpaid purchases stay out of "All" and are listed only when asked for.
+    conditions.append(CustomerMembership.status == status if status else CustomerMembership.status != "pending")
+    total = db.execute(select(func.count()).select_from(CustomerMembership).where(*conditions)).scalar_one()
+    rows = db.execute(
+        select(CustomerMembership).where(*conditions)
+        .order_by(CustomerMembership.created_at.desc(), CustomerMembership.id.desc())
+        .offset((max(1, page) - 1) * page_size).limit(page_size)
+    ).scalars().all()
+    return list(rows), total, counts
 
 
 def admin_cancel(db: Session, membership_id: str) -> CustomerMembership:

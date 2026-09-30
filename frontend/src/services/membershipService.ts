@@ -115,6 +115,14 @@ export interface MemberRow extends MembershipSummary {
   customerName: string;
   customerEmail: string;
   paidAt: string | null;
+  createdAt?: string;
+}
+
+export interface MemberPage {
+  items: MemberRow[];
+  pagination: { page: number; page_size: number; total: number; total_pages: number };
+  counts: { active: number; pending: number; expired: number; cancelled: number };
+  plans: { id: string; name: string }[];
 }
 
 /* ----------------------------------------------------------------- shoppers */
@@ -178,8 +186,19 @@ export function deleteMembershipPlan(id: string): Promise<{ outcome: "deleted" |
   return apiDelete(`/admin/memberships/plans/${encodeURIComponent(id)}`, ADMIN);
 }
 
-export function listMembers(filters: { status?: string } = {}): Promise<MemberRow[]> {
-  return apiGet(`/admin/memberships${query({ status: filters.status })}`, ADMIN);
+export function listMembers(filters: { status?: string; limit?: number } = {}): Promise<MemberRow[]> {
+  return apiGet(`/admin/memberships${query({ status: filters.status, limit: filters.limit })}`, ADMIN);
+}
+
+/** Every member, filtered and paged by the server. */
+export function searchMembers(filters: {
+  status?: string;
+  plan?: string;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<MemberPage> {
+  return apiGet(`/admin/memberships/search${query(filters)}`, ADMIN);
 }
 
 /** End an active membership now. */

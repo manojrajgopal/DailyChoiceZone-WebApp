@@ -29,7 +29,7 @@ from app.dependencies.auth import get_current_customer, get_optional_customer, r
 from app.models import AdminUser, Customer, CustomerMembership, MembershipPlan
 from app.schemas.base import CamelModel
 from app.services import membership as service
-from app.utils.response import ok
+from app.utils.response import Pagination, ok
 
 router = APIRouter(prefix="/memberships", tags=["Membership"])
 admin_router = APIRouter(prefix="/admin/memberships", tags=["Admin · Membership"])
@@ -195,29 +195,55 @@ def delete_plan(
     )
 
 
+def _member_rows(db: Session, rows) -> list:
+    from app.models import Customer as CustomerModel
+
+    ids = {r.customer_id for r in rows}
+    people = {c.id: c for c in db.query(CustomerModel).filter(CustomerModel.id.in_(ids)).all()} if ids else {}
+    return [
+        {
+            **service.membership_summary(db, row),
+            "customerId": row.customer_id,
+            "customerName": people[row.customer_id].full_name if row.customer_id in people else "",
+            "customerEmail": people[row.customer_id].email if row.customer_id in people else "",
+            "paidAt": row.paid_at,
+            "createdAt": row.created_at,
+        }
+        for row in rows
+    ]
+
+
 @admin_router.get("", summary="Members")
 def list_members(
     status: Optional[str] = Query(default=None, max_length=12),
+    limit: int = Query(500, ge=1, le=500),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_permission("customers")),
 ):
-    from app.models import Customer as CustomerModel
-
     service.expire_lapsed(db)
-    rows = service.list_members(db, status=status)
-    people = {c.id: c for c in db.query(CustomerModel).filter(CustomerModel.id.in_({r.customer_id for r in rows})).all()} if rows else {}
-    return ok(
-        [
-            {
-                **service.membership_summary(db, row),
-                "customerId": row.customer_id,
-                "customerName": people[row.customer_id].full_name if row.customer_id in people else "",
-                "customerEmail": people[row.customer_id].email if row.customer_id in people else "",
-                "paidAt": row.paid_at,
-            }
-            for row in rows
-        ]
-    )
+    return ok(_member_rows(db, service.list_members(db, status=status, limit=limit)))
+
+
+@admin_router.get("/search", summary="Every member, filtered and paged")
+def search_members(
+    status: str = Query("", max_length=12),
+    plan: str = Query("", max_length=20),
+    q: str = Query("", max_length=120),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(require_permission("customers")),
+):
+    service.expire_lapsed(db)
+    rows, total, counts = service.search_members(db, status=status, plan_id=plan, query=q, page=page,
+                                                 page_size=page_size)
+    plans = db.query(MembershipPlan).order_by(MembershipPlan.sort_order, MembershipPlan.name).all()
+    return ok({
+        "items": _member_rows(db, rows),
+        "pagination": Pagination.build(page, page_size, total).model_dump(),
+        "counts": {s: counts.get(s, 0) for s in ("active", "pending", "expired", "cancelled")},
+        "plans": [{"id": p.id, "name": p.name} for p in plans],
+    })
 
 
 @admin_router.post("/{membership_id}/cancel", summary="End a membership now")

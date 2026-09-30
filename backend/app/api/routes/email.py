@@ -24,7 +24,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
 from pydantic import Field
@@ -39,7 +39,7 @@ from app.schemas.base import CamelModel
 from app.services import email as service
 from app.services.email import crypto
 from app.services.email.senders import SendError, consent_url, exchange_code
-from app.utils.response import ok
+from app.utils.response import Pagination, ok
 
 admin_router = APIRouter(prefix="/admin/email", tags=["Admin · Email"])
 invoice_router = APIRouter(prefix="/admin/billing", tags=["Admin · Email"])
@@ -138,17 +138,48 @@ def save_types(body: List[TypeIn], db: Session = Depends(get_db), admin: AdminUs
     return ok(service.save_types(db, [t.model_dump(by_alias=True) for t in body]), message="Email preferences saved.")
 
 
+def _log_row(row) -> dict:
+    return {
+        "id": row.id, "type": row.email_type, "recipient": row.recipient, "subject": row.subject,
+        "status": row.status, "error": row.error, "reference": row.reference, "at": row.created_at,
+    }
+
+
 @admin_router.get("/log", summary="Recent emails")
-def log(db: Session = Depends(get_db), admin: AdminUser = Depends(require_permission("settings"))):
-    return ok(
-        [
-            {
-                "id": row.id, "type": row.email_type, "recipient": row.recipient, "subject": row.subject,
-                "status": row.status, "error": row.error, "reference": row.reference, "at": row.created_at,
-            }
-            for row in service.recent_log(db)
-        ]
+def log(
+    limit: int = Query(100, ge=1, le=100),
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(require_permission("settings")),
+):
+    return ok([_log_row(row) for row in service.recent_log(db, limit)])
+
+
+@admin_router.get("/log/search", summary="The full email log, filtered and paged")
+def log_search(
+    status: str = Query("", max_length=12),
+    type: str = Query("", max_length=40),
+    q: str = Query("", max_length=120),
+    date_from: str = Query("", alias="from", max_length=30),
+    date_to: str = Query("", alias="to", max_length=30),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(require_permission("settings")),
+):
+    from app.utils.dates import parse_dt
+
+    rows, total, counts = service.search_log(
+        db, status=status, email_type=type, query=q,
+        date_from=parse_dt(date_from) if date_from else None,
+        date_to=parse_dt(date_to) if date_to else None,
+        page=page, page_size=page_size,
     )
+    return ok({
+        "items": [_log_row(row) for row in rows],
+        "pagination": Pagination.build(page, page_size, total).model_dump(),
+        "counts": {"sent": counts.get("sent", 0), "failed": counts.get("failed", 0)},
+        "types": [{"key": t["key"], "label": t["label"]} for t in service.types(db)],
+    })
 
 
 @admin_router.post("/google/start", summary="Begin connecting a Google account")

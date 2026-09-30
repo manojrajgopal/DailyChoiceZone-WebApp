@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
 
 import {
   AdminButton,
+  AdminButtonLink,
   AdminCard,
   AdminPageHeader,
   ConfirmDialog,
@@ -59,7 +60,7 @@ const TONE = {
   grey: "bg-admin-raised text-admin-muted ring-admin-border",
 } as const;
 
-function Badge({ tone, children }: { tone: keyof typeof TONE; children: React.ReactNode }) {
+export function Badge({ tone, children }: { tone: keyof typeof TONE; children: React.ReactNode }) {
   return (
     <span
       className={cn(
@@ -72,7 +73,7 @@ function Badge({ tone, children }: { tone: keyof typeof TONE; children: React.Re
   );
 }
 
-const MEMBER_STATUS: Record<MembershipStatus, { label: string; tone: keyof typeof TONE }> = {
+export const MEMBER_STATUS: Record<MembershipStatus, { label: string; tone: keyof typeof TONE }> = {
   active: { label: "Active", tone: "green" },
   pending: { label: "Awaiting payment", tone: "amber" },
   expired: { label: "Ended", tone: "grey" },
@@ -691,6 +692,9 @@ function PlanForm({
 
 /* ----------------------------------------------------------------- members */
 
+/** How many members the programme page previews; everyone is in the directory. */
+const RECENT_MEMBERS = 8;
+
 function MembersSection() {
   const [filter, setFilter] = useState("");
   const [rows, setRows] = useState<MemberRow[] | null>(null);
@@ -700,7 +704,7 @@ function MembersSection() {
 
   useEffect(() => {
     let active = true;
-    listMembers({ status: filter || undefined })
+    listMembers({ status: filter || undefined, limit: RECENT_MEMBERS })
       .then((result) => active && setRows(result))
       .catch(() => active && setRows([]));
     return () => {
@@ -731,9 +735,14 @@ function MembersSection() {
             Members
           </h2>
           <p className="mt-0.5 text-xs text-admin-muted">
-            Everyone who has bought a plan, newest first.
+            The {RECENT_MEMBERS} newest members. Search, filter and page through everyone in the directory.
           </p>
         </div>
+        <AdminButtonLink href="/admin/membership/members" size="sm" variant="primary">
+          <Users className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+          Open member directory
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+        </AdminButtonLink>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5" role="tablist" aria-label="Filter members by status">

@@ -147,8 +147,37 @@ export function saveEmailTypes(types: EmailType[]): Promise<EmailType[]> {
   );
 }
 
-export function getEmailLog(): Promise<EmailLogEntry[]> {
-  return apiGet<EmailLogEntry[]>("/admin/email/log", ADMIN);
+/** The most recent sends, newest first (at most 100). */
+export function getEmailLog(limit?: number): Promise<EmailLogEntry[]> {
+  return apiGet<EmailLogEntry[]>(`/admin/email/log${limit ? `?limit=${limit}` : ""}`, ADMIN);
+}
+
+export interface EmailLogFilters {
+  status?: string;
+  type?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface EmailLogPage {
+  items: EmailLogEntry[];
+  pagination: { page: number; page_size: number; total: number; total_pages: number };
+  /** Per status, under every filter except the status itself — for the tabs. */
+  counts: { sent: number; failed: number };
+  types: { key: string; label: string }[];
+}
+
+/** The whole email log, filtered and paged by the server. */
+export function searchEmailLog(filters: EmailLogFilters): Promise<EmailLogPage> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  const text = params.toString();
+  return apiGet<EmailLogPage>(`/admin/email/log/search${text ? `?${text}` : ""}`, ADMIN);
 }
 
 /** Begin "Connect with Google". Send the browser to `authorizationUrl` next. */

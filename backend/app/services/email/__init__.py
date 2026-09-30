@@ -335,6 +335,47 @@ def recent_log(db: Session, limit: int = 100) -> List[EmailLog]:
     return list(db.execute(select(EmailLog).order_by(EmailLog.id.desc()).limit(limit)).scalars())
 
 
+def search_log(
+    db: Session,
+    *,
+    status: str = "",
+    email_type: str = "",
+    query: str = "",
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    page: int = 1,
+    page_size: int = 25,
+) -> tuple:
+    """The whole email log, filtered and paged in the database. Returns (rows, total, counts)."""
+    from sqlalchemy import func, or_
+
+    conditions = []
+    if email_type:
+        conditions.append(EmailLog.email_type == email_type)
+    text = (query or "").strip()
+    if text:
+        like = f"%{text}%"
+        conditions.append(or_(EmailLog.recipient.ilike(like), EmailLog.subject.ilike(like),
+                              EmailLog.reference.ilike(like)))
+    if date_from is not None:
+        conditions.append(EmailLog.created_at >= date_from)
+    if date_to is not None:
+        conditions.append(EmailLog.created_at <= date_to)
+
+    # Counts per status for the filter tabs, under every other filter.
+    counts = dict(db.execute(
+        select(EmailLog.status, func.count()).where(*conditions).group_by(EmailLog.status)
+    ).all())
+    if status:
+        conditions.append(EmailLog.status == status)
+    total = db.execute(select(func.count()).select_from(EmailLog).where(*conditions)).scalar_one()
+    rows = db.execute(
+        select(EmailLog).where(*conditions).order_by(EmailLog.id.desc())
+        .offset((max(1, page) - 1) * page_size).limit(page_size)
+    ).scalars().all()
+    return list(rows), total, counts
+
+
 # --------------------------------------------------------------- templates
 
 
