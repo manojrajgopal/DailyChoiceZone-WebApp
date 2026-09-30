@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 
 import type { BillingConfig, PaymentMethodKey, TaxConfig } from "@/types";
 
-import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import {
   AdminInput,
   AdminSelect,
@@ -13,6 +13,13 @@ import {
   AdminToggle,
   FormGrid,
 } from "@/components/admin/ui/AdminForm";
+import {
+  SettingsLayout,
+  SettingsSaveBar,
+  changed,
+  useSettingsSection,
+  type SettingsSection,
+} from "@/components/admin/ui/SettingsLayout";
 import { formatMoney, toMinor } from "@/lib/money";
 import { getBillingConfig, saveBillingConfig } from "@/services/billing/billingService";
 import { useSiteContent } from "@/hooks/useSiteContent";
@@ -35,6 +42,8 @@ import { toast } from "@/store/toastStore";
  * setting up a store.
  */
 
+const SECTION_IDS = ["business", "invoice", "numbers", "tax", "currency", "payment", "refund"];
+
 export function AdminBillingSettingsView() {
   const content = useSiteContent();
   const states = content?.states ?? [];
@@ -42,7 +51,11 @@ export function AdminBillingSettingsView() {
 
   const [billing, setBilling] = useState<BillingConfig | null>(null);
   const [tax, setTax] = useState<TaxConfig | null>(null);
+  // What the server holds — for marking unsaved sections and "Discard changes".
+  const [savedBilling, setSavedBilling] = useState<BillingConfig | null>(null);
+  const [savedTax, setSavedTax] = useState<TaxConfig | null>(null);
   const [saving, setSaving] = useState(false);
+  const [section, setSection] = useSettingsSection(SECTION_IDS);
 
   useEffect(() => {
     let active = true;
@@ -50,13 +63,15 @@ export function AdminBillingSettingsView() {
       if (!active) return;
       setBilling(nextBilling);
       setTax(nextTax);
+      setSavedBilling(nextBilling);
+      setSavedTax(nextTax);
     });
     return () => {
       active = false;
     };
   }, []);
 
-  if (!billing || !tax) {
+  if (!billing || !tax || !savedBilling || !savedTax) {
     return (
       <div className="flex min-h-64 items-center justify-center">
         <Loader2 className="h-5 w-5 animate-spin text-admin-faint" aria-hidden="true" />
@@ -81,14 +96,12 @@ export function AdminBillingSettingsView() {
 
   const onSave = async () => {
     if (billing.business.legalName.trim().length < 2) {
+      setSection("business");
       toast.error("Enter the registered business name — it goes on every invoice.");
       return;
     }
-    if (billing.invoice.prefix.trim().length < 2) {
-      toast.error("Enter an invoice prefix.");
-      return;
-    }
     if (tax.enabled && tax.rates.igst <= 0) {
+      setSection("tax");
       toast.error("With tax enabled, the IGST rate must be above zero.");
       return;
     }
@@ -98,6 +111,8 @@ export function AdminBillingSettingsView() {
       // Both or neither, as far as the person filling the form is concerned —
       // a failure that saved one half silently is the worst outcome here.
       await Promise.all([saveBillingConfig(billing), saveTaxConfig(tax)]);
+      setSavedBilling(billing);
+      setSavedTax(tax);
       toast.success("Billing settings saved");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Those settings could not be saved.");
@@ -114,28 +129,13 @@ export function AdminBillingSettingsView() {
   const setHalfRate = (value: number) =>
     setTax({ ...tax, rates: { ...tax.rates, cgst: value, sgst: value, igst: value * 2 } });
 
-  return (
-    <div>
-      <AdminPageHeader
-        title="Billing settings"
-        description="The business details, numbering, tax treatment and payment options behind every invoice."
-        breadcrumbs={[
-          { label: "Admin", href: "/admin/dashboard" },
-          { label: "Store settings", href: "/admin/settings" },
-          { label: "Billing" },
-        ]}
-        actions={
-          <AdminButton variant="primary" onClick={() => void onSave()} disabled={saving}>
-            {saving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            ) : null}
-            Save billing settings
-          </AdminButton>
-        }
-      />
-
-      <div className="flex flex-col gap-4">
-        {/* -------------------------------------------------------- business */}
+  const sections: SettingsSection[] = [
+    {
+      id: "business",
+      label: "Business details",
+      group: "Business",
+      dirty: changed(billing.business, savedBilling.business),
+      content: (
         <AdminCard title="Business information" description="Printed on every invoice and credit note.">
           <FormGrid>
             <AdminInput
@@ -201,33 +201,16 @@ export function AdminBillingSettingsView() {
             />
           </FormGrid>
         </AdminCard>
-
-        {/* --------------------------------------------------------- invoice */}
-        <AdminCard title="Invoice settings" description="Numbering, terms and the footer.">
+      ),
+    },
+    {
+      id: "invoice",
+      label: "Invoice terms",
+      group: "Business",
+      dirty: changed(billing.invoice, savedBilling.invoice),
+      content: (
+        <AdminCard title="Invoice terms" description="Payment terms, notes and the footer printed on every invoice.">
           <FormGrid>
-            <AdminInput
-              label="Invoice prefix"
-              value={billing.invoice.prefix}
-              onChange={(event) => patchInvoice("prefix", event.target.value)}
-              hint={`Produces ${billing.invoice.prefix}-${new Date().getFullYear()}-${String(billing.invoice.startNumber).padStart(billing.invoice.padding, "0")}`}
-              required
-            />
-            <AdminInput
-              label="Starting number"
-              type="number"
-              min={1}
-              value={billing.invoice.startNumber}
-              onChange={(event) => patchInvoice("startNumber", Number(event.target.value) || 1)}
-              hint="Used for new invoices. Existing numbers never change."
-            />
-            <AdminInput
-              label="Invoice number length"
-              type="number"
-              min={1}
-              max={10}
-              value={billing.invoice.padding}
-              onChange={(event) => patchInvoice("padding", Number(event.target.value) || 1)}
-            />
             <AdminInput
               label="Payment due (days)"
               type="number"
@@ -256,20 +239,22 @@ export function AdminBillingSettingsView() {
               onChange={(event) => patchInvoice("footer", event.target.value)}
               className="sm:col-span-2"
             />
-            <AdminInput
-              label="Credit note prefix"
-              value={billing.creditNote.prefix}
-              onChange={(event) =>
-                setBilling({
-                  ...billing,
-                  creditNote: { ...billing.creditNote, prefix: event.target.value },
-                })
-              }
-            />
           </FormGrid>
         </AdminCard>
-
-        {/* ------------------------------------------------------------- tax */}
+      ),
+    },
+    {
+      id: "numbers",
+      label: "Document numbers",
+      group: "Business",
+      content: <DocumentNumbers billing={billing} />,
+    },
+    {
+      id: "tax",
+      label: "Tax",
+      group: "Tax & money",
+      dirty: changed(tax, savedTax),
+      content: (
         <AdminCard
           title="Tax settings"
           description="How GST is applied to your orders."
@@ -359,8 +344,14 @@ export function AdminBillingSettingsView() {
             ) : null}
           </div>
         </AdminCard>
-
-        {/* -------------------------------------------------------- currency */}
+      ),
+    },
+    {
+      id: "currency",
+      label: "Currency",
+      group: "Tax & money",
+      dirty: changed(billing.currency, savedBilling.currency),
+      content: (
         <AdminCard title="Currency" description="The currency used on invoices.">
           <FormGrid>
             <AdminInput
@@ -390,8 +381,14 @@ export function AdminBillingSettingsView() {
             />
           </FormGrid>
         </AdminCard>
-
-        {/* --------------------------------------------------------- payment */}
+      ),
+    },
+    {
+      id: "payment",
+      label: "Payment methods",
+      group: "Checkout",
+      dirty: changed(billing.payment, savedBilling.payment),
+      content: (
         <AdminCard title="Payment settings" description="What a customer can pay with.">
           <div className="flex flex-col gap-3">
             {methods.map(({ id, label }) => {
@@ -438,8 +435,14 @@ export function AdminBillingSettingsView() {
             </p>
           </div>
         </AdminCard>
-
-        {/* ---------------------------------------------------------- refund */}
+      ),
+    },
+    {
+      id: "refund",
+      label: "Refunds",
+      group: "Checkout",
+      dirty: changed(billing.refund, savedBilling.refund),
+      content: (
         <AdminCard title="Refund settings">
           <FormGrid>
             <AdminInput
@@ -488,14 +491,78 @@ export function AdminBillingSettingsView() {
             />
           </FormGrid>
         </AdminCard>
+      ),
+    },
+  ];
 
-        <div className="flex justify-end pb-2">
-          <AdminButton variant="primary" onClick={() => void onSave()} disabled={saving}>
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-            Save billing settings
-          </AdminButton>
-        </div>
-      </div>
+  return (
+    <div>
+      <AdminPageHeader
+        title="Billing settings"
+        description="The business details, numbering, tax treatment and payment options behind every invoice."
+        breadcrumbs={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Store settings", href: "/admin/settings" },
+          { label: "Billing" },
+        ]}
+      />
+
+      <SettingsLayout label="Billing settings sections" sections={sections} active={section} onChange={setSection} />
+
+      <SettingsSaveBar
+        dirtySections={sections.filter((entry) => entry.dirty).map((entry) => entry.label)}
+        saving={saving}
+        onSave={() => void onSave()}
+        onDiscard={() => {
+          setBilling(savedBilling);
+          setTax(savedTax);
+        }}
+        saveLabel="Save billing settings"
+      />
     </div>
+  );
+}
+
+/**
+ * The formats of every number the store issues — shown, never edited.
+ *
+ * They are fixed on the server (`app/core/numbering.py`): a changed prefix or
+ * a restarted count would let a new number collide with an old one and break
+ * the continuous series tax invoices need. Numbers simply grow a digit when
+ * they need one; there is no length to run out of.
+ */
+function DocumentNumbers({ billing }: { billing: BillingConfig }) {
+  const year = new Date().getFullYear();
+  const yearly = (prefix: string, digits: number) => `${prefix}-${year}-${"1".padStart(digits, "0")}`;
+  const rows = [
+    { label: "Orders", example: `${billing.order.prefix}${billing.order.startNumber}` },
+    { label: "Invoices", example: yearly(billing.invoice.prefix, billing.invoice.padding) },
+    { label: "Credit notes", example: yearly(billing.creditNote.prefix, billing.creditNote.padding) },
+    { label: "Refunds", example: yearly(billing.refund.prefix ?? "DCZ-RF", billing.refund.padding ?? 5) },
+    { label: "Generated SKUs", example: `${billing.sku.prefix}-AC0001` },
+  ];
+
+  return (
+    <AdminCard
+      title="Document numbers"
+      description="How orders, invoices, credit notes, refunds and SKUs are numbered."
+    >
+      <div className="mb-4 flex items-start gap-2.5 rounded-[3px] border border-admin-border bg-admin-raised p-3">
+        <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-admin-muted" strokeWidth={1.75} aria-hidden="true" />
+        <p className="text-xs leading-relaxed text-admin-muted">
+          These formats are fixed and can&rsquo;t be changed by anyone, so every number stays unique and your invoice
+          series stays continuous. Each number counts up from the last one issued and simply grows longer when it needs
+          to — there is no length limit.
+        </p>
+      </div>
+      <dl className="divide-y divide-admin-border rounded-[3px] border border-admin-border">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-4 px-3 py-2.5">
+            <dt className="text-xs text-admin-muted">{row.label}</dt>
+            <dd className="font-mono text-[0.8125rem] text-admin-ink">{row.example}</dd>
+          </div>
+        ))}
+      </dl>
+    </AdminCard>
   );
 }

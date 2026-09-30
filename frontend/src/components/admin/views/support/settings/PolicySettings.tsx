@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Lock, Plus, Trash2 } from "lucide-react";
 
 import {
   reason,
@@ -324,22 +324,22 @@ export function HoursSettings({ config, reload }: TabProps) {
 export function GeneralSettings({ config, reload }: TabProps) {
   const section = useSection(
     config.settings,
-    ["ticketPrefix", "defaultPriority", "defaultTeamId", "reopenDays", "autoCloseResolvedDays", "duplicateWindowDays", "attachments"],
+    ["defaultPriority", "defaultTeamId", "reopenDays", "autoCloseResolvedDays", "duplicateWindowDays", "attachments"],
     reload,
   );
   const { draft, setDraft } = section;
   const number = (value: string) => Number(value) || 0;
 
   return (
-    <AdminCard title="General" description="Numbering, where unrouted requests go, and how long customers have to come back.">
+    <AdminCard title="General" description="Where unrouted requests go, and how long customers have to come back.">
+      {/* The number format is fixed on the server and can't be edited by anyone. */}
+      <p className="mb-4 flex items-center gap-2 rounded-[3px] border border-admin-border bg-admin-raised px-3 py-2 text-xs text-admin-muted">
+        <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+        Request numbers look like{" "}
+        <span className="font-mono text-admin-ink">{config.settings.ticketPrefix}-{new Date().getFullYear()}-000123</span>
+        — a fixed format that grows longer as needed.
+      </p>
       <FormGrid columns={3}>
-        <AdminInput
-          label="Request number prefix"
-          value={draft.ticketPrefix}
-          maxLength={6}
-          onChange={(e) => setDraft({ ...draft, ticketPrefix: e.target.value.toUpperCase() })}
-          hint={`Numbers look like ${draft.ticketPrefix || "DCZ"}-${new Date().getFullYear()}-000123.`}
-        />
         <AdminSelect
           label="Default team"
           value={draft.defaultTeamId ? String(draft.defaultTeamId) : ""}

@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
-from sqlalchemy import Integer, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
@@ -233,34 +233,14 @@ def _generate_order_number(db: Session, config: dict) -> str:
     """
     The reference a customer quotes on a support call.
 
-    Its prefix and starting point are the store's — configured in the billing
-    document, not written in here, so a shop can use its own numbering without
-    editing code.
+    Its format is fixed in `app.core.numbering` — nobody can change the prefix
+    or restart the series. The highest so far is read numerically ("DCZ9" must
+    not out-sort "DCZ10"), under a lock, and the number simply grows longer.
     """
-    order_cfg = config.get("order") or {}
-    prefix = str(order_cfg.get("prefix") or "")
-    start = int(order_cfg.get("startNumber") or 1)
+    from app.core import numbering
 
-    # The highest so far, read numerically.
-    #
-    # `max()` on the column is a *string* max, which orders "DCZ9" above
-    # "DCZ10" — and, with no prefix configured, put a number that does not
-    # parse at the top and sent this back to `start` on every order. Every
-    # order after the first then asked for a number that already existed and
-    # the unique index refused it.
-    suffix = func.substr(Order.order_number, len(prefix) + 1)
-    # Locking read — see `next_id`. A plain read would come from this
-    # transaction's snapshot and miss an order committed a moment ago.
-    highest = db.execute(
-        select(func.max(func.cast(suffix, Integer)))
-        .where(
-            Order.order_number.like(f"{prefix}%"),
-            suffix.regexp_match("^[0-9]+$"),
-        )
-        .with_for_update()
-    ).scalar()
-
-    number = max(start, int(highest) + 1 if highest else start)
+    prefix = numbering.ORDER_PREFIX
+    number = max(numbering.ORDER_START, numbering.highest(db, Order.order_number, prefix=prefix) + 1)
 
     # Belt and braces: a gap in the series is fine, a collision is a failed
     # checkout. Nothing here should loop more than once.
@@ -280,26 +260,12 @@ def _next_invoice_number(db: Session, config: dict, issued: datetime) -> str:
     guarantee a gapless sequence — two devices would mint the same number,
     because neither can see the other. One writer, one counter.
     """
-    invoice_cfg = config.get("invoice") or {}
-    prefix = str(invoice_cfg.get("prefix") or "")
-    padding = int(invoice_cfg.get("padding") or 1)
+    # Locking, numeric read, for the same reason as the order number. Invoice
+    # numbers must also be continuous and unique — a tax requirement. The
+    # format is fixed in `app.core.numbering`.
+    from app.core import numbering
 
-    # Locking read, for the same reason as the order number. Invoice numbers
-    # must also be gapless and unique — a tax requirement, not a preference.
-    highest = db.execute(
-        select(func.max(Invoice.invoice_number))
-        .where(Invoice.invoice_number.like(f"{prefix}-%"))
-        .with_for_update()
-    ).scalar()
-
-    number = int(invoice_cfg.get("startNumber") or 1)
-    if highest:
-        try:
-            number = int(highest.split("-")[-1]) + 1
-        except ValueError:
-            pass
-
-    return f"{prefix}-{issued.year}-{number:0{padding}d}"
+    return numbering.next_yearly(db, numbering.INVOICE, Invoice.invoice_number, issued)
 
 
 # ---------------------------------------------------------------- reading

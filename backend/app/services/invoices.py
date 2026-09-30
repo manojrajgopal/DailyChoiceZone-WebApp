@@ -303,14 +303,13 @@ def _next_refund_number(db: Session, issued: datetime, sequence: int) -> str:
     """
     A refund's reference, in the store's own series.
 
-    Same reasoning as the invoice number: one writer, one counter, and the
-    prefix is configuration rather than a literal here.
+    Same reasoning as the invoice number: one writer, one counter, a format
+    nobody can change. `sequence` is the floor the caller worked out; the
+    locked numeric read of the highest issued number decides.
     """
-    config = billing.billing_config(db).get("refund") or {}
-    prefix = str(config.get("prefix") or "")
-    padding = int(config.get("padding") or 1)
+    from app.core import numbering
 
-    return f"{prefix}-{issued.year}-{sequence:0{padding}d}"
+    return numbering.REFUND.yearly(issued.year, max(sequence, numbering.highest(db, Refund.refund_number) + 1))
 
 
 def create_refund(
@@ -615,28 +614,15 @@ def create_credit_note(
         raise ValidationError("Give a reason for the credit note.", error_code="REASON_REQUIRED")
 
     now = datetime.utcnow()
-    config = billing.billing_config(db).get("creditNote") or {}
-    prefix = str(config.get("prefix") or "")
-    padding = int(config.get("padding") or 1)
+    from app.core import numbering
 
-    highest = db.execute(
-        select(func.max(CreditNote.credit_note_number)).where(
-            CreditNote.credit_note_number.like(f"{prefix}-%")
-        )
-    ).scalar()
-
-    number = int(config.get("startNumber") or 1)
-    if highest:
-        try:
-            number = int(highest.split("-")[-1]) + 1
-        except ValueError:
-            pass
+    credit_note_number = numbering.next_yearly(db, numbering.CREDIT_NOTE, CreditNote.credit_note_number, now)
 
     tax = billing.calculate_tax(total, invoice.place_of_supply, None, billing.tax_config(db))
 
     note = CreditNote(
         id=next_id(db, CreditNote, "credit_note"),
-        credit_note_number=f"{prefix}-{now.year}-{number:0{padding}d}",
+        credit_note_number=credit_note_number,
         invoice_id=invoice.id,
         invoice_number=invoice.invoice_number,
         order_id=invoice.order_id,

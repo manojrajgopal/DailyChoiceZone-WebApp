@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 
 import type { FooterColumn, SiteConfig, SocialLink, TrustPoint } from "@/types";
 
-import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import {
   AdminInput,
   AdminTextarea,
@@ -13,6 +13,13 @@ import {
   FormSection,
 } from "@/components/admin/ui/AdminForm";
 import { RecordListEditor } from "@/components/admin/ui/RecordListEditor";
+import {
+  SettingsLayout,
+  SettingsSaveBar,
+  changed,
+  useSettingsSection,
+  type SettingsSection,
+} from "@/components/admin/ui/SettingsLayout";
 import { SOCIAL_ICON_NAMES } from "@/components/layout/Footer";
 import { TRUST_ICON_NAMES } from "@/components/layout/TrustStrip";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -42,11 +49,19 @@ import { toast } from "@/store/toastStore";
 const TRUST_ICONS = TRUST_ICON_NAMES.map((value) => ({ value, label: value }));
 const SOCIAL_ICONS = SOCIAL_ICON_NAMES.map((value) => ({ value, label: value }));
 
+const SECTION_IDS = ["brand", "support", "trust", "social", "footer"];
+const BRAND_KEYS = ["name", "tagline", "url", "locale", "description"] as const;
+
+function pick<T extends object, K extends keyof T>(value: T, keys: readonly K[]): Pick<T, K> {
+  return Object.fromEntries(keys.map((key) => [key, value[key]])) as Pick<T, K>;
+}
+
 export function AdminSiteSettingsView() {
   const { data, isLoading, reload } = useAdminResource(() => getSiteDocument(), []);
 
   const [draft, setDraft] = useState<SiteConfig | null>(null);
   const [saving, setSaving] = useState(false);
+  const [section, setSection] = useSettingsSection(SECTION_IDS);
 
   useEffect(() => {
     if (data) setDraft(data);
@@ -62,6 +77,7 @@ export function AdminSiteSettingsView() {
 
   const onSave = async () => {
     if (draft.name.trim().length < 2) {
+      setSection("brand");
       toast.error("Enter a store name — it is the first thing on every page.");
       return;
     }
@@ -79,15 +95,14 @@ export function AdminSiteSettingsView() {
     await reload();
   };
 
-  return (
-    <div>
-      <AdminPageHeader
-        breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Site" }]}
-        title="Site"
-        description="The brand line, support details, reassurance strip and footer the storefront renders."
-      />
-
-      <div className="grid gap-4 pb-20 xl:grid-cols-2">
+  const saved = data ?? draft;
+  const sections: SettingsSection[] = [
+    {
+      id: "brand",
+      label: "Brand",
+      group: "Identity",
+      dirty: changed(pick(draft, BRAND_KEYS), pick(saved, BRAND_KEYS)),
+      content: (
         <FormSection title="Brand" description="How the store introduces itself.">
           <FormGrid>
             <AdminInput
@@ -124,8 +139,15 @@ export function AdminSiteSettingsView() {
             hint="The search-result summary for the home page."
           />
         </FormSection>
-
-        <FormSection title="Support" description="Where a customer is told to reach you.">
+      ),
+    },
+    {
+      id: "support",
+      label: "Customer support",
+      group: "Identity",
+      dirty: changed(draft.support, saved.support),
+      content: (
+        <FormSection title="Customer support" description="Where a customer is told to reach you — shown in the footer, on the contact page and in emails.">
           <FormGrid>
             <AdminInput
               label="Email"
@@ -152,11 +174,19 @@ export function AdminSiteSettingsView() {
             />
           </FormGrid>
         </FormSection>
-
+      ),
+    },
+    {
+      id: "trust",
+      label: "Trust strip",
+      group: "Storefront",
+      count: (draft.trustPoints ?? []).length,
+      dirty: changed(draft.trustPoints, saved.trustPoints),
+      content: (
         <FormSection
           title="Trust strip"
           description="The reassurance row under the homepage rails."
-          className="xl:col-span-2"
+     
         >
           <RecordListEditor<TrustPoint>
             rows={draft.trustPoints ?? []}
@@ -172,7 +202,15 @@ export function AdminSiteSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "social",
+      label: "Social links",
+      group: "Storefront",
+      count: (draft.social ?? []).length,
+      dirty: changed(draft.social, saved.social),
+      content: (
         <FormSection title="Social links" description="Shown in the footer.">
           <RecordListEditor<SocialLink>
             rows={draft.social ?? []}
@@ -187,25 +225,42 @@ export function AdminSiteSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "footer",
+      label: "Footer",
+      group: "Storefront",
+      count: (draft.footer ?? []).length,
+      dirty: changed(draft.footer, saved.footer),
+      content: (
         <FormSection title="Footer" description="Each column, and the links in it.">
           <FooterEditor
             columns={draft.footer ?? []}
             onChange={(footer) => setDraft({ ...draft, footer })}
           />
         </FormSection>
-      </div>
+      ),
+    },
+  ];
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm lg:left-60">
-        <div className="flex items-center justify-end gap-2">
-          <AdminButton variant="ghost" onClick={() => setDraft(data)}>
-            Discard changes
-          </AdminButton>
-          <AdminButton variant="primary" loading={saving} onClick={() => void onSave()}>
-            Save site settings
-          </AdminButton>
-        </div>
-      </div>
+  return (
+    <div>
+      <AdminPageHeader
+        breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Site" }]}
+        title="Site"
+        description="The brand line, support details, reassurance strip and footer the storefront renders."
+      />
+
+      <SettingsLayout label="Site settings sections" sections={sections} active={section} onChange={setSection} />
+
+      <SettingsSaveBar
+        dirtySections={sections.filter((entry) => entry.dirty).map((entry) => entry.label)}
+        saving={saving}
+        onSave={() => void onSave()}
+        onDiscard={() => setDraft(data)}
+        saveLabel="Save site settings"
+      />
     </div>
   );
 }

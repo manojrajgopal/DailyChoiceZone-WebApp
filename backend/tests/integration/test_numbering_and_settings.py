@@ -57,29 +57,26 @@ class TestOrderNumbering:
         self, client, auth, admin_auth, catalogue, settings_documents, db
     ):
         """
-        "DCZ9" must not out-sort "DCZ10".
+        "DCZ99999" must be followed by "DCZ100000".
 
-        A string maximum over the column put a shorter number on top and sent
-        the sequence backwards, which is the other way to collide.
+        A string maximum ranks "DCZ99999" above "DCZ100000" and sends the
+        sequence backwards into numbers already used — and the number has to
+        be free to grow a digit rather than stop at a fixed length.
         """
-        from app.models import Product, SettingDocument
+        from app.models import Order
 
-        db.get(SettingDocument, "billing").value = {
-            **db.get(SettingDocument, "billing").value,
-            "order": {"prefix": "DCZ", "startNumber": 1},
-        }
-        # Eleven orders of one unit each, so the sequence has to cross 9 to 10.
-        db.get(Product, "PRD001").stock = 20
+        first = place(client, auth)
+        assert first.status_code == 201, first.text
+        db.get(Order, first.json()["data"]["order"]["id"]).order_number = "DCZ99999"
         db.flush()
 
         numbers = []
-        for _ in range(11):
+        for _ in range(2):
             response = place(client, auth)
             assert response.status_code == 201, response.text
             numbers.append(response.json()["data"]["order"]["orderNumber"])
 
-        assert numbers[-1] == "DCZ11"
-        assert len(set(numbers)) == len(numbers)
+        assert numbers == ["DCZ100000", "DCZ100001"]
 
     def test_it_steps_over_a_number_already_taken(
         self, client, auth, catalogue, settings_documents, db
@@ -90,21 +87,18 @@ class TestOrderNumbering:
         This is the state the broken numbering left behind: an order whose
         number does not belong to the configured series at all.
         """
-        from app.models import Order, SettingDocument
+        from app.models import Order
 
         first = place(client, auth)
         assert first.status_code == 201, first.text
 
         db.get(Order, first.json()["data"]["order"]["id"]).order_number = "1"
-        db.get(SettingDocument, "billing").value = {
-            **db.get(SettingDocument, "billing").value,
-            "order": {"prefix": "", "startNumber": 1},
-        }
         db.flush()
 
         second = place(client, auth)
         assert second.status_code == 201, second.text
-        assert second.json()["data"]["order"]["orderNumber"] != "1"
+        number = second.json()["data"]["order"]["orderNumber"]
+        assert number != "1" and number.startswith("DCZ")
 
 
 class TestSavingConfiguration:
@@ -112,28 +106,21 @@ class TestSavingConfiguration:
         self, client, admin_auth, settings_documents, db
     ):
         """
-        The actual bug: the billing screen knows nothing about `order`.
+        The actual bug: a screen posts only the sections it understands.
 
-        It posts the document it understands, and that used to be stored as the
-        whole document — taking the order-number prefix with it.
+        That used to be stored as the whole document, deleting every section
+        the screen did not send.
         """
-        from app.models import SettingDocument
-
-        db.get(SettingDocument, "billing").value = {
-            **db.get(SettingDocument, "billing").value,
-            "order": {"prefix": "DCZ", "startNumber": 10001},
-        }
-        db.flush()
-
         posted = client.get("/api/admin/settings/billing", headers=admin_auth).json()["data"]
-        del posted["order"]
+        kept = posted["payment"]
+        del posted["payment"]
         posted["invoice"] = {**posted["invoice"], "dueDays": 21}
 
         saved = client.put("/api/admin/settings/billing", headers=admin_auth, json=posted)
         assert saved.status_code == 200, saved.text
 
         after = client.get("/api/admin/settings/billing", headers=admin_auth).json()["data"]
-        assert after["order"] == {"prefix": "DCZ", "startNumber": 10001}
+        assert after["payment"] == kept
         assert after["invoice"]["dueDays"] == 21
 
     def test_a_section_that_is_sent_is_replaced(self, client, admin_auth, settings_documents):
@@ -164,3 +151,76 @@ class TestSavingConfiguration:
         assert client.put("/api/admin/settings/billing",
                           headers={"Authorization": f"Bearer {token}"},
                           json={"currency": {}}).status_code == 403
+
+
+class TestNumberFormatsAreFixed:
+    """Prefixes, starting numbers and lengths are code, not settings."""
+
+    def test_the_formats_cannot_be_changed_through_settings(self, client, admin_auth, settings_documents):
+        current = client.get("/api/admin/settings/billing", headers=admin_auth).json()["data"]
+        assert current["invoice"]["prefix"] == "DCZ-INV" and current["order"]["prefix"] == "DCZ"
+        for section, field, value in (
+            ("invoice", "prefix", "HACK"), ("invoice", "startNumber", 900), ("invoice", "padding", 2),
+            ("creditNote", "prefix", "X"), ("refund", "prefix", ""), ("order", "prefix", "ORD"),
+            ("order", "startNumber", 1), ("sku", "prefix", "ZZ"),
+        ):
+            body = {section: {**current[section], field: value}}
+            response = client.put("/api/admin/settings/billing", headers=admin_auth, json=body)
+            assert response.status_code == 422, (section, field, response.text)
+            assert response.json()["error_code"] == "NUMBERING_LOCKED"
+        after = client.get("/api/admin/settings/billing", headers=admin_auth).json()["data"]
+        assert after["invoice"]["prefix"] == "DCZ-INV" and after["refund"]["prefix"] == "DCZ-RF"
+
+    def test_sending_the_formats_back_unchanged_still_saves(self, client, admin_auth, settings_documents, db):
+        from app.models import SettingDocument
+
+        current = client.get("/api/admin/settings/billing", headers=admin_auth).json()["data"]
+        current["invoice"] = {**current["invoice"], "dueDays": 30}
+        assert client.put("/api/admin/settings/billing", headers=admin_auth, json=current).status_code == 200
+        stored = db.get(SettingDocument, "billing").value
+        # The fixed fields are never written into the document.
+        assert "prefix" not in stored["invoice"] and stored["invoice"]["dueDays"] == 30
+
+    def test_an_old_document_with_other_formats_is_overruled(self, client, admin_auth, settings_documents, db):
+        from app.models import SettingDocument
+
+        row = db.get(SettingDocument, "billing")
+        row.value = {**row.value, "invoice": {**row.value["invoice"], "prefix": "OLD", "padding": 2},
+                     "order": {"prefix": "", "startNumber": 1}}
+        db.flush()
+        data = client.get("/api/admin/settings/billing", headers=admin_auth).json()["data"]
+        assert data["invoice"]["prefix"] == "DCZ-INV" and data["invoice"]["padding"] == 6
+        assert data["order"] == {"prefix": "DCZ", "startNumber": 10001}
+
+    def test_yearly_numbers_grow_past_their_minimum_length(self, db):
+        from datetime import datetime
+
+        from app.core import numbering
+        from app.models import CreditNote
+
+        assert numbering.INVOICE.yearly(2026, 214) == "DCZ-INV-2026-000214"
+        assert numbering.INVOICE.yearly(2026, 1234567) == "DCZ-INV-2026-1234567"
+        # The highest is read as a number: 99999 then 100000, not back to 1.
+        assert numbering.highest(db, CreditNote.credit_note_number) == 0
+        assert numbering.next_yearly(db, numbering.CREDIT_NOTE, CreditNote.credit_note_number,
+                                     datetime(2026, 1, 1)) == "DCZ-CN-2026-00001"
+
+    def test_the_support_request_prefix_is_fixed(self, client, admin_auth):
+        response = client.put("/api/admin/support/config/settings", headers=admin_auth, json={"ticketPrefix": "ABC"})
+        assert response.status_code == 422 and response.json()["error_code"] == "NUMBERING_LOCKED"
+        unchanged = client.put("/api/admin/support/config/settings", headers=admin_auth, json={"ticketPrefix": "DCZ"})
+        assert unchanged.status_code == 200
+
+    def test_the_highest_number_survives_a_malformed_one(self, client, auth, catalogue, settings_documents, db):
+        """A refund once went out as "-2026-22"; the series must carry on from 22."""
+        from app.core import numbering
+        from app.models import Order
+
+        ids = [place(client, auth).json()["data"]["order"]["id"] for _ in range(2)]
+        db.get(Order, ids[0]).order_number = "-2026-22"
+        db.get(Order, ids[1]).order_number = "DCZ-RF-2026-00002"
+        db.flush()
+        assert numbering.highest(db, Order.order_number) == 22
+        db.get(Order, ids[1]).order_number = "DCZ-RF-2026-1000000"
+        db.flush()
+        assert numbering.highest(db, Order.order_number) == 1000000

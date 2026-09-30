@@ -42,7 +42,10 @@ def _document(db: Session, key: str) -> dict:
 
 
 def billing_config(db: Session) -> dict:
-    return _document(db, "billing")
+    """The billing document, with the fixed document-number formats laid over it."""
+    from app.core import numbering
+
+    return numbering.with_locked(_document(db, "billing"))
 
 
 def tax_config(db: Session) -> dict:

@@ -309,21 +309,25 @@ export interface BillingConfig {
   };
   currency: CurrencyConfig;
   invoice: {
-    prefix: string;
-    /** The first number a fresh sequence issues. */
-    startNumber: number;
-    /** Zero-padded width of the numeric part. */
-    padding: number;
+    /**
+     * Numbering — fixed on the server (`app/core/numbering.py`), shown but
+     * never saved: a changed value is refused. `padding` is a minimum width;
+     * numbers grow longer as they need to.
+     */
+    readonly prefix: string;
+    readonly startNumber: number;
+    readonly padding: number;
     /** Days from issue to due. */
     dueDays: number;
     footer: string;
     paymentTerms: string;
     notes: string;
   };
+  /** Credit-note numbering: fixed on the server, like the invoice's. */
   creditNote: {
-    prefix: string;
-    startNumber: number;
-    padding: number;
+    readonly prefix: string;
+    readonly startNumber: number;
+    readonly padding: number;
   };
   refund: {
     /** Days after delivery a refund can still be raised. Advisory here. */
@@ -331,6 +335,9 @@ export interface BillingConfig {
     /** Whether shipping is given back on a whole-order refund. */
     refundShipping: boolean;
     reasons: string[];
+    /** Refund numbering: fixed on the server, like the invoice's. */
+    readonly prefix?: string;
+    readonly padding?: number;
   };
   payment: {
     /** Methods offered at checkout, in order. */
@@ -346,17 +353,17 @@ export interface BillingConfig {
    * deleted the prefix. The next order then numbered itself `1` and every
    * order after that collided with it.
    *
-   * The settings screen does not edit either of these two; they are carried
-   * through so that saving what it does edit leaves them alone.
+   * Both are now fixed on the server and can't be changed by anyone; they
+   * are read here only to show the formats.
    */
-  order: {
-    prefix: string;
-    /** The first number a fresh sequence issues. */
-    startNumber: number;
+  readonly order: {
+    readonly prefix: string;
+    /** The first number of the series. */
+    readonly startNumber: number;
   };
-  /** SKU numbering, carried through for the same reason as `order`. */
-  sku: {
-    prefix: string;
+  /** SKU numbering, fixed on the server like `order`. */
+  readonly sku: {
+    readonly prefix: string;
   };
 }
 

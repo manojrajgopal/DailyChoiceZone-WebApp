@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { getSupportConfiguration } from "@/services/supportService";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { useAdminResource } from "@/hooks/useAdminResource";
-import { cn } from "@/lib/utils/cn";
+import { SettingsLayout, useSettingsSection } from "@/components/admin/ui/SettingsLayout";
 
 import { CategorySettings } from "./settings/CategorySettings";
 import { ArticleSettings, CannedSettings, TemplateSettings } from "./settings/ContentSettings";
@@ -17,17 +16,17 @@ import { StaffSettings } from "./settings/StaffSettings";
 import type { TabProps } from "./settings/shared";
 import { NoSupportAccess, useSupportMe } from "./SupportDeskParts";
 
-const TABS: { id: string; label: string; render: (props: TabProps) => React.ReactNode }[] = [
-  { id: "routing", label: "Categories & routing", render: (props) => <CategorySettings {...props} /> },
-  { id: "staff", label: "Staff", render: (props) => <StaffSettings {...props} /> },
-  { id: "teams", label: "Teams", render: (props) => <TeamsSettings {...props} /> },
-  { id: "org", label: "Departments & roles", render: (props) => <DepartmentsRolesSettings {...props} /> },
-  { id: "sla", label: "SLA & escalation", render: (props) => <SlaSettings {...props} /> },
-  { id: "hours", label: "Hours & chat", render: (props) => <HoursSettings {...props} /> },
-  { id: "articles", label: "Help articles", render: (props) => <ArticleSettings {...props} /> },
-  { id: "canned", label: "Saved replies", render: (props) => <CannedSettings {...props} /> },
-  { id: "templates", label: "Email templates", render: (props) => <TemplateSettings {...props} /> },
-  { id: "general", label: "General", render: (props) => <GeneralSettings {...props} /> },
+const TABS: { id: string; label: string; group: string; render: (props: TabProps) => React.ReactNode }[] = [
+  { id: "routing", label: "Categories & routing", group: "Routing", render: (props) => <CategorySettings {...props} /> },
+  { id: "staff", label: "Staff", group: "People", render: (props) => <StaffSettings {...props} /> },
+  { id: "teams", label: "Teams", group: "People", render: (props) => <TeamsSettings {...props} /> },
+  { id: "org", label: "Departments & roles", group: "People", render: (props) => <DepartmentsRolesSettings {...props} /> },
+  { id: "sla", label: "SLA & escalation", group: "Service levels", render: (props) => <SlaSettings {...props} /> },
+  { id: "hours", label: "Hours & chat", group: "Service levels", render: (props) => <HoursSettings {...props} /> },
+  { id: "articles", label: "Help articles", group: "Content", render: (props) => <ArticleSettings {...props} /> },
+  { id: "canned", label: "Saved replies", group: "Content", render: (props) => <CannedSettings {...props} /> },
+  { id: "templates", label: "Email templates", group: "Content", render: (props) => <TemplateSettings {...props} /> },
+  { id: "general", label: "General", group: "Store", render: (props) => <GeneralSettings {...props} /> },
 ];
 
 /**
@@ -39,7 +38,7 @@ export function AdminSupportSettingsView() {
   const me = useSupportMe();
   const canConfigure = Boolean(me.data?.canConfigure);
   const config = useAdminResource(() => getSupportConfiguration(), [], { enabled: canConfigure });
-  const [tab, setTab] = useState(TABS[0]!.id);
+  const [tab, setTab] = useSettingsSection(TABS.map((entry) => entry.id));
 
   const header = (
     <AdminPageHeader
@@ -92,7 +91,6 @@ export function AdminSupportSettingsView() {
     );
   }
 
-  const active = TABS.find((entry) => entry.id === tab) ?? TABS[0]!;
   const unstaffed = config.data.teams.filter((team) => team.active && team.activeAgents === 0).length;
 
   return (
@@ -116,25 +114,17 @@ export function AdminSupportSettingsView() {
         </div>
       ) : null}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[12.5rem_minmax(0,1fr)]">
-        <nav aria-label="Setup sections" className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
-          {TABS.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              aria-current={tab === entry.id ? "page" : undefined}
-              onClick={() => setTab(entry.id)}
-              className={cn(
-                "shrink-0 whitespace-nowrap rounded-[3px] px-3 py-2 text-left text-[0.8125rem] transition-colors",
-                tab === entry.id ? "bg-admin-ink font-medium text-white" : "text-admin-muted hover:bg-admin-raised hover:text-admin-ink",
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </nav>
-        <div className="min-w-0">{active.render({ config: config.data, reload: config.reload })}</div>
-      </div>
+      <SettingsLayout
+        label="Setup sections"
+        active={tab}
+        onChange={setTab}
+        sections={TABS.map((entry) => ({
+          id: entry.id,
+          label: entry.label,
+          group: entry.group,
+          content: entry.render({ config: config.data!, reload: config.reload }),
+        }))}
+      />
     </div>
   );
 }

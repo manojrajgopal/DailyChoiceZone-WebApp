@@ -614,7 +614,8 @@ export interface EscalationRule {
 export type DayHours = { open: string; close: string } | null;
 
 export interface SupportSettings {
-  ticketPrefix: string;
+  /** Fixed on the server; shown, never saved. */
+  readonly ticketPrefix: string;
   defaultPriority: TicketPriority;
   defaultTeamId: number | null;
   sla: Record<TicketPriority, { response: number; resolve: number }>;

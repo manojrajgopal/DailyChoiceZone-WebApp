@@ -12,6 +12,7 @@ import {
   ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, FormGrid } from "@/components/admin/ui/AdminForm";
+import { SettingsLayout, useSettingsSection } from "@/components/admin/ui/SettingsLayout";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
 import {
@@ -109,6 +110,8 @@ function draftFrom(account: EmailAccount): Draft {
 /** Server times are UTC without an offset; read them as UTC. */
 /** How many sends the settings page previews; the rest are on the history page. */
 const RECENT_EMAILS = 8;
+
+const EMAIL_SECTIONS = ["account", "types", "recent"];
 
 function toDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -241,6 +244,7 @@ function EmailSettings() {
   const [types, setTypes] = useState<EmailType[]>([]);
   const [savedTypes, setSavedTypes] = useState<EmailType[]>([]);
   const [log, setLog] = useState<EmailLogEntry[] | null>(null);
+  const [section, setSection] = useSettingsSection(EMAIL_SECTIONS);
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -540,495 +544,517 @@ function EmailSettings() {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-4">
-        {/* -------------------------------------------------------- account */}
-        <AdminCard
-          title="Sending account"
-          description="The email account your store's messages are sent from."
-        >
-          {/* status */}
-          <div className="mb-5 rounded-[3px] border border-admin-border bg-admin-raised p-3">
-            {!account.configured ? (
-              <div className="flex items-start gap-2.5">
-                <span
-                  aria-hidden="true"
-                  className="mt-1.5 h-2 w-2 shrink-0 rounded-pill bg-status-warning"
-                />
-                <p className="text-xs leading-relaxed text-admin-ink">
-                  <strong className="font-medium">Not set up</strong> — customers won&rsquo;t
-                  receive emails until you connect an account.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-start gap-2.5">
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "mt-1.5 h-2 w-2 shrink-0 rounded-pill",
-                      unreadable ? "bg-status-critical" : "bg-status-good",
-                    )}
-                  />
-                  <div className="min-w-0 text-xs leading-relaxed">
-                    <p className="text-admin-ink">
-                      <strong className="font-medium">
-                        {unreadable ? "Needs attention" : "Sending emails"}
-                      </strong>{" "}
-                      from{" "}
-                      <span className="font-medium">
-                        {account.senderName
-                          ? `${account.senderName} <${account.senderEmail}>`
-                          : account.senderEmail}
-                      </span>
-                      {providerName ? ` using ${providerName}` : ""}.
-                    </p>
-                    <p className="mt-0.5 text-admin-muted">
-                      {verified ? `Last verified ${formatDate(verified)}` : "Not verified yet"}
-                      {account.replyTo ? ` · Replies go to ${account.replyTo}` : ""}
-                    </p>
-                  </div>
-                </div>
-
-                {unreadable ? (
-                  <p className="rounded-[3px] border border-[#f1c4c4] bg-[#fbeaea] p-2.5 text-[0.6875rem] leading-relaxed text-[#a12b2b]">
-                    The saved sign-in details can no longer be read, so emails can&rsquo;t be sent.
-                    Please enter them again below and send a test email to save them.
-                  </p>
-                ) : null}
-
-                {!unreadable ? (
-                  <div className="flex flex-wrap items-end gap-2 border-t border-admin-border pt-3">
-                    <AdminInput
-                      label="Send a test to"
-                      type="email"
-                      value={testTo}
-                      placeholder={account.senderEmail ?? ""}
-                      onChange={(event) => setTestTo(event.target.value)}
-                      className="w-full sm:w-72"
+      <SettingsLayout
+        label="Email settings sections"
+        active={section}
+        onChange={setSection}
+        sections={[
+          {
+            id: "account",
+            label: "Sending account",
+            group: "Setup",
+            content: (
+            <AdminCard
+              title="Sending account"
+              description="The email account your store's messages are sent from."
+            >
+              {/* status */}
+              <div className="mb-5 rounded-[3px] border border-admin-border bg-admin-raised p-3">
+                {!account.configured ? (
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1.5 h-2 w-2 shrink-0 rounded-pill bg-status-warning"
                     />
-                    <AdminButton size="md" onClick={() => void onSendTest()} loading={testing}>
-                      Send another test
-                    </AdminButton>
-                    <AdminButton
-                      size="md"
-                      variant="ghost"
-                      onClick={() => setConfirmStop(true)}
-                      className="text-[#c23434] hover:text-[#a32c2c] sm:ml-auto"
-                    >
-                      Stop sending emails
-                    </AdminButton>
+                    <p className="text-xs leading-relaxed text-admin-ink">
+                      <strong className="font-medium">Not set up</strong> — customers won&rsquo;t
+                      receive emails until you connect an account.
+                    </p>
                   </div>
                 ) : (
-                  <div className="flex justify-end">
-                    <AdminButton
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setConfirmStop(true)}
-                      className="text-[#c23434] hover:text-[#a32c2c]"
-                    >
-                      Stop sending emails
-                    </AdminButton>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "mt-1.5 h-2 w-2 shrink-0 rounded-pill",
+                          unreadable ? "bg-status-critical" : "bg-status-good",
+                        )}
+                      />
+                      <div className="min-w-0 text-xs leading-relaxed">
+                        <p className="text-admin-ink">
+                          <strong className="font-medium">
+                            {unreadable ? "Needs attention" : "Sending emails"}
+                          </strong>{" "}
+                          from{" "}
+                          <span className="font-medium">
+                            {account.senderName
+                              ? `${account.senderName} <${account.senderEmail}>`
+                              : account.senderEmail}
+                          </span>
+                          {providerName ? ` using ${providerName}` : ""}.
+                        </p>
+                        <p className="mt-0.5 text-admin-muted">
+                          {verified ? `Last verified ${formatDate(verified)}` : "Not verified yet"}
+                          {account.replyTo ? ` · Replies go to ${account.replyTo}` : ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    {unreadable ? (
+                      <p className="rounded-[3px] border border-[#f1c4c4] bg-[#fbeaea] p-2.5 text-[0.6875rem] leading-relaxed text-[#a12b2b]">
+                        The saved sign-in details can no longer be read, so emails can&rsquo;t be sent.
+                        Please enter them again below and send a test email to save them.
+                      </p>
+                    ) : null}
+
+                    {!unreadable ? (
+                      <div className="flex flex-wrap items-end gap-2 border-t border-admin-border pt-3">
+                        <AdminInput
+                          label="Send a test to"
+                          type="email"
+                          value={testTo}
+                          placeholder={account.senderEmail ?? ""}
+                          onChange={(event) => setTestTo(event.target.value)}
+                          className="w-full sm:w-72"
+                        />
+                        <AdminButton size="md" onClick={() => void onSendTest()} loading={testing}>
+                          Send another test
+                        </AdminButton>
+                        <AdminButton
+                          size="md"
+                          variant="ghost"
+                          onClick={() => setConfirmStop(true)}
+                          className="text-[#c23434] hover:text-[#a32c2c] sm:ml-auto"
+                        >
+                          Stop sending emails
+                        </AdminButton>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end">
+                        <AdminButton
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setConfirmStop(true)}
+                          className="text-[#c23434] hover:text-[#a32c2c]"
+                        >
+                          Stop sending emails
+                        </AdminButton>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* provider */}
-          <fieldset className="mb-5">
-            <legend className="mb-2 text-xs font-medium text-admin-ink">
-              How should emails be sent?
-            </legend>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {providers.map((option) => {
-                const selected = draft.provider === option.key;
-                return (
-                  <label
-                    key={option.key}
-                    className={cn(
-                      "flex cursor-pointer items-start gap-2.5 rounded-[3px] border p-3 transition-colors",
-                      selected
-                        ? "border-copper-500 bg-copper-50"
-                        : "border-admin-border hover:border-admin-border-strong",
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="email-provider"
-                      value={option.key}
-                      checked={selected}
-                      onChange={() => {
-                        setSaveError("");
-                        patch("provider", option.key);
-                      }}
-                      className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-copper-600"
+              {/* provider */}
+              <fieldset className="mb-5">
+                <legend className="mb-2 text-xs font-medium text-admin-ink">
+                  How should emails be sent?
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {providers.map((option) => {
+                    const selected = draft.provider === option.key;
+                    return (
+                      <label
+                        key={option.key}
+                        className={cn(
+                          "flex cursor-pointer items-start gap-2.5 rounded-[3px] border p-3 transition-colors",
+                          selected
+                            ? "border-copper-500 bg-copper-50"
+                            : "border-admin-border hover:border-admin-border-strong",
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="email-provider"
+                          value={option.key}
+                          checked={selected}
+                          onChange={() => {
+                            setSaveError("");
+                            patch("provider", option.key);
+                          }}
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-copper-600"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-[0.8125rem] font-medium text-admin-ink">
+                            {PROVIDER_NAMES[option.key] ?? option.label}
+                          </span>
+                          <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-admin-muted">
+                            {option.label}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {account.configured && account.provider && draft.provider !== account.provider ? (
+                  <p className="mt-2 text-[0.6875rem] leading-relaxed text-admin-muted">
+                    Switching from {PROVIDER_NAMES[account.provider]}: your current account keeps
+                    working until the test email for the new one has been sent.
+                  </p>
+                ) : null}
+              </fieldset>
+
+              {/* provider fields */}
+              {draft.provider === "gmail-oauth" ? (
+                <div className="mb-5 flex flex-col gap-4">
+                  <div className="rounded-[3px] border border-[#c4d7f2] bg-[#e8f0fb] p-3 text-[0.6875rem] leading-relaxed text-admin-ink">
+                    <p>
+                      <strong className="font-medium">Setting up Gmail.</strong> In Google Cloud
+                      Console, create an OAuth client of type &ldquo;Web application&rdquo; and copy
+                      its Client ID and Client secret here. Then either paste a refresh token below,
+                      or use <strong className="font-medium">Connect with Google</strong> and we&rsquo;ll
+                      get one for you.
+                    </p>
+                    <p className="mt-2">
+                      Add this address as an Authorised redirect URI in your Google Cloud OAuth client:
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <code
+                        className="min-w-0 flex-1 select-all truncate rounded-[3px] border border-admin-border bg-admin-surface px-2.5 py-1.5 font-mono text-[0.6875rem] text-admin-ink"
+                        title={account.redirectUri}
+                      >
+                        {account.redirectUri}
+                      </code>
+                      <AdminButton size="sm" onClick={() => void copyRedirect()} aria-label="Copy redirect address">
+                        <Copy className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+                        Copy
+                      </AdminButton>
+                    </div>
+                    <p className="mt-1.5 text-admin-muted">
+                      This address is set automatically for your store — you only need to add it in
+                      Google Cloud.
+                    </p>
+                  </div>
+
+                  <FormGrid>
+                    <AdminInput
+                      label="Client ID"
+                      value={draft.clientId}
+                      onChange={(event) => patch("clientId", event.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      required
+                      className="sm:col-span-2"
                     />
-                    <span className="min-w-0">
-                      <span className="block text-[0.8125rem] font-medium text-admin-ink">
-                        {PROVIDER_NAMES[option.key] ?? option.label}
-                      </span>
-                      <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-admin-muted">
-                        {option.label}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-            {account.configured && account.provider && draft.provider !== account.provider ? (
-              <p className="mt-2 text-[0.6875rem] leading-relaxed text-admin-muted">
-                Switching from {PROVIDER_NAMES[account.provider]}: your current account keeps
-                working until the test email for the new one has been sent.
-              </p>
-            ) : null}
-          </fieldset>
+                    <AdminInput
+                      label="Client secret"
+                      type="password"
+                      autoComplete="off"
+                      value={draft.clientSecret}
+                      placeholder={saved.clientSecret ?? ""}
+                      onChange={(event) => patch("clientSecret", event.target.value)}
+                      hint={saved.clientSecret ? keepHint : undefined}
+                      required={!saved.clientSecret}
+                    />
+                    <AdminInput
+                      label="Refresh token"
+                      type="password"
+                      autoComplete="off"
+                      value={draft.refreshToken}
+                      placeholder={saved.refreshToken ?? ""}
+                      onChange={(event) => patch("refreshToken", event.target.value)}
+                      hint={
+                        saved.refreshToken
+                          ? keepHint
+                          : "Don't have one? Use Connect with Google below instead."
+                      }
+                    />
+                    <AdminInput
+                      label="Access token (optional)"
+                      type="password"
+                      autoComplete="off"
+                      value={draft.accessToken}
+                      placeholder={saved.accessToken ?? ""}
+                      onChange={(event) => patch("accessToken", event.target.value)}
+                      hint={
+                        saved.accessToken
+                          ? `${keepHint} It's refreshed automatically.`
+                          : "Optional — it's refreshed automatically."
+                      }
+                      className="sm:col-span-2"
+                    />
+                  </FormGrid>
+                </div>
+              ) : (
+                <div className="mb-5">
+                  <FormGrid>
+                    <AdminInput
+                      label="Server"
+                      value={draft.host}
+                      placeholder="smtp.example.com"
+                      onChange={(event) => patch("host", event.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      required
+                    />
+                    <div className="grid grid-cols-[6rem_1fr] gap-4">
+                      <AdminInput
+                        label="Port"
+                        inputMode="numeric"
+                        value={draft.port}
+                        onChange={(event) => patch("port", event.target.value.replace(/\D/g, ""))}
+                        autoComplete="off"
+                        required
+                      />
+                      <AdminSelect
+                        label="Security"
+                        value={draft.security}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          if (isSecurity(value)) onSecurityChange(value);
+                        }}
+                        options={SECURITY_OPTIONS}
+                      />
+                    </div>
+                    <AdminInput
+                      label="Username"
+                      value={draft.username}
+                      onChange={(event) => patch("username", event.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      hint="Usually your full email address."
+                    />
+                    <AdminInput
+                      label="Password"
+                      type="password"
+                      autoComplete="off"
+                      value={draft.password}
+                      placeholder={saved.password ?? ""}
+                      onChange={(event) => patch("password", event.target.value)}
+                      hint={
+                        saved.password
+                          ? keepHint
+                          : "Some providers ask for an app password rather than your normal one."
+                      }
+                    />
+                  </FormGrid>
+                </div>
+              )}
 
-          {/* provider fields */}
-          {draft.provider === "gmail-oauth" ? (
-            <div className="mb-5 flex flex-col gap-4">
-              <div className="rounded-[3px] border border-[#c4d7f2] bg-[#e8f0fb] p-3 text-[0.6875rem] leading-relaxed text-admin-ink">
-                <p>
-                  <strong className="font-medium">Setting up Gmail.</strong> In Google Cloud
-                  Console, create an OAuth client of type &ldquo;Web application&rdquo; and copy
-                  its Client ID and Client secret here. Then either paste a refresh token below,
-                  or use <strong className="font-medium">Connect with Google</strong> and we&rsquo;ll
-                  get one for you.
+              {/* common */}
+              <FormGrid>
+                <AdminInput
+                  label="Sender email"
+                  type="email"
+                  value={draft.senderEmail}
+                  placeholder="orders@yourstore.com"
+                  onChange={(event) => patch("senderEmail", event.target.value)}
+                  hint="Customers see emails as coming from this address."
+                  required
+                />
+                <AdminInput
+                  label="Sender name"
+                  value={draft.senderName}
+                  placeholder="Your store name"
+                  onChange={(event) => patch("senderName", event.target.value)}
+                  hint="Shown next to the address in the customer's inbox."
+                />
+                <AdminInput
+                  label="Reply-to (optional)"
+                  type="email"
+                  value={draft.replyTo}
+                  onChange={(event) => patch("replyTo", event.target.value)}
+                  hint="Where customer replies go, if not the sender email."
+                />
+                <AdminInput
+                  label="Send the test email to"
+                  type="email"
+                  value={draft.testRecipient}
+                  placeholder={draft.senderEmail || "Defaults to the sender email"}
+                  onChange={(event) => patch("testRecipient", event.target.value)}
+                  hint="Defaults to the sender email."
+                />
+              </FormGrid>
+
+              {saveError ? (
+                <p
+                  role="alert"
+                  className="mt-4 rounded-[3px] border border-[#f1c4c4] bg-[#fbeaea] p-3 text-[0.6875rem] leading-relaxed text-[#a12b2b]"
+                >
+                  {saveError}
                 </p>
-                <p className="mt-2">
-                  Add this address as an Authorised redirect URI in your Google Cloud OAuth client:
+              ) : null}
+
+              <div className="mt-5 flex flex-col gap-3 border-t border-admin-border pt-4 sm:flex-row sm:items-start sm:justify-between">
+                <p className="max-w-md text-[0.6875rem] leading-relaxed text-admin-muted">
+                  We&rsquo;ll send a test email with these details first. They&rsquo;re only saved once
+                  the test email has been sent — if it can&rsquo;t be sent, nothing changes.
                 </p>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <code
-                    className="min-w-0 flex-1 select-all truncate rounded-[3px] border border-admin-border bg-admin-surface px-2.5 py-1.5 font-mono text-[0.6875rem] text-admin-ink"
-                    title={account.redirectUri}
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  {draft.provider === "gmail-oauth" ? (
+                    <AdminButton
+                      onClick={() => void onConnectGoogle()}
+                      loading={connecting}
+                      disabled={saving}
+                    >
+                      Connect with Google
+                    </AdminButton>
+                  ) : null}
+                  <AdminButton
+                    variant="primary"
+                    onClick={() => void onSave()}
+                    loading={saving}
+                    disabled={connecting}
                   >
-                    {account.redirectUri}
-                  </code>
-                  <AdminButton size="sm" onClick={() => void copyRedirect()} aria-label="Copy redirect address">
-                    <Copy className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
-                    Copy
+                    Send test and save
                   </AdminButton>
                 </div>
-                <p className="mt-1.5 text-admin-muted">
-                  This address is set automatically for your store — you only need to add it in
-                  Google Cloud.
-                </p>
               </div>
-
-              <FormGrid>
-                <AdminInput
-                  label="Client ID"
-                  value={draft.clientId}
-                  onChange={(event) => patch("clientId", event.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                  required
-                  className="sm:col-span-2"
-                />
-                <AdminInput
-                  label="Client secret"
-                  type="password"
-                  autoComplete="off"
-                  value={draft.clientSecret}
-                  placeholder={saved.clientSecret ?? ""}
-                  onChange={(event) => patch("clientSecret", event.target.value)}
-                  hint={saved.clientSecret ? keepHint : undefined}
-                  required={!saved.clientSecret}
-                />
-                <AdminInput
-                  label="Refresh token"
-                  type="password"
-                  autoComplete="off"
-                  value={draft.refreshToken}
-                  placeholder={saved.refreshToken ?? ""}
-                  onChange={(event) => patch("refreshToken", event.target.value)}
-                  hint={
-                    saved.refreshToken
-                      ? keepHint
-                      : "Don't have one? Use Connect with Google below instead."
-                  }
-                />
-                <AdminInput
-                  label="Access token (optional)"
-                  type="password"
-                  autoComplete="off"
-                  value={draft.accessToken}
-                  placeholder={saved.accessToken ?? ""}
-                  onChange={(event) => patch("accessToken", event.target.value)}
-                  hint={
-                    saved.accessToken
-                      ? `${keepHint} It's refreshed automatically.`
-                      : "Optional — it's refreshed automatically."
-                  }
-                  className="sm:col-span-2"
-                />
-              </FormGrid>
-            </div>
-          ) : (
-            <div className="mb-5">
-              <FormGrid>
-                <AdminInput
-                  label="Server"
-                  value={draft.host}
-                  placeholder="smtp.example.com"
-                  onChange={(event) => patch("host", event.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                  required
-                />
-                <div className="grid grid-cols-[6rem_1fr] gap-4">
-                  <AdminInput
-                    label="Port"
-                    inputMode="numeric"
-                    value={draft.port}
-                    onChange={(event) => patch("port", event.target.value.replace(/\D/g, ""))}
-                    autoComplete="off"
-                    required
-                  />
-                  <AdminSelect
-                    label="Security"
-                    value={draft.security}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (isSecurity(value)) onSecurityChange(value);
-                    }}
-                    options={SECURITY_OPTIONS}
-                  />
-                </div>
-                <AdminInput
-                  label="Username"
-                  value={draft.username}
-                  onChange={(event) => patch("username", event.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                  hint="Usually your full email address."
-                />
-                <AdminInput
-                  label="Password"
-                  type="password"
-                  autoComplete="off"
-                  value={draft.password}
-                  placeholder={saved.password ?? ""}
-                  onChange={(event) => patch("password", event.target.value)}
-                  hint={
-                    saved.password
-                      ? keepHint
-                      : "Some providers ask for an app password rather than your normal one."
-                  }
-                />
-              </FormGrid>
-            </div>
-          )}
-
-          {/* common */}
-          <FormGrid>
-            <AdminInput
-              label="Sender email"
-              type="email"
-              value={draft.senderEmail}
-              placeholder="orders@yourstore.com"
-              onChange={(event) => patch("senderEmail", event.target.value)}
-              hint="Customers see emails as coming from this address."
-              required
-            />
-            <AdminInput
-              label="Sender name"
-              value={draft.senderName}
-              placeholder="Your store name"
-              onChange={(event) => patch("senderName", event.target.value)}
-              hint="Shown next to the address in the customer's inbox."
-            />
-            <AdminInput
-              label="Reply-to (optional)"
-              type="email"
-              value={draft.replyTo}
-              onChange={(event) => patch("replyTo", event.target.value)}
-              hint="Where customer replies go, if not the sender email."
-            />
-            <AdminInput
-              label="Send the test email to"
-              type="email"
-              value={draft.testRecipient}
-              placeholder={draft.senderEmail || "Defaults to the sender email"}
-              onChange={(event) => patch("testRecipient", event.target.value)}
-              hint="Defaults to the sender email."
-            />
-          </FormGrid>
-
-          {saveError ? (
-            <p
-              role="alert"
-              className="mt-4 rounded-[3px] border border-[#f1c4c4] bg-[#fbeaea] p-3 text-[0.6875rem] leading-relaxed text-[#a12b2b]"
-            >
-              {saveError}
-            </p>
-          ) : null}
-
-          <div className="mt-5 flex flex-col gap-3 border-t border-admin-border pt-4 sm:flex-row sm:items-start sm:justify-between">
-            <p className="max-w-md text-[0.6875rem] leading-relaxed text-admin-muted">
-              We&rsquo;ll send a test email with these details first. They&rsquo;re only saved once
-              the test email has been sent — if it can&rsquo;t be sent, nothing changes.
-            </p>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              {draft.provider === "gmail-oauth" ? (
+            </AdminCard>
+            ),
+          },
+          {
+            id: "types",
+            label: "Emails sent",
+            group: "Setup",
+            dirty: typesDirty,
+            content: (
+            <AdminCard
+              title="Emails your store sends"
+              description="Choose which emails go out, and which ones customers may turn off in their account."
+              padded={false}
+              action={
                 <AdminButton
-                  onClick={() => void onConnectGoogle()}
-                  loading={connecting}
-                  disabled={saving}
+                  size="sm"
+                  variant="primary"
+                  onClick={() => void onSaveTypes()}
+                  loading={savingTypes}
+                  disabled={!typesDirty}
                 >
-                  Connect with Google
+                  Save
                 </AdminButton>
-              ) : null}
-              <AdminButton
-                variant="primary"
-                onClick={() => void onSave()}
-                loading={saving}
-                disabled={connecting}
-              >
-                Send test and save
-              </AdminButton>
-            </div>
-          </div>
-        </AdminCard>
-
-        {/* ---------------------------------------------------------- types */}
-        <AdminCard
-          title="Emails your store sends"
-          description="Choose which emails go out, and which ones customers may turn off in their account."
-          padded={false}
-          action={
-            <AdminButton
-              size="sm"
-              variant="primary"
-              onClick={() => void onSaveTypes()}
-              loading={savingTypes}
-              disabled={!typesDirty}
+              }
             >
-              Save
-            </AdminButton>
-          }
-        >
-          {types.length === 0 ? (
-            <p className="p-8 text-center text-sm text-admin-muted">No emails to manage yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[36rem] text-left text-xs">
-                <thead className="border-b border-admin-border text-admin-muted">
-                  <tr>
-                    <th className="px-4 py-2.5 font-medium">Email</th>
-                    <th className="w-24 px-4 py-2.5 text-center font-medium">Send</th>
-                    <th className="w-40 px-4 py-2.5 text-center font-medium">Customers can turn off</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-admin-border">
-                  {types.map((type) => (
-                    <tr key={type.key} className="hover:bg-admin-raised">
-                      <td className="px-4 py-3">
-                        <span className="block font-medium text-admin-ink">{type.label}</span>
-                        {type.description ? (
-                          <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-admin-muted">
-                            {type.description}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Switch
-                          label={`Send ${type.label}`}
-                          checked={type.enabled}
-                          onChange={(checked) => patchType(type.key, { enabled: checked })}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Switch
-                          label={`Customers can turn off ${type.label}`}
-                          checked={type.customerCanOptOut}
-                          disabled={!type.enabled}
-                          onChange={(checked) => patchType(type.key, { customerCanOptOut: checked })}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {types.length > 0 ? (
-            <p className="border-t border-admin-border px-4 py-3 text-[0.6875rem] leading-relaxed text-admin-faint">
-              Emails customers can&rsquo;t turn off are always sent, such as order confirmations
-              they need for their records.
-            </p>
-          ) : null}
-        </AdminCard>
-
-        {/* ------------------------------------------------------------ log */}
-        <AdminCard
-          title="Recent emails"
-          description={`The ${RECENT_EMAILS} latest emails sent from your store, newest first.`}
-          padded={false}
-          action={
-            <div className="flex flex-wrap gap-2">
-              <AdminButton size="sm" onClick={() => void onRefreshLog()} loading={refreshingLog}>
-                {refreshingLog ? null : <RefreshCw className="h-3 w-3" strokeWidth={2} aria-hidden="true" />}
-                Refresh
-              </AdminButton>
-              <AdminButtonLink href="/admin/settings/email/history" size="sm" variant="primary">
-                <History className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-                Open email history
-                <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-              </AdminButtonLink>
-            </div>
-          }
-        >
-          {log === null ? (
-            <div className="flex h-40 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-admin-faint" aria-label="Loading recent emails" />
-            </div>
-          ) : log.length === 0 ? (
-            <p className="p-8 text-center text-sm text-admin-muted">No emails have been sent yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[44rem] text-left text-xs">
-                <thead className="border-b border-admin-border text-admin-muted">
-                  <tr>
-                    <th className="px-4 py-2.5 font-medium">Email</th>
-                    <th className="px-4 py-2.5 font-medium">Sent to</th>
-                    <th className="px-4 py-2.5 font-medium">Status</th>
-                    <th className="px-4 py-2.5 font-medium">Reference</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-admin-border">
-                  {log.map((entry) => (
-                    <tr key={entry.id} className="align-top hover:bg-admin-raised">
-                      <td className="max-w-xs px-4 py-3">
-                        <span className="block font-medium text-admin-ink">{entry.subject || "—"}</span>
-                        <span className="mt-0.5 block text-[0.6875rem] text-admin-muted">
-                          {entry.type === "test"
-                            ? "Test email"
-                            : (typeLabels.get(entry.type) ?? entry.type)}
-                        </span>
-                        {entry.status === "failed" && entry.error ? (
-                          <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[#a12b2b]">
-                            {entry.error}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-4 py-3 text-admin-ink">{entry.recipient}</td>
-                      <td className="px-4 py-3">
-                        <LogStatusBadge status={entry.status} />
-                      </td>
-                      <td className="px-4 py-3 text-admin-muted">{entry.reference || "—"}</td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right text-admin-muted">
-                        {formatDateTime(entry.at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </AdminCard>
-      </div>
+              {types.length === 0 ? (
+                <p className="p-8 text-center text-sm text-admin-muted">No emails to manage yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[36rem] text-left text-xs">
+                    <thead className="border-b border-admin-border text-admin-muted">
+                      <tr>
+                        <th className="px-4 py-2.5 font-medium">Email</th>
+                        <th className="w-24 px-4 py-2.5 text-center font-medium">Send</th>
+                        <th className="w-40 px-4 py-2.5 text-center font-medium">Customers can turn off</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border">
+                      {types.map((type) => (
+                        <tr key={type.key} className="hover:bg-admin-raised">
+                          <td className="px-4 py-3">
+                            <span className="block font-medium text-admin-ink">{type.label}</span>
+                            {type.description ? (
+                              <span className="mt-0.5 block text-[0.6875rem] leading-relaxed text-admin-muted">
+                                {type.description}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Switch
+                              label={`Send ${type.label}`}
+                              checked={type.enabled}
+                              onChange={(checked) => patchType(type.key, { enabled: checked })}
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Switch
+                              label={`Customers can turn off ${type.label}`}
+                              checked={type.customerCanOptOut}
+                              disabled={!type.enabled}
+                              onChange={(checked) => patchType(type.key, { customerCanOptOut: checked })}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {types.length > 0 ? (
+                <p className="border-t border-admin-border px-4 py-3 text-[0.6875rem] leading-relaxed text-admin-faint">
+                  Emails customers can&rsquo;t turn off are always sent, such as order confirmations
+                  they need for their records.
+                </p>
+              ) : null}
+            </AdminCard>
+            ),
+          },
+          {
+            id: "recent",
+            label: "Recent emails",
+            group: "Activity",
+            content: (
+            <AdminCard
+              title="Recent emails"
+              description={`The ${RECENT_EMAILS} latest emails sent from your store, newest first.`}
+              padded={false}
+              action={
+                <div className="flex flex-wrap gap-2">
+                  <AdminButton size="sm" onClick={() => void onRefreshLog()} loading={refreshingLog}>
+                    {refreshingLog ? null : <RefreshCw className="h-3 w-3" strokeWidth={2} aria-hidden="true" />}
+                    Refresh
+                  </AdminButton>
+                  <AdminButtonLink href="/admin/settings/email/history" size="sm" variant="primary">
+                    <History className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                    Open email history
+                    <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+                  </AdminButtonLink>
+                </div>
+              }
+            >
+              {log === null ? (
+                <div className="flex h-40 items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-admin-faint" aria-label="Loading recent emails" />
+                </div>
+              ) : log.length === 0 ? (
+                <p className="p-8 text-center text-sm text-admin-muted">No emails have been sent yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[44rem] text-left text-xs">
+                    <thead className="border-b border-admin-border text-admin-muted">
+                      <tr>
+                        <th className="px-4 py-2.5 font-medium">Email</th>
+                        <th className="px-4 py-2.5 font-medium">Sent to</th>
+                        <th className="px-4 py-2.5 font-medium">Status</th>
+                        <th className="px-4 py-2.5 font-medium">Reference</th>
+                        <th className="px-4 py-2.5 text-right font-medium">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-admin-border">
+                      {log.map((entry) => (
+                        <tr key={entry.id} className="align-top hover:bg-admin-raised">
+                          <td className="max-w-xs px-4 py-3">
+                            <span className="block font-medium text-admin-ink">{entry.subject || "—"}</span>
+                            <span className="mt-0.5 block text-[0.6875rem] text-admin-muted">
+                              {entry.type === "test"
+                                ? "Test email"
+                                : (typeLabels.get(entry.type) ?? entry.type)}
+                            </span>
+                            {entry.status === "failed" && entry.error ? (
+                              <span className="mt-1 block text-[0.6875rem] leading-relaxed text-[#a12b2b]">
+                                {entry.error}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 text-admin-ink">{entry.recipient}</td>
+                          <td className="px-4 py-3">
+                            <LogStatusBadge status={entry.status} />
+                          </td>
+                          <td className="px-4 py-3 text-admin-muted">{entry.reference || "—"}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right text-admin-muted">
+                            {formatDateTime(entry.at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </AdminCard>
+            ),
+          },
+        ]}
+      />
 
       <ConfirmDialog
         open={confirmStop}

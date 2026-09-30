@@ -34,6 +34,7 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core import numbering
 from app.core.errors import AuthorizationError, ConflictError, NotFoundError, ValidationError
 from app.models import (
     AdminUser,
@@ -503,7 +504,8 @@ def _next_number(db: Session, prefix: str, now: datetime) -> str:
         .limit(1).with_for_update()
     ).scalar_one_or_none()
     count = int(last.rsplit("-", 1)[1]) if last else 0
-    return f"{stem}{count + 1:06d}"
+    # At least six digits, and longer once the year passes 999,999 requests.
+    return f"{stem}{count + 1:0{numbering.TICKET.min_digits}d}"
 
 
 def selectable(db: Session, node: SupportCategory) -> dict:
@@ -636,7 +638,7 @@ def create(db: Session, payload: dict, *, customer: Optional[Customer], uploads:
     key = "" if customer is not None else secrets.token_urlsafe(24)
     ticket = SupportTicket(
         id=next_id(db, SupportTicket, "support_ticket"),
-        number=_next_number(db, conf.get("ticketPrefix") or "DCZ", now),
+        number=_next_number(db, numbering.TICKET.prefix, now),
         customer_id=customer.id if customer else None,
         name=name, email=email, phone=phone, access_key=_seal_key(key) if key else "",
         channel=channel, contact_type=routing.contact_type,

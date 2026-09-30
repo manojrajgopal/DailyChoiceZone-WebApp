@@ -45,7 +45,13 @@ def get_document(
         raise NotFoundError(f"No configuration document '{key}'.", error_code="UNKNOWN_DOCUMENT")
 
     row = db.get(SettingDocument, key)
-    return ok(row.value if row else {})
+    value = row.value if row else {}
+    if key == "billing":
+        # Shown with the fixed document-number formats, whatever is stored.
+        from app.core import numbering
+
+        value = numbering.with_locked(value)
+    return ok(value)
 
 
 @router.put("/settings/{key}", summary="Save a configuration document")
@@ -71,6 +77,11 @@ def save_document(
     """
     if key not in DOCUMENTS:
         raise NotFoundError(f"No configuration document '{key}'.", error_code="UNKNOWN_DOCUMENT")
+    if key == "billing":
+        # Number formats are fixed in code; see `app.core.numbering`.
+        from app.core import numbering
+
+        payload = numbering.strip_locked(payload)
 
     row = db.get(SettingDocument, key)
     if row is None:

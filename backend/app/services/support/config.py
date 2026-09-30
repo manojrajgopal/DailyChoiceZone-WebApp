@@ -53,6 +53,10 @@ def settings(db: Session) -> dict:
     merged.setdefault("defaultTeamId", None)
     for key, value in stored.items():
         merged[key] = value
+    # The request-number format is fixed, whatever an older document holds.
+    from app.core import numbering
+
+    merged["ticketPrefix"] = numbering.TICKET.prefix
     return merged
 
 
@@ -71,11 +75,10 @@ def save_settings(db: Session, payload: dict) -> dict:
     current = settings(db)
     out = dict(current)
 
-    if "ticketPrefix" in payload:
-        prefix = str(payload["ticketPrefix"] or "").strip().upper()
-        if not prefix.isalnum() or not 2 <= len(prefix) <= 6:
-            raise ValidationError("The ticket prefix is 2–6 letters or digits.", error_code="INVALID_PREFIX")
-        out["ticketPrefix"] = prefix
+    if "ticketPrefix" in payload and payload["ticketPrefix"] != current["ticketPrefix"]:
+        # Request numbers are quoted by customers; the format is fixed in code.
+        raise ValidationError("Document number formats are fixed and can't be changed.",
+                              error_code="NUMBERING_LOCKED")
     if "defaultPriority" in payload:
         if payload["defaultPriority"] not in PRIORITIES:
             raise ValidationError("Choose a priority.", error_code="INVALID_PRIORITY")

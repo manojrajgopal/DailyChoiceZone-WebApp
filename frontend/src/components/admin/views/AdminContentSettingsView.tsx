@@ -13,7 +13,7 @@ import type {
   SizeChart,
 } from "@/types";
 
-import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import {
   AdminInput,
   AdminTextarea,
@@ -21,6 +21,13 @@ import {
   TagListInput,
 } from "@/components/admin/ui/AdminForm";
 import { RecordListEditor } from "@/components/admin/ui/RecordListEditor";
+import {
+  SettingsLayout,
+  SettingsSaveBar,
+  changed,
+  useSettingsSection,
+  type SettingsSection,
+} from "@/components/admin/ui/SettingsLayout";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { getContentDocument, saveContentDocument } from "@/services/admin/documentAdminService";
 import { toast } from "@/store/toastStore";
@@ -34,7 +41,7 @@ import { toast } from "@/store/toastStore";
  * portal's own dropdowns. Changing any of it meant editing code and shipping a
  * build.
  *
- * One screen rather than eight, because it is one document and one Save: the
+ * One document and one Save, shown a section at a time: the
  * storefront reads it whole, and writing half of it would leave a page with
  * half a list.
  *
@@ -45,11 +52,14 @@ import { toast } from "@/store/toastStore";
  * must never be the thing that decides what they may edit.
  */
 
+const SECTION_IDS = ["states", "delivery", "payment", "searches", "sorting", "filters", "contact", "account", "faq", "sizes", "roles", "stock", "ranges", "home"];
+
 export function AdminContentSettingsView() {
   const { data, isLoading, reload } = useAdminResource(() => getContentDocument(), []);
 
   const [draft, setDraft] = useState<SiteContent | null>(null);
   const [saving, setSaving] = useState(false);
+  const [section, setSection] = useSettingsSection(SECTION_IDS);
 
   useEffect(() => {
     if (data) setDraft(data);
@@ -68,10 +78,12 @@ export function AdminContentSettingsView() {
 
   const onSave = async () => {
     if ((draft.states ?? []).length === 0) {
+      setSection("states");
       toast.error("Keep at least one state — checkout cannot collect an address without one.");
       return;
     }
     if ((draft.paymentMethods ?? []).length === 0) {
+      setSection("payment");
       toast.error("Keep at least one payment method, or nobody can check out.");
       return;
     }
@@ -89,17 +101,15 @@ export function AdminContentSettingsView() {
     await reload();
   };
 
-  return (
-    <div>
-      <AdminPageHeader
-        breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Content" }]}
-        title="Content"
-        description="The lists the storefront and this portal render — states, methods, the FAQ, size charts and every dropdown."
-      />
-
-      <div className="grid gap-4 pb-20 xl:grid-cols-2">
-        {/* ------------------------------------------------------ checkout */}
-
+  const saved = data ?? draft;
+  const sections: SettingsSection[] = [
+    {
+      id: "states",
+      label: "Delivery states",
+      group: "Checkout",
+      count: (draft.states ?? []).length,
+      dirty: changed(draft.states, saved.states),
+      content: (
         <FormSection
           title="Delivery states"
           description="What a customer can choose as the state on an address. The tax treatment is decided from it."
@@ -112,23 +122,18 @@ export function AdminContentSettingsView() {
             hint="Shown in this order."
           />
         </FormSection>
-
-        <FormSection
-          title="Popular searches"
-          description="Shown to shoppers when they open search."
-        >
-          <TagListInput
-            label="Search terms"
-            values={draft.popularSearches ?? []}
-            onChange={(popularSearches) => patch("popularSearches", popularSearches)}
-            placeholder="Add a term and press Enter"
-          />
-        </FormSection>
-
+      ),
+    },
+    {
+      id: "delivery",
+      label: "Delivery methods",
+      group: "Checkout",
+      count: (draft.deliveryMethods ?? []).length,
+      dirty: changed(draft.deliveryMethods, saved.deliveryMethods),
+      content: (
         <FormSection
           title="Delivery methods"
           description="The fee and estimate come from store settings, so the figure quoted is the one charged."
-          className="xl:col-span-2"
         >
           <RecordListEditor<DeliveryMethod>
             rows={draft.deliveryMethods ?? []}
@@ -144,11 +149,18 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "payment",
+      label: "Payment methods",
+      group: "Checkout",
+      count: (draft.paymentMethods ?? []).length,
+      dirty: changed(draft.paymentMethods, saved.paymentMethods),
+      content: (
         <FormSection
           title="Payment methods"
           description="Which are offered at checkout is set under Billing; this is what each one is called."
-          className="xl:col-span-2"
         >
           <RecordListEditor<PaymentMethodOption>
             rows={draft.paymentMethods ?? []}
@@ -165,9 +177,35 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
-        {/* -------------------------------------------------------- listing */}
-
+      ),
+    },
+    {
+      id: "searches",
+      label: "Popular searches",
+      group: "Search & browsing",
+      count: (draft.popularSearches ?? []).length,
+      dirty: changed(draft.popularSearches, saved.popularSearches),
+      content: (
+        <FormSection
+          title="Popular searches"
+          description="Shown to shoppers when they open search."
+        >
+          <TagListInput
+            label="Search terms"
+            values={draft.popularSearches ?? []}
+            onChange={(popularSearches) => patch("popularSearches", popularSearches)}
+            placeholder="Add a term and press Enter"
+          />
+        </FormSection>
+      ),
+    },
+    {
+      id: "sorting",
+      label: "Sort orders",
+      group: "Search & browsing",
+      count: (draft.sortOptions ?? []).length,
+      dirty: changed(draft.sortOptions, saved.sortOptions),
+      content: (
         <FormSection title="Sort orders" description="The options in the listing toolbar.">
           <RecordListEditor<Labelled>
             rows={draft.sortOptions ?? []}
@@ -185,7 +223,14 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "filters",
+      label: "Rating & discount filters",
+      group: "Search & browsing",
+      dirty: changed(draft.ratingFilters, saved.ratingFilters) || changed(draft.discountFilters, saved.discountFilters),
+      content: (
         <FormSection
           title="Rating and discount filters"
           description="The rating and discount shortcuts on the filter panel."
@@ -203,9 +248,15 @@ export function AdminContentSettingsView() {
             onChange={(discountFilters) => patch("discountFilters", discountFilters)}
           />
         </FormSection>
-
-        {/* ---------------------------------------------------------- pages */}
-
+      ),
+    },
+    {
+      id: "contact",
+      label: "Contact form topics",
+      group: "Customer pages",
+      count: (draft.contactTopics ?? []).length,
+      dirty: changed(draft.contactTopics, saved.contactTopics),
+      content: (
         <FormSection
           title="Contact form topics"
           description="What the “What is it about?” field offers."
@@ -222,7 +273,15 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "account",
+      label: "Account menu",
+      group: "Customer pages",
+      count: (draft.accountNavigation ?? []).length,
+      dirty: changed(draft.accountNavigation, saved.accountNavigation),
+      content: (
         <FormSection title="Account menu" description="The sidebar on every account page.">
           <RecordListEditor<AccountNavItem>
             rows={draft.accountNavigation ?? []}
@@ -249,11 +308,18 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "faq",
+      label: "FAQ",
+      group: "Customer pages",
+      count: (draft.faqs ?? []).length,
+      dirty: changed(draft.faqs, saved.faqs),
+      content: (
         <FormSection
           title="Frequently asked questions"
           description="The accordion on the FAQ page, in this order."
-          className="xl:col-span-2"
         >
           <RecordListEditor<FaqEntry>
             rows={draft.faqs ?? []}
@@ -267,11 +333,17 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "sizes",
+      label: "Size guide",
+      group: "Customer pages",
+      dirty: changed(draft.sizeGuide, saved.sizeGuide),
+      content: (
         <FormSection
           title="Size guide"
           description="The charts under the FAQ. Each is a table with its own columns."
-          className="xl:col-span-2"
         >
           <AdminTextarea
             label="Introduction"
@@ -291,9 +363,15 @@ export function AdminContentSettingsView() {
             }
           />
         </FormSection>
-
-        {/* ------------------------------------------- portal vocabularies */}
-
+      ),
+    },
+    {
+      id: "roles",
+      label: "Administrator roles",
+      group: "Portal lists",
+      count: (draft.adminRoles ?? []).length,
+      dirty: changed(draft.adminRoles, saved.adminRoles),
+      content: (
         <FormSection
           title="Administrator roles"
           description="The labels this portal offers. What each role can do is fixed and cannot be changed here."
@@ -315,7 +393,15 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "stock",
+      label: "Stock adjustment reasons",
+      group: "Portal lists",
+      count: (draft.stockAdjustmentReasons ?? []).length,
+      dirty: changed(draft.stockAdjustmentReasons, saved.stockAdjustmentReasons),
+      content: (
         <FormSection
           title="Stock adjustment reasons"
           description="Reasons staff can give when changing stock."
@@ -334,7 +420,15 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "ranges",
+      label: "Report ranges",
+      group: "Portal lists",
+      count: (draft.analyticsRanges ?? []).length,
+      dirty: changed(draft.analyticsRanges, saved.analyticsRanges),
+      content: (
         <FormSection
           title="Report ranges"
           description="The periods the dashboard and reports can be read over."
@@ -356,7 +450,14 @@ export function AdminContentSettingsView() {
             ]}
           />
         </FormSection>
-
+      ),
+    },
+    {
+      id: "home",
+      label: "Homepage section types",
+      group: "Portal lists",
+      dirty: changed(draft.homeSectionKinds, saved.homeSectionKinds) || changed(draft.homeSectionSources, saved.homeSectionSources),
+      content: (
         <FormSection
           title="Homepage section types"
           description="The section types you can add, and whether each shows products."
@@ -391,18 +492,27 @@ export function AdminContentSettingsView() {
             />
           </div>
         </FormSection>
-      </div>
+      ),
+    },
+  ];
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm lg:left-60">
-        <div className="flex items-center justify-end gap-2">
-          <AdminButton variant="ghost" onClick={() => setDraft(data)}>
-            Discard changes
-          </AdminButton>
-          <AdminButton variant="primary" loading={saving} onClick={() => void onSave()}>
-            Save content
-          </AdminButton>
-        </div>
-      </div>
+  return (
+    <div>
+      <AdminPageHeader
+        breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Content" }]}
+        title="Content"
+        description="The lists the storefront and this portal render — states, methods, the FAQ, size charts and every dropdown."
+      />
+
+      <SettingsLayout label="Content sections" sections={sections} active={section} onChange={setSection} />
+
+      <SettingsSaveBar
+        dirtySections={sections.filter((entry) => entry.dirty).map((entry) => entry.label)}
+        saving={saving}
+        onSave={() => void onSave()}
+        onDiscard={() => setDraft(data)}
+        saveLabel="Save content"
+      />
     </div>
   );
 }

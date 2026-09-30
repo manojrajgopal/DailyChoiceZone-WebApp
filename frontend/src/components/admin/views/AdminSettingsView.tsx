@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Database, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import type { StoreSettings } from "@/types/admin";
 
-import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import {
   AdminInput,
   AdminSelect,
@@ -14,6 +14,13 @@ import {
   FormGrid,
   FormSection,
 } from "@/components/admin/ui/AdminForm";
+import {
+  SettingsLayout,
+  SettingsSaveBar,
+  changed,
+  useSettingsSection,
+  type SettingsSection,
+} from "@/components/admin/ui/SettingsLayout";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { getSettings, saveSettings } from "@/services/admin/settingsAdminService";
 import { toast } from "@/store/toastStore";
@@ -25,11 +32,14 @@ import { toast } from "@/store/toastStore";
  * the cart prices against, and the contact details are the ones in the footer.
  * That is the point of putting them in data rather than in code.
  */
+const SECTION_IDS = ["general", "contact", "social", "shipping", "tax", "notifications"];
+
 export function AdminSettingsView() {
   const { data, isLoading, reload } = useAdminResource(() => getSettings(), []);
 
   const [draft, setDraft] = useState<StoreSettings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [section, setSection] = useSettingsSection(SECTION_IDS);
 
   /**
    * Seed the form whenever the settings are (re)loaded.
@@ -75,16 +85,14 @@ export function AdminSettingsView() {
   const patch = <K extends keyof StoreSettings>(key: K, value: Partial<StoreSettings[K]>) =>
     setDraft({ ...draft, [key]: { ...draft[key], ...value } });
 
-  return (
-    <div className="pb-24">
-      <AdminPageHeader
-        title="Store settings"
-        description="These values drive the storefront — delivery thresholds, tax, contact details and social links."
-        breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Store settings" }]}
-      />
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        {/* -------------------------------------------------------- general */}
+  const saved = data ?? draft;
+  const sections: SettingsSection[] = [
+    {
+      id: "general",
+      label: "General",
+      group: "Store",
+      dirty: changed(draft.general, saved.general),
+      content: (
         <FormSection title="General" description="How the store presents itself.">
           <FormGrid>
             <AdminInput
@@ -110,8 +118,14 @@ export function AdminSettingsView() {
             />
           </FormGrid>
         </FormSection>
-
-        {/* -------------------------------------------------------- contact */}
+      ),
+    },
+    {
+      id: "contact",
+      label: "Contact",
+      group: "Store",
+      dirty: changed(draft.contact, saved.contact),
+      content: (
         <FormSection title="Contact" description="Shown in the footer and on the contact page.">
           <FormGrid>
             <AdminInput
@@ -160,9 +174,45 @@ export function AdminSettingsView() {
             />
           </FormGrid>
         </FormSection>
-
-        {/* ------------------------------------------------------- shipping */}
-        <FormSection title="Shipping" description="What the cart charges for delivery.">
+      ),
+    },
+    {
+      id: "social",
+      label: "Social links",
+      group: "Store",
+      dirty: changed(draft.social, saved.social),
+      content: (
+        <FormSection title="Social links" description="Shown in the storefront footer.">
+          <FormGrid columns={1}>
+            <AdminInput
+              label="Instagram"
+              type="url"
+              value={draft.social.instagram}
+              onChange={(event) => patch("social", { instagram: event.target.value })}
+            />
+            <AdminInput
+              label="Facebook"
+              type="url"
+              value={draft.social.facebook}
+              onChange={(event) => patch("social", { facebook: event.target.value })}
+            />
+            <AdminInput
+              label="YouTube"
+              type="url"
+              value={draft.social.youtube}
+              onChange={(event) => patch("social", { youtube: event.target.value })}
+            />
+          </FormGrid>
+        </FormSection>
+      ),
+    },
+    {
+      id: "shipping",
+      label: "Shipping & returns",
+      group: "Selling",
+      dirty: changed(draft.shipping, saved.shipping) || changed(draft.returns, saved.returns),
+      content: (
+        <FormSection title="Shipping & returns" description="What the cart charges for delivery.">
           <FormGrid>
             <AdminInput
               label="Free delivery above"
@@ -214,9 +264,15 @@ export function AdminSettingsView() {
             />
           </FormGrid>
         </FormSection>
-
-        {/* ------------------------------------------------ currency and tax */}
-        <FormSection title="Currency and tax">
+      ),
+    },
+    {
+      id: "tax",
+      label: "Currency & tax",
+      group: "Selling",
+      dirty: changed(draft.currency, saved.currency) || changed(draft.tax, saved.tax),
+      content: (
+        <FormSection title="Currency & tax">
           <FormGrid>
             <AdminSelect
               label="Currency"
@@ -264,8 +320,14 @@ export function AdminSettingsView() {
             />
           </div>
         </FormSection>
-
-        {/* -------------------------------------------------- notifications */}
+      ),
+    },
+    {
+      id: "notifications",
+      label: "Notifications",
+      group: "Alerts",
+      dirty: changed(draft.notifications, saved.notifications),
+      content: (
         <FormSection
           title="Notifications"
           description="Choose which emails your store sends to customers and staff."
@@ -300,63 +362,27 @@ export function AdminSettingsView() {
             />
           </div>
         </FormSection>
+      ),
+    },
+  ];
 
-        {/* --------------------------------------------------------- social */}
-        <FormSection title="Social links" description="Shown in the storefront footer.">
-          <FormGrid columns={1}>
-            <AdminInput
-              label="Instagram"
-              type="url"
-              value={draft.social.instagram}
-              onChange={(event) => patch("social", { instagram: event.target.value })}
-            />
-            <AdminInput
-              label="Facebook"
-              type="url"
-              value={draft.social.facebook}
-              onChange={(event) => patch("social", { facebook: event.target.value })}
-            />
-            <AdminInput
-              label="YouTube"
-              type="url"
-              value={draft.social.youtube}
-              onChange={(event) => patch("social", { youtube: event.target.value })}
-            />
-          </FormGrid>
-        </FormSection>
+  return (
+    <div>
+      <AdminPageHeader
+        title="Store settings"
+        description="These values drive the storefront — delivery thresholds, tax, contact details and social links. Saved changes go live straight away."
+        breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Store settings" }]}
+      />
 
-        {/* ---------------------------------------------- where this lives */}
-        <FormSection
-          title="Saving changes"
-          description="Changes go live straight away."
-          className="xl:col-span-2"
-        >
-          <div className="flex max-w-prose items-start gap-2.5 rounded-[3px] border border-admin-border bg-admin-surface p-3.5">
-            <Database
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-admin-faint"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            <p className="text-xs leading-relaxed text-admin-muted">
-              Changes you save here appear on your storefront immediately, for every shopper on
-              every device.
-            </p>
-          </div>
-        </FormSection>
-      </div>
+      <SettingsLayout label="Store settings sections" sections={sections} active={section} onChange={setSection} />
 
-      {/* --------------------------------------------------- sticky actions */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm lg:left-60">
-        <div className="flex items-center justify-end gap-2">
-          <AdminButton variant="ghost" onClick={() => setDraft(data)}>
-            Discard changes
-          </AdminButton>
-          <AdminButton variant="primary" loading={saving} onClick={() => void onSave()}>
-            Save settings
-          </AdminButton>
-        </div>
-      </div>
-
+      <SettingsSaveBar
+        dirtySections={sections.filter((entry) => entry.dirty).map((entry) => entry.label)}
+        saving={saving}
+        onSave={() => void onSave()}
+        onDiscard={() => setDraft(data)}
+        saveLabel="Save settings"
+      />
     </div>
   );
 }

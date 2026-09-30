@@ -22,7 +22,6 @@ from app.models import (
     StockAdjustment,
 )
 from app.repositories import products as repo
-from app.services import billing
 from app.schemas.catalogue import ProductQuery, ProductWrite
 from app.utils.ids import next_id, slugify
 
@@ -56,12 +55,13 @@ def _next_sku(db: Session, category_slug: str) -> str:
     """
     A generated SKU: the store's prefix, the department, a sequence.
 
-    The prefix comes from the billing document so a shop can use its own.
-    Only reached when somebody leaves the SKU field blank — a product listed
-    with a real supplier code keeps it.
+    The prefix is fixed (`app.core.numbering`), and the sequence grows past
+    four digits rather than wrapping. Only reached when somebody leaves the SKU
+    field blank — a product listed with a real supplier code keeps it.
     """
-    prefix = str((billing.billing_config(db).get("sku") or {}).get("prefix") or "")
-    lead = f"{prefix}-" if prefix else ""
+    from app.core import numbering
+
+    lead = f"{numbering.SKU_PREFIX}-"
     letters = (category_slug[:2] or "XX").upper()
 
     count = db.execute(select(func.count()).select_from(Product)).scalar_one()

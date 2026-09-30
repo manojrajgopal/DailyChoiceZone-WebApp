@@ -22,6 +22,7 @@ import {
   ImageListInput,
   TagListInput,
 } from "@/components/admin/ui/AdminForm";
+import { SettingsLayout, useSettingsSection, type SettingsSection } from "@/components/admin/ui/SettingsLayout";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { slugify } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
@@ -34,6 +35,24 @@ import {
   validateProduct,
 } from "@/services/admin/productAdminService";
 import { toast } from "@/store/toastStore";
+
+/** Which section each validated field lives in. */
+const ERROR_SECTION: Record<string, string> = {
+  name: "basics",
+  brand: "basics",
+  category: "basics",
+  subcategory: "basics",
+  description: "basics",
+  price: "pricing",
+  originalPrice: "pricing",
+  stock: "inventory",
+  colors: "colours",
+  images: "photos",
+};
+
+const SECTION_ORDER = [
+  "basics", "pricing", "inventory", "variants", "colours", "photos", "status", "merchandising", "returns", "tags", "seo",
+];
 
 /**
  * The product form, shared by Add and Edit.
@@ -55,6 +74,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
 
   const [draft, setDraft] = useState<ProductDraft>(() => emptyProductDraft());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [section, setSection] = useSettingsSection(SECTION_ORDER);
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(mode === "create");
 
@@ -115,6 +135,9 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
     const found = validateProduct(candidate);
     if (Object.keys(found).length > 0) {
       setErrors(found);
+      // Open the first section holding a problem; the others are marked in the menu.
+      const first = SECTION_ORDER.find((id) => Object.keys(found).some((key) => ERROR_SECTION[key] === id));
+      if (first) setSection(first);
       toast.error("Check the highlighted fields.");
       return;
     }
@@ -175,8 +198,395 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
     );
   }
 
+  const hasError = (keys: string[]) => keys.some((key) => Boolean(errors[key]));
+  const sections: SettingsSection[] = [
+    {
+      id: "basics",
+      label: "Basic information",
+      group: "Product",
+      error: hasError(["name", "brand", "category", "subcategory", "description"]),
+      content: (
+        <FormSection
+          title="Basic information"
+          description="What the product is and where it sits in the catalogue."
+        >
+          <FormGrid>
+            <AdminInput
+              label="Product name"
+              value={draft.name}
+              onChange={(event) => set("name", event.target.value)}
+              error={errors.name}
+              required
+              className="sm:col-span-2"
+              placeholder="Oversized Cotton Shirt"
+            />
+
+            <AdminInput
+              label="Brand"
+              value={draft.brand}
+              onChange={(event) => set("brand", event.target.value)}
+              error={errors.brand}
+              required
+            />
+
+            <AdminInput
+              label="SKU"
+              value={draft.sku}
+              onChange={(event) => set("sku", event.target.value)}
+              hint="Leave blank to generate one from the category."
+              placeholder="DCZ-WO0140"
+            />
+
+            <AdminSelect
+              label="Category"
+              value={draft.category}
+              onChange={(event) => {
+                set("category", event.target.value);
+                // The old subcategory almost certainly does not exist in the
+                // new category, so clear it rather than leave it invalid.
+                set("subcategory", "");
+              }}
+              error={errors.category}
+              required
+              placeholder="Choose a category"
+              options={categories.map((entry: Category) => ({
+                value: entry.slug,
+                label: entry.name,
+              }))}
+            />
+
+            <AdminSelect
+              label="Product type"
+              value={draft.subcategory}
+              onChange={(event) => set("subcategory", event.target.value)}
+              error={errors.subcategory}
+              required
+              disabled={!draft.category}
+              placeholder={draft.category ? "Choose a type" : "Pick a category first"}
+              options={subcategories.map((entry) => ({
+                value: entry.slug,
+                label: entry.name,
+              }))}
+            />
+
+            <AdminTextarea
+              label="Description"
+              value={draft.description}
+              onChange={(event) => set("description", event.target.value)}
+              error={errors.description}
+              required
+              rows={5}
+              className="sm:col-span-2"
+              hint="Plain text. Describe the fit, the feel and anything a photograph cannot show."
+            />
+
+            <AdminInput
+              label="Material"
+              value={draft.material}
+              onChange={(event) => set("material", event.target.value)}
+              placeholder="Cotton Poplin"
+            />
+
+            <AdminInput
+              label="Care instructions"
+              value={draft.care}
+              onChange={(event) => set("care", event.target.value)}
+              placeholder="Machine wash cold with like colours."
+            />
+          </FormGrid>
+        </FormSection>
+      ),
+    },
+    {
+      id: "pricing",
+      label: "Pricing",
+      group: "Product",
+      error: hasError(["price", "originalPrice"]),
+      content: (
+        <FormSection title="Pricing" description="All figures in rupees, inclusive of tax.">
+          <FormGrid columns={3}>
+            <AdminInput
+              label="Selling price"
+              type="number"
+              min={0}
+              prefix="₹"
+              value={draft.price || ""}
+              onChange={(event) => set("price", Number(event.target.value))}
+              error={errors.price}
+              required
+            />
+
+            <AdminInput
+              label="Original price"
+              type="number"
+              min={0}
+              prefix="₹"
+              value={draft.originalPrice || ""}
+              onChange={(event) => set("originalPrice", Number(event.target.value))}
+              error={errors.originalPrice}
+              hint="Set equal to the selling price if it is not reduced."
+            />
+
+            <AdminInput
+              label="Tax rate"
+              type="number"
+              min={0}
+              max={28}
+              value={draft.taxRatePercent}
+              onChange={(event) => set("taxRatePercent", Number(event.target.value))}
+              hint="Percent."
+            />
+          </FormGrid>
+
+          <p className="mt-3 rounded-[3px] bg-admin-raised px-3 py-2 text-[0.6875rem] text-admin-muted">
+            The discount shown to shoppers is worked out from these two prices.
+            {draft.originalPrice > draft.price ? (
+              <strong className="ml-1 text-admin-ink">
+                This will show {Math.floor(((draft.originalPrice - draft.price) / draft.originalPrice) * 100)}% off.
+              </strong>
+            ) : null}
+          </p>
+        </FormSection>
+      ),
+    },
+    {
+      id: "inventory",
+      label: "Inventory",
+      group: "Product",
+      error: hasError(["stock"]),
+      content: (
+        <FormSection title="Inventory" description="Stock levels and identifiers.">
+          <FormGrid columns={3}>
+            <AdminInput
+              label="Stock quantity"
+              type="number"
+              min={0}
+              value={draft.stock}
+              onChange={(event) => set("stock", Number(event.target.value))}
+              error={errors.stock}
+            />
+
+            <AdminInput
+              label="Low stock threshold"
+              type="number"
+              min={0}
+              value={draft.lowStockThreshold}
+              onChange={(event) => set("lowStockThreshold", Number(event.target.value))}
+              hint="Warn below this level."
+            />
+
+            <AdminInput
+              label="Barcode"
+              value={draft.barcode}
+              onChange={(event) => set("barcode", event.target.value)}
+              placeholder="8901234567890"
+            />
+          </FormGrid>
+        </FormSection>
+      ),
+    },
+    {
+      id: "variants",
+      label: "Sizes & variants",
+      group: "Variants & photos",
+      content: (
+        <FormSection
+          title="Variants"
+          description="Leave sizes empty for one-size products."
+        >
+          <div className="flex flex-col gap-4">
+            <TagListInput
+              label="Sizes"
+              values={draft.sizes}
+              onChange={(values) => set("sizes", values)}
+              placeholder="S, M, UK 8…"
+              hint="Order matters — they appear in this order on the product page."
+            />
+
+          </div>
+        </FormSection>
+      ),
+    },
+    {
+      id: "colours",
+      label: "Colours & photos",
+      group: "Variants & photos",
+      error: hasError(["colors"]),
+      content: (
+        <FormSection
+          title="Colours & photos"
+          description="Add each colour the product is sold in, with photos of the product in that colour. Shoppers see a colour's own photos when they choose it, and each photographed colour gets its own card in product listings."
+        >
+          <ColourEditor
+            colors={draft.colors}
+            onChange={(colors) => set("colors", colors)}
+            error={errors.colors}
+          />
+        </FormSection>
+      ),
+    },
+    {
+      id: "photos",
+      label: "Shared photos",
+      group: "Variants & photos",
+      error: hasError(["images"]),
+      content: (
+        <FormSection
+          title="Shared photos"
+          description={
+            draft.colors.some((colour) => colour.images?.length)
+              ? "Optional. Shown for the product in general — for example a detail shot that is the same in every colour."
+              : "Used for every colour. Add photos to each colour above to show the right one when a shopper picks it."
+          }
+        >
+          <ImageListInput
+            label="Shared photos"
+            values={draft.images}
+            onChange={(values) => set("images", values)}
+            error={errors.images}
+          />
+        </FormSection>
+      ),
+    },
+    {
+      id: "status",
+      label: "Status",
+      group: "Visibility & search",
+      content: (
+        <FormSection title="Status">
+          <AdminSelect
+            label="Publication status"
+            value={draft.status}
+            onChange={(event) => set("status", event.target.value as ProductStatus)}
+            options={[
+              { value: "draft", label: "Draft — hidden from the storefront" },
+              { value: "active", label: "Active — on sale" },
+              { value: "out-of-stock", label: "Out of stock — visible, not buyable" },
+              { value: "archived", label: "Archived — hidden and delisted" },
+            ]}
+          />
+          <p className="mt-2 text-[0.6875rem] leading-relaxed text-admin-muted">
+            Only Active and Out of stock products appear on the storefront. Setting stock to zero
+            moves an Active product to Out of stock automatically.
+          </p>
+        </FormSection>
+      ),
+    },
+    {
+      id: "merchandising",
+      label: "Merchandising",
+      group: "Visibility & search",
+      content: (
+        <FormSection title="Merchandising" description="Choose where this product can be featured.">
+          <div className="flex flex-col gap-1">
+            <AdminCheckbox
+              label="New arrival"
+              checked={draft.isNew}
+              onChange={(event) => set("isNew", event.target.checked)}
+            />
+            <AdminCheckbox
+              label="Trending"
+              checked={draft.isTrending}
+              onChange={(event) => set("isTrending", event.target.checked)}
+            />
+            <AdminCheckbox
+              label="Best seller"
+              checked={draft.isBestSeller}
+              onChange={(event) => set("isBestSeller", event.target.checked)}
+            />
+            <AdminCheckbox
+              label="Featured"
+              checked={draft.isFeatured}
+              onChange={(event) => set("isFeatured", event.target.checked)}
+            />
+          </div>
+        </FormSection>
+      ),
+    },
+    {
+      id: "returns",
+      label: "Returns & replacements",
+      group: "Visibility & search",
+      content: (
+        <FormSection
+          title="Returns & replacements"
+          description="What customers may do after delivery, within your return window. Each order keeps the policy it was bought under."
+        >
+          <div className="flex flex-col gap-2.5">
+            <AdminCheckbox
+              label="Returnable — customers can send it back for a refund"
+              checked={draft.isReturnable ?? true}
+              onChange={(event) => set("isReturnable", event.target.checked)}
+            />
+            <AdminCheckbox
+              label="Replaceable — customers can exchange it for the same item"
+              checked={draft.isReplaceable ?? true}
+              onChange={(event) => set("isReplaceable", event.target.checked)}
+            />
+          </div>
+        </FormSection>
+      ),
+    },
+    {
+      id: "tags",
+      label: "Tags",
+      group: "Visibility & search",
+      content: (
+        <FormSection title="Tags" description="Used by search and recommendations.">
+          <TagListInput
+            label="Tags"
+            values={draft.tags}
+            onChange={(values) => set("tags", values)}
+            placeholder="linen, summer…"
+          />
+        </FormSection>
+      ),
+    },
+    {
+      id: "seo",
+      label: "Search engine listing",
+      group: "Visibility & search",
+      content: (
+        <FormSection title="Search engine listing" description="How this appears in results.">
+          <FormGrid>
+            <AdminInput
+              label="Web address"
+              value={draft.slug}
+              onChange={(event) => set("slug", event.target.value)}
+              hint={
+                draft.id
+                  ? `Storefront URL: /product/${draft.id} — the slug redirects to it`
+                  : "Used in the product's link, for example oversized-cotton-shirt."
+              }
+              className="sm:col-span-2"
+            />
+
+            <AdminInput
+              label="Search result title"
+              value={draft.seo.metaTitle}
+              onChange={(event) => set("seo", { ...draft.seo, metaTitle: event.target.value })}
+              hint="Around 60 characters."
+              className="sm:col-span-2"
+            />
+
+            <AdminTextarea
+              label="Search result description"
+              rows={3}
+              value={draft.seo.metaDescription}
+              onChange={(event) =>
+                set("seo", { ...draft.seo, metaDescription: event.target.value })
+              }
+              hint="Around 155 characters."
+              className="sm:col-span-2"
+            />
+          </FormGrid>
+        </FormSection>
+      ),
+    },
+  ];
+
   return (
-    <div className="pb-24">
+    <div>
       <AdminPageHeader
         title={mode === "create" ? "Add product" : `Edit ${existing.data?.name ?? "product"}`}
         description={
@@ -191,331 +601,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
         ]}
       />
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_20rem]">
-        <div className="flex flex-col gap-4">
-          {/* --------------------------------------------- basic information */}
-          <FormSection
-            title="Basic information"
-            description="What the product is and where it sits in the catalogue."
-          >
-            <FormGrid>
-              <AdminInput
-                label="Product name"
-                value={draft.name}
-                onChange={(event) => set("name", event.target.value)}
-                error={errors.name}
-                required
-                className="sm:col-span-2"
-                placeholder="Oversized Cotton Shirt"
-              />
-
-              <AdminInput
-                label="Brand"
-                value={draft.brand}
-                onChange={(event) => set("brand", event.target.value)}
-                error={errors.brand}
-                required
-              />
-
-              <AdminInput
-                label="SKU"
-                value={draft.sku}
-                onChange={(event) => set("sku", event.target.value)}
-                hint="Leave blank to generate one from the category."
-                placeholder="DCZ-WO0140"
-              />
-
-              <AdminSelect
-                label="Category"
-                value={draft.category}
-                onChange={(event) => {
-                  set("category", event.target.value);
-                  // The old subcategory almost certainly does not exist in the
-                  // new category, so clear it rather than leave it invalid.
-                  set("subcategory", "");
-                }}
-                error={errors.category}
-                required
-                placeholder="Choose a category"
-                options={categories.map((entry: Category) => ({
-                  value: entry.slug,
-                  label: entry.name,
-                }))}
-              />
-
-              <AdminSelect
-                label="Product type"
-                value={draft.subcategory}
-                onChange={(event) => set("subcategory", event.target.value)}
-                error={errors.subcategory}
-                required
-                disabled={!draft.category}
-                placeholder={draft.category ? "Choose a type" : "Pick a category first"}
-                options={subcategories.map((entry) => ({
-                  value: entry.slug,
-                  label: entry.name,
-                }))}
-              />
-
-              <AdminTextarea
-                label="Description"
-                value={draft.description}
-                onChange={(event) => set("description", event.target.value)}
-                error={errors.description}
-                required
-                rows={5}
-                className="sm:col-span-2"
-                hint="Plain text. Describe the fit, the feel and anything a photograph cannot show."
-              />
-
-              <AdminInput
-                label="Material"
-                value={draft.material}
-                onChange={(event) => set("material", event.target.value)}
-                placeholder="Cotton Poplin"
-              />
-
-              <AdminInput
-                label="Care instructions"
-                value={draft.care}
-                onChange={(event) => set("care", event.target.value)}
-                placeholder="Machine wash cold with like colours."
-              />
-            </FormGrid>
-          </FormSection>
-
-          {/* ------------------------------------------------------- pricing */}
-          <FormSection title="Pricing" description="All figures in rupees, inclusive of tax.">
-            <FormGrid columns={3}>
-              <AdminInput
-                label="Selling price"
-                type="number"
-                min={0}
-                prefix="₹"
-                value={draft.price || ""}
-                onChange={(event) => set("price", Number(event.target.value))}
-                error={errors.price}
-                required
-              />
-
-              <AdminInput
-                label="Original price"
-                type="number"
-                min={0}
-                prefix="₹"
-                value={draft.originalPrice || ""}
-                onChange={(event) => set("originalPrice", Number(event.target.value))}
-                error={errors.originalPrice}
-                hint="Set equal to the selling price if it is not reduced."
-              />
-
-              <AdminInput
-                label="Tax rate"
-                type="number"
-                min={0}
-                max={28}
-                value={draft.taxRatePercent}
-                onChange={(event) => set("taxRatePercent", Number(event.target.value))}
-                hint="Percent."
-              />
-            </FormGrid>
-
-            <p className="mt-3 rounded-[3px] bg-admin-raised px-3 py-2 text-[0.6875rem] text-admin-muted">
-              The discount shown to shoppers is worked out from these two prices.
-              {draft.originalPrice > draft.price ? (
-                <strong className="ml-1 text-admin-ink">
-                  This will show {Math.floor(((draft.originalPrice - draft.price) / draft.originalPrice) * 100)}% off.
-                </strong>
-              ) : null}
-            </p>
-          </FormSection>
-
-          {/* ----------------------------------------------------- inventory */}
-          <FormSection title="Inventory" description="Stock levels and identifiers.">
-            <FormGrid columns={3}>
-              <AdminInput
-                label="Stock quantity"
-                type="number"
-                min={0}
-                value={draft.stock}
-                onChange={(event) => set("stock", Number(event.target.value))}
-                error={errors.stock}
-              />
-
-              <AdminInput
-                label="Low stock threshold"
-                type="number"
-                min={0}
-                value={draft.lowStockThreshold}
-                onChange={(event) => set("lowStockThreshold", Number(event.target.value))}
-                hint="Warn below this level."
-              />
-
-              <AdminInput
-                label="Barcode"
-                value={draft.barcode}
-                onChange={(event) => set("barcode", event.target.value)}
-                placeholder="8901234567890"
-              />
-            </FormGrid>
-          </FormSection>
-
-          {/* ------------------------------------------------------ variants */}
-          <FormSection
-            title="Variants"
-            description="Leave sizes empty for one-size products."
-          >
-            <div className="flex flex-col gap-4">
-              <TagListInput
-                label="Sizes"
-                values={draft.sizes}
-                onChange={(values) => set("sizes", values)}
-                placeholder="S, M, UK 8…"
-                hint="Order matters — they appear in this order on the product page."
-              />
-
-            </div>
-          </FormSection>
-
-          {/* ----------------------------------------------- colours & photos */}
-          <FormSection
-            title="Colours & photos"
-            description="Add each colour the product is sold in, with photos of the product in that colour. Shoppers see a colour's own photos when they choose it, and each photographed colour gets its own card in product listings."
-          >
-            <ColourEditor
-              colors={draft.colors}
-              onChange={(colors) => set("colors", colors)}
-              error={errors.colors}
-            />
-          </FormSection>
-
-          {/* -------------------------------------------------------- images */}
-          <FormSection
-            title="Shared photos"
-            description={
-              draft.colors.some((colour) => colour.images?.length)
-                ? "Optional. Shown for the product in general — for example a detail shot that is the same in every colour."
-                : "Used for every colour. Add photos to each colour above to show the right one when a shopper picks it."
-            }
-          >
-            <ImageListInput
-              label="Shared photos"
-              values={draft.images}
-              onChange={(values) => set("images", values)}
-              error={errors.images}
-            />
-          </FormSection>
-
-          {/* ----------------------------------------------------------- SEO */}
-          <FormSection title="Search engine listing" description="How this appears in results.">
-            <FormGrid>
-              <AdminInput
-                label="Web address"
-                value={draft.slug}
-                onChange={(event) => set("slug", event.target.value)}
-                hint={
-                  draft.id
-                    ? `Storefront URL: /product/${draft.id} — the slug redirects to it`
-                    : "Used in the product's link, for example oversized-cotton-shirt."
-                }
-                className="sm:col-span-2"
-              />
-
-              <AdminInput
-                label="Search result title"
-                value={draft.seo.metaTitle}
-                onChange={(event) => set("seo", { ...draft.seo, metaTitle: event.target.value })}
-                hint="Around 60 characters."
-                className="sm:col-span-2"
-              />
-
-              <AdminTextarea
-                label="Search result description"
-                rows={3}
-                value={draft.seo.metaDescription}
-                onChange={(event) =>
-                  set("seo", { ...draft.seo, metaDescription: event.target.value })
-                }
-                hint="Around 155 characters."
-                className="sm:col-span-2"
-              />
-            </FormGrid>
-          </FormSection>
-        </div>
-
-        {/* ----------------------------------------------------- side column */}
-        <div className="flex flex-col gap-4">
-          <FormSection title="Status">
-            <AdminSelect
-              label="Publication status"
-              value={draft.status}
-              onChange={(event) => set("status", event.target.value as ProductStatus)}
-              options={[
-                { value: "draft", label: "Draft — hidden from the storefront" },
-                { value: "active", label: "Active — on sale" },
-                { value: "out-of-stock", label: "Out of stock — visible, not buyable" },
-                { value: "archived", label: "Archived — hidden and delisted" },
-              ]}
-            />
-            <p className="mt-2 text-[0.6875rem] leading-relaxed text-admin-muted">
-              Only Active and Out of stock products appear on the storefront. Setting stock to zero
-              moves an Active product to Out of stock automatically.
-            </p>
-          </FormSection>
-
-          <FormSection title="Merchandising" description="Choose where this product can be featured.">
-            <div className="flex flex-col gap-1">
-              <AdminCheckbox
-                label="New arrival"
-                checked={draft.isNew}
-                onChange={(event) => set("isNew", event.target.checked)}
-              />
-              <AdminCheckbox
-                label="Trending"
-                checked={draft.isTrending}
-                onChange={(event) => set("isTrending", event.target.checked)}
-              />
-              <AdminCheckbox
-                label="Best seller"
-                checked={draft.isBestSeller}
-                onChange={(event) => set("isBestSeller", event.target.checked)}
-              />
-              <AdminCheckbox
-                label="Featured"
-                checked={draft.isFeatured}
-                onChange={(event) => set("isFeatured", event.target.checked)}
-              />
-            </div>
-          </FormSection>
-
-          <FormSection
-            title="Returns & replacements"
-            description="What customers may do after delivery, within your return window. Each order keeps the policy it was bought under."
-          >
-            <div className="flex flex-col gap-2.5">
-              <AdminCheckbox
-                label="Returnable — customers can send it back for a refund"
-                checked={draft.isReturnable ?? true}
-                onChange={(event) => set("isReturnable", event.target.checked)}
-              />
-              <AdminCheckbox
-                label="Replaceable — customers can exchange it for the same item"
-                checked={draft.isReplaceable ?? true}
-                onChange={(event) => set("isReplaceable", event.target.checked)}
-              />
-            </div>
-          </FormSection>
-
-          <FormSection title="Tags" description="Used by search and recommendations.">
-            <TagListInput
-              label="Tags"
-              values={draft.tags}
-              onChange={(values) => set("tags", values)}
-              placeholder="linen, summer…"
-            />
-          </FormSection>
-        </div>
-      </div>
+      <SettingsLayout label="Product sections" sections={sections} active={section} onChange={setSection} />
 
       {/* ---------------------------------------------------- sticky actions */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-admin-border bg-admin-surface/95 px-4 py-3 backdrop-blur-sm lg:left-60">
