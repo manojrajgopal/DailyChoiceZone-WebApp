@@ -448,7 +448,7 @@ export interface StoreSettings {
 
 /* -------------------------------------------------------------- notifications */
 
-export type NotificationKind = "stock" | "order" | "review" | "coupon" | "system";
+export type NotificationKind = "stock" | "order" | "review" | "coupon" | "system" | "support";
 
 export interface AdminNotification {
   id: string;
@@ -468,7 +468,7 @@ export interface AdminNavItem {
   href: string;
   icon: string;
   /** Shown as a count chip, resolved at render time. */
-  badge?: "pendingReviews" | "openOrders" | "lowStock" | "openReturns";
+  badge?: "pendingReviews" | "openOrders" | "lowStock" | "openReturns" | "openTickets";
   /**
    * Sub-sections, revealed while the parent section is open.
    *

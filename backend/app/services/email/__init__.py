@@ -91,6 +91,16 @@ TYPES: Dict[str, dict] = {
         "description": "Invoices sent to you by our team.",
         "enabled": True, "optOut": True,
     },
+    "support_updates": {
+        "label": "Support requests",
+        "description": "Replies and updates on requests you've raised with our support team.",
+        "enabled": True, "optOut": False,
+    },
+    "support_team": {
+        "label": "Support team alerts",
+        "description": "New, assigned, escalated and overdue requests — sent to your support staff, not to customers.",
+        "enabled": True, "optOut": False, "internal": True,
+    },
     "offers": {
         "label": "Offers & new arrivals",
         "description": "Sales, new collections and member-only offers.",
@@ -112,6 +122,7 @@ def types(db: Session) -> List[dict]:
                 "description": meta["description"],
                 "enabled": bool(own.get("enabled", meta["enabled"])),
                 "customerCanOptOut": bool(own.get("customerCanOptOut", meta["optOut"])),
+                "internal": bool(meta.get("internal")),
             }
         )
     return rows
@@ -148,7 +159,8 @@ def preferences(db: Session, customer_id: str) -> List[dict]:
     }
     rows = []
     for row in types(db):
-        if not row["enabled"]:
+        # Staff alerts are not the customer's to see or choose.
+        if not row["enabled"] or TYPES.get(row["key"], {}).get("internal"):
             continue
         locked = not row["customerCanOptOut"]
         rows.append(

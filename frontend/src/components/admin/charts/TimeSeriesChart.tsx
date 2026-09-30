@@ -30,11 +30,14 @@ export function TimeSeriesChart({
   metric,
   height = 220,
   className,
+  seriesName,
 }: {
   points: TimeSeriesPoint[];
   metric: "revenue" | "orders";
   height?: number;
   className?: string;
+  /** What a count series counts, for screen readers — "Orders" unless said. */
+  seriesName?: string;
 }) {
   const [containerRef, width] = useElementWidth<HTMLDivElement>();
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -100,7 +103,7 @@ export function TimeSeriesChart({
           width={width}
           height={height}
           role="img"
-          aria-label={`${isCurrency ? "Revenue" : "Orders"} over time. ${points.length} points, peak ${exact(Math.max(...points.map((p) => p[metric]), 0))}.`}
+          aria-label={`${isCurrency ? "Revenue" : (seriesName ?? "Orders")} over time. ${points.length} points, peak ${exact(Math.max(...points.map((p) => p[metric]), 0))}.`}
           onPointerMove={onPointerMove}
           onPointerLeave={() => setHoverIndex(null)}
           className="touch-none"

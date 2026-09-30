@@ -78,6 +78,10 @@ ADDED_NAV_ITEMS = [
                           "icon": "customers"}),
     ("/admin/settings/billing", {"id": "email", "label": "Email", "href": "/admin/settings/email",
                                  "icon": "content"}),
+    ("/admin/returns", {"id": "support", "label": "Support", "href": "/admin/support",
+                        "icon": "support", "badge": "openTickets"}),
+    ("/admin/settings/email", {"id": "support-settings", "label": "Support setup",
+                               "href": "/admin/support/settings", "icon": "settings"}),
 ]
 
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, Check, FileText } from "lucide-react";
+import { AlertCircle, Check, FileText, LifeBuoy } from "lucide-react";
 
 import type { Order } from "@/types";
 
@@ -493,6 +493,21 @@ export function OrderDetailView() {
                   {order.invoiceNumber ? ` ${order.invoiceNumber}` : ""}
                 </Link>
               ) : null}
+            </section>
+
+            {/* Opens the support centre at "Orders" with this order already chosen. */}
+            <section className="rounded-card border border-ink-200 bg-shell p-5">
+              <h2 className="label-wide text-ink">Need help with this order?</h2>
+              <p className="mt-2 text-sm leading-relaxed text-ink-500">
+                Something missing, wrong or late? Tell us and it goes straight to the right team.
+              </p>
+              <Link
+                href={`/contact?topic=orders&order=${encodeURIComponent(order.id)}`}
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-copper-700 underline underline-offset-2 hover:text-ink"
+              >
+                <LifeBuoy className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+                Get help
+              </Link>
             </section>
           </div>
         </div>

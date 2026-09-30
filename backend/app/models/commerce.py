@@ -223,6 +223,9 @@ class Notification(Base):
     href: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    # Meant for one administrator (a ticket assigned to them); NULL is for
+    # everybody, which is what every earlier notification is.
+    admin_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
 
 
 class SettingDocument(Base, TimestampMixin):

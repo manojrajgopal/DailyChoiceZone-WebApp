@@ -8,6 +8,7 @@ import { Bell, Check, CreditCard, FileText, LogOut, Menu, Package, Search, Shopp
 import type { AdminNotification } from "@/types/admin";
 
 import { useAdminSession } from "@/hooks/useAdminSession";
+import { usePoll } from "@/hooks/usePoll";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
 import {
@@ -84,6 +85,11 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
   /* -------------------------------------------------- notifications */
 
+  // Re-read every minute (while the tab is visible), so a ticket assigned to
+  // this administrator or an SLA breach shows up without a reload.
+  const [notificationTick, setNotificationTick] = useState(0);
+  usePoll(() => setNotificationTick((tick) => tick + 1), 60_000);
+
   useEffect(() => {
     let active = true;
     listNotifications()
@@ -91,12 +97,13 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         if (active) setNotifications(list);
       })
       .catch(() => {
-        if (active) setNotifications([]);
+        // A failed refresh keeps what is already shown.
+        if (active && notificationTick === 0) setNotifications([]);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [notificationTick]);
 
   const unread = notifications.filter((notification) => !notification.read).length;
 

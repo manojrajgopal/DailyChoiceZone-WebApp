@@ -262,12 +262,22 @@ def nav_counts(
         .where(ReturnRequest.status.notin_(("rejected", "cancelled", "refunded", "completed")))
     ).scalar_one()
 
+    from app.models import SupportTicket
+    from app.services.support.tickets import OPEN as OPEN_TICKET_STATUSES
+
+    open_tickets = db.execute(
+        select(func.count())
+        .select_from(SupportTicket)
+        .where(SupportTicket.status.in_(OPEN_TICKET_STATUSES), SupportTicket.merged_into_id.is_(None))
+    ).scalar_one()
+
     return ok(
         {
             "lowStock": low_stock,
             "openOrders": open_orders,
             "pendingReviews": pending_reviews,
             "openReturns": open_returns,
+            "openTickets": open_tickets,
         }
     )
 
@@ -297,8 +307,12 @@ def list_notifications(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
+    # Everyone's items, and the ones meant for this administrator alone.
     rows = db.execute(
-        select(Notification).order_by(Notification.created_at.desc())
+        select(Notification)
+        .where((Notification.admin_id.is_(None)) | (Notification.admin_id == admin.id))
+        .order_by(Notification.created_at.desc())
+        .limit(200)
     ).scalars().all()
 
     return ok_list(
@@ -324,7 +338,7 @@ def mark_read(
     admin: AdminUser = Depends(get_current_admin),
 ):
     row = db.get(Notification, notification_id)
-    if row is None:
+    if row is None or (row.admin_id is not None and row.admin_id != admin.id):
         raise NotFoundError("No such notification.", error_code="NOTIFICATION_NOT_FOUND")
 
     row.read = True
@@ -337,6 +351,11 @@ def mark_all_read(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    db.execute(sql_update(Notification).where(Notification.read.is_(False)).values(read=True))
+    db.execute(
+        sql_update(Notification)
+        .where(Notification.read.is_(False),
+               (Notification.admin_id.is_(None)) | (Notification.admin_id == admin.id))
+        .values(read=True)
+    )
     db.commit()
     return ok(message="All marked as read.")

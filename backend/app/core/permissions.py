@@ -27,6 +27,9 @@ RESOURCES = (
     "reports",
     "settings",
     "admins",
+    # Working support tickets, and configuring who handles them.
+    "support",
+    "support-config",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -34,10 +37,11 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
     # lets the role through on its own — but the list is stored so the portal
     # can show what it covers.
     "super-admin": list(RESOURCES),
-    "admin": [r for r in RESOURCES if r != "admins"],
-    "manager": ["products", "orders", "customers", "reviews", "reports"],
+    # Configuring support — teams, routing, SLAs — is the super admin's.
+    "admin": [r for r in RESOURCES if r not in ("admins", "support-config")],
+    "manager": ["products", "orders", "customers", "reviews", "reports", "support"],
     "editor": ["products", "content"],
-    "staff": ["products", "orders", "reviews"],
+    "staff": ["products", "orders", "reviews", "support"],
 }
 
 

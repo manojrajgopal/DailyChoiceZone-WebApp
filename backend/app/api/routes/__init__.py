@@ -20,6 +20,8 @@ from app.api.routes import (
     returns,
     reviews,
     site,
+    support,
+    support_admin,
     wishlist,
 )
 from app.api.routes.admin import (
@@ -46,6 +48,7 @@ all_routers = [
     orders.router,
     returns.router,
     membership.router,
+    support.router,
     email.account_router,
     billing.router,
     payments.router,
@@ -58,6 +61,7 @@ all_routers = [
     admin_orders.router,
     returns.admin_router,
     membership.admin_router,
+    support_admin.router,
     email.admin_router,
     email.invoice_router,
     admin_customers.router,

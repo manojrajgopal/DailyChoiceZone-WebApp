@@ -80,6 +80,7 @@ export interface NavCounts {
   openOrders: number;
   pendingReviews: number;
   openReturns: number;
+  openTickets: number;
 }
 
 export interface AdminDataSource {

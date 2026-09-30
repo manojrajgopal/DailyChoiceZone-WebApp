@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   LayoutDashboard,
   LayoutTemplate,
+  LifeBuoy,
   Palette,
   Package,
   Receipt,
@@ -55,6 +56,7 @@ const ICONS = {
   site: Palette,
   content: FileText,
   navigation: Compass,
+  support: LifeBuoy,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

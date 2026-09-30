@@ -51,13 +51,20 @@ async def lifespan(_: FastAPI):
 
         sweeper = asyncio.create_task(payment_expiry.run_forever())
 
+    # Support SLAs, escalation rules and auto-closing resolved tickets.
+    from app.services.support import sla as support_sla
+
+    support_sweeper = asyncio.create_task(support_sla.run_forever())
+
     try:
         yield
     finally:
-        if sweeper is not None:
-            sweeper.cancel()
+        for task in (sweeper, support_sweeper):
+            if task is None:
+                continue
+            task.cancel()
             try:
-                await sweeper
+                await task
             except asyncio.CancelledError:
                 pass
 

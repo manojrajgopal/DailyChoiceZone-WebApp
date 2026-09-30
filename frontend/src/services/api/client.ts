@@ -159,6 +159,11 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** How long to wait before giving up, in ms. Defaults to `REQUEST_TIMEOUT_MS`. */
   timeoutMs?: number;
+  /**
+   * Extra headers — e.g. the key a guest opens their support ticket with,
+   * which belongs in a header rather than a URL a server log would keep.
+   */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -183,7 +188,7 @@ async function request<T>(
   body?: unknown,
   options: RequestOptions = {},
 ): Promise<Envelope<T>> {
-  const headers: Record<string, string> = { ...TUNNEL_HEADERS };
+  const headers: Record<string, string> = { ...TUNNEL_HEADERS, ...options.headers };
 
   // A file upload is sent as the browser encodes it: no JSON, and no
   // Content-Type of our own, so the multipart boundary is set correctly.

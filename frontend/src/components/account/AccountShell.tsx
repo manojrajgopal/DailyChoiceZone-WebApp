@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Crown, FileText, Heart, LogOut, MapPin, Package, Settings, User } from "lucide-react";
+import { Crown, FileText, Heart, LifeBuoy, LogOut, MapPin, Package, Settings, User } from "lucide-react";
 
 import { AuthPanel } from "@/components/account/AuthPanel";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -26,7 +26,14 @@ const ICONS: Record<string, typeof User> = {
   heart: Heart,
   crown: Crown,
   settings: Settings,
+  "life-buoy": LifeBuoy,
 };
+
+/** Account pages added after the menu document was first saved. */
+const ADDED_ENTRIES = [
+  { after: "/account/wishlist", entry: { href: "/account/membership", label: "Membership", icon: "crown" } },
+  { after: "/account/orders", entry: { href: "/account/support", label: "Support requests", icon: "life-buoy" } },
+];
 
 /**
  * The frame for every account page.
@@ -55,17 +62,15 @@ export function AccountShell({
   const remapped = (useSiteContent()?.accountNavigation ?? []).map((item) =>
     item.href === "/wishlist" ? { ...item, href: "/account/wishlist" } : item,
   );
-  // Menus saved before memberships existed have no entry for them: add one
-  // after the wishlist (or at the end), unless the store already lists it.
-  const accountNav =
-    remapped.length === 0 || remapped.some((item) => item.href === "/account/membership")
-      ? remapped
-      : (() => {
-          const entry = { href: "/account/membership", label: "Membership", icon: "crown" };
-          const after = remapped.findIndex((item) => item.href === "/account/wishlist");
-          const at = after === -1 ? remapped.length : after + 1;
-          return [...remapped.slice(0, at), entry, ...remapped.slice(at)];
-        })();
+  // Menus saved before memberships and support requests existed have no
+  // entry for them: add each after its neighbour (or at the end), unless the
+  // store already lists it.
+  const accountNav = ADDED_ENTRIES.reduce((items, { after, entry }) => {
+    if (items.length === 0 || items.some((item) => item.href === entry.href)) return items;
+    const anchor = items.findIndex((item) => item.href === after);
+    const at = anchor === -1 ? items.length : anchor + 1;
+    return [...items.slice(0, at), entry, ...items.slice(at)];
+  }, remapped);
 
   if (isLoading) {
     return (
@@ -138,7 +143,8 @@ export function AccountShell({
           <nav aria-label="Account" className="lg:mt-4">
             <ul className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto scroll-px-4 px-4 pb-1 sm:-mx-6 sm:scroll-px-6 sm:px-6 lg:mx-0 lg:flex-col lg:gap-0 lg:overflow-visible lg:px-0 lg:pb-0">
               {accountNav.map((item) => {
-                const active = pathname === item.href;
+                const active =
+                  pathname === item.href || (item.href === "/account/support" && pathname === "/account/ticket");
                 const Icon = ICONS[item.icon] ?? User;
                 return (
                   <li key={item.href} className="shrink-0 lg:shrink">

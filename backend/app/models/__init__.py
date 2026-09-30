@@ -84,3 +84,20 @@ from app.models.returns import ReturnEvent, ReturnRequest, ReturnRequestItem  # 
 from app.models.membership import CustomerMembership, MembershipPlan  # noqa: E402
 from app.models.commerce import CouponCustomer  # noqa: E402
 from app.models.email import CustomerEmailPreference, EmailAccount, EmailLog  # noqa: E402
+from app.models.support import (  # noqa: E402
+    CannedResponse,
+    CustomerNotification,
+    SupportAgent,
+    SupportArticle,
+    SupportCategory,
+    SupportDepartment,
+    SupportEmailTemplate,
+    SupportRole,
+    SupportTeam,
+    SupportTicket,
+    TicketAttachment,
+    TicketEvent,
+    TicketFeedback,
+    TicketLink,
+    TicketMessage,
+)

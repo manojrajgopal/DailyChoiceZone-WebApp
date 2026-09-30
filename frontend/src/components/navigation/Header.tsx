@@ -8,6 +8,7 @@ import { Heart, Menu, Search, ShoppingBag, User } from "lucide-react";
 import type { NavItem } from "@/types";
 
 import { Logo } from "@/components/common/Logo";
+import { SupportBell } from "@/components/support/SupportBell";
 import { useCartCount } from "@/hooks/useCart";
 import { useWishlistCount } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
@@ -148,6 +149,8 @@ export function Header({ items }: { items: NavItem[] }) {
               >
                 <Search className="h-5 w-5" strokeWidth={1.5} />
               </button>
+
+              <SupportBell className={cn(iconButton, "relative")} />
 
               <Link
                 href="/account"

@@ -121,3 +121,51 @@ def put_file(data: bytes, name: str, content_type: str) -> str:
         ) from None
 
     return public_url(key)
+
+
+# ---------------------------------------------------------------- private
+
+
+def put_private(data: bytes, key: str, content_type: str) -> None:
+    """
+    Store a file that must **not** be publicly readable — a support
+    attachment. Written under `support/`, outside the public product prefix,
+    so the bucket policy that lets anyone read product photos does not reach
+    it; it is only ever read through `signed_url`.
+    """
+    if not is_configured():
+        raise StorageUnavailableError("File uploads aren't available right now.")
+    try:
+        _client(
+            settings.AWS_ACCESS_KEY_ID,
+            settings.AWS_SECRET_ACCESS_KEY,
+            settings.AWS_REGION,
+            settings.AWS_S3_ENDPOINT_URL,
+        ).put_object(
+            Bucket=settings.AWS_S3_BUCKET,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+            CacheControl="private, no-store",
+        )
+    except Exception:
+        logger.exception("Could not store private file %s", key)
+        raise StorageFailedError("We couldn't upload that file just now. Please try again.") from None
+
+
+def signed_url(key: str, file_name: str, *, inline: bool, expires: int = 300) -> str:
+    """A link to a private file that works for `expires` seconds."""
+    if not is_configured():
+        raise StorageUnavailableError("Files aren't available right now.")
+    safe = "".join(c for c in file_name if c.isalnum() or c in " ._-")[:120] or "file"
+    disposition = f'{"inline" if inline else "attachment"}; filename="{safe}"'
+    return _client(
+        settings.AWS_ACCESS_KEY_ID,
+        settings.AWS_SECRET_ACCESS_KEY,
+        settings.AWS_REGION,
+        settings.AWS_S3_ENDPOINT_URL,
+    ).generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.AWS_S3_BUCKET, "Key": key, "ResponseContentDisposition": disposition},
+        ExpiresIn=expires,
+    )

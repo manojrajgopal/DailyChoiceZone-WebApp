@@ -163,3 +163,10 @@ def register_error_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_payload("Something went wrong on our side. Please try again.", "INTERNAL_ERROR"),
         )
+
+
+class RateLimitedError(AppError):
+    """Too many requests from one sender in a short time."""
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    error_code = "RATE_LIMITED"
