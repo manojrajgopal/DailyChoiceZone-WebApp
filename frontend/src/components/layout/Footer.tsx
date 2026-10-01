@@ -84,7 +84,7 @@ export function Footer({ config }: { config: SiteConfig }) {
           {/* --------------------------------------------- links + newsletter */}
           <div className="flex flex-col gap-12">
             <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-4">
-              {config.footer.map((column) => (
+              {withAddedLinks(config.footer).map((column) => (
                 <div key={column.heading}>
                   <h2 className="label-wide mb-4 text-cream/50">{column.heading}</h2>
                   {/* 32px-tall links on touch screens, same spacing as before. */}
@@ -123,4 +123,18 @@ export function Footer({ config }: { config: SiteConfig }) {
       </div>
     </footer>
   );
+}
+
+/**
+ * Pages added after the footer document was first saved: listed in the shop
+ * column unless the store already links them (or has no shop column).
+ */
+const ADDED_LINKS = [{ label: "Gift cards", href: "/gift-cards" }];
+
+function withAddedLinks<T extends { heading: string; links: { label: string; href: string }[] }>(columns: T[]): T[] {
+  return columns.map((column) => {
+    if (!/shop/i.test(column.heading)) return column;
+    const missing = ADDED_LINKS.filter((link) => !columns.some((c) => c.links.some((l) => l.href === link.href)));
+    return missing.length ? { ...column, links: [...column.links, ...missing] } : column;
+  });
 }

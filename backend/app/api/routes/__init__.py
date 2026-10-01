@@ -6,11 +6,13 @@ a single file.
 """
 
 from app.api.routes import (
+    alerts,
     auth,
     billing,
     cart,
     cart_recovery,
     catalogue,
+    comparison,
     delivery,
     coupons,
     email,
@@ -19,12 +21,14 @@ from app.api.routes import (
     payments,
     payments_monitor,
     products,
+    questions,
     reports,
     returns,
     reviews,
     site,
     support,
     support_admin,
+    wallet,
     wishlist,
 )
 from app.api.routes.admin import (
@@ -48,6 +52,12 @@ all_routers = [
     coupons.router,
     cart.router,
     cart_recovery.router,
+    alerts.router,
+    comparison.router,
+    questions.router,
+    wallet.router,
+    wallet.account_router,
+    wallet.checkout_router,
     delivery.router,
     wishlist.router,
     orders.router,
@@ -80,4 +90,9 @@ all_routers = [
     delivery.admin_router,
     cart_recovery.admin_router,
     payments_monitor.admin_router,
+    alerts.admin_router,
+    questions.admin_router,
+    wallet.admin_gift_router,
+    wallet.admin_credit_router,
+    wallet.admin_loyalty_router,
 ]

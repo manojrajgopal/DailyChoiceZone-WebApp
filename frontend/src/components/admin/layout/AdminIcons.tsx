@@ -1,4 +1,9 @@
 import {
+  Award,
+  BellRing,
+  Gift,
+  MessageCircleQuestion,
+  Wallet,
   BadgePercent,
   Scale,
   ShoppingBag,
@@ -65,6 +70,11 @@ const ICONS = {
   delivery: Truck,
   reconciliation: Scale,
   webhooks: Webhook,
+  alerts: BellRing,
+  questions: MessageCircleQuestion,
+  giftCards: Gift,
+  storeCredit: Wallet,
+  loyalty: Award,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

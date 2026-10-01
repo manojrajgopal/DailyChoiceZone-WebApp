@@ -10,6 +10,7 @@ import { ProductImage } from "@/components/common/ProductImage";
 import { Badge } from "@/components/ui/Badge";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
+import { CompareButton } from "@/components/compare/CompareControls";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
 import { imagesFor, productHref } from "@/lib/products/colourImages";
@@ -159,6 +160,8 @@ export function ProductCard({
                 strokeWidth={1.5}
               />
             </button>
+
+            <CompareButton product={product} />
 
             {showQuickView ? (
               <button

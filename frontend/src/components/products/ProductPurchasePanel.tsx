@@ -8,6 +8,8 @@ import { Heart, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import type { Product, SiteConfig } from "@/types";
 
 import { PincodeChecker } from "@/components/common/PincodeChecker";
+import { CompareButton } from "@/components/compare/CompareControls";
+import { PriceAlertLink, StockAlertButton } from "@/components/products/ProductAlerts";
 import { ColorPicker, QuantityStepper, SizePicker } from "@/components/common/VariantPickers";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -218,19 +220,25 @@ export function ProductPurchasePanel({
           a zero flex-basis there overrides the height and crushes each button
           to the height of its label.
         */}
-        <Button size="lg" onClick={onAddToBag} disabled={outOfStock} className="w-full sm:w-auto sm:flex-1">
-          {outOfStock ? "Out of stock" : "Add to bag"}
-        </Button>
+        {outOfStock ? (
+          // Sold out: the useful thing to offer is being told when it's back.
+          <StockAlertButton product={product} size={size} color={color} />
+        ) : (
+          <>
+            <Button size="lg" onClick={onAddToBag} className="w-full sm:w-auto sm:flex-1">
+              Add to bag
+            </Button>
 
-        <Button
-          size="lg"
-          variant="outline"
-          onClick={onBuyNow}
-          disabled={outOfStock}
-          className="w-full sm:w-auto sm:flex-1"
-        >
-          Buy now
-        </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={onBuyNow}
+              className="w-full sm:w-auto sm:flex-1"
+            >
+              Buy now
+            </Button>
+          </>
+        )}
 
         <Button
           size="lg"
@@ -253,6 +261,11 @@ export function ProductPurchasePanel({
           title={product.name}
           text={`${product.name} by ${product.brand} — ${formatPrice(product.price)}`}
         />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <PriceAlertLink product={product} />
+        <CompareButton product={product} variant="text" />
       </div>
 
       {/* ---------------------------------------------- delivery and returns */}

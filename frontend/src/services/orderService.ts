@@ -92,6 +92,11 @@ interface ApiOrder {
     deliveryFee: number;
     taxAmount: number;
     total: number;
+    giftCardAmount?: number;
+    storeCreditAmount?: number;
+    pointsAmount?: number;
+    pointsRedeemed?: number;
+    amountDue?: number;
   };
   shippingAddress: {
     fullName: string;
@@ -168,6 +173,11 @@ function toOrder(payload: ApiOrder): Order {
       total: payload.totals.total,
       freeDeliveryShortfall: 0,
       appliedCoupon: null,
+      giftCardAmount: payload.totals.giftCardAmount ?? 0,
+      storeCreditAmount: payload.totals.storeCreditAmount ?? 0,
+      pointsAmount: payload.totals.pointsAmount ?? 0,
+      pointsRedeemed: payload.totals.pointsRedeemed ?? 0,
+      amountDue: payload.totals.amountDue ?? payload.totals.total,
     },
     expectedDelivery: payload.expectedDelivery,
     paymentStatus: payload.paymentStatus,
@@ -224,6 +234,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder> {
         couponCode: input.totals.appliedCoupon?.code ?? null,
         email: input.email,
         saveAddress: true,
+        giftCardCodes: input.giftCardCodes ?? [],
+        useStoreCredit: input.useStoreCredit ?? false,
+        points: input.points ?? 0,
       },
       AUTH,
     ),

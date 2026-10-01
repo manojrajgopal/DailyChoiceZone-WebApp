@@ -20,6 +20,7 @@ export const STORAGE_KEYS = {
   orders: `${NAMESPACE}:orders`,
   addresses: `${NAMESPACE}:addresses`,
   checkout: `${NAMESPACE}:checkout`,
+  compare: `${NAMESPACE}:compare`,
 } as const;
 
 function available(): boolean {

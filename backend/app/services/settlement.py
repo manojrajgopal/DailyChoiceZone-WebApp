@@ -296,7 +296,10 @@ def _apply_paid(db: Session, payment: Payment, result: PaymentResult) -> None:
     payment.captured_at = now
 
     if invoice is not None:
-        invoice.amount_paid = payment.amount
+        # The gateway's part plus what gift cards, store credit and points paid.
+        from app.services import tenders
+
+        invoice.amount_paid = payment.amount + tenders.tender_total(invoice)
         invoice.payment_status = "paid"
         invoice.payment_id = payment.id
         if invoice.status != "cancelled":
@@ -408,6 +411,10 @@ def expire_payment(
     # The order never went ahead, so neither did its coupon: a one-time code
     # must not be burnt by a payment that timed out.
     coupon_service.release_usage(db, order.id)
+    # Nor did the gift cards, store credit or points put towards it.
+    from app.services import tenders
+
+    tenders.release_for_order(db, order, reason="Payment window closed")
 
     order.status = "cancelled"
     order.payment_status = "expired"
@@ -563,7 +570,9 @@ def open_qr(db: Session, payment: Payment) -> dict:
         close_by = max(order.payment_expires_at, earliest)
 
     code = get_provider().create_qr(
-        amount=invoice.grand_total,
+        # What the gateway collects: the invoice less any gift card, store
+        # credit or points already put towards it.
+        amount=payment.amount,
         name=business.get("storeName") or business.get("legalName") or "Payment",
         description=f"Order {order.order_number}",
         notes={"paymentId": payment.id, "orderId": order.id},
@@ -717,6 +726,13 @@ def settle_from_webhook(db: Session, body: dict) -> str:
         return "ignored: no payment entity"
 
     # A membership purchase: no order or invoice behind it, just the plan.
+    # A gift card purchase: no order or invoice, just the card to activate.
+    gift_card_id = (entity.get("notes") or {}).get("giftCardId")
+    if gift_card_id:
+        from app.services import gift_cards
+
+        return gift_cards.settle_from_gateway(db, gift_card_id, entity)
+
     membership_id = (entity.get("notes") or {}).get("membershipId")
     if membership_id:
         from app.services import membership as membership_service
@@ -873,7 +889,7 @@ def gateway_handoff(
         "merchantName": business.get("storeName") or business.get("legalName") or "",
         "orderReference": payment.provider_reference or payment.transaction_id,
         "paymentId": payment.id,
-        "amount": invoice.grand_total,
+        "amount": payment.amount,
         "currency": invoice.currency,
         "name": order.customer_name,
         "email": order.customer_email,
@@ -943,7 +959,7 @@ def open_payment_link(db: Session, payment: Payment) -> dict:
         )
 
     link = provider.create_payment_link(
-        amount=invoice.grand_total,
+        amount=payment.amount,
         currency=invoice.currency or "INR",
         reference_id=payment.id,
         description=f"Order {order.order_number}",

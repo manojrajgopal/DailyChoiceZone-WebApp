@@ -106,3 +106,26 @@ from app.models.support import (  # noqa: E402
     TicketLink,
     TicketMessage,
 )
+from app.models.engagement import (  # noqa: E402
+    ComparisonItem,
+    PriceAlert,
+    PriceAlertNotification,
+    PriceChange,
+    ProductAnswer,
+    ProductQuestion,
+    ProductQuestionEvent,
+    StockAlert,
+)
+from app.models.wallet import (  # noqa: E402
+    GiftCard,
+    GiftCardTransaction,
+    OrderTender,
+    StoreCreditAccount,
+    StoreCreditTransaction,
+)
+from app.models.loyalty import (  # noqa: E402
+    LoyaltyAccount,
+    LoyaltyLot,
+    LoyaltyRedemption,
+    LoyaltyTransaction,
+)

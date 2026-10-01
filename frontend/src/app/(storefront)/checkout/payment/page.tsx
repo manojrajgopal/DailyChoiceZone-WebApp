@@ -11,13 +11,15 @@ import {
   type CheckoutSummary,
 } from "@/components/checkout/CheckoutShell";
 import { PaymentCountdown } from "@/components/checkout/PaymentCountdown";
+import { NO_TENDERS, TendersPanel, type TenderSelection } from "@/components/checkout/TendersPanel";
 import {
   PaymentMethods,
   methodFor,
   type Choice,
 } from "@/components/checkout/PaymentMethods";
 
-import type { BillingBreakdown, GatewayHandoff, Order, OrderLine } from "@/types";
+import type { BillingBreakdown, GatewayHandoff, Order, OrderLine, PaymentMethod } from "@/types";
+import type { TenderPreview } from "@/services/walletService";
 import { useCart } from "@/hooks/useCart";
 import { useGatewayPayment } from "@/hooks/useGatewayPayment";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
@@ -93,7 +95,16 @@ function PaymentStep() {
   const existingPaymentId = searchParams?.get("payment") ?? "";
   const settling = Boolean(existingPaymentId);
   const checkoutHydrated = useCheckoutHydrated();
-  const { lines, totals, breakdown, clear, delivery } = useCart();
+  const { lines, totals, breakdown, clear, delivery, couponCode } = useCart();
+
+  /**
+   * Gift cards, store credit and points the shopper put towards the order,
+   * and what the server says they'd pay. Kept in memory only: a gift card
+   * code is never written to storage.
+   */
+  const [tenders, setTenders] = useState<TenderSelection>(NO_TENDERS);
+  const [tenderPreview, setTenderPreview] = useState<TenderPreview | null>(null);
+  const covered = Boolean(tenderPreview && tenderPreview.tenderTotal > 0 && tenderPreview.amountDue === 0);
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
@@ -299,6 +310,7 @@ function PaymentStep() {
         deliveryMethod: getDeliveryMethod(deliveryMethodId),
         paymentMethod: getPaymentMethod(method),
         email: contact.email,
+        ...tenders,
       });
     } catch (error) {
       setIsPlacing(false);
@@ -349,6 +361,38 @@ function PaymentStep() {
         ? confirmation
         : `${confirmation}&payment=${encodeURIComponent(placed.paymentId)}`,
     );
+  };
+
+  /**
+   * Gift cards, store credit and points cover the whole order: there's no
+   * payment method to choose, so the order is placed and confirmed outright.
+   */
+  const onPlaceCovered = async () => {
+    if (!address || lines.length === 0) return;
+    setIsPlacing(true);
+    try {
+      const result = await placeOrder({
+        lines,
+        totals,
+        address: { ...address, id: "" },
+        billingAddress: billingSame ? null : storedBilling,
+        deliveryMethod: getDeliveryMethod(deliveryMethodId),
+        paymentMethod: { ...getPaymentMethod("upi"), id: "tender" } as PaymentMethod,
+        email: contact.email,
+        ...tenders,
+      });
+      setPlaced(true);
+      clear();
+      resetCheckout();
+      router.push(
+        `/order-success?order=${encodeURIComponent(result.order.orderNumber)}` +
+          (result.invoiceId ? `&invoice=${encodeURIComponent(result.invoiceId)}` : ""),
+      );
+    } catch (error) {
+      toast.error(error instanceof Error && error.message ? error.message : "We could not place your order. Please try again.");
+    } finally {
+      setIsPlacing(false);
+    }
   };
 
   /**
@@ -627,13 +671,46 @@ function PaymentStep() {
 
       {stage === "choosing" && (!settling || existing) ? (
         <div className="max-w-2xl">
+          {!settling && !placed ? (
+            <TendersPanel
+              couponCode={couponCode}
+              deliveryMethod={deliveryMethodId}
+              placeOfSupply={(billingSame ? address?.state : storedBilling?.state) ?? null}
+              pincode={address?.pincode ?? null}
+              disabled={busy}
+              onChange={(selection, preview) => {
+                setTenders(selection);
+                setTenderPreview(preview);
+              }}
+            />
+          ) : null}
+
+          {covered && !settling ? (
+            <div className="rounded-card border border-sage-200 bg-sage-50 p-5">
+              <p className="text-sm text-ink">
+                <span className="font-medium">Nothing left to pay.</span> Your gift card, store credit and points
+                cover this order.
+              </p>
+              <Button size="lg" fullWidth className="mt-4" disabled={busy} onClick={() => void onPlaceCovered()}>
+                {busy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden="true" />
+                    Placing order…
+                  </>
+                ) : (
+                  "Place order"
+                )}
+              </Button>
+            </div>
+          ) : (
           <PaymentMethods
             onPay={onPay}
             isPaying={busy}
-            total={formatPrice(amountDue ?? totals.total)}
+            total={formatPrice(amountDue ?? (tenderPreview ? tenderPreview.amountDue / 100 : totals.total))}
             cardContainer={`#${CARD_CONTAINER_ID}`}
             codUnavailable={delivery !== null && delivery.serviceable && !delivery.codAvailable}
           />
+          )}
 
           <div className="mt-6 flex items-start gap-3 rounded-card border border-sage-200 bg-sage-50 p-4">
             <ShieldCheck

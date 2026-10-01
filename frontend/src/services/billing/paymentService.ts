@@ -52,6 +52,7 @@ const DEFAULT_LABELS: Record<string, string> = {
   cod: "Cash on delivery",
   qr: "UPI QR code",
   "payment-link": "Payment link",
+  tender: "Gift card, credit & points",
 };
 
 /** The store's name for a method, a standard name, or its own id — never a wrong name. */

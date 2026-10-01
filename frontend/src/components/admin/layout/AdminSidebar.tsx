@@ -20,6 +20,7 @@ export interface NavBadges {
   pendingReviews: number;
   openReturns: number;
   openTickets: number;
+  pendingQuestions: number;
 }
 
 /**
@@ -29,7 +30,7 @@ export interface NavBadges {
  * the navigation editor offers these and nothing else, because a fourth name
  * would save fine and then render no chip.
  */
-export const BADGE_NAMES: (keyof NavBadges)[] = ["openOrders", "openReturns", "openTickets", "lowStock", "pendingReviews"];
+export const BADGE_NAMES: (keyof NavBadges)[] = ["openOrders", "openReturns", "openTickets", "lowStock", "pendingReviews", "pendingQuestions"];
 
 /**
  * The admin sidebar.

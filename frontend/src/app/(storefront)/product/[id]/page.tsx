@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ProductColourGallery, ProductColourScope } from "@/components/products/ProductColourScope";
 import { ProductPurchasePanel } from "@/components/products/ProductPurchasePanel";
+import { ProductQuestions } from "@/components/products/ProductQuestions";
 import { ProductRail } from "@/components/products/ProductRail";
 import { ProductReviews } from "@/components/products/ProductReviews";
 import { RecentlyViewedRail } from "@/components/products/RecentlyViewedRail";
@@ -269,6 +270,17 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
             className="mb-8"
           />
           <ProductReviews reviews={reviews} summary={summary} />
+        </section>
+
+        {/* ------------------------------------------------------- questions */}
+        <section id="questions" aria-labelledby="questions-heading" className="mt-16 scroll-mt-28">
+          <SectionHeader
+            id="questions-heading"
+            title="Questions & answers"
+            subtitle="Ask us anything"
+            className="mb-8"
+          />
+          <ProductQuestions productId={product.id} productName={product.name} />
         </section>
       </div>
 

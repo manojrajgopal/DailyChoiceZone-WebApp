@@ -316,6 +316,9 @@ def place_order(
     payment_method: str,
     coupon_code: Optional[str] = None,
     email: Optional[str] = None,
+    gift_card_codes: Optional[List[str]] = None,
+    use_store_credit: bool = False,
+    points: int = 0,
 ) -> Tuple[Order, Invoice, Payment]:
     """
     Turn a cart into an order, an invoice and a payment.
@@ -355,7 +358,10 @@ def place_order(
     # Both used to be free strings. `payment_method: "cod"` produced a confirmed,
     # unpaid order even on a store with cash on delivery switched off, because
     # nothing compared the choice with the store's own settings.
-    _require_payment_method(config, payment_method)
+    # "tender": paid in full by gift cards, store credit or points — checked
+    # below, once it's known what they cover.
+    if payment_method != "tender":
+        _require_payment_method(config, payment_method)
     _require_delivery_method(delivery_method)
 
     # Where it's going, checked here rather than trusted from checkout: a
@@ -457,6 +463,29 @@ def place_order(
         member_discount_percent=perks["discountPercent"],
     )
     breakdown = priced["breakdown"]
+
+    # --- gift cards, store credit and points --------------------------------
+    #
+    # Worked out from the grand total, and their cards and accounts locked for
+    # the rest of this transaction, so the balances spent are the ones true at
+    # commit. Anything asked for that can't be honoured is refused rather than
+    # quietly charged to the gateway instead.
+    from app.services import tenders
+
+    tender_plan = tenders.plan(
+        db, customer, grand_total=breakdown["grandTotal"], coupon_applied=bool(coupon),
+        gift_card_codes=gift_card_codes or [], use_store_credit=use_store_credit, points=points,
+        strict=True, lock=True,
+    )
+    due = tender_plan.due
+    covered = tender_plan.tender_total > 0 and due == 0
+    if payment_method == "tender" and not covered:
+        raise ValidationError("Choose how you'd like to pay the rest.", error_code="PAYMENT_METHOD_REQUIRED")
+    if covered:
+        # Nothing left for a gateway to collect: the order is paid now, so its
+        # stock is taken rather than held.
+        holds_stock = False
+        payment_method = "tender"
 
     try:
         # --- the order ---------------------------------------------------
@@ -588,20 +617,33 @@ def place_order(
         db.add(invoice)
         db.flush()
 
+        # Spent before the gateway is asked for anything, so a card that turns
+        # out to be short fails the checkout before a gateway order exists.
+        tenders.apply(db, order, invoice, tender_plan)
+
         # --- payment -----------------------------------------------------
-        result = provider.create(
-            PaymentRequest(
-                order_id=order.id,
-                invoice_id=invoice.id,
-                customer_id=customer.id,
-                customer_name=customer.full_name,
-                customer_email=order.customer_email,
-                amount=breakdown["grandTotal"],
-                currency=breakdown["currency"],
-                method=payment_method,
-                notes={"orderNumber": order.order_number},
+        if covered:
+            from app.services.payments import PaymentResult
+
+            result = PaymentResult(ok=True, transaction_id=f"internal-{order.id}", status="paid",
+                                   instrument_hint="Gift card, store credit or points")
+            provider_name = "internal"
+        else:
+            result = provider.create(
+                PaymentRequest(
+                    order_id=order.id,
+                    invoice_id=invoice.id,
+                    customer_id=customer.id,
+                    customer_name=customer.full_name,
+                    customer_email=order.customer_email,
+                    # What is left after gift cards, store credit and points.
+                    amount=due,
+                    currency=breakdown["currency"],
+                    method=payment_method,
+                    notes={"orderNumber": order.order_number},
+                )
             )
-        )
+            provider_name = provider.name
 
         payment = Payment(
             id=next_id(db, Payment, "payment"),
@@ -613,10 +655,10 @@ def place_order(
             customer_id=customer.id,
             customer_name=customer.full_name,
             customer_email=order.customer_email,
-            amount=breakdown["grandTotal"],
+            amount=due,
             method=payment_method,
             status=result.status,
-            provider=provider.name,
+            provider=provider_name,
             provider_reference=result.provider_reference,
             instrument_hint=result.instrument_hint,
             created_at_utc=now,
@@ -624,7 +666,12 @@ def place_order(
         )
 
         payment.events.append(
-            PaymentEvent(status="initiated", note="Payment initiated at checkout.", occurred_at=now)
+            PaymentEvent(
+                status="initiated",
+                note="Paid in full with gift card, store credit or points." if covered
+                else "Payment initiated at checkout.",
+                occurred_at=now,
+            )
         )
         if result.status == "paid":
             payment.events.append(
@@ -841,6 +888,10 @@ def update_status(
     if status == "cancelled":
         return_stock(db, order, note="Order cancelled")
         coupon_service.release_usage(db, order.id)
+        # Gift cards, store credit and points put towards it go back in full.
+        from app.services import tenders
+
+        tenders.release_for_order(db, order, reason=f"Order {order.order_number} cancelled")
         # An invoice nobody paid is void with its order — it used to stay
         # "issued, payable on delivery" for an order that was never coming.
         # A paid one stands: the refund and its credit note answer it.
@@ -850,7 +901,23 @@ def update_status(
         if invoice is not None and invoice.status not in ("paid", "cancelled") and not invoice.amount_paid:
             invoice.status = "cancelled"
 
+    # Reward points: earned on delivery (pending until it can't be returned),
+    # and taken back if the parcel comes back.
+    from app.services import loyalty
+
+    if status == "delivered":
+        loyalty.award_for_order(db, order)
+    if status == "returned":
+        loyalty.reverse_for_order(db, order, fraction=1.0, reason=f"Order {order.order_number} returned")
+
     db.commit()
+
+    # Cancelled stock is back on the shelf: anyone waiting for it hears now.
+    if status == "cancelled":
+        from app.services import alerts
+
+        for product_id in {item.product_id for item in order.items}:
+            alerts.process_product(db, product_id)
 
     # Money collected for an order that will not be fulfilled goes back.
     #
@@ -984,6 +1051,9 @@ def refund_if_collected(db: Session, order: Order, *, reason: str) -> None:
             reason=reason[:200] or "Order cancelled",
             initiated_by="system",
             status="requested",
+            # Gift cards, store credit and points were already given back in
+            # full by the cancellation; this refund is the gateway's part only.
+            tender_split=False,
         )
     except (ConflictError, ValidationError) as error:
         logger.warning("Order %s: no refund raised on cancellation: %s", order.id, error)

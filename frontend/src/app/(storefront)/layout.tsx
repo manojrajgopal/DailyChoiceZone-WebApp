@@ -1,3 +1,4 @@
+import { CompareTray } from "@/components/compare/CompareControls";
 import { Footer } from "@/components/layout/Footer";
 import { PromoStrip } from "@/components/layout/PromoStrip";
 import { Header } from "@/components/navigation/Header";
@@ -40,6 +41,7 @@ export default async function StorefrontLayout({
       </main>
 
       <Footer config={config} />
+      <CompareTray />
     </div>
   );
 }

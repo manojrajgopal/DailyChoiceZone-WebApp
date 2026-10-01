@@ -321,6 +321,7 @@ def create_refund(
     lines: Optional[List[dict]] = None,
     initiated_by: str = "customer",
     status: str = "completed",
+    tender_split: bool = True,
 ) -> Refund:
     """
     Raise a refund.
@@ -348,7 +349,15 @@ def create_refund(
     if not reason.strip():
         raise ValidationError("Give a reason for the refund.", error_code="REASON_REQUIRED")
 
-    available = refundable_amount(payment)
+    # What can go back: the gateway's part, plus — for an order paid partly
+    # with gift cards, store credit or points — what those have left to
+    # return. The refund is shared between them in the proportion they paid.
+    from app.services import tenders
+
+    tendered = tender_split and tenders.tender_total(invoice) > 0
+    available = refundable_amount(payment) + (tenders.unreversed(db, invoice.order_id) if tendered else 0)
+    if tendered and payment.status in ("pending", "failed") and invoice.status != "paid":
+        available = 0
     if available <= 0:
         raise ConflictError(
             "Nothing has been collected on this order yet."
@@ -362,6 +371,10 @@ def create_refund(
             "That is more than is left to refund on this payment.",
             error_code="REFUND_EXCEEDS_PAYMENT",
         )
+
+    gateway_amount, tender_amount = (
+        tenders.split_refund(db, invoice, payment, amount) if tendered else (amount, 0)
+    )
 
     now = datetime.utcnow()
     sequence = db.execute(select(func.count()).select_from(Refund)).scalar_one() + 1
@@ -377,6 +390,8 @@ def create_refund(
         customer_id=invoice.customer_id,
         customer_name=invoice.customer_name,
         amount=amount,
+        gateway_amount=gateway_amount,
+        tender_amount=tender_amount,
         reason=reason.strip(),
         status=status,
         requested_at=now,
@@ -427,11 +442,16 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
     # Cash collected on delivery never passed through the gateway, so there is
     # no transaction to reverse: the store pays it back directly (bank
     # transfer or UPI) and this records that it has.
-    direct = not payment.transaction_id
-    if direct:
+    # Only the gateway's part goes back through it; the rest goes back to gift
+    # cards, store credit and points below. Refunds raised before tenders
+    # existed went wholly through the gateway.
+    gateway_part = refund.amount if refund.gateway_amount is None else refund.gateway_amount
+
+    direct = not payment.transaction_id or payment.provider == "internal"
+    if gateway_part <= 0 or direct:
         reference, outcome = None, "completed"
     else:
-        result = get_provider().refund(payment.transaction_id, refund.amount, refund.reason)
+        result = get_provider().refund(payment.transaction_id, gateway_part, refund.reason)
         if not result.ok:
             raise ConflictError(
                 "The payment provider declined this refund. Please try again or contact support.",
@@ -449,32 +469,48 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
         refund.status = "processing"
         refund.processed_at = None
 
-    payment.refunded_amount = min(payment.amount, payment.refunded_amount + refund.amount)
-    payment.status = (
-        "refunded" if payment.refunded_amount >= payment.amount else "partially-refunded"
-    )
-    payment.events.append(
-        PaymentEvent(
-            status="refunded",
-            note=(
-                f"{'Full' if payment.status == 'refunded' else 'Partial'} refund "
-                f"{'paid back directly' if direct else 'sent' if refund.status == 'completed' else 'initiated'}"
-                f" — {refund.reason}."
-            ),
-            occurred_at=now,
+    if gateway_part > 0:
+        payment.refunded_amount = min(payment.amount, payment.refunded_amount + gateway_part)
+        payment.status = (
+            "refunded" if payment.refunded_amount >= payment.amount else "partially-refunded"
         )
-    )
+        payment.events.append(
+            PaymentEvent(
+                status="refunded",
+                note=(
+                    f"{'Full' if payment.status == 'refunded' else 'Partial'} refund "
+                    f"{'paid back directly' if direct else 'sent' if refund.status == 'completed' else 'initiated'}"
+                    f" — {refund.reason}."
+                ),
+                occurred_at=now,
+            )
+        )
+
+    # The tenders' share: back to the gift cards, store credit and points.
+    from app.services import loyalty, tenders
+
+    tenders.reverse_for_refund(db, refund)
 
     invoice.amount_refunded += refund.amount
-    invoice.payment_status = payment.status
+    tendered = tenders.tender_total(invoice) > 0
+    if tendered:
+        invoice.payment_status = "refunded" if invoice.amount_refunded >= invoice.grand_total else "partially-refunded"
+    else:
+        invoice.payment_status = payment.status
 
     from app.services.email.notifications import notify_refund
 
     notify_refund(db, refund, invoice.customer_email)
 
     order = db.get(Order, invoice.order_id)
-    if order and payment.status == "refunded":
+    fully = invoice.amount_refunded >= invoice.grand_total if tendered else payment.status == "refunded"
+    if order and fully:
         order.payment_status = "refunded"
+
+    # Points the order earned go back in proportion to what has been refunded.
+    if order is not None and invoice.grand_total > 0:
+        loyalty.reverse_for_order(db, order, fraction=invoice.amount_refunded / invoice.grand_total,
+                                  refund_id=refund.id, reason=f"Refund {refund.refund_number}")
 
 
 def apply_refund_outcome(db: Session, gateway_reference: str, outcome: str) -> Optional[Refund]:
@@ -511,8 +547,12 @@ def apply_refund_outcome(db: Session, gateway_reference: str, outcome: str) -> O
     payment = db.get(Payment, refund.payment_id)
     invoice = db.get(Invoice, refund.invoice_id)
 
+    # Only the gateway's part failed; a share already returned to gift cards,
+    # store credit or points stands.
+    gateway_part = refund.amount if refund.gateway_amount is None else refund.gateway_amount
+
     if payment is not None:
-        payment.refunded_amount = max(0, payment.refunded_amount - refund.amount)
+        payment.refunded_amount = max(0, payment.refunded_amount - gateway_part)
         payment.status = (
             "paid"
             if payment.refunded_amount == 0
@@ -529,7 +569,7 @@ def apply_refund_outcome(db: Session, gateway_reference: str, outcome: str) -> O
         )
 
     if invoice is not None:
-        invoice.amount_refunded = max(0, invoice.amount_refunded - refund.amount)
+        invoice.amount_refunded = max(0, invoice.amount_refunded - gateway_part)
         if payment is not None:
             invoice.payment_status = payment.status
 
@@ -564,7 +604,8 @@ def set_refund_status(db: Session, refund_id: str, status: str) -> Refund:
             raise ConflictError("The invoice or payment for this refund is missing.",
                                 error_code="REFUND_ORPHANED")
 
-        if refund.amount > refundable_amount(payment):
+        gateway_part = refund.amount if refund.gateway_amount is None else refund.gateway_amount
+        if gateway_part > refundable_amount(payment):
             raise ConflictError("That is more than is left to refund on this payment.",
                                 error_code="REFUND_EXCEEDS_PAYMENT")
 

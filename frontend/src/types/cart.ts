@@ -61,4 +61,11 @@ export interface CartTotals {
   /** How much more to spend to earn free delivery; zero once earned. */
   freeDeliveryShortfall: number;
   appliedCoupon: Coupon | null;
+  /** On a placed order: what gift cards, store credit and points paid, in rupees. */
+  giftCardAmount?: number;
+  storeCreditAmount?: number;
+  pointsAmount?: number;
+  pointsRedeemed?: number;
+  /** What the payment method collects: `total` less the above. */
+  amountDue?: number;
 }

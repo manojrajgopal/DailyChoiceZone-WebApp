@@ -20,6 +20,7 @@ def notify_payment(db: Session, order, amount_minor: int) -> None:
         db, "payment_received", to=order.customer_email, customer_id=order.customer_id,
         subject=f"Payment received — {order.order_number}", html=html,
         text=f"We've received your payment for order {order.order_number}.", reference=order.order_number,
+        inbox={"href": f"/account/order?number={order.order_number}"},
     )
 
 
@@ -52,6 +53,7 @@ def notify_refund(db: Session, refund, email: str) -> None:
         subject=f"Refund of {amount} — {refund.order_number}", html=layout("Your refund is on its way", intro),
         text=f"We've issued a refund of {amount} for order {refund.order_number}.",
         reference=refund.refund_number or "",
+        inbox={"href": f"/account/order?number={refund.order_number}"},
     )
 
 
@@ -86,6 +88,7 @@ def notify_return(db: Session, request, email: str) -> None:
         db, "return_updates", to=email, customer_id=request.customer_id,
         subject=f"{title} — {request.order_number}", html=html,
         text=f"{RETURN_COPY.get(request.status, '')} Order {request.order_number}.", reference=request.id,
+        inbox={"href": f"/account/order?number={request.order_number}"},
     )
 
 
@@ -101,6 +104,7 @@ def notify_membership(db: Session, membership, email: str, programme_name: str) 
         subject=f"Welcome to {programme_name}",
         html=layout(f"Welcome to {programme_name}", intro, cta=("Start shopping", _brand()["url"])),
         text=f"Welcome to {programme_name}. Your membership is active until {ends}.", reference=membership.id,
+        inbox={"href": "/account/membership"},
     )
 
 

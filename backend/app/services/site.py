@@ -90,6 +90,16 @@ ADDED_NAV_ITEMS = [
                         "icon": "reconciliation"}),
     ("/admin/payments/reconciliation", {"id": "webhooks", "label": "Payment webhooks",
                                         "href": "/admin/payments/webhooks", "icon": "webhooks"}),
+    ("/admin/delivery", {"id": "alerts", "label": "Stock & price alerts", "href": "/admin/alerts",
+                         "icon": "alerts"}),
+    ("/admin/reviews", {"id": "questions", "label": "Questions", "href": "/admin/questions",
+                        "icon": "questions", "badge": "pendingQuestions"}),
+    ("/admin/carts", {"id": "gift-cards", "label": "Gift cards", "href": "/admin/gift-cards",
+                                       "icon": "giftCards"}),
+    ("/admin/gift-cards", {"id": "store-credit", "label": "Store credit", "href": "/admin/store-credit",
+                           "icon": "storeCredit"}),
+    ("/admin/store-credit", {"id": "loyalty", "label": "Reward points", "href": "/admin/loyalty",
+                             "icon": "loyalty"}),
 ]
 
 

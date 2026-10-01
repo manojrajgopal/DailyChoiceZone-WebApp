@@ -84,9 +84,25 @@ class InvoiceOut(CamelModel):
     amount_refunded: int
     notes: str
     terms: str
+    # Paid towards the grand total by gift cards, store credit and points
+    # (minor units), each with what has gone back since. The gateway paid the
+    # rest. Gift cards appear by their last four characters only.
+    tenders: List[dict] = []
+    tender_total: int = 0
+    # What a refund can still return to those tenders.
+    tender_refundable: int = 0
 
     @classmethod
     def from_model(cls, invoice) -> "InvoiceOut":
+        from sqlalchemy.orm import object_session
+
+        session = object_session(invoice)
+        tenders, tender_refundable = [], 0
+        if session is not None and (invoice.gift_card_amount or invoice.store_credit_amount or invoice.points_amount):
+            from app.services import tenders as tender_service
+
+            tenders = tender_service.describe(session, invoice.order_id)
+            tender_refundable = sum(t["amount"] - t["returned"] for t in tenders)
         return cls(
             id=invoice.id,
             invoice_number=invoice.invoice_number,
@@ -132,6 +148,9 @@ class InvoiceOut(CamelModel):
             amount_refunded=invoice.amount_refunded,
             notes=invoice.notes,
             terms=invoice.terms,
+            tenders=tenders,
+            tender_total=(invoice.gift_card_amount or 0) + (invoice.store_credit_amount or 0) + (invoice.points_amount or 0),
+            tender_refundable=tender_refundable,
         )
 
 
@@ -211,6 +230,10 @@ class RefundOut(CamelModel):
     lines: List[RefundLineOut] = []
     credit_note_id: Optional[str] = None
     initiated_by: str
+    # How it goes back: through the gateway, and to gift cards, store credit
+    # and points (for an order they paid part of).
+    gateway_amount: int = 0
+    tender_amount: int = 0
 
     @classmethod
     def from_model(cls, refund) -> "RefundOut":
@@ -225,6 +248,8 @@ class RefundOut(CamelModel):
                 )
             },
             lines=[RefundLineOut.model_validate(line) for line in refund.items],
+            gateway_amount=refund.amount if refund.gateway_amount is None else refund.gateway_amount,
+            tender_amount=refund.tender_amount or 0,
         )
 
 

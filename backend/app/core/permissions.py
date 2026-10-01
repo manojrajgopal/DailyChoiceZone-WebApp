@@ -38,6 +38,15 @@ RESOURCES = (
     "shipping",
     # Abandoned carts.
     "carts",
+    # Back-in-stock and price-drop alerts.
+    "alerts",
+    # Moderating product questions and answering them.
+    "questions",
+    # Gift cards, store credit and reward points: each moves money or its
+    # equivalent, so each is granted on its own.
+    "gift-cards",
+    "store-credit",
+    "loyalty",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -49,9 +58,9 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
     # Money-moving actions (resolving reconciliation, replaying webhooks) are
     # the super admin's; an admin can see both.
     "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage")],
-    "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts"],
-    "editor": ["products", "content"],
-    "staff": ["products", "orders", "reviews", "support"],
+    "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts", "alerts", "questions"],
+    "editor": ["products", "content", "questions"],
+    "staff": ["products", "orders", "reviews", "support", "questions"],
 }
 
 

@@ -13,9 +13,11 @@ import { cn } from "@/lib/utils/cn";
 import { formatAgo } from "@/lib/support/format";
 
 /**
- * Updates on the customer's support requests: a reply, a status change, a
- * resolution. Shown only to a signed-in customer whose session the server
- * has confirmed, and refreshed on navigation and every minute.
+ * The customer's notifications: orders, payments, refunds and returns,
+ * support replies, stock and price alerts, questions answered, gift cards,
+ * store credit and reward points — everything we email them about appears
+ * here too. Shown only to a signed-in customer whose session the server has
+ * confirmed, and refreshed on navigation and every minute.
  */
 export function SupportBell({ className }: { className: string }) {
   const signedIn = useConfirmedCustomer();
@@ -59,7 +61,7 @@ export function SupportBell({ className }: { className: string }) {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        aria-label={`Support updates, ${unread} unread`}
+        aria-label={`Notifications, ${unread} unread`}
         aria-expanded={open}
         className={className}
       >
@@ -74,7 +76,7 @@ export function SupportBell({ className }: { className: string }) {
       {open ? (
         <div className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-card border border-ink-200 bg-shell shadow-overlay">
           <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
-            <p className="label-wide text-ink">Support updates</p>
+            <p className="label-wide text-ink">Notifications</p>
             {unread > 0 ? (
               <button
                 type="button"
@@ -95,7 +97,7 @@ export function SupportBell({ className }: { className: string }) {
               {items.map((item) => (
                 <li key={item.id} className="border-b border-ink-100 last:border-0">
                   <Link
-                    href={item.href || "/account/support"}
+                    href={item.href || "/account"}
                     onClick={() => setOpen(false)}
                     className={cn("block px-4 py-3 transition-colors hover:bg-cream-deep", !item.read && "bg-copper-50/60")}
                   >
@@ -110,13 +112,14 @@ export function SupportBell({ className }: { className: string }) {
               ))}
             </ul>
           )}
-          <Link
-            href="/account/support"
-            onClick={() => setOpen(false)}
-            className="block border-t border-ink-100 px-4 py-3 text-center text-xs font-medium text-copper-700 hover:bg-cream-deep"
-          >
-            All support requests
-          </Link>
+          <div className="grid grid-cols-2 border-t border-ink-100 text-center text-xs font-medium text-copper-700">
+            <Link href="/account/orders" onClick={() => setOpen(false)} className="px-4 py-3 hover:bg-cream-deep">
+              Your orders
+            </Link>
+            <Link href="/account/settings" onClick={() => setOpen(false)} className="border-l border-ink-100 px-4 py-3 hover:bg-cream-deep">
+              Email preferences
+            </Link>
+          </div>
         </div>
       ) : null}
     </div>

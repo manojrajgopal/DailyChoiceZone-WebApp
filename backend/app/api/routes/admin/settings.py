@@ -282,6 +282,8 @@ def nav_counts(
         .where(SupportTicket.status.in_(OPEN_TICKET_STATUSES), SupportTicket.merged_into_id.is_(None))
     ).scalar_one()
 
+    from app.services import questions as question_service
+
     return ok(
         {
             "lowStock": low_stock,
@@ -289,6 +291,7 @@ def nav_counts(
             "pendingReviews": pending_reviews,
             "openReturns": open_returns,
             "openTickets": open_tickets,
+            "pendingQuestions": question_service.pending_count(db),
         }
     )
 

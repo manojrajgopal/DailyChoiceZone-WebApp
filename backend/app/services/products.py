@@ -249,6 +249,7 @@ def update_product(
     """
     product = get_product(db, product_id)
     provided = payload.model_dump(exclude_unset=True, by_alias=False)
+    old_price, old_original = float(product.price), float(product.original_price)
 
     if "category" in provided and payload.category:
         product.category_id = _resolve_category(db, payload.category).id
@@ -302,8 +303,20 @@ def update_product(
     _apply_children(db, product, payload)
 
     product.updated_by = actor or product.updated_by
+
+    # A moved selling price is recorded for the price-drop alerts; a new
+    # compare-at price alone is not a cheaper product.
+    from app.services import alerts
+
+    change = alerts.record_price_change(db, product, old_price=old_price, old_original=old_original,
+                                        actor=actor or "system") if "price" in provided else None
     db.commit()
     db.refresh(product)
+
+    # Whoever was waiting for it — back in stock, or cheaper — hears now.
+    if change is not None or {"stock", "reserved_stock", "status"} & set(provided):
+        alerts.process_product(db, product.id, change_id=change.id if change is not None else None)
+        db.refresh(product)
     return product
 
 
@@ -439,6 +452,11 @@ def adjust_stock(
     )
 
     db.commit()
+    db.refresh(product)
+
+    from app.services import alerts
+
+    alerts.process_product(db, product.id)
     db.refresh(product)
     return product
 

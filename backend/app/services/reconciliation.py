@@ -359,8 +359,9 @@ def run(db: Session, start: datetime, end: datetime) -> dict:
         created = entity.get("created_at")
         if isinstance(created, (int, float)) and not (_epoch(start) <= created < _epoch(end)):
             continue
-        if (entity.get("notes") or {}).get("membershipId"):
-            continue  # a membership purchase: settled against the membership, not a store payment
+        notes = entity.get("notes") or {}
+        if notes.get("membershipId") or notes.get("giftCardId"):
+            continue  # a membership or gift card purchase: settled against that, not a store payment
         row = _record(db, entity=entity, issues=["missing-locally"], local=None, remote=_remote(entity), now=now)
         counts[row.status] += 1
 

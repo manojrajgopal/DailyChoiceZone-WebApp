@@ -51,6 +51,13 @@ def place_order(
     Order, stock, payment and invoice in one transaction. The response carries
     all three so the confirmation page needs no follow-up call.
     """
+    # A gift card code is a bearer secret: placing orders is not a way round
+    # the limit on checking them.
+    if payload.gift_card_codes:
+        from app.core import rate_limit
+
+        rate_limit.check(f"gc-order:{customer.id}", limit=10, window_seconds=600,
+                         message="Too many gift card attempts. Please wait a few minutes.")
     shipping = payload.shipping_address.model_dump(by_alias=True)
     billing_address = payload.billing_address.model_dump(by_alias=True) if payload.billing_address else None
 
@@ -63,6 +70,9 @@ def place_order(
         payment_method=payload.payment_method,
         coupon_code=payload.coupon_code,
         email=payload.email,
+        gift_card_codes=[code[:40] for code in payload.gift_card_codes],
+        use_store_credit=payload.use_store_credit,
+        points=payload.points,
     )
 
     # Keep the address for next time, if asked. After the order, never before —
@@ -93,7 +103,10 @@ def place_order(
             "invoiceNumber": invoice.invoice_number,
             "paymentId": payment.id,
             "paymentStatus": payment.status,
-            "amount": invoice.grand_total,
+            # What the payment method collects: the invoice less gift cards,
+            # store credit and points.
+            "amount": payment.amount,
+            "invoiceTotal": invoice.grand_total,
             "gateway": gateway_handoff(db, order, invoice, payment),
         },
         message="Order placed.",

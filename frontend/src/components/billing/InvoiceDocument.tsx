@@ -235,6 +235,22 @@ export function InvoiceDocument({
               </dd>
             </div>
 
+            {invoice.tenders && invoice.tenders.length > 0 ? (
+              <>
+                {invoice.tenders.map((tender) => (
+                  <TotalRow
+                    key={`${tender.kind}-${tender.label}`}
+                    label={`Paid with ${tender.label}${tender.points ? ` (${tender.points.toLocaleString("en-IN")} points)` : ""}`}
+                    value={`− ${formatMoney(tender.amount, { showDecimals: true })}`}
+                  />
+                ))}
+                <TotalRow
+                  label={`Paid by ${paymentMethodLabel(invoice.paymentMethod)}`}
+                  value={formatMoney(Math.max(0, breakdown.grandTotal - (invoice.tenderTotal ?? 0)), { showDecimals: true })}
+                />
+              </>
+            ) : null}
+
             {invoice.amountRefunded > 0 ? (
               <TotalRow
                 label="Refunded"

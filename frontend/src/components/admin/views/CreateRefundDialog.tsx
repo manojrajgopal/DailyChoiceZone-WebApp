@@ -47,7 +47,10 @@ export function CreateRefundDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const available = payment ? refundableAmount(payment) : 0;
+  // The gateway's part plus, for an order partly paid with gift cards, store
+  // credit or points, what those have left — the server shares a refund
+  // between them in the proportion they paid.
+  const available = (payment ? refundableAmount(payment) : 0) + (invoice.tenderRefundable ?? 0);
   const reasons = useRefundReasons();
 
   const lineKey = (index: number) => `${invoice.lines[index]?.productId ?? ""}-${index}`;

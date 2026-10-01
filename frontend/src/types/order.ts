@@ -129,6 +129,10 @@ export interface PlaceOrderInput {
   deliveryMethod: DeliveryMethod;
   paymentMethod: PaymentMethod;
   email: string;
+  /** Put towards the order; what each pays is the server's arithmetic. */
+  giftCardCodes?: string[];
+  useStoreCredit?: boolean;
+  points?: number;
 }
 
 /* --------------------------------------------------------- payment gateway */

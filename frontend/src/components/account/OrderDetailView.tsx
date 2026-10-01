@@ -225,7 +225,7 @@ export function OrderDetailView() {
               </div>
 
               <ButtonLink href={payHref}>
-                Pay {formatPrice(order.totals.total)}
+                Pay {formatPrice(order.totals.amountDue ?? order.totals.total)}
               </ButtonLink>
             </div>
           ) : null}
@@ -461,6 +461,33 @@ export function OrderDetailView() {
                   {formatPrice(order.totals.total)}
                 </span>
               </div>
+
+              {(order.totals.giftCardAmount ?? 0) + (order.totals.storeCreditAmount ?? 0) + (order.totals.pointsAmount ?? 0) > 0 ? (
+                <dl className="mt-3 flex flex-col gap-1.5 text-sm">
+                  {(order.totals.giftCardAmount ?? 0) > 0 ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-500">Gift card</dt>
+                      <dd className="tabular-nums text-ink">− {formatPrice(order.totals.giftCardAmount ?? 0)}</dd>
+                    </div>
+                  ) : null}
+                  {(order.totals.storeCreditAmount ?? 0) > 0 ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-500">Store credit</dt>
+                      <dd className="tabular-nums text-ink">− {formatPrice(order.totals.storeCreditAmount ?? 0)}</dd>
+                    </div>
+                  ) : null}
+                  {(order.totals.pointsAmount ?? 0) > 0 ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-500">Reward points ({(order.totals.pointsRedeemed ?? 0).toLocaleString("en-IN")})</dt>
+                      <dd className="tabular-nums text-ink">− {formatPrice(order.totals.pointsAmount ?? 0)}</dd>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between gap-4 font-medium">
+                    <dt className="text-ink">Paid by {order.paymentMethod.name}</dt>
+                    <dd className="tabular-nums text-ink">{formatPrice(order.totals.amountDue ?? 0)}</dd>
+                  </div>
+                </dl>
+              ) : null}
 
               <p className="mt-3 text-xs text-ink-400">
                 {awaitingPayment

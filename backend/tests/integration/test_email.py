@@ -194,8 +194,11 @@ class TestEveryStepSendsSomething:
             response = client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
                                   json={"status": stage})
             assert response.status_code == 200, response.text
-            assert len(outbox) == 1, f"no email for {stage}"
-            assert order["orderNumber"] in outbox[0]["subject"]
+            # Delivery also earns reward points, which is its own email; the
+            # order update is still exactly one.
+            updates = [mail for mail in outbox if "points" not in mail["subject"]]
+            assert len(updates) == 1, f"no email for {stage}"
+            assert order["orderNumber"] in updates[0]["subject"]
 
     def test_asking_for_a_return(self, client, auth, admin_auth, outbox, catalogue, settings_documents):
         from tests.integration.test_returns import ask
@@ -207,7 +210,9 @@ class TestEveryStepSendsSomething:
                    json={"status": "delivered", "confirm": True})
         outbox.clear()
         assert ask(client, auth, order).status_code == 201
-        assert len(outbox) == 1 and "return" in outbox[0]["subject"].lower()
+        # The customer's confirmation; the store team is alerted separately.
+        mine = [mail for mail in outbox if mail["to"] == "shopper@example.com"]
+        assert len(mine) == 1 and "return" in mine[0]["subject"].lower()
 
     def test_a_payment_that_ran_out_of_time(
         self, client, auth, admin_auth, outbox, gateway, catalogue, settings_documents, db

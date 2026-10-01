@@ -352,6 +352,10 @@ def create(
     from app.services.email.notifications import notify_return
 
     notify_return(db, request, order.customer_email)
+    from app.services import inbox
+
+    inbox.staff(db, "return", f"New {kind} request on {order.order_number}",
+                f"{order.customer_name}: {reason}", f"/admin/returns/detail?id={request.id}", permission="orders")
     db.commit()
     db.refresh(request)
     return request
@@ -406,6 +410,13 @@ def _move(db: Session, request: ReturnRequest, status: str, *, note: str, actor:
     if order is not None:
         notify_return(db, request, order.customer_email)
     db.commit()
+
+    # Returned units back on the shelf: anyone waiting for them hears now.
+    if status == "received" and request.kind == "return":
+        from app.services import alerts
+
+        for product_id in {item.product_id for item in request.items}:
+            alerts.process_product(db, product_id)
     db.refresh(request)
     return request
 

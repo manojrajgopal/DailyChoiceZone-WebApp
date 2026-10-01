@@ -96,6 +96,13 @@ class Invoice(Base, TimestampMixin):
     prices_include_tax: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     grand_total: Mapped[int] = mapped_column(Money, nullable=False, default=0)
+    # Paid towards `grand_total` by gift cards, store credit and reward points.
+    # They don't change what was sold or its tax — only what the gateway
+    # collects: `payment.amount = grand_total - tenders`.
+    gift_card_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    store_credit_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    points_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    points_redeemed: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     amount_paid: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     amount_refunded: Mapped[int] = mapped_column(Money, nullable=False, default=0)
 
@@ -260,6 +267,12 @@ class Refund(Base, TimestampMixin):
     customer_name: Mapped[str] = mapped_column(String(160), nullable=False, default="")
 
     amount: Mapped[int] = mapped_column(Money, nullable=False, default=0)
+    # How `amount` goes back, for an order partly paid by gift card, store
+    # credit or points: this much through the gateway, the rest to those
+    # tenders, in the proportion they paid. NULL on refunds raised before
+    # tenders existed, which went wholly through the gateway.
+    gateway_amount: Mapped[Optional[int]] = mapped_column(Money, nullable=True)
+    tender_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
     reason: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     # requested | processing | completed | rejected
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="requested", index=True)

@@ -297,7 +297,7 @@ def attachment(number: str, attachment_id: int, db: Session = Depends(get_db),
 # ------------------------------------------------------------ notifications
 
 
-@router.get("/notifications", summary="The customer's support updates")
+@router.get("/notifications", summary="The customer's notifications (every kind)")
 def notifications(db: Session = Depends(get_db), customer: Customer = Depends(get_current_customer)):
     rows = db.execute(
         select(CustomerNotification).where(CustomerNotification.customer_id == customer.id)
@@ -307,7 +307,7 @@ def notifications(db: Session = Depends(get_db), customer: Customer = Depends(ge
                      "read": r.read, "at": r.created_at} for r in rows])
 
 
-@router.post("/notifications/read", summary="Mark every support update as read")
+@router.post("/notifications/read", summary="Mark every notification as read")
 def notifications_read(db: Session = Depends(get_db), customer: Customer = Depends(get_current_customer)):
     db.execute(update(CustomerNotification).where(
         CustomerNotification.customer_id == customer.id, CustomerNotification.read.is_(False)).values(read=True))

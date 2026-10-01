@@ -181,6 +181,15 @@ export interface Invoice {
   amountRefunded: Money;
   notes: string;
   terms: string;
+  /**
+   * What gift cards, store credit and reward points paid towards the grand
+   * total — payments, not discounts: the lines and tax above are unchanged.
+   * The payment method paid the rest.
+   */
+  tenders?: { kind: "gift_card" | "store_credit" | "points"; label: string; amount: Money; points: number | null; returned: Money }[];
+  tenderTotal?: Money;
+  /** What a refund can still return to those tenders. */
+  tenderRefundable?: Money;
 }
 
 /* ----------------------------------------------------------------- payments */

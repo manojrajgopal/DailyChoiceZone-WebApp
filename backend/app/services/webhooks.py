@@ -53,7 +53,7 @@ _SAFE_KEYS = {
     "error_step", "created_at", "speed_processed", "speed_requested", "bank", "wallet", "attempts",
     "payments_amount_received", "payments_count_received", "close_by", "closed_at", "usage", "type",
 }
-_SAFE_NOTES = {"paymentId", "orderId", "membershipId", "orderNumber", "invoiceId", "reason"}
+_SAFE_NOTES = {"paymentId", "orderId", "membershipId", "giftCardId", "orderNumber", "invoiceId", "reason"}
 _ENTITIES = ("payment", "order", "refund", "payment_link", "qr_code")
 
 
@@ -199,8 +199,14 @@ def process(db: Session, event_id: str, body: dict, *, trigger: str = "delivery"
         now = datetime.utcnow()
         row = db.get(WebhookEvent, event_id)
         attempt = db.get(WebhookEventAttempt, attempt_id)
+        first_failure = row.status != "failed"
         row.status = "failed"
         row.error = _describe(error)
+        if first_failure:
+            from app.services import inbox
+
+            inbox.staff(db, "webhook", f"Payment webhook failed: {event}", row.error[:200],
+                        "/admin/payments/webhooks?status=failed", permission="payments")
         row.completed_at = now
         row.payload = clean(body)
         attempt.outcome, attempt.error, attempt.finished_at = "failed", row.error, now

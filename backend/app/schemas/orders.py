@@ -40,6 +40,11 @@ class PlaceOrderRequest(CamelModel):
     coupon_code: Optional[str] = None
     email: Optional[str] = None
     save_address: bool = False
+    # Gift cards, store credit and reward points to put towards the order.
+    # What each actually pays is worked out on the server, like every amount.
+    gift_card_codes: List[str] = Field(default_factory=list, max_length=5)
+    use_store_credit: bool = False
+    points: int = Field(default=0, ge=0, le=10_000_000)
 
 
 class OrderItemOut(CamelModel):
@@ -75,6 +80,13 @@ class OrderTotals(CamelModel):
     delivery_fee: float
     tax_amount: float
     total: float
+    # Paid by gift cards, store credit and reward points; the rest by the
+    # payment method (`amount_due`).
+    gift_card_amount: float = 0
+    store_credit_amount: float = 0
+    points_amount: float = 0
+    points_redeemed: int = 0
+    amount_due: float = 0
 
 
 class OrderOut(CamelModel):
@@ -131,6 +143,12 @@ class OrderOut(CamelModel):
                 delivery_fee=float(order.delivery_fee),
                 tax_amount=float(order.tax_amount),
                 total=float(order.total),
+                gift_card_amount=float(order.gift_card_amount or 0),
+                store_credit_amount=float(order.store_credit_amount or 0),
+                points_amount=float(order.points_amount or 0),
+                points_redeemed=int(order.points_redeemed or 0),
+                amount_due=round(float(order.total) - float(order.gift_card_amount or 0)
+                                 - float(order.store_credit_amount or 0) - float(order.points_amount or 0), 2),
             ),
             shipping_address=AddressPayload(
                 full_name=order.shipping_name,

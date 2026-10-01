@@ -67,10 +67,17 @@ async def lifespan(_: FastAPI):
 
     cart_sweeper = asyncio.create_task(cart_recovery.run_forever())
 
+    # Back-in-stock and price-drop alerts that are due; and reward points
+    # becoming spendable or expiring, and gift cards expiring.
+    from app.services import alerts, loyalty
+
+    alert_sweeper = asyncio.create_task(alerts.run_forever())
+    rewards_sweeper = asyncio.create_task(loyalty.run_forever())
+
     try:
         yield
     finally:
-        for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper):
+        for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper, alert_sweeper, rewards_sweeper):
             if task is None:
                 continue
             task.cancel()

@@ -93,6 +93,12 @@ class Order(Base, TimestampMixin):
     member_free_delivery: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     tax_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    # How much of `total` gift cards, store credit and reward points paid —
+    # see `models.wallet.OrderTender`. The gateway collects the rest.
+    gift_card_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    store_credit_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    points_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    points_redeemed: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     # --- the address it actually shipped to -------------------------------
     shipping_name: Mapped[str] = mapped_column(String(120), nullable=False, default="")

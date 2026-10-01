@@ -101,6 +101,11 @@ TYPES: Dict[str, dict] = {
         "description": "New, assigned, escalated and overdue requests — sent to your support staff, not to customers.",
         "enabled": True, "optOut": False, "internal": True,
     },
+    "store_team": {
+        "label": "Store team alerts",
+        "description": "New product questions, return requests, gift cards bought and failed payment webhooks — sent to your administrators, not to customers.",
+        "enabled": True, "optOut": False, "internal": True,
+    },
     "account_security": {
         "label": "Account security",
         "description": "Confirming your email address, resetting your password and password-change alerts.",
@@ -109,6 +114,31 @@ TYPES: Dict[str, dict] = {
     "cart_reminders": {
         "label": "Bag reminders",
         "description": "A reminder when you leave items in your bag.",
+        "enabled": True, "optOut": True,
+    },
+    "product_alerts": {
+        "label": "Stock & price alerts",
+        "description": "When something you asked about is back in stock or cheaper. You choose these alerts product by product.",
+        "enabled": True, "optOut": True,
+    },
+    "product_questions": {
+        "label": "Product questions",
+        "description": "When a question you asked about a product is published, declined or answered.",
+        "enabled": True, "optOut": True,
+    },
+    "gift_cards": {
+        "label": "Gift cards",
+        "description": "Gift cards you buy or receive, with the card itself.",
+        "enabled": True, "optOut": False,
+    },
+    "store_credit": {
+        "label": "Store credit",
+        "description": "When store credit is added to or taken from your account.",
+        "enabled": True, "optOut": False,
+    },
+    "loyalty": {
+        "label": "Reward points",
+        "description": "Points earned, points ready to spend, and points about to expire.",
         "enabled": True, "optOut": True,
     },
     "offers": {
@@ -499,12 +529,25 @@ def notify(
     html: str,
     text: str,
     reference: str = "",
+    inbox=None,
 ) -> bool:
     """
     Queue an email to go out when this session commits. Returns whether it was
     queued — False when no account is set up, the store has this kind switched
     off, or the customer has turned it off.
+
+    A customer's email also appears in the bell on the storefront (see
+    `services.inbox`) — whether or not an email account is connected, but not
+    if they've turned this kind of message off. `inbox` overrides its wording
+    (`{"title", "body", "href"}`), or `False` keeps it out of the bell.
     """
+    try:
+        if customer_id and wants(db, key, customer_id):
+            from app.services import inbox as inbox_service
+
+            inbox_service.from_email(db, key, customer_id, subject, text, inbox)
+    except Exception:  # the bell must never break the work that triggered it
+        logger.exception("Could not add an in-app notification for %s", key)
     try:
         if not to or "@" not in to or not wants(db, key, customer_id):
             return False
