@@ -45,6 +45,11 @@ class Customer(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active", index=True)
     joined_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # When the customer proved they own `email`. NULL until they follow the link.
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # Set by a password reset or change. A token issued before it is refused,
+    # which is how resetting a password signs out every other device.
+    password_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     addresses: Mapped[List["Address"]] = relationship(
         back_populates="customer", cascade="all, delete-orphan", lazy="selectin"

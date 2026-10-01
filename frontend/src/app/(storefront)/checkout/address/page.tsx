@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { Address, BillingAddress, DeliveryMethodId } from "@/types";
 
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
+import { PincodeStatus, usePincodeCheck } from "@/components/common/PincodeChecker";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Input, Radio, Select } from "@/components/ui/Field";
 import { useSiteContent } from "@/hooks/useSiteContent";
@@ -84,6 +85,11 @@ export default function CheckoutAddressPage() {
   const [saved, setSaved] = useState<Address[]>([]);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [billingErrors, setBillingErrors] = useState<Partial<Record<keyof BillingAddress, string>>>({});
+  // Where it's going decides whether it can go at all, and how fast: checked
+  // as the PIN is typed, and again by the server when the order is placed.
+  const delivery = usePincodeCheck(form.pincode);
+  const serviceability = delivery.result;
+  const expressBlocked = serviceability !== null && serviceability.serviceable && !serviceability.expressAvailable;
 
   // Contact is required first; jump back if someone deep-linked here. Waits
   // for the store to rehydrate, or a refresh would bounce a valid checkout.
@@ -146,6 +152,9 @@ export default function CheckoutAddressPage() {
     if (form.city.trim().length < 2) next.city = "Enter a city.";
     // Indian PIN codes are six digits and never start with zero.
     if (!/^[1-9]\d{5}$/.test(form.pincode.trim())) next.pincode = "Enter a valid 6-digit PIN code.";
+    else if (serviceability && !serviceability.serviceable) {
+      next.pincode = serviceability.reason || "Sorry, we don't deliver to this PIN code yet.";
+    }
 
     // A separate billing address is validated to the same standard as the
     // shipping one — it is what goes on the invoice, and an invoice with a
@@ -168,6 +177,9 @@ export default function CheckoutAddressPage() {
     setBillingErrors(billingNext);
     if (Object.keys(next).length > 0 || Object.keys(billingNext).length > 0) return;
 
+    if (expressBlocked && deliveryMethodId === "express") {
+      setDeliveryMethod("standard" as DeliveryMethodId);
+    }
     setAddress({ ...form, phone: form.phone.replace(/\D/g, "") });
     setBillingAddress(
       billingSame ? null : { ...billing, phone: billing.phone.replace(/\D/g, "") },
@@ -269,8 +281,14 @@ export default function CheckoutAddressPage() {
             value={form.pincode}
             onChange={(event) => update("pincode", event.target.value)}
             error={errors.pincode}
+            hint={delivery.loading ? "Checking delivery…" : undefined}
+            maxLength={6}
             required
           />
+
+          {serviceability && !errors.pincode ? (
+            <PincodeStatus check={serviceability} className="-mt-2 sm:col-span-2" />
+          ) : null}
 
           <Select
             label="State"
@@ -414,6 +432,7 @@ export default function CheckoutAddressPage() {
                 name="delivery"
                 value={method.id}
                 checked={deliveryMethodId === method.id}
+                disabled={method.id === "express" && expressBlocked}
                 onChange={() => setDeliveryMethod(method.id as DeliveryMethodId)}
                 label={
                   <span className="flex flex-wrap items-baseline justify-between gap-2">
@@ -426,7 +445,13 @@ export default function CheckoutAddressPage() {
                     </span>
                   </span>
                 }
-                description={method.description}
+                description={
+                  method.id === "express" && expressBlocked
+                    ? "Not available for this PIN code."
+                    : method.id === "standard" && serviceability?.serviceable && serviceability.estimate
+                      ? `${method.description.replace(/\.?\s*$/, ".")} Arrives by ${serviceability.estimate}.`
+                      : method.description
+                }
               />
             ))}
           </div>

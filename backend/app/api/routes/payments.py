@@ -12,17 +12,15 @@ only trusted because every delivery is signature-checked before it is read.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import NotFoundError, ValidationError
 from app.dependencies.auth import get_current_customer
-from app.models import Customer, Invoice, Order, WebhookEvent
+from app.models import Customer, Invoice, Order
 from app.schemas.base import CamelModel
 from app.schemas.billing import PaymentOut
 from app.services import billing as billing_service, settlement
@@ -466,39 +464,19 @@ async def razorpay_webhook(
     except ValueError:
         raise ValidationError("The webhook body was not JSON.", error_code="WEBHOOK_MALFORMED")
 
-    event = str(body.get("event", ""))[:60]
+    if not isinstance(body, dict):
+        raise ValidationError("The webhook body was not a JSON object.", error_code="WEBHOOK_MALFORMED")
 
     # --- seen it before? -----------------------------------------------
     #
     # Checked after the signature, never before: an unsigned request must not
-    # be able to learn which event ids have been processed.
-    event_id = x_razorpay_event_id.strip()[:64]
-    if event_id and db.get(WebhookEvent, event_id) is not None:
-        logger.info("Razorpay webhook %s (%s): duplicate, acknowledged", event, event_id)
-        return ok({"handled": False, "event": event, "duplicate": True})
+    # be able to learn which event ids have been processed. Claiming the
+    # event, applying it, recording the outcome and counting duplicates is
+    # `services.webhooks`; a failure there is recorded and raised, so this
+    # answers 500 and Razorpay delivers the event again.
+    from app.services import webhooks
 
-    result = settlement.settle_from_webhook(db, body)
-
-    if event_id:
-        # Its own small commit. The settlement above has already committed what
-        # it changed; recording the id here means a retry that races this one
-        # is refused by the primary key rather than applied twice.
-        db.add(
-            WebhookEvent(
-                event_id=event_id,
-                event=event,
-                result=result[:60],
-                received_at=datetime.utcnow(),
-            )
-        )
-        try:
-            db.commit()
-        except IntegrityError:
-            # The same event, delivered twice at once, both past the check
-            # above. The other one recorded it; this is the duplicate.
-            db.rollback()
-
-    logger.info("Razorpay webhook %s (%s): %s", event, event_id or "no id", result)
+    outcome = webhooks.process(db, webhooks.event_id_for(x_razorpay_event_id, raw), body)
 
     # 2xx whatever happened, having verified the sender — see the docstring.
-    return ok({"handled": not result.startswith("ignored"), "event": event})
+    return ok(outcome)

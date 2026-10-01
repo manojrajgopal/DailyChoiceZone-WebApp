@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -128,6 +129,17 @@ export function AuthPanel() {
           }
           required
         />
+
+        {mode === "signin" ? (
+          <p className="-mt-2 text-right text-sm">
+            <Link
+              href={email ? `/forgot-password?email=${encodeURIComponent(email)}` : "/forgot-password"}
+              className="text-ink-500 underline underline-offset-4 transition-colors hover:text-ink"
+            >
+              Forgot your password?
+            </Link>
+          </p>
+        ) : null}
 
         <Button type="submit" size="lg" disabled={isSubmitting} fullWidth className="mt-2">
           {isSubmitting

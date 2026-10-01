@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from app.core import rate_limit
 from app.core.database import get_db
-from app.dependencies.auth import get_current_admin, get_current_customer
+from app.core.errors import ValidationError
+from app.dependencies.auth import client_ip, get_current_admin, get_current_customer, require_permission
 from app.models import AdminUser, Customer
 from app.schemas.auth import (
     AddressOut,
@@ -14,10 +16,14 @@ from app.schemas.auth import (
     AdminUserOut,
     CustomerOut,
     CustomerUpdate,
+    ForgotPasswordRequest,
     LoginRequest,
     PasswordChange,
     RegisterRequest,
+    ResetPasswordRequest,
+    TokenRequest,
 )
+from app.services import accounts as account_security
 from app.services import auth as service
 from app.utils.response import ok, ok_list
 
@@ -71,6 +77,50 @@ def me(customer: Customer = Depends(get_current_customer)):
     return ok(CustomerOut.from_model(customer).model_dump(by_alias=True))
 
 
+# ------------------------------------------------------ account recovery
+
+#: The one answer to a reset request, whatever the address.
+RESET_REQUESTED = "If an account exists for that email, we've sent a link to reset the password."
+
+
+@router.post("/password/forgot", summary="Email a password-reset link")
+def forgot_password(payload: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    """
+    The same answer whether or not the address has an account — and the same
+    limits, so the rate limit can't be used to probe either.
+    """
+    ip = client_ip(request)
+    too_many = "Too many reset requests. Please wait a few minutes and try again."
+    rate_limit.check(f"reset:ip:{ip}", limit=10, window_seconds=900, message=too_many)
+    rate_limit.check(f"reset:email:{payload.email.lower()}", limit=3, window_seconds=900, message=too_many)
+    account_security.request_password_reset(db, payload.email)
+    return ok(message=RESET_REQUESTED)
+
+
+@router.post("/password/reset/check", summary="Is a reset link still usable?")
+def check_reset(payload: TokenRequest, request: Request, db: Session = Depends(get_db)):
+    rate_limit.check(f"reset-check:ip:{client_ip(request)}", limit=30, window_seconds=900)
+    account_security.check_reset_token(db, payload.token)
+    return ok({"valid": True})
+
+
+@router.post("/password/reset", summary="Choose a new password with a reset link")
+def reset_password(payload: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    rate_limit.check(f"reset-use:ip:{client_ip(request)}", limit=10, window_seconds=900,
+                     message="Too many attempts. Please wait a few minutes and try again.")
+    if payload.password != payload.confirm_password:
+        raise ValidationError("The two passwords don't match.", error_code="PASSWORD_MISMATCH")
+    account_security.reset_password(db, payload.token, payload.password)
+    return ok(message="Your password has been changed. Sign in with your new password.")
+
+
+@router.post("/email/verify", summary="Confirm an email address with the emailed link")
+def verify_email(payload: TokenRequest, request: Request, db: Session = Depends(get_db)):
+    rate_limit.check(f"verify:ip:{client_ip(request)}", limit=30, window_seconds=900)
+    customer = account_security.verify_email(db, payload.token)
+    return ok({"verified": True, "email": customer.email}, message="Your email address is confirmed.")
+
+
 # --------------------------------------------------------------- account
 
 
@@ -82,6 +132,22 @@ def update_profile(
 ):
     updated = service.update_customer(db, customer, payload)
     return ok(CustomerOut.from_model(updated).model_dump(by_alias=True), message="Profile updated.")
+
+
+@account_router.post("/email/verification", summary="Send the email-verification link again")
+def resend_verification(
+    db: Session = Depends(get_db),
+    customer: Customer = Depends(get_current_customer),
+):
+    too_many = "We've sent a few links already. Please check your inbox (and spam), or try again later."
+    # One a minute, a handful an hour: enough for a lost email, not for a flood.
+    rate_limit.check(f"verify-resend:burst:{customer.id}", limit=1, window_seconds=60,
+                     message="We've just sent a link — please wait a minute before asking again.")
+    rate_limit.check(f"verify-resend:hour:{customer.id}", limit=5, window_seconds=3600, message=too_many)
+    sent = account_security.resend_verification(db, customer)
+    if not sent:
+        return ok({"alreadyVerified": True}, message="Your email address is already confirmed.")
+    return ok({"alreadyVerified": False}, message=f"We've sent a new link to {customer.email}.")
 
 
 @account_router.put("/password", summary="Change your password")
@@ -147,6 +213,17 @@ def admin_login(payload: LoginRequest, db: Session = Depends(get_db)):
         },
         message="Signed in.",
     )
+
+
+@admin_auth_router.get("/accounts/settings", summary="Account security settings")
+def get_account_settings(db: Session = Depends(get_db), admin: AdminUser = Depends(require_permission("settings"))):
+    return ok(account_security.settings(db))
+
+
+@admin_auth_router.put("/accounts/settings", summary="Save account security settings")
+def save_account_settings(payload: dict, db: Session = Depends(get_db),
+                          admin: AdminUser = Depends(require_permission("settings"))):
+    return ok(account_security.save_settings(db, payload), message="Account settings saved.")
 
 
 @admin_auth_router.get("/me", summary="The signed-in administrator")

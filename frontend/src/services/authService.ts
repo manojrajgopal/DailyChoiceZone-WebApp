@@ -28,6 +28,7 @@ interface ApiCustomer {
   phone: string;
   status: string;
   joinedAt: string;
+  emailVerified?: boolean;
 }
 
 interface ApiAuthPayload {
@@ -45,6 +46,7 @@ function toUser(payload: ApiCustomer): User {
     email: payload.email,
     phone: payload.phone,
     memberSince: payload.joinedAt,
+    emailVerified: payload.emailVerified ?? false,
   };
 }
 
@@ -129,5 +131,64 @@ export async function changePassword(
   } catch (error) {
     if (error instanceof ApiError) return { ok: false, reason: error.message };
     return { ok: false, reason: "Could not change your password." };
+  }
+}
+
+/* ------------------------------------------------------ account recovery */
+
+type Outcome = { ok: true; message: string } | { ok: false; reason: string; code?: string };
+
+async function attempt(run: () => Promise<unknown>, fallback: string, success: string): Promise<Outcome> {
+  try {
+    await run();
+    return { ok: true, message: success };
+  } catch (error) {
+    if (error instanceof ApiError) return { ok: false, reason: error.message, code: error.code };
+    return { ok: false, reason: fallback };
+  }
+}
+
+/**
+ * Ask for a reset link. The server answers the same way whether or not the
+ * address has an account, so this says nothing about which addresses do.
+ */
+export function requestPasswordReset(email: string): Promise<Outcome> {
+  return attempt(
+    () => apiPost("/auth/password/forgot", { email }),
+    "We couldn't send the link just now. Please try again.",
+    "If an account exists for that email, we've sent a link to reset the password.",
+  );
+}
+
+/** Whether a reset link can still be used — checked before the form is shown. */
+export function checkResetToken(token: string): Promise<Outcome> {
+  return attempt(() => apiPost("/auth/password/reset/check", { token }), "We couldn't check this link.", "");
+}
+
+export function resetPassword(token: string, password: string, confirmPassword: string): Promise<Outcome> {
+  return attempt(
+    () => apiPost("/auth/password/reset", { token, password, confirmPassword }),
+    "We couldn't change your password. Please try again.",
+    "Your password has been changed. Sign in with your new password.",
+  );
+}
+
+export function verifyEmail(token: string): Promise<Outcome> {
+  return attempt(() => apiPost("/auth/email/verify", { token }), "We couldn't confirm your email just now.",
+    "Your email address is confirmed.");
+}
+
+/** Send the verification link again to the signed-in customer. */
+export async function resendVerification(): Promise<Outcome & { alreadyVerified?: boolean }> {
+  try {
+    const data = await apiPost<{ alreadyVerified: boolean }>("/account/email/verification", {}, { auth: "customer" });
+    return {
+      ok: true,
+      alreadyVerified: data.alreadyVerified,
+      message: data.alreadyVerified ? "Your email address is already confirmed." : "We've sent a new link — check your inbox.",
+    };
+  } catch (error) {
+    if (error instanceof ApiError) return { ok: false, reason: error.message, code: error.code };
+    return { ok: false, reason: "We couldn't send the link just now." };
   }
 }

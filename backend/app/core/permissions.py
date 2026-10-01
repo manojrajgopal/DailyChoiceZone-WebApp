@@ -30,6 +30,14 @@ RESOURCES = (
     # Working support tickets, and configuring who handles them.
     "support",
     "support-config",
+    # Payment reconciliation and webhook events: viewing, and acting on them
+    # (resolving a discrepancy, replaying an event) — kept apart on purpose.
+    "payments",
+    "payments-manage",
+    # Pincode serviceability.
+    "shipping",
+    # Abandoned carts.
+    "carts",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -38,8 +46,10 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
     # can show what it covers.
     "super-admin": list(RESOURCES),
     # Configuring support — teams, routing, SLAs — is the super admin's.
-    "admin": [r for r in RESOURCES if r not in ("admins", "support-config")],
-    "manager": ["products", "orders", "customers", "reviews", "reports", "support"],
+    # Money-moving actions (resolving reconciliation, replaying webhooks) are
+    # the super admin's; an admin can see both.
+    "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage")],
+    "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts"],
     "editor": ["products", "content"],
     "staff": ["products", "orders", "reviews", "support"],
 }

@@ -81,6 +81,11 @@ COD_METHODS = {"cod"}
 class RazorpayError(RuntimeError):
     """The gateway refused, or could not be reached."""
 
+    def __init__(self, message: str = "", status: Optional[int] = None) -> None:
+        super().__init__(message)
+        # The HTTP status Razorpay answered with; None when it couldn't be reached.
+        self.status = status
+
 
 class RazorpayPaymentProvider:
     """The live provider. Test keys and live keys take the same code path."""
@@ -128,7 +133,7 @@ class RazorpayPaymentProvider:
             logger.error(
                 "Razorpay %s %s returned %s: %s", method, path, response.status_code, detail
             )
-            raise RazorpayError(detail or "The payment provider refused the request.")
+            raise RazorpayError(detail or "The payment provider refused the request.", status=response.status_code)
 
         return response.json()
 
@@ -526,6 +531,31 @@ class RazorpayPaymentProvider:
             return None
 
         return self._to_result(payment)
+
+    # ------------------------------------------------------- reconciliation
+    #
+    # Unlike `fetch`, these raise `RazorpayError` when the gateway can't be
+    # asked: reconciliation must tell "the gateway has no such payment" apart
+    # from "we couldn't find out", or it would report a missing payment that
+    # is merely an outage.
+
+    def payment_entity(self, payment_id: str) -> Dict[str, Any]:
+        return self._request("GET", f"/payments/{payment_id}")
+
+    def order_payment_entities(self, order_id: str) -> list:
+        return self._request("GET", f"/orders/{order_id}/payments").get("items", [])
+
+    def payments_between(self, start: int, end: int, *, limit: int = 2000) -> list:
+        """Every payment created in [start, end] (unix seconds), a page of 100 at a time."""
+        items: list = []
+        while len(items) < limit:
+            page = self._request(
+                "GET", "/payments", params={"from": start, "to": end, "count": 100, "skip": len(items)}
+            ).get("items", [])
+            items.extend(page)
+            if len(page) < 100:
+                break
+        return items[:limit]
 
     # --------------------------------------------------------------- refund
 

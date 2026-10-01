@@ -93,7 +93,7 @@ function PaymentStep() {
   const existingPaymentId = searchParams?.get("payment") ?? "";
   const settling = Boolean(existingPaymentId);
   const checkoutHydrated = useCheckoutHydrated();
-  const { lines, totals, breakdown, clear } = useCart();
+  const { lines, totals, breakdown, clear, delivery } = useCart();
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
@@ -632,6 +632,7 @@ function PaymentStep() {
             isPaying={busy}
             total={formatPrice(amountDue ?? totals.total)}
             cardContainer={`#${CARD_CONTAINER_ID}`}
+            codUnavailable={delivery !== null && delivery.serviceable && !delivery.codAvailable}
           />
 
           <div className="mt-6 flex items-start gap-3 rounded-card border border-sage-200 bg-sage-50 p-4">

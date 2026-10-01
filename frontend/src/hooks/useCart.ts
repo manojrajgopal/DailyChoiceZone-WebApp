@@ -111,6 +111,8 @@ export function useCart() {
   const billingState = useCheckoutStore(
     (state) => state.billingAddress?.state ?? state.address?.state ?? null,
   );
+  // Delivery is priced for where it's going, once checkout knows.
+  const deliveryPincode = useCheckoutStore((state) => state.address?.pincode ?? null);
 
   const [view, setView] = useState<cartService.CartView | null>(null);
   const [guestResolved, setGuestResolved] = useState<ResolvedCartLine[]>([]);
@@ -134,6 +136,7 @@ export function useCart() {
         couponCode: guestCoupon,
         deliveryMethod: deliveryMethodId,
         placeOfSupply: billingState,
+        pincode: deliveryPincode,
       })
       .then((result) => {
         if (!active) return;
@@ -150,7 +153,7 @@ export function useCart() {
     return () => {
       active = false;
     };
-  }, [hydrated, isSignedIn, guestCoupon, deliveryMethodId, billingState, version]);
+  }, [hydrated, isSignedIn, guestCoupon, deliveryMethodId, billingState, deliveryPincode, version]);
 
   /* ---------------------------------------------------------- guest cart */
 
@@ -329,6 +332,8 @@ export function useCart() {
     /** Why that code does not apply, when it does not. */
     couponError: isSignedIn ? (view?.couponError ?? null) : null,
     membership: isSignedIn ? (view?.membership ?? null) : null,
+    /** The delivery pincode's serviceability, once checkout has an address. */
+    delivery: isSignedIn ? (view?.delivery ?? null) : null,
     isLoading: !hydrated || isPending || isLoading,
     isEmpty: hydrated && !isPending && !isLoading && lines.length === 0,
     hydrated,
@@ -341,6 +346,8 @@ export function useCart() {
     applyCode,
     removeCode,
     clear,
+    /** Read the bag again from the server — after something outside this hook changed it. */
+    refresh,
   };
 }
 

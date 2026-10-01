@@ -1,5 +1,9 @@
 import {
   BadgePercent,
+  Scale,
+  ShoppingBag,
+  Truck,
+  Webhook,
   Boxes,
   Compass,
   CreditCard,
@@ -57,6 +61,10 @@ const ICONS = {
   content: FileText,
   navigation: Compass,
   support: LifeBuoy,
+  carts: ShoppingBag,
+  delivery: Truck,
+  reconciliation: Scale,
+  webhooks: Webhook,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

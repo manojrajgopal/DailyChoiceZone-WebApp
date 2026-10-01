@@ -93,7 +93,14 @@ def db(engine) -> Iterator[Session]:
     """
     connection = engine.connect()
     transaction = connection.begin()
-    session = sessionmaker(bind=connection, autoflush=False, future=True)()
+    # `create_savepoint`: the code under test commits and rolls back as it
+    # would against a real database — a rollback undoes only what came after
+    # the last commit — while the outer transaction still takes everything
+    # away at the end. Without it, a service's own `rollback()` (the failure
+    # paths) would discard the test's fixtures and leave later commits
+    # outside the transaction.
+    session = sessionmaker(bind=connection, autoflush=False, future=True,
+                           join_transaction_mode="create_savepoint")()
 
     try:
         yield session

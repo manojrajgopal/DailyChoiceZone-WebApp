@@ -343,6 +343,10 @@ def place_order(
     if not items:
         raise ValidationError("Your bag is empty.", error_code="CART_EMPTY")
 
+    from app.services import accounts as account_security
+
+    account_security.require_verified_to_order(db, customer)
+
     config = billing.billing_config(db)
     now = datetime.utcnow()
 
@@ -353,6 +357,15 @@ def place_order(
     # nothing compared the choice with the store's own settings.
     _require_payment_method(config, payment_method)
     _require_delivery_method(delivery_method)
+
+    # Where it's going, checked here rather than trusted from checkout: a
+    # pincode the store doesn't serve, or cash on delivery where it isn't
+    # offered, is refused before anything is reserved.
+    from app.services import serviceability
+
+    delivery = serviceability.enforce(
+        db, shipping_address.get("pincode", ""), payment_method=payment_method, delivery_method=delivery_method,
+    )
 
     provider = get_provider()
     holds_stock = _settles_later(provider, payment_method)
@@ -426,11 +439,12 @@ def place_order(
         method=delivery_method,
         coupon_waives_shipping=coupon_ships_free,
         member_waives_shipping=perks["freeDelivery"],
+        standard_fee=delivery.delivery_fee,
     )
     # Counted against the monthly quota only when the membership is what made
     # delivery free — not when the basket or a coupon already had.
     standard_fee = billing.calculate_shipping(
-        db, subtotal=subtotal, item_count=item_count, method=delivery_method
+        db, subtotal=subtotal, item_count=item_count, method=delivery_method, standard_fee=delivery.delivery_fee,
     )
     member_free_delivery = bool(perks["freeDelivery"] and standard_fee > 0 and not coupon_ships_free)
 
@@ -462,7 +476,7 @@ def place_order(
             payment_method=payment_method,
             delivery_method=delivery_method,
             delivery_fee=billing.to_major(shipping),
-            expected_delivery=_delivery_estimate(delivery_method),
+            expected_delivery=_delivery_estimate(delivery_method, days=_pincode_days(delivery, delivery_method)),
             item_count=item_count,
             subtotal=billing.to_major(breakdown["subtotal"]),
             catalogue_savings=billing.to_major(breakdown["productDiscount"]),
@@ -691,6 +705,11 @@ def place_order(
         for item in items:
             db.delete(item)
 
+        # A bag that had been left and came back is counted as recovered.
+        from app.services import cart_recovery
+
+        cart_recovery.on_order_placed(db, customer.id, order)
+
         db.commit()
 
     except Exception:
@@ -728,10 +747,19 @@ def _invoice_line(line: dict) -> dict:
     }
 
 
-def _delivery_estimate(method: str, from_date: Optional[datetime] = None) -> str:
+def _pincode_days(delivery, method: str) -> Optional[int]:
+    """The delivery time a listed pincode sets: its latest for standard, its earliest for express."""
+    if delivery is None or not delivery.listed:
+        return None
+    if method == "express":
+        return delivery.min_days if delivery.min_days is not None else None
+    return delivery.max_days
+
+
+def _delivery_estimate(method: str, from_date: Optional[datetime] = None, days: Optional[int] = None) -> str:
     """A date in plain language, counting business days only."""
     date = from_date or datetime.utcnow()
-    remaining = 2 if method == "express" else 5
+    remaining = days if days is not None else (2 if method == "express" else 5)
 
     while remaining > 0:
         date += timedelta(days=1)

@@ -6,6 +6,8 @@ export interface User {
   phone: string;
   /** ISO date. Shown on the profile page as "Member since". */
   memberSince: string;
+  /** Whether the email address has been confirmed with the emailed link. */
+  emailVerified?: boolean;
 }
 
 export interface Credentials {

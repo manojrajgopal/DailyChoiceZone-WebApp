@@ -58,6 +58,7 @@ def get_cart(
     coupon: Optional[str] = None,
     delivery_method: str = Query("standard", alias="deliveryMethod"),
     place_of_supply: Optional[str] = Query(None, alias="placeOfSupply"),
+    pincode: Optional[str] = Query(None, max_length=10),
     db: Session = Depends(get_db),
     customer: Customer = Depends(get_current_customer),
 ):
@@ -70,7 +71,7 @@ def get_cart(
     """
     payload = service.get_cart(
         db, customer, coupon_code=coupon, delivery_method=delivery_method,
-        place_of_supply=place_of_supply,
+        place_of_supply=place_of_supply, pincode=pincode,
     )
     return ok(_render(payload))
 

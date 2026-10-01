@@ -54,6 +54,9 @@ def get_current_customer(
     if customer.status != "active":
         raise AuthorizationError("This account has been suspended.", error_code="ACCOUNT_BLOCKED")
 
+    if _issued_before_password_change(payload, customer):
+        raise AuthenticationError("Your password was changed. Sign in again.", error_code="TOKEN_INVALID")
+
     return customer
 
 
@@ -76,7 +79,26 @@ def get_optional_customer(
         return None
 
     customer = db.get(Customer, payload.get("sub"))
-    return customer if customer and customer.status == "active" else None
+    if customer is None or customer.status != "active" or _issued_before_password_change(payload, customer):
+        return None
+    return customer
+
+
+def _issued_before_password_change(payload: dict, customer: Customer) -> bool:
+    """
+    A token issued before the password was last reset.
+
+    Tokens are stateless, so "sign out everywhere" is a timestamp: resetting a
+    password stamps `password_changed_at`, and anything issued before that
+    second stops working — the device that was used by whoever the reset was
+    meant to lock out included.
+    """
+    changed = getattr(customer, "password_changed_at", None)
+    if changed is None:
+        return False
+    import calendar
+
+    return int(payload.get("iat") or 0) < calendar.timegm(changed.utctimetuple())
 
 
 def get_current_admin(
@@ -122,6 +144,30 @@ def require_permission(permission: str):
             )
 
         return admin
+
+    return dependency
+
+
+def require_access(permission: str):
+    """
+    Like `require_permission`, for areas added after administrators were set up.
+
+    An administrator's stored `permissions` is a copy of their role's list,
+    taken when the role was assigned — so a permission added to a role later
+    (payments, shipping, carts…) would reach nobody until each account was
+    re-saved. This accepts the stored list **or** the role's current one; the
+    role table in `core.permissions` stays the single source of what a role
+    may do. Checked on the server, like every permission.
+    """
+
+    def dependency(admin: AdminUser = Depends(get_current_admin)) -> AdminUser:
+        from app.core.permissions import permissions_for
+
+        if admin.role == "super-admin":
+            return admin
+        if permission in (admin.permissions or []) or permission in permissions_for(admin.role):
+            return admin
+        raise AuthorizationError(f"Your role does not include '{permission}'.", error_code="PERMISSION_DENIED")
 
     return dependency
 

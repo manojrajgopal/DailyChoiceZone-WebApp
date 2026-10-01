@@ -10,6 +10,21 @@ from pydantic import EmailStr, Field, field_validator
 from app.schemas.base import CamelModel
 
 
+def password_strength(value: str) -> str:
+    """
+    A floor, not a policy — the one rule every new password meets.
+
+    Length does more for a password than a character-class rule, which
+    mostly teaches people to end everything with "1!". Eight characters
+    with at least one letter and one digit is the minimum worth enforcing.
+    """
+    if not any(c.isalpha() for c in value):
+        raise ValueError("Password must contain at least one letter.")
+    if not any(c.isdigit() for c in value):
+        raise ValueError("Password must contain at least one number.")
+    return value
+
+
 class RegisterRequest(CamelModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
@@ -20,18 +35,26 @@ class RegisterRequest(CamelModel):
     @field_validator("password")
     @classmethod
     def _strength(cls, value: str) -> str:
-        """
-        A floor, not a policy.
+        return password_strength(value)
 
-        Length does more for a password than a character-class rule, which
-        mostly teaches people to end everything with "1!". Eight characters
-        with at least one letter and one digit is the minimum worth enforcing.
-        """
-        if not any(c.isalpha() for c in value):
-            raise ValueError("Password must contain at least one letter.")
-        if not any(c.isdigit() for c in value):
-            raise ValueError("Password must contain at least one number.")
-        return value
+
+class ForgotPasswordRequest(CamelModel):
+    email: EmailStr
+
+
+class TokenRequest(CamelModel):
+    token: str = Field(min_length=1, max_length=200)
+
+
+class ResetPasswordRequest(CamelModel):
+    token: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=8, max_length=72)
+    confirm_password: str = Field(max_length=72)
+
+    @field_validator("password")
+    @classmethod
+    def _strength(cls, value: str) -> str:
+        return password_strength(value)
 
 
 class LoginRequest(CamelModel):
@@ -89,6 +112,7 @@ class CustomerOut(CamelModel):
     phone: str
     status: str
     joined_at: datetime
+    email_verified: bool = False
     addresses: List[AddressOut] = []
 
     @classmethod
@@ -102,6 +126,7 @@ class CustomerOut(CamelModel):
             phone=customer.phone,
             status=customer.status,
             joined_at=customer.joined_at,
+            email_verified=customer.email_verified_at is not None,
             addresses=[AddressOut.model_validate(a) for a in customer.addresses],
         )
 

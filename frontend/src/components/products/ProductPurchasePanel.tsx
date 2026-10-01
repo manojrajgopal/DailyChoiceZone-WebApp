@@ -7,6 +7,7 @@ import { Heart, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 
 import type { Product, SiteConfig } from "@/types";
 
+import { PincodeChecker } from "@/components/common/PincodeChecker";
 import { ColorPicker, QuantityStepper, SizePicker } from "@/components/common/VariantPickers";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -269,6 +270,9 @@ export function ProductPurchasePanel({
                 ? `Order today for arrival by ${arrivalDate}. `
                 : "Arrives in 3–5 business days. "}
               Free over {formatPrice(config.freeDeliveryThreshold)}.
+            </dd>
+            <dd className="mt-3">
+              <PincodeChecker />
             </dd>
           </div>
         </div>

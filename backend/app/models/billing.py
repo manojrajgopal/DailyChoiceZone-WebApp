@@ -354,8 +354,53 @@ class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 
     event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    event: Mapped[str] = mapped_column(String(60), nullable=False)
+    event: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
     # What processing it concluded, for the audit trail: "settled PAY012",
     # "ignored", "refunded late payment".
     result: Mapped[str] = mapped_column(String(60), nullable=False, default="", server_default="")
     received_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    # ---- monitoring (see `services/webhooks.py`)
+    # received | processing | processed | failed | retrying | ignored
+    # A duplicate delivery isn't a new row; it's counted in `duplicates`.
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="processed", server_default="processed")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    duplicates: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_duplicate_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    error: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
+    order_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    payment_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    gateway_payment_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True, index=True)
+    refund_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    # The fields processing reads — ids, amounts, statuses — never the
+    # customer's contact, card, bank or UPI details.
+    payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    attempt_log: Mapped[List["WebhookEventAttempt"]] = relationship(
+        back_populates="webhook_event", cascade="all, delete-orphan", order_by="WebhookEventAttempt.id",
+    )
+
+
+class WebhookEventAttempt(Base):
+    """One try at processing a webhook event: a delivery, a redelivery, or a replay from the portal."""
+
+    __tablename__ = "webhook_event_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("webhook_events.event_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    # delivery | redelivery | replay
+    trigger: Mapped[str] = mapped_column(String(20), nullable=False)
+    admin_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # processed | ignored | failed
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    result: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    error: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+
+    webhook_event: Mapped[WebhookEvent] = relationship(back_populates="attempt_log")

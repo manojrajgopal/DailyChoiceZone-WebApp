@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { CartView } from "@/components/cart/CartView";
 
@@ -16,5 +17,9 @@ export const metadata: Metadata = {
  * client component cannot export `metadata` — hence the split.
  */
 export default function CartPage() {
-  return <CartView />;
+  return (
+    <Suspense fallback={null}>
+      <CartView />
+    </Suspense>
+  );
 }

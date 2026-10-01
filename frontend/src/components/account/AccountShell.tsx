@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Crown, FileText, Heart, LifeBuoy, LogOut, MapPin, Package, Settings, User } from "lucide-react";
 
+import { VerifyEmailBanner } from "@/components/account/AccountRecovery";
 import { AuthPanel } from "@/components/account/AuthPanel";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -180,7 +181,10 @@ export function AccountShell({
           </nav>
         </aside>
 
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0">
+          {user.emailVerified === false ? <VerifyEmailBanner email={user.email} /> : null}
+          {children}
+        </div>
       </div>
     </div>
   );

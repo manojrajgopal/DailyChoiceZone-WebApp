@@ -1,4 +1,5 @@
 import type { CartLine, CartTotals, Coupon, Product, ResolvedCartLine } from "@/types";
+import type { PincodeCheck } from "@/services/deliveryService";
 import type { BillingBreakdown } from "@/types";
 
 import { apiDelete, apiGet, apiPost, apiPut, query } from "@/services/api/client";
@@ -42,6 +43,8 @@ export interface ServerCart {
   /** Why the code in the bag does not apply (any more), if it does not. */
   couponError?: string | null;
   membership?: MemberPerks | null;
+  /** Serviceability of the delivery pincode, when the bag was priced for one. */
+  delivery?: PincodeCheck | null;
 }
 
 /** The shopper's membership, as it applies to this bag. */
@@ -64,6 +67,7 @@ export interface CartView {
   coupon: Coupon | null;
   couponError: string | null;
   membership: MemberPerks | null;
+  delivery: PincodeCheck | null;
 }
 
 /* -------------------------------------------------------------- conversion */
@@ -120,6 +124,7 @@ function toView(cart: ServerCart): CartView {
     coupon: toTotals(cart).appliedCoupon,
     couponError: cart.couponError ?? null,
     membership: cart.membership ?? null,
+    delivery: cart.delivery ?? null,
   };
 }
 
@@ -129,12 +134,15 @@ export async function fetchCart(options: {
   couponCode?: string | null;
   deliveryMethod?: string;
   placeOfSupply?: string | null;
+  /** Price delivery for this pincode (its own fee, when the store sets one). */
+  pincode?: string | null;
 }): Promise<CartView> {
   const cart = await apiGet<ServerCart>(
     `/cart${query({
       coupon: options.couponCode ?? undefined,
       deliveryMethod: options.deliveryMethod,
       placeOfSupply: options.placeOfSupply ?? undefined,
+      pincode: options.pincode ?? undefined,
     })}`,
     AUTH,
   );
@@ -316,4 +324,22 @@ export function buildLineId(productId: string, size: string | null, color: strin
 
 export function isPurchasable(product: Product): boolean {
   return product.stock > 0;
+}
+
+/* ------------------------------------------------------------ bag reminders */
+
+export interface RecoveryChange {
+  name: string;
+  kind: "price" | "unavailable" | "sold-out";
+  message: string;
+  old?: number;
+  new?: number;
+}
+
+/**
+ * Back from a "you left something in your bag" email. Only the account the
+ * email went to can use the link; the answer says what changed since.
+ */
+export function openRecoveryLink(token: string): Promise<{ changes: RecoveryChange[]; restored: number }> {
+  return apiPost("/cart/recover", { token }, AUTH);
 }

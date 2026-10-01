@@ -123,6 +123,12 @@ def register(db: Session, payload: RegisterRequest) -> tuple[Customer, TokenOut]
 
     try:
         _claim_first_administrator(db, customer, password_hash)
+        db.flush()
+        # Queued on this transaction, so the email goes out only if the
+        # account is actually created.
+        from app.services import accounts
+
+        accounts.send_verification(db, customer)
         db.commit()
     except Exception:
         db.rollback()

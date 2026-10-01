@@ -115,6 +115,7 @@ export function PaymentMethods({
   isPaying,
   total,
   cardContainer,
+  codUnavailable = false,
 }: {
   onPay: (choice: Choice) => void;
   isPaying: boolean;
@@ -128,6 +129,8 @@ export function PaymentMethods({
    * what a screen too narrow to embed actually wants.
    */
   cardContainer?: string;
+  /** The delivery pincode doesn't offer cash on delivery (the server refuses it too). */
+  codUnavailable?: boolean;
 }) {
   const [methods, setMethods] = useState<AvailableMethods | null>(null);
   const [failed, setFailed] = useState(false);
@@ -419,7 +422,11 @@ export function PaymentMethods({
       ) : null}
 
       {/* ------------------------------------------------ cash on delivery */}
-      {available.has("cod") ? (
+      {available.has("cod") && codUnavailable ? (
+        <p className="rounded-card border border-ink-200 bg-shell px-4 py-3 text-xs leading-relaxed text-ink-500">
+          Cash on delivery isn&rsquo;t available for your delivery PIN code. Please choose another way to pay.
+        </p>
+      ) : available.has("cod") ? (
         <Panel
           id="cod"
           open={open}

@@ -82,6 +82,14 @@ ADDED_NAV_ITEMS = [
                         "icon": "support", "badge": "openTickets"}),
     ("/admin/settings/email", {"id": "support-settings", "label": "Support setup",
                                "href": "/admin/support/settings", "icon": "settings"}),
+    ("/admin/membership", {"id": "abandoned-carts", "label": "Abandoned carts", "href": "/admin/carts",
+                           "icon": "carts"}),
+    ("/admin/inventory", {"id": "pincodes", "label": "Delivery pincodes", "href": "/admin/delivery",
+                          "icon": "delivery"}),
+    ("/admin/billing", {"id": "reconciliation", "label": "Reconciliation", "href": "/admin/payments/reconciliation",
+                        "icon": "reconciliation"}),
+    ("/admin/payments/reconciliation", {"id": "webhooks", "label": "Payment webhooks",
+                                        "href": "/admin/payments/webhooks", "icon": "webhooks"}),
 ]
 
 

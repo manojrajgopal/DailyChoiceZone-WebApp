@@ -62,10 +62,15 @@ async def lifespan(_: FastAPI):
 
     bounce_sweeper = asyncio.create_task(email_bounces.run_forever())
 
+    # Bags left behind: mark them, send the reminders, count what comes back.
+    from app.services import cart_recovery
+
+    cart_sweeper = asyncio.create_task(cart_recovery.run_forever())
+
     try:
         yield
     finally:
-        for task in (sweeper, support_sweeper, bounce_sweeper):
+        for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper):
             if task is None:
                 continue
             task.cancel()

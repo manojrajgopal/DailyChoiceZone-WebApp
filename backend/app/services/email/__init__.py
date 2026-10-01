@@ -101,6 +101,16 @@ TYPES: Dict[str, dict] = {
         "description": "New, assigned, escalated and overdue requests — sent to your support staff, not to customers.",
         "enabled": True, "optOut": False, "internal": True,
     },
+    "account_security": {
+        "label": "Account security",
+        "description": "Confirming your email address, resetting your password and password-change alerts.",
+        "enabled": True, "optOut": False,
+    },
+    "cart_reminders": {
+        "label": "Bag reminders",
+        "description": "A reminder when you leave items in your bag.",
+        "enabled": True, "optOut": True,
+    },
     "offers": {
         "label": "Offers & new arrivals",
         "description": "Sales, new collections and member-only offers.",

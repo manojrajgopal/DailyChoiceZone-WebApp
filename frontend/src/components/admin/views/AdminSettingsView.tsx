@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 
 import type { StoreSettings } from "@/types/admin";
 
-import { AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import {
   AdminInput,
   AdminSelect,
@@ -22,7 +22,13 @@ import {
   type SettingsSection,
 } from "@/components/admin/ui/SettingsLayout";
 import { useAdminResource } from "@/hooks/useAdminResource";
+import {
+  getAccountSecuritySettings,
+  saveAccountSecuritySettings,
+  type AccountSecuritySettings,
+} from "@/services/admin/operationsAdminService";
 import { getSettings, saveSettings } from "@/services/admin/settingsAdminService";
+import { ApiError } from "@/services/api/client";
 import { toast } from "@/store/toastStore";
 
 /**
@@ -32,7 +38,7 @@ import { toast } from "@/store/toastStore";
  * the cart prices against, and the contact details are the ones in the footer.
  * That is the point of putting them in data rather than in code.
  */
-const SECTION_IDS = ["general", "contact", "social", "shipping", "tax", "notifications"];
+const SECTION_IDS = ["general", "contact", "social", "shipping", "tax", "notifications", "accounts"];
 
 export function AdminSettingsView() {
   const { data, isLoading, reload } = useAdminResource(() => getSettings(), []);
@@ -364,6 +370,12 @@ export function AdminSettingsView() {
         </FormSection>
       ),
     },
+    {
+      id: "accounts",
+      label: "Account security",
+      group: "Alerts",
+      content: <AccountSecuritySection />,
+    },
   ];
 
   return (
@@ -384,5 +396,80 @@ export function AdminSettingsView() {
         saveLabel="Save settings"
       />
     </div>
+  );
+}
+
+/**
+ * Password-reset and email-verification links. Saved on its own — it lives in
+ * a separate document from the store settings above.
+ */
+function AccountSecuritySection() {
+  const loaded = useAdminResource(getAccountSecuritySettings, []);
+  const [draft, setDraft] = useState<AccountSecuritySettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const value = draft ?? loaded.data;
+
+  const save = async () => {
+    if (!value) return;
+    setSaving(true);
+    try {
+      await saveAccountSecuritySettings(value);
+      toast.success("Account security settings saved");
+      setDraft(null);
+      await loaded.reload();
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "The settings weren't saved.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!value) {
+    return <p className="text-sm text-admin-muted">{loaded.error ? "These settings didn't load." : "Loading…"}</p>;
+  }
+  return (
+    <FormSection
+      title="Account security"
+      description="How long emailed account links work, and whether an unconfirmed email address can place orders."
+    >
+      <FormGrid>
+        <AdminInput
+          label="Password-reset links last (minutes)"
+          type="number"
+          min={10}
+          max={1440}
+          value={value.resetMinutes}
+          onChange={(event) => setDraft({ ...value, resetMinutes: Number(event.target.value) })}
+          hint="10 minutes to a day. Each link works once."
+        />
+        <AdminInput
+          label="Email-confirmation links last (hours)"
+          type="number"
+          min={1}
+          max={336}
+          value={value.verificationHours}
+          onChange={(event) => setDraft({ ...value, verificationHours: Number(event.target.value) })}
+          hint="1 hour to 14 days."
+        />
+      </FormGrid>
+      <div className="mt-4">
+        <AdminToggle
+          label="Require a confirmed email address to place an order"
+          description="Customers who haven't clicked their confirmation link are asked to before checking out."
+          checked={value.requireVerifiedEmailToOrder}
+          onChange={(requireVerifiedEmailToOrder) => setDraft({ ...value, requireVerifiedEmailToOrder })}
+        />
+      </div>
+      <div className="mt-5 flex gap-2">
+        <AdminButton variant="primary" onClick={() => void save()} loading={saving} disabled={!draft}>
+          Save account security
+        </AdminButton>
+        {draft ? (
+          <AdminButton variant="ghost" onClick={() => setDraft(null)}>
+            Discard
+          </AdminButton>
+        ) : null}
+      </div>
+    </FormSection>
   );
 }

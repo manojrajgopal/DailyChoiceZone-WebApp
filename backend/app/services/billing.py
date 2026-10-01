@@ -394,6 +394,7 @@ def calculate_shipping(
     method: str = "standard",
     coupon_waives_shipping: bool = False,
     member_waives_shipping: bool = False,
+    standard_fee: Optional[Money] = None,
 ) -> Money:
     """
     Delivery.
@@ -411,7 +412,9 @@ def calculate_shipping(
         return 0
 
     shipping = store_settings(db).get("shipping") or {}
-    standard = to_minor(shipping.get("standardFee", 0))
+    # A pincode can carry its own standard fee (see `services.serviceability`);
+    # the free-delivery threshold and waivers below still apply to it.
+    standard = standard_fee if standard_fee is not None else to_minor(shipping.get("standardFee", 0))
     express = to_minor(shipping.get("expressFee", 0))
     threshold = shipping.get("freeDeliveryThreshold")
 

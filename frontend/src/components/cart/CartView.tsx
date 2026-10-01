@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Lock } from "lucide-react";
 
 import { CartLineRow } from "@/components/cart/CartLineRow";
+import { CartRecoveryNotice } from "@/components/cart/CartRecoveryNotice";
 import { MemberPerksNote } from "@/components/cart/MemberPerksNote";
 import { CouponForm } from "@/components/cart/CouponForm";
 import { OrderSummary } from "@/components/cart/OrderSummary";
@@ -36,6 +37,7 @@ export function CartView() {
     setQuantity,
     applyCode,
     removeCode,
+    refresh,
   } = useCart();
 
   const hasOutOfStock = lines.some((line) => line.product.stock <= 0);
@@ -52,6 +54,8 @@ export function CartView() {
           </span>
         ) : null}
       </h1>
+
+      <CartRecoveryNotice onRestored={refresh} />
 
       {isLoading ? (
         <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_22rem]">

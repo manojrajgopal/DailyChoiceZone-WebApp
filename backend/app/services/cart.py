@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import CartItem, Coupon, Customer, Product, WishlistItem
 from app.repositories import products as product_repo
-from app.services import billing
+from app.services import billing, cart_recovery
 from app.services.coupons import validate_coupon
 
 MAX_QUANTITY_PER_LINE = 10
@@ -112,6 +112,7 @@ def add_item(
         )
         db.add(item)
 
+    cart_recovery.touch(db, customer.id)
     db.commit()
     db.refresh(item)
     return item
@@ -125,10 +126,12 @@ def update_quantity(db: Session, customer: Customer, item_id: int, quantity: int
 
     if quantity <= 0:
         db.delete(item)
+        cart_recovery.touch(db, customer.id)
         db.commit()
         return None
 
     item.quantity = min(quantity, MAX_QUANTITY_PER_LINE, max(1, item.product.available_stock))
+    cart_recovery.touch(db, customer.id)
     db.commit()
     db.refresh(item)
     return item
@@ -140,11 +143,13 @@ def remove_item(db: Session, customer: Customer, item_id: int) -> None:
         raise NotFoundError("That item is not in your bag.", error_code="CART_ITEM_NOT_FOUND")
 
     db.delete(item)
+    cart_recovery.touch(db, customer.id)
     db.commit()
 
 
 def clear(db: Session, customer: Customer) -> None:
     db.execute(delete(CartItem).where(CartItem.customer_id == customer.id))
+    cart_recovery.touch(db, customer.id)
     db.commit()
 
 
@@ -155,6 +160,7 @@ def get_cart(
     coupon_code: Optional[str] = None,
     delivery_method: str = "standard",
     place_of_supply: Optional[str] = None,
+    pincode: Optional[str] = None,
 ) -> dict:
     """
     The bag, priced.
@@ -203,6 +209,14 @@ def get_cart(
     subtotal = sum(line.unit_price * line.quantity for line in lines)
     item_count = sum(line.quantity for line in lines)
 
+    # Priced for the delivery pincode when checkout knows it, so the figure
+    # shown is the one the order is created with.
+    delivery = None
+    if pincode:
+        from app.services import serviceability
+
+        delivery = serviceability.check(db, pincode)
+
     shipping = billing.calculate_shipping(
         db,
         subtotal=subtotal,
@@ -210,6 +224,7 @@ def get_cart(
         method=delivery_method,
         coupon_waives_shipping=bool(coupon and coupon.get("type") == "free-shipping"),
         member_waives_shipping=perks["freeDelivery"],
+        standard_fee=delivery.delivery_fee if delivery is not None and delivery.serviceable else None,
     )
 
     state = place_of_supply or billing.tax_config(db).get("originState", "")
@@ -243,6 +258,7 @@ def get_cart(
         ],
         "breakdown": result["breakdown"],
         "freeDeliveryShortfall": max(0, threshold - subtotal),
+        "delivery": delivery.view(db) if delivery is not None else None,
         "appliedCoupon": coupon,
         "couponError": coupon_error,
         "membership": (
