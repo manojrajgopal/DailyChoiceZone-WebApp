@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -65,3 +65,6 @@ class EmailLog(Base):
     # notice to it; and when a bounce turned a "sent" into "failed".
     provider_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     bounced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # The template it was written from, and its record in notification_deliveries.
+    template_key: Mapped[str] = mapped_column(String(60), nullable=False, default="", server_default="")
+    delivery_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True, index=True)

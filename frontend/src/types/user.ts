@@ -20,6 +20,8 @@ export interface RegisterInput extends Credentials {
   lastName: string;
   /** A friend's referral code. Checked by the server; an invalid one is refused. */
   referralCode?: string;
+  /** Ticked "send me offers" — marketing email consent. Off unless ticked. */
+  marketingOptIn?: boolean;
 }
 
 export interface AuthSession {

@@ -82,11 +82,20 @@ async def lifespan(_: FastAPI):
     referral_sweeper = asyncio.create_task(referrals.run_forever())
     health_sweeper = asyncio.create_task(health_service.run_forever())
 
+    # Messages on every channel (and their retries), campaigns, and backups.
+    from app.services import backups
+    from app.services.messaging import campaigns, service as messaging
+
+    message_sweeper = asyncio.create_task(messaging.run_forever())
+    campaign_sweeper = asyncio.create_task(campaigns.run_forever())
+    backup_sweeper = asyncio.create_task(backups.run_forever())
+
     try:
         yield
     finally:
         for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper, alert_sweeper, rewards_sweeper,
-                     flash_sweeper, referral_sweeper, health_sweeper):
+                     flash_sweeper, referral_sweeper, health_sweeper, message_sweeper, campaign_sweeper,
+                     backup_sweeper):
             if task is None:
                 continue
             task.cancel()

@@ -15,3 +15,8 @@ next-env.d.ts
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Database backups and other runtime data: never committed (they hold customer data).
+backend/var/
+*.sql.gz
+*.sql.gz.enc

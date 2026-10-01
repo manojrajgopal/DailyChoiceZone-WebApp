@@ -312,8 +312,16 @@ def nav_counts(
             "openTickets": open_tickets,
             "pendingQuestions": question_service.pending_count(db),
             "referralsInReview": _referrals_in_review(db),
+            "failedNotifications": _failed_notifications(db),
         }
     )
+
+
+def _failed_notifications(db: Session) -> int:
+    from app.models import NotificationDelivery
+
+    return int(db.execute(select(func.count()).select_from(NotificationDelivery).where(
+        NotificationDelivery.status == "dead", NotificationDelivery.category == "transactional")).scalar_one())
 
 
 def _referrals_in_review(db: Session) -> int:

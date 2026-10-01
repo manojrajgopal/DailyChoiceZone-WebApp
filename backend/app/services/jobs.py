@@ -32,6 +32,9 @@ EXPECTED = {
     "flash_sales": "Flash sale announcements",
     "referrals": "Referral expiry",
     "health": "Health checks",
+    "notifications": "Sending and retrying notifications",
+    "campaigns": "Sending marketing campaigns",
+    "backups": "Database backups",
 }
 
 

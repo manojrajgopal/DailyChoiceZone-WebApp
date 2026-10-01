@@ -109,6 +109,11 @@ ADDED_NAV_ITEMS = [
     ("/admin/payments/webhooks", {"id": "audit-logs", "label": "Audit log", "href": "/admin/audit-logs",
                                   "icon": "audit"}),
     ("/admin/audit-logs", {"id": "health", "label": "System health", "href": "/admin/health", "icon": "health"}),
+    ("/admin/flash-sales", {"id": "campaigns", "label": "Campaigns", "href": "/admin/marketing/campaigns",
+                            "icon": "campaigns"}),
+    ("/admin/settings/email", {"id": "notifications", "label": "Notifications", "href": "/admin/notifications",
+                               "icon": "notifications", "badge": "failedNotifications"}),
+    ("/admin/health", {"id": "backups", "label": "Backups", "href": "/admin/settings/backups", "icon": "backups"}),
 ]
 
 

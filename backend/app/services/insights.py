@@ -55,6 +55,7 @@ from app.models import (
     OrderItem,
     Product,
     Referral,
+    ReorderEvent,
     Refund,
     ReturnRequest,
     ReturnRequestItem,
@@ -207,6 +208,7 @@ def _fingerprint(db: Session) -> tuple:
         db.execute(select(func.count(Customer.id))).scalar(),
         db.execute(select(func.max(Referral.updated_at))).scalar(),
         db.execute(select(func.max(FlashSaleClaim.updated_at))).scalar(),
+        db.execute(select(func.max(ReorderEvent.id))).scalar(),
     )
 
 
@@ -362,7 +364,10 @@ def customers(db: Session, p: Period, cmp: Optional[Period], unit: str) -> dict:
     for when, n in signup_rows:
         b = _bucket(_as_date(when), unit)
         by_bucket[b] = by_bucket.get(b, 0) + int(n)
+    from app.services import reorder
+
     return {
+        "reorders": reorder.metrics(db, start=p.start, end=p.end),
         "metrics": {k: _metric(current[k], previous[k] if previous else None, f) for k, f in formats.items()},
         "lifetimeValue": round(float(lifetime[0]) / int(lifetime[1]), 2) if lifetime[1] else 0.0,
         "signupSeries": [{"label": b.isoformat(), "value": by_bucket.get(b, 0)} for b in _buckets(p, unit)],

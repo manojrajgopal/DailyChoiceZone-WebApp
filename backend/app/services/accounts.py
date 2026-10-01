@@ -183,14 +183,36 @@ def _link(path: str, raw: str) -> str:
 
 
 def _send(db: Session, customer: Customer, *, subject: str, title: str, intro: str,
-          cta: Optional[tuple], text: str, reference: str) -> None:
+          cta: Optional[tuple], text: str, reference: str, event: Optional[str] = None,
+          link: str = "") -> None:
     from app.services import email as email_service
 
     footnote = ("You're receiving this because of a request on your Daily Choice Zone account. "
                 "If it wasn't you, you can ignore this email — nothing changes until the link is used.")
     html = email_service.layout(title, intro, cta=cta, footnote=footnote)
+    base = app_settings.STOREFRONT_URL.rstrip("/")
     email_service.notify(db, "account_security", to=customer.email, customer_id=customer.id,
-                         subject=subject, html=html, text=text, reference=reference)
+                         subject=subject, html=html, text=text, reference=reference, event=event,
+                         variables={"action_url": link, "account_url": f"{base}/account"})
+
+
+def send_welcome(db: Session, customer: Customer) -> None:
+    """Once the address is confirmed: the account is ready. The caller commits."""
+    from app.services import email as email_service
+
+    base = app_settings.STOREFRONT_URL.rstrip("/")
+    name = html_lib.escape(customer.first_name or "there")
+    html = email_service.layout(
+        f"Welcome, {customer.first_name or 'there'}",
+        f"Hello {name}, your email is confirmed and your account is ready. Save favourites to your wishlist, "
+        "track your orders and arrange returns, all from your account.",
+        cta=("Start shopping", base),
+    )
+    email_service.notify(db, "account_security", to=customer.email, customer_id=customer.id,
+                         subject="Welcome to Daily Choice Zone", html=html,
+                         text=f"Welcome to Daily Choice Zone. Your account is ready: {base}",
+                         reference="welcome", event="welcome",
+                         variables={"account_url": f"{base}/account"}, idempotency_key=f"welcome:{customer.id}")
 
 
 def send_verification(db: Session, customer: Customer) -> None:
@@ -209,7 +231,7 @@ def send_verification(db: Session, customer: Customer) -> None:
         cta=("Confirm my email", link),
         text=(f"Hello {customer.first_name}, confirm your email address for Daily Choice Zone: {link}\n"
               f"The link works for {lifetime}."),
-        reference="verify-email",
+        reference="verify-email", event="email_verification", link=link,
     )
 
 
@@ -229,6 +251,7 @@ def verify_email(db: Session, raw: str) -> Customer:
     token.revoked_reason = "used"
     if customer.email_verified_at is None:
         customer.email_verified_at = now
+        send_welcome(db, customer)
     db.commit()
     return customer
 
@@ -262,7 +285,7 @@ def request_password_reset(db: Session, email: str) -> None:
         cta=("Choose a new password", link),
         text=(f"Reset your Daily Choice Zone password (works once, for {minutes} minutes): {link}\n"
               "If you didn't ask for this, ignore this email."),
-        reference="password-reset",
+        reference="password-reset", event="password_reset", link=link,
     )
     db.commit()
 
@@ -302,7 +325,7 @@ def reset_password(db: Session, raw: str, new_password: str) -> Customer:
         cta=None,
         text="The password for your Daily Choice Zone account was just changed. If this wasn't you, reset it "
              "again and contact support.",
-        reference="password-changed",
+        reference="password-changed", event="password_changed",
     )
     db.commit()
     logger.info("Password reset completed for customer %s", customer.id)

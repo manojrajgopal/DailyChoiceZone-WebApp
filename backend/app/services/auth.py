@@ -131,6 +131,11 @@ def register(db: Session, payload: RegisterRequest, *, ip: str = "") -> tuple[Cu
             from app.services import referrals
 
             referrals.attach_at_signup(db, customer, payload.referral_code, ip)
+        if payload.marketing_opt_in is not None:
+            from app.services.messaging import service as messaging
+
+            # Ticked by default; unticking it is a "no" that's kept.
+            messaging.set_consent(db, customer.id, "email", "marketing", bool(payload.marketing_opt_in), source="signup")
         # Queued on this transaction, so the email goes out only if the
         # account is actually created.
         from app.services import accounts
@@ -167,9 +172,27 @@ def login_customer(db: Session, payload: LoginRequest) -> tuple[Customer, TokenO
         )
 
     customer.last_login_at = datetime.utcnow()
+    _login_alert(db, customer)
     db.commit()
 
     return customer, _token_for(customer.id, "customer")
+
+
+def _login_alert(db: Session, customer: Customer) -> None:
+    """The sign-in alert — off unless the store switches it on in Notifications."""
+    from app.core.config import settings as app_settings
+    from app.services import email as email_service
+
+    base = app_settings.STOREFRONT_URL.rstrip("/")
+    email_service.notify(
+        db, "account_security", to=customer.email, customer_id=customer.id,
+        subject="New sign-in to your Daily Choice Zone account",
+        html=email_service.layout("A new sign-in to your account",
+                                  "Your account was just signed in to. If this was you, there's nothing to do. If not, "
+                                  "reset your password now.", cta=("Go to your account", f"{base}/account")),
+        text="Your Daily Choice Zone account was just signed in to. Not you? Reset your password.",
+        reference="login", event="login_alert", variables={"account_url": f"{base}/account"}, inbox=False,
+    )
 
 
 def update_customer(db: Session, customer: Customer, payload: CustomerUpdate) -> Customer:
@@ -191,7 +214,31 @@ def change_password(db: Session, customer: Customer, payload: PasswordChange) ->
         raise AuthenticationError("Your current password is not correct.", error_code="INVALID_CREDENTIALS")
 
     customer.password_hash = hash_password(payload.new_password)
+    notify_password_changed(db, customer)
     db.commit()
+
+
+def notify_password_changed(db: Session, customer: Customer) -> None:
+    """Tell the owner — by email, and by SMS where the store sends it."""
+    import html as html_lib
+
+    from app.core.config import settings as app_settings
+    from app.services import email as email_service
+
+    base = app_settings.STOREFRONT_URL.rstrip("/")
+    name = html_lib.escape(customer.first_name or "there")
+    email_service.notify(
+        db, "account_security", to=customer.email, customer_id=customer.id,
+        subject="Your password was changed",
+        html=email_service.layout(
+            "Your password was changed",
+            f"Hello {name}, the password for your account was just changed from your account settings. If this "
+            "wasn't you, reset your password straight away and contact our support team.",
+            cta=("Go to your account", f"{base}/account")),
+        text="The password for your Daily Choice Zone account was just changed. If this wasn't you, reset it and "
+             "contact support.",
+        reference="password-changed", event="password_changed", variables={"account_url": f"{base}/account"},
+    )
 
 
 # ------------------------------------------------------------- addresses

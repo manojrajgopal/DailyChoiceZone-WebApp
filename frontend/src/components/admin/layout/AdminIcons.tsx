@@ -1,4 +1,7 @@
 import {
+  Bell,
+  DatabaseBackup,
+  Megaphone,
   Activity,
   BarChart3,
   History,
@@ -87,6 +90,9 @@ const ICONS = {
   analytics: BarChart3,
   audit: History,
   health: Activity,
+  campaigns: Megaphone,
+  notifications: Bell,
+  backups: DatabaseBackup,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

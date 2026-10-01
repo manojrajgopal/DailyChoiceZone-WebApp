@@ -57,6 +57,12 @@ RESOURCES = (
     "analytics",
     "audit-logs",
     "health",
+    # Customer messages on every channel (templates, history, retries), and
+    # marketing campaigns, which reach many customers at once.
+    "notifications",
+    "campaigns",
+    # Database backups hold every customer's data: the super admin's unless granted.
+    "backups",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -67,9 +73,9 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
     # Configuring support — teams, routing, SLAs — is the super admin's.
     # Money-moving actions (resolving reconciliation, replaying webhooks) are
     # the super admin's; an admin can see both.
-    "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage", "audit-logs")],
+    "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage", "audit-logs", "backups")],
     "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts", "alerts", "questions",
-                "flash-sales", "bundles", "analytics"],
+                "flash-sales", "bundles", "analytics", "campaigns"],
     "editor": ["products", "content", "questions", "bundles"],
     "staff": ["products", "orders", "reviews", "support", "questions"],
 }

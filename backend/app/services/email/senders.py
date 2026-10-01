@@ -53,8 +53,13 @@ def build_message(
     message["Message-ID"] = make_msgid(domain=(sender_email.split("@")[-1] or "localhost"))
     if reply_to:
         message["Reply-To"] = reply_to
+    from app.services.email.templates import LOGO_CID, embed_logo
+
+    html, logo = embed_logo(html)
     message.set_content(text or " ")
     message.add_alternative(html, subtype="html")
+    if logo:
+        message.get_payload()[1].add_related(logo, "image", "png", cid=f"<{LOGO_CID}>", filename="logo.png")
     return message
 
 

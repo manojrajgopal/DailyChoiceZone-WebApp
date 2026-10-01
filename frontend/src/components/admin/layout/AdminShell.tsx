@@ -13,7 +13,7 @@ import { adminDataSource } from "@/services/admin/admin-data-source.instance";
 import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar, type NavBadges } from "./AdminSidebar";
 
-const NO_BADGES: NavBadges = { lowStock: 0, openOrders: 0, pendingReviews: 0, openReturns: 0, openTickets: 0, pendingQuestions: 0, referralsInReview: 0 };
+const NO_BADGES: NavBadges = { lowStock: 0, openOrders: 0, pendingReviews: 0, openReturns: 0, openTickets: 0, pendingQuestions: 0, referralsInReview: 0, failedNotifications: 0 };
 
 /**
  * The frame every admin page renders inside.

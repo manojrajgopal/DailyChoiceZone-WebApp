@@ -266,7 +266,9 @@ def _send_reminder(db: Session, row: CartRecovery, customer: Customer, stage: in
     text = f"{title}. Return to your bag: {link}\nTurn off bag reminders in your account settings."
     return email_service.notify(db, "cart_reminders", to=customer.email, customer_id=customer.id,
                                 subject=f"{title} — Daily Choice Zone", html=html, text=text,
-                                reference=f"cart-{row.id}")
+                                reference=f"cart-{row.id}", event="abandoned_cart",
+                                variables={"cart_url": link, "item_count": str(row.item_count or "")},
+                                extra_html=table)
 
 
 def sweep(db: Session, now: Optional[datetime] = None) -> dict:

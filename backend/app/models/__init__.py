@@ -140,3 +140,12 @@ from app.models.growth import (  # noqa: E402
     ReferralCode,
 )
 from app.models.monitoring import AnalyticsEvent, AuditLog, HealthSnapshot, JobHeartbeat  # noqa: E402
+from app.models.messaging import (  # noqa: E402
+    CampaignRecipient,
+    ChannelPreference,
+    DatabaseBackup,
+    MarketingCampaign,
+    NotificationDelivery,
+    NotificationTemplate,
+    ReorderEvent,
+)

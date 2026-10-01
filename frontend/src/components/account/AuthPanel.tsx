@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
+import { Checkbox, Input } from "@/components/ui/Field";
 import { useSession } from "@/hooks/useSession";
 import { safeRedirect } from "@/lib/utils/safeRedirect";
 import { forgetReferralCode, rememberReferralCode, rememberedReferralCode } from "@/services/growthService";
@@ -51,6 +51,7 @@ export function AuthPanel() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [offers, setOffers] = useState(true);
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -59,7 +60,7 @@ export function AuthPanel() {
       const result =
         mode === "signin"
           ? await signIn({ email, password })
-          : await register({ firstName, lastName, email, password, referralCode: referralCode.trim() || undefined });
+          : await register({ firstName, lastName, email, password, referralCode: referralCode.trim() || undefined, marketingOptIn: offers });
 
       if (result.ok && mode === "register") forgetReferralCode();
 
@@ -154,6 +155,11 @@ export function AuthPanel() {
             autoComplete="off"
             hint="From a friend who shops with us. You both get a reward after your first order."
           />
+        ) : null}
+
+        {mode === "register" ? (
+          <Checkbox label="Email me about offers and new arrivals (you can stop any time)" checked={offers}
+            onChange={(event) => setOffers(event.target.checked)} />
         ) : null}
 
         {mode === "signin" ? (

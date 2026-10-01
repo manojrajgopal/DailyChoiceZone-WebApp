@@ -7,6 +7,7 @@ import { ArrowRight } from "lucide-react";
 import type { Order } from "@/types";
 
 import { AccountShell } from "@/components/account/AccountShell";
+import { ReorderDialog } from "@/components/account/ReorderDialog";
 import { EmptyState } from "@/components/common/States";
 import { ProductImage } from "@/components/common/ProductImage";
 import { OrderStatusBadge } from "@/components/account/OrderStatusBadge";
@@ -20,6 +21,7 @@ export function OrdersView() {
   const { isSignedIn } = useSession();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [reordering, setReordering] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -115,10 +117,17 @@ export function OrdersView() {
                   </span>
                 </p>
               </Link>
+              {order.status !== "pending" ? (
+                <button type="button" onClick={() => setReordering(order.id)}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-copper-700 underline-offset-2 hover:underline">
+                  Order again
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
+      {reordering ? <ReorderDialog orderId={reordering} open onClose={() => setReordering(null)} /> : null}
     </AccountShell>
   );
 }

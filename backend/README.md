@@ -622,6 +622,10 @@ fail to verify, and — endpoint by endpoint — who is allowed to call what.
 
 ---
 
+## Reorder, notifications, campaigns and backups
+
+Reorder, multi-channel notifications (email, SMS, WhatsApp, in-app) with retries, the branded email templates, marketing campaigns and automated encrypted database backups are documented in [docs/messaging-and-backups.md](../docs/messaging-and-backups.md) — architecture, provider set-up, environment variables, restore steps and tests.
+
 ## Configuration
 
 Everything is read from `.env`; `.env.example` lists it all. Nothing is

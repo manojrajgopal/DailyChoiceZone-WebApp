@@ -9,6 +9,7 @@ import type { Order } from "@/types";
 
 import { AccountShell } from "@/components/account/AccountShell";
 import { OrderReturns } from "@/components/account/OrderReturns";
+import { ReorderDialog } from "@/components/account/ReorderDialog";
 import {
   ORDER_TIMELINE,
   OrderStatusBadge,
@@ -28,6 +29,7 @@ import { formatDate, formatPrice } from "@/lib/utils/format";
 
 /** A single order: status tracker, items, addresses and the money breakdown. */
 export function OrderDetailView() {
+  const [reorderKey, setReorderKey] = useState<string | null | undefined>(undefined);
   /**
    * The order number arrives as `?number=` rather than a path segment.
    *
@@ -161,6 +163,9 @@ export function OrderDetailView() {
               {order.paymentMethod.name}
             </p>
             <div className="flex items-center gap-3">
+              {order.status !== "pending" ? (
+                <Button size="sm" variant="secondary" onClick={() => setReorderKey(null)}>Order again</Button>
+              ) : null}
               {canCancel ? (
                 <button
                   type="button"
@@ -372,13 +377,20 @@ export function OrderDetailView() {
                     </p>
                   </div>
 
-                  <p className="shrink-0 text-sm text-ink tabular-nums">
-                    {formatPrice(line.lineTotal)}
-                  </p>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm text-ink tabular-nums">{formatPrice(line.lineTotal)}</p>
+                    {line.id && !line.bundleName && order.status !== "pending" ? (
+                      <button type="button" onClick={() => setReorderKey(`item:${line.id}`)}
+                        className="mt-1 text-xs text-copper-700 underline-offset-2 hover:underline">Add to bag again</button>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
           </section>
+          {reorderKey !== undefined ? (
+            <ReorderDialog orderId={order.id} open only={reorderKey ?? undefined} onClose={() => setReorderKey(undefined)} />
+          ) : null}
 
           {/* ------------------------------------------- address and totals */}
           <div className="grid gap-4 sm:grid-cols-2">

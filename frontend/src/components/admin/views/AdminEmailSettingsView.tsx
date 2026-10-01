@@ -111,7 +111,7 @@ function draftFrom(account: EmailAccount): Draft {
 /** How many sends the settings page previews; the rest are on the history page. */
 const RECENT_EMAILS = 8;
 
-const EMAIL_SECTIONS = ["account", "types", "recent"];
+const EMAIL_SECTIONS = ["account", "types", "templates", "recent"];
 
 function toDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -976,6 +976,20 @@ function EmailSettings() {
                   they need for their records.
                 </p>
               ) : null}
+            </AdminCard>
+            ),
+          },
+          {
+            id: "templates",
+            label: "Templates & preview",
+            group: "Setup",
+            content: (
+            <AdminCard
+              title="Templates & preview"
+              description="Every email uses the store's branded design. Change each email's subject and wording, preview it on desktop and phone sizes, send yourself a test, and switch individual emails on or off."
+            >
+              <AdminButtonLink href="/admin/notifications?tab=templates" variant="primary" size="sm">Open email templates</AdminButtonLink>
+              <p className="mt-3 text-xs text-admin-muted">The same templates hold each notification&rsquo;s SMS, WhatsApp and in-app wording. Delivery history for every channel, with retries, is in Notifications.</p>
             </AdminCard>
             ),
           },

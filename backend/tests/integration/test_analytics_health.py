@@ -143,7 +143,7 @@ class TestHealth:
         assert body.status_code == 200
         data = body.json()["data"]
         assert set(data["checks"]) == {"database", "migrations", "payments", "email", "jobs", "storage", "disk",
-                                       "application"}
+                                       "application", "backups", "messaging"}
         assert data["status"] in ("healthy", "degraded", "unhealthy", "unknown")
         text = body.text
         for secret in (settings.JWT_SECRET_KEY, settings.DATABASE_PASSWORD if hasattr(settings, "DATABASE_PASSWORD") else "",
@@ -186,7 +186,8 @@ class TestHealth:
         health.record_and_alert(db, {**broken, "checkedAt": datetime.utcnow()})
         health.record_and_alert(db, {**broken, "status": "healthy", "checkedAt": datetime.utcnow()})
         titles = [n.title for n in db.query(Notification).filter_by(kind="health").order_by(Notification.created_at)]
-        assert titles == ["System health: something is broken", "System health: recovered"]
+        # Both may share a second (and the ids are random), so compare without order: one of each, once.
+        assert sorted(titles) == ["System health: recovered", "System health: something is broken"]
         assert db.query(HealthSnapshot).count() == 3
 
     def test_a_manual_run_is_kept_in_the_history(self, client, db, admin_auth, monkeypatch):

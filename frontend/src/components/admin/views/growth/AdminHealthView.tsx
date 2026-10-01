@@ -12,14 +12,15 @@ import { cn } from "@/lib/utils/cn";
 import { type HealthReport, getHealth, runHealth } from "@/services/admin/growthAdminService";
 import { toast } from "@/store/toastStore";
 
-const ORDER = ["database", "migrations", "payments", "email", "jobs", "storage", "disk", "application"];
+const ORDER = ["database", "migrations", "payments", "email", "messaging", "backups", "jobs", "storage", "disk", "application"];
 const DOT: Record<string, string> = { healthy: "bg-[#2f9e44]", degraded: "bg-[#d99a1e]", unhealthy: "bg-[#c23434]", unknown: "bg-admin-border" };
 
 const FACT_LABELS: Record<string, string> = {
   provider: "Provider", failedWebhooks24h: "Failed webhooks (24 h)", lastWebhookAt: "Last webhook", mode: "Mode",
   webhookSecretSet: "Webhook secret set", sent24h: "Sent (24 h)", failed24h: "Failed (24 h)", bounced24h: "Bounced (24 h)",
   freePercent: "Free", freeGb: "Free (GB)", version: "Version", environment: "Environment", python: "Python",
-  uptimeSeconds: "Up for", startedAt: "Started",
+  uptimeSeconds: "Up for", startedAt: "Started", lastSuccessAt: "Last good backup", schedule: "Schedule",
+  encrypted: "Encrypted", sms: "SMS", whatsapp: "WhatsApp", gaveUp24h: "Undeliverable (24 h)", retrying: "Waiting to retry",
 };
 
 function fact(key: string, value: unknown): string {

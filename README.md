@@ -566,6 +566,10 @@ changes hands" after the live keys go in.
 
 ---
 
+## Reorder, notifications, campaigns and backups
+
+Reorder, multi-channel notifications (email, SMS, WhatsApp, in-app) with retries, the branded email templates, marketing campaigns and automated encrypted database backups are documented in [docs/messaging-and-backups.md](docs/messaging-and-backups.md) — architecture, provider set-up, environment variables, restore steps and tests.
+
 ## Security
 
 The properties, and where each is enforced. The backend README has the detail.

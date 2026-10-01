@@ -83,6 +83,7 @@ export interface NavCounts {
   openTickets: number;
   pendingQuestions: number;
   referralsInReview: number;
+  failedNotifications: number;
 }
 
 export interface AdminDataSource {

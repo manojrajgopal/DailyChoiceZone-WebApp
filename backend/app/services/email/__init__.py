@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import html as html_lib
 import logging
+import re
+import secrets
 import threading
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -36,7 +38,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import ValidationError
-from app.models import CustomerEmailPreference, EmailAccount, EmailLog, SettingDocument
+from app.models import Customer, CustomerEmailPreference, EmailAccount, EmailLog, SettingDocument
 from app.services.email import crypto
 from app.services.email.senders import SendError, build_message, deliver
 
@@ -440,28 +442,24 @@ def _brand() -> dict:
     return {"name": "Daily Choice Zone", "url": settings.STOREFRONT_URL.rstrip("/")}
 
 
-def layout(title: str, intro: str, rows: str = "", cta: Optional[tuple] = None, footnote: str = "") -> str:
-    brand = _brand()
-    esc = html_lib.escape
-    button = (
-        f'<p style="margin:28px 0 8px"><a href="{esc(cta[1])}" style="background:#1e1b18;color:#faf7f2;'
-        f'padding:12px 22px;border-radius:4px;text-decoration:none;font-size:14px;letter-spacing:.04em">'
-        f"{esc(cta[0])}</a></p>"
-        if cta
-        else ""
+def layout(title: str, intro: str, rows: str = "", cta: Optional[tuple] = None, footnote: str = "", *,
+           preheader: str = "", marketing: bool = False, unsubscribe_url: str = "", preferences_url: str = "",
+           tracking_pixel: str = "") -> str:
+    """
+    Every email's frame — the branded master layout in `templates.master`.
+
+    `intro` and `rows` are HTML the caller built (with customer values
+    escaped); `title`, `cta` and `footnote` are plain text. The unsubscribe
+    link is shown only when `marketing` is set.
+    """
+    from app.services.email import templates
+
+    return templates.master(
+        title=title, intro_html=intro, body_html=rows or "", cta=cta, footnote=footnote,
+        preheader=preheader or re.sub(r"<[^>]+>", "", intro or "")[:140],
+        marketing=marketing, unsubscribe_url=unsubscribe_url, preferences_url=preferences_url,
+        tracking_pixel=tracking_pixel,
     )
-    return f"""<!doctype html><html><body style="margin:0;background:#f5f1eb;font-family:Helvetica,Arial,sans-serif;color:#1e1b18">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f1eb;padding:28px 12px">
-<tr><td align="center"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:6px;overflow:hidden">
-<tr><td style="padding:22px 28px;border-bottom:1px solid #ede7df;font-family:Georgia,serif;font-size:20px">{esc(brand["name"])}</td></tr>
-<tr><td style="padding:28px">
-<h1 style="margin:0 0 12px;font-family:Georgia,serif;font-weight:normal;font-size:24px">{esc(title)}</h1>
-<p style="margin:0;font-size:14px;line-height:1.6;color:#524b45">{intro}</p>
-{rows}{button}
-</td></tr>
-<tr><td style="padding:18px 28px;background:#faf7f2;font-size:12px;line-height:1.6;color:#8a817a">
-{footnote or "You're receiving this because of activity on your Daily Choice Zone account. You can choose which emails you get in your account settings."}
-</td></tr></table></td></tr></table></body></html>"""
 
 
 def _money(value) -> str:
@@ -479,18 +477,21 @@ def render_test(sender_name: str) -> tuple:
 
 
 def _order_rows(order) -> str:
-    esc = html_lib.escape
-    items = "".join(
-        f'<tr><td style="padding:8px 0;border-bottom:1px solid #ede7df;font-size:14px">{esc(item.name)}'
-        f'<span style="color:#8a817a"> × {item.quantity}</span></td>'
-        f'<td align="right" style="padding:8px 0;border-bottom:1px solid #ede7df;font-size:14px">{_money(item.line_total)}</td></tr>'
+    from app.services.email import templates
+
+    lines = [
+        {
+            "name": item.name,
+            "detail": " · ".join(p for p in (
+                f"Size {item.size}" if item.size else "", item.color or "",
+                f"Part of {item.bundle_name}" if getattr(item, "bundle_name", "") else "") if p),
+            "quantity": item.quantity,
+            "amount": _money(item.line_total),
+            "image": item.image,
+        }
         for item in order.items
-    )
-    return (
-        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px">{items}'
-        f'<tr><td style="padding:12px 0 0;font-size:14px;font-weight:bold">Total</td>'
-        f'<td align="right" style="padding:12px 0 0;font-size:14px;font-weight:bold">{_money(order.total)}</td></tr></table>'
-    )
+    ]
+    return templates.items(lines, total=_money(order.total))
 
 
 def _order_link(order) -> str:
@@ -540,6 +541,10 @@ def notify(
     text: str,
     reference: str = "",
     inbox=None,
+    event: Optional[str] = None,
+    variables: Optional[dict] = None,
+    extra_html: str = "",
+    idempotency_key: Optional[str] = None,
 ) -> bool:
     """
     Queue an email to go out when this session commits. Returns whether it was
@@ -550,7 +555,44 @@ def notify(
     `services.inbox`) — whether or not an email account is connected, but not
     if they've turned this kind of message off. `inbox` overrides its wording
     (`{"title", "body", "href"}`), or `False` keeps it out of the bell.
+
+    `event` names the notification (`services.messaging.catalogue`): the store
+    can switch it off or rewrite it in the portal, and it is sent by SMS and
+    WhatsApp too where those are switched on. `variables` fill the store's own
+    wording; `extra_html` (the order lines, say) is kept under it.
+    `idempotency_key` makes the same message go once, however often this is
+    called for it.
     """
+    from app.services.messaging import catalogue as message_catalogue
+    from app.services.messaging import service as messaging
+
+    template = None
+    values = dict(variables or {})
+    if event in message_catalogue.EVENTS:
+        try:
+            template = messaging.effective(db, event)
+        except Exception:  # noqa: BLE001 — a template problem must not stop the email
+            logger.exception("Could not read the template for %s", event)
+        if template is not None and not template["enabled"]:
+            return False
+        if template is not None and template["customised"]:
+            customer = db.get(Customer, customer_id) if customer_id else None
+            values = {**messaging.base_variables(customer), **values}
+            try:
+                subject, html, text = messaging.render_email(db, event, values, extra_html=extra_html,
+                                                             template=template)
+            except Exception:  # noqa: BLE001 — fall back to the built-in email, never to nothing
+                logger.warning("Template for %s couldn't be rendered; sending the built-in email", event,
+                               exc_info=True)
+    base_key = (idempotency_key or f"{event or key}:{reference or secrets.token_hex(6)}:{customer_id or to}")[:140]
+    if event in message_catalogue.EVENTS and customer_id:
+        try:
+            customer = db.get(Customer, customer_id)
+            messaging.fan_out(db, event, customer_id=customer_id,
+                              values={**messaging.base_variables(customer), **values}, reference=str(reference),
+                              key_base=base_key)
+        except Exception:  # other channels must never stop the email
+            logger.exception("Could not queue other channels for %s", event)
     try:
         if customer_id and wants(db, key, customer_id):
             from app.services import inbox as inbox_service
@@ -564,6 +606,14 @@ def notify(
         account = active_account(db)
         if account is None:
             return False
+        delivery = messaging.queue(
+            db, key=f"{base_key}:email", event=event or key, channel="email",
+            category="marketing" if key == "offers" else "transactional", customer_id=customer_id, recipient=to,
+            payload=None, provider=account.provider, reference=str(reference), status="sending",
+            template_key=event or key,
+        )
+        if delivery is None and idempotency_key:
+            return False  # this exact message has been queued before
         job = {
             "provider": account.provider,
             "credentials": crypto.unseal(account.credentials),
@@ -575,7 +625,9 @@ def notify(
             "html": html,
             "text": text,
             "key": key,
-            "reference": reference,
+            "reference": str(reference),
+            "template": event or key,
+            "delivery_id": delivery.id if delivery is not None else None,
         }
     except Exception:  # email must never break the work that triggered it
         logger.exception("Could not prepare %s email", key)
@@ -599,8 +651,34 @@ def notify_order(db: Session, order, stage: str, *, copy: Optional[tuple] = None
     if not key:
         return
     subject, html, text = render_order(order, stage, copy)
+    from app.services.messaging.catalogue import ORDER_STAGE_EVENTS
+
     notify(db, key, to=order.customer_email, customer_id=order.customer_id,
-           subject=subject, html=html, text=text, reference=order.order_number)
+           subject=subject, html=html, text=text, reference=order.order_number,
+           event=ORDER_STAGE_EVENTS.get(stage), variables=order_variables(order, stage), extra_html=_order_rows(order),
+           idempotency_key=f"order:{order.order_number}:{stage}")
+
+
+def order_variables(order, stage: str = "") -> dict:
+    """The variables an order's notifications can use."""
+    address = ", ".join(p for p in (order.shipping_line1, order.shipping_line2, order.shipping_city,
+                                    order.shipping_state, order.shipping_pincode) if p)
+    first = order.items[0].name if order.items else ""
+    link = _order_link(order)
+    return {
+        "customer_name": (order.customer_name or "").split(" ")[0] or "there",
+        "order_number": order.order_number,
+        "order_date": order.placed_at.strftime("%d %b %Y") if order.placed_at else "",
+        "order_total": _money(order.total),
+        "payment_status": (order.payment_status or "").replace("-", " ").title(),
+        "shipping_address": address,
+        "tracking_number": getattr(order, "tracking_number", "") or "",
+        "tracking_url": link,
+        "order_url": link,
+        "item_count": str(order.item_count or len(order.items)),
+        "first_item": first,
+        "status_text": stage.replace("-", " ") if stage else (order.status or "").replace("-", " "),
+    }
 
 
 def _send_now(provider, credentials, account, to, subject, html, text) -> str:
@@ -631,11 +709,40 @@ def _worker(jobs: List[dict]) -> None:
                 log_db.add(EmailLog(
                     email_type=job["key"], recipient=job["to"], subject=job["subject"][:255],
                     status=status, error=error, reference=job["reference"][:40], created_at=datetime.utcnow(),
-                    provider_id=(provider_id or "")[:100] or None,
+                    provider_id=(provider_id or "")[:100] or None, template_key=job.get("template", "")[:60],
+                    delivery_id=job.get("delivery_id"),
                 ))
+                _record_delivery(log_db, job, status, error, provider_id)
                 log_db.commit()
         except Exception:
             logger.exception("Could not log email %s", job["key"])
+
+
+def _record_delivery(db: Session, job: dict, status: str, error: str, provider_id: Optional[str]) -> None:
+    """The email's delivery row: sent, or failed and due for a retry (with what is needed to send it again)."""
+    if not job.get("delivery_id"):
+        return
+    from app.models import NotificationDelivery
+    from app.services.messaging import service as messaging
+
+    row = db.get(NotificationDelivery, job["delivery_id"])
+    if row is None:
+        return
+    now = datetime.utcnow()
+    row.attempts += 1
+    row.updated_at = now
+    if status == "sent":
+        row.status, row.sent_at, row.provider_message_id, row.last_error = "sent", now, provider_id, ""
+        row.payload = None
+        return
+    row.last_error, row.failed_at = error[:500], now
+    # A sign-in or reset link is never stored, so that email can't be retried.
+    retryable = job["key"] not in messaging.SECRET_EMAIL_TYPES and messaging.email_transient(error)
+    if retryable and row.attempts < row.max_attempts:
+        row.status, row.next_attempt_at = "failed", now + messaging._backoff(row.attempts)
+        row.payload = {"subject": job["subject"], "html": job["html"], "text": job["text"], "type": job["key"]}
+    else:
+        row.status, row.next_attempt_at = "dead", None
 
 
 @event.listens_for(Session, "after_commit")

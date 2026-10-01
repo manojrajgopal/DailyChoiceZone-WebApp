@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 
 import { AccountShell } from "@/components/account/AccountShell";
+import { ChannelPreferencesSection } from "@/components/account/ChannelPreferencesSection";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Dialog";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -50,6 +51,7 @@ export function SettingsView() {
     >
       {/* --------------------------------------------------- notifications */}
       <EmailPreferencesSection />
+      <ChannelPreferencesSection />
 
       {/* ------------------------------------------------------ local data */}
       <section className="mt-5 rounded-card border border-ink-200 bg-shell p-5">

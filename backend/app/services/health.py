@@ -246,7 +246,53 @@ def check_application() -> dict:
                    python=platform.python_version(), uptimeSeconds=uptime, startedAt=STARTED_AT)
 
 
+def check_backups(db: Session) -> dict:
+    from app.models import DatabaseBackup
+    from app.services import backups
+
+    conf = backups.settings_doc(db)
+    last = db.execute(select(DatabaseBackup).where(DatabaseBackup.status.in_(("succeeded", "failed")))
+                      .order_by(DatabaseBackup.started_at.desc()).limit(1)).scalar_one_or_none()
+    good = db.execute(select(func.max(DatabaseBackup.completed_at)).where(DatabaseBackup.status == "succeeded")).scalar()
+    facts = {"lastSuccessAt": good, "schedule": conf["frequency"] if conf["enabled"] else "off",
+             "encrypted": bool(settings.BACKUP_ENCRYPTION_KEY)}
+    if not conf["enabled"]:
+        return _result(DEGRADED, "Automatic backups are switched off.", **facts)
+    if last is None:
+        return _result(UNKNOWN, "No backup has run yet.", **facts)
+    if last.status == "failed":
+        return _result(UNHEALTHY, "The last backup failed. See Backups for the reason.", **facts)
+    allowed = timedelta(hours=backups.FREQUENCIES[conf["frequency"]] * 1.5 + 1)
+    if good is None or good < datetime.utcnow() - allowed:
+        return _result(DEGRADED, "The last good backup is older than the schedule allows.", **facts)
+    return _result(HEALTHY, "The last backup succeeded and was verified.", **facts)
+
+
+def check_messaging(db: Session) -> dict:
+    from app.models import NotificationDelivery
+    from app.services.messaging import service as messaging
+
+    status = messaging.channel_status(db)
+    since = datetime.utcnow() - timedelta(hours=24)
+    dead = db.execute(select(func.count()).select_from(NotificationDelivery).where(
+        NotificationDelivery.status == "dead", NotificationDelivery.updated_at >= since)).scalar_one()
+    retrying = db.execute(select(func.count()).select_from(NotificationDelivery).where(
+        NotificationDelivery.status == "failed")).scalar_one()
+    misconfigured = [c for c in ("sms", "whatsapp") if status[c]["enabled"] and not status[c]["configured"]]
+    facts = {"sms": "on" if status["sms"]["enabled"] else ("ready" if status["sms"]["configured"] else "not set up"),
+             "whatsapp": "on" if status["whatsapp"]["enabled"] else (
+                 "ready" if status["whatsapp"]["configured"] else "not set up"),
+             "gaveUp24h": int(dead), "retrying": int(retrying)}
+    if misconfigured:
+        return _result(DEGRADED, f"{', '.join(misconfigured)} is switched on but its provider isn't configured.", **facts)
+    if dead:
+        return _result(DEGRADED, f"{dead} message{'s' if dead != 1 else ''} couldn't be delivered in the last 24 hours.",
+                       **facts)
+    return _result(HEALTHY, "Messages are going out" + (f"; {retrying} waiting to retry." if retrying else "."), **facts)
+
+
 LABELS = {
+    "backups": "Database backups", "messaging": "SMS & WhatsApp",
     "database": "Database", "migrations": "Database schema", "payments": "Payments", "email": "Email",
     "storage": "File storage", "disk": "Disk space", "jobs": "Background jobs", "application": "Application",
 }
@@ -279,6 +325,8 @@ def run(db: Session, *, deep: bool = False) -> dict:
         ("payments", lambda: check_payments(db, deep=deep)),
         ("email", lambda: check_email(db)),
         ("jobs", lambda: check_jobs(db)),
+        ("backups", lambda: check_backups(db)),
+        ("messaging", lambda: check_messaging(db)),
     ):
         if not database_up:
             checks[name] = _result(UNKNOWN, "Can't be checked while the database is down.")

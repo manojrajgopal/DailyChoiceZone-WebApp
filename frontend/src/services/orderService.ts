@@ -73,6 +73,7 @@ interface ApiOrder {
   deliveryMethod: string;
   expectedDelivery: string;
   items: {
+    id?: number;
     productId: string;
     name: string;
     slug: string;
@@ -143,6 +144,7 @@ function toOrder(payload: ApiOrder): Order {
     placedAt: payload.placedAt,
     status: payload.status,
     lines: payload.items.map((item) => ({
+      id: item.id,
       productId: item.productId,
       name: item.name,
       slug: item.slug,

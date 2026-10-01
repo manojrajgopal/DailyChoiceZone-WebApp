@@ -158,7 +158,14 @@ def _send(db: Session, key: str, ticket: SupportTicket, to: str, values: dict, *
         customer_id=None if internal else ticket.customer_id,
         subject=subject, html=html, text=render(template.body, values, html=False),
         reference=ticket.number,
+        event=None if internal else _SUPPORT_EVENTS.get(key),
+        variables=None if internal else {
+            "support_request_number": ticket.number, "support_subject": ticket.subject or "",
+            "support_url": values.get("ticket_url", ""), "message": values.get("message", "") or ""},
     )
+
+
+from app.services.messaging.catalogue import SUPPORT_EVENTS as _SUPPORT_EVENTS  # noqa: E402
 
 
 # ---------------------------------------------------------------- customers

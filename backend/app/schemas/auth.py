@@ -33,6 +33,9 @@ class RegisterRequest(CamelModel):
     phone: str = Field(default="", max_length=20)
     # A friend's referral code, if they signed up with one.
     referral_code: Optional[str] = Field(default=None, max_length=32)
+    # Ticked "send me offers": marketing email consent, recorded as given at sign-up.
+    # The sign-up offers box. None (not sent): the defaults apply.
+    marketing_opt_in: Optional[bool] = None
 
     @field_validator("password")
     @classmethod

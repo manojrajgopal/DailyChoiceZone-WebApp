@@ -151,6 +151,41 @@ class Settings(BaseSettings):
     AWS_S3_ENDPOINT_URL: str = ""
     AWS_S3_PREFIX: str = "products"
 
+
+    # SMS. "none" (the default) keeps the channel off; "twilio" sends through
+    # Twilio's Messaging API. The sender is a Twilio number (+1415…) or a
+    # Messaging Service SID (MG…). See docs/messaging-and-backups.md.
+    NOTIFICATION_SMS_PROVIDER: str = "none"
+    NOTIFICATION_SMS_SENDER: str = ""
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+
+    # WhatsApp. "none" (default), "meta" (WhatsApp Business Cloud API) or
+    # "twilio" (Twilio's WhatsApp sender, using the Twilio credentials above).
+    NOTIFICATION_WHATSAPP_PROVIDER: str = "none"
+    # Twilio only: the WhatsApp-enabled sender, e.g. whatsapp:+14155238886.
+    NOTIFICATION_WHATSAPP_SENDER: str = ""
+    # Meta only: a system-user access token, the phone number id, the app
+    # secret (to verify webhooks) and the verify token you choose for them.
+    WHATSAPP_ACCESS_TOKEN: str = ""
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_APP_SECRET: str = ""
+    WHATSAPP_VERIFY_TOKEN: str = ""
+    WHATSAPP_API_VERSION: str = "v20.0"
+
+    # Database backups. "local" keeps them in BACKUP_LOCAL_DIR on this server,
+    # outside anything the web servers serve; "s3" puts them in BACKUP_S3_BUCKET
+    # (or AWS_S3_BUCKET) under BACKUP_S3_PREFIX, private and server-side
+    # encrypted. BACKUP_ENCRYPTION_KEY (any long random string) encrypts every
+    # backup file; without it backups are stored unencrypted and the portal
+    # says so. Keep the key somewhere other than this server — without it the
+    # backups can't be read.
+    BACKUP_STORAGE: str = "local"
+    BACKUP_LOCAL_DIR: str = ""
+    BACKUP_S3_BUCKET: str = ""
+    BACKUP_S3_PREFIX: str = "database-backups"
+    BACKUP_ENCRYPTION_KEY: str = ""
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

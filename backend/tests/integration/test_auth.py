@@ -28,6 +28,18 @@ class TestRegistration:
         assert data["token"]["accessToken"]
         assert data["customer"]["email"] == "new.shopper@example.com"
 
+    @pytest.mark.parametrize("box, expected", [(None, True), (True, True), (False, False)])
+    def test_the_signup_offers_box_is_ticked_by_default_and_unticking_it_is_kept(self, client, db, box, expected):
+        from app.models import Customer
+        from app.services.messaging import service as messaging
+
+        body = {"email": "offers.box@example.com", "password": "Shopper@123", "firstName": "Box"}
+        if box is not None:
+            body["marketingOptIn"] = box
+        assert client.post("/api/auth/register", json=body).status_code == 201
+        customer = db.query(Customer).filter_by(email="offers.box@example.com").one()
+        assert messaging.consent(db, customer.id, "email", "marketing") is expected
+
     def test_the_password_never_comes_back(self, client):
         """
         Not "is excluded" — is not a field.
