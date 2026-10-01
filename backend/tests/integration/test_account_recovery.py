@@ -37,7 +37,7 @@ def mailbox(monkeypatch):
 
     sent = []
 
-    def record(db, key, *, to, customer_id, subject, html, text, reference=""):
+    def record(db, key, *, to, customer_id, subject, html, text, reference="", **_):
         found = re.search(r"token=([A-Za-z0-9_\-]+)", text)
         sent.append({"key": key, "to": to, "subject": subject, "text": text, "html": html,
                      "token": found.group(1) if found else None})

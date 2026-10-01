@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { CompareTray } from "@/components/compare/CompareControls";
+import { VisitTracker } from "@/components/growth/Trackers";
 import { Footer } from "@/components/layout/Footer";
 import { PromoStrip } from "@/components/layout/PromoStrip";
 import { Header } from "@/components/navigation/Header";
@@ -42,6 +45,10 @@ export default async function StorefrontLayout({
 
       <Footer config={config} />
       <CompareTray />
+      {/* A visit for the analytics funnel, and a friend's ?ref= code kept for sign-up. */}
+      <Suspense fallback={null}>
+        <VisitTracker />
+      </Suspense>
     </div>
   );
 }

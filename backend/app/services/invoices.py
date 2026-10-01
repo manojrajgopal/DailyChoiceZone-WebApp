@@ -506,6 +506,10 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
     fully = invoice.amount_refunded >= invoice.grand_total if tendered else payment.status == "refunded"
     if order and fully:
         order.payment_status = "refunded"
+        # A referral reward this order earned doesn't stand on a refunded order.
+        from app.services import referrals
+
+        referrals.on_order_reversed(db, order, reason=f"Order {order.order_number} refunded")
 
     # Points the order earned go back in proportion to what has been refunded.
     if order is not None and invoice.grand_total > 0:

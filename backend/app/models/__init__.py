@@ -129,3 +129,14 @@ from app.models.loyalty import (  # noqa: E402
     LoyaltyRedemption,
     LoyaltyTransaction,
 )
+from app.models.growth import (  # noqa: E402
+    Bundle,
+    BundleItem,
+    CartBundle,
+    FlashSale,
+    FlashSaleClaim,
+    FlashSaleItem,
+    Referral,
+    ReferralCode,
+)
+from app.models.monitoring import AnalyticsEvent, AuditLog, HealthSnapshot, JobHeartbeat  # noqa: E402

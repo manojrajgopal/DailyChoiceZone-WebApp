@@ -343,6 +343,11 @@ export function AdminOrderDetailView() {
                     <span className="block text-[0.625rem] text-admin-faint">
                       {line.sku}
                     </span>
+                    {line.bundleName ? (
+                      <span className="block text-[0.625rem] text-copper-700">Bundle: {line.bundleName} × {line.bundleQuantity}</span>
+                    ) : line.flashSaleId ? (
+                      <span className="block text-[0.625rem] text-copper-700">Flash sale price (regular {line.regularUnitPrice})</span>
+                    ) : null}
                     <span className="mt-0.5 block text-[0.625rem] text-admin-muted">
                       {[line.size ? `Size ${line.size}` : null, line.color]
                         .filter(Boolean)

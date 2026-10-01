@@ -153,6 +153,10 @@ class InvoiceItem(Base):
     igst: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     tax: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     line_total: Mapped[int] = mapped_column(Money, nullable=False, default=0)
+    # Set when the line is a component of a bundle: see `OrderItem`.
+    bundle_name: Mapped[str] = mapped_column(String(200), nullable=False, default="", server_default="")
+    bundle_group: Mapped[str] = mapped_column(String(40), nullable=False, default="", server_default="")
+    bundle_quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     invoice: Mapped["Invoice"] = relationship(back_populates="items")
 

@@ -513,6 +513,12 @@ def lock_products(db: Session, product_ids) -> dict:
 
 
 def _locked(db: Session, product_id: str) -> Product:
+    # Write what this transaction has already changed first. The locking read
+    # below refreshes the row from the database (`populate_existing`), which
+    # would otherwise throw away an unflushed change — the stock an earlier
+    # line of the same order just took — and let two lines of one product
+    # (two sizes, or a bundle and a loose item) sell the same unit twice.
+    db.flush()
     product = db.execute(
         select(Product)
         .where(Product.id == product_id)

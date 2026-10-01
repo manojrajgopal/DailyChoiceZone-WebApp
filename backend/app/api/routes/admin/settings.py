@@ -135,6 +135,11 @@ def create_admin(
     )
 
     db.add(user)
+    from app.services import audit
+
+    audit.record(db, "admins.create", resource_type="admins", resource_id=user.id, actor=admin,
+                 summary=f"Added administrator {user.name} ({user.role})",
+                 changes=audit.diff({}, {"email": user.email, "role": user.role, "status": user.status}))
     db.commit()
     db.refresh(user)
     return ok(AdminUserOut.from_model(user).model_dump(by_alias=True), message="Administrator added.")
@@ -179,6 +184,9 @@ def update_admin(
                 error_code="LAST_SUPER_ADMIN",
             )
 
+    from app.services import audit
+
+    before = audit.snapshot(user, ("name", "email", "role", "status", "permissions"))
     if payload.name is not None:
         user.name = payload.name
     if payload.email is not None:
@@ -191,6 +199,12 @@ def update_admin(
     if payload.password:
         user.password_hash = hash_password(payload.password)
 
+    changes = audit.diff(before, audit.snapshot(user, ("name", "email", "role", "status", "permissions")))
+    if payload.password:
+        changes["password"] = {"from": audit.REDACTED, "to": audit.REDACTED}
+    audit.record(db, "admins.update", resource_type="admins", resource_id=user.id, actor=admin,
+                 summary=f"Changed administrator {user.name}" + (f" ({', '.join(changes)})" if changes else ""),
+                 changes=changes or None)
     db.commit()
     db.refresh(user)
     return ok(AdminUserOut.from_model(user).model_dump(by_alias=True), message="Administrator updated.")
@@ -222,6 +236,11 @@ def delete_admin(
                 "This is the last active super admin.", error_code="LAST_SUPER_ADMIN"
             )
 
+    from app.services import audit
+
+    audit.record(db, "admins.delete", resource_type="admins", resource_id=user.id, actor=admin,
+                 summary=f"Removed administrator {user.name} ({user.email})",
+                 changes=audit.diff({"email": user.email, "role": user.role, "status": user.status}, {}))
     db.delete(user)
     db.commit()
     return ok(message="Administrator removed.")
@@ -292,8 +311,15 @@ def nav_counts(
             "openReturns": open_returns,
             "openTickets": open_tickets,
             "pendingQuestions": question_service.pending_count(db),
+            "referralsInReview": _referrals_in_review(db),
         }
     )
+
+
+def _referrals_in_review(db: Session) -> int:
+    from app.models import Referral
+
+    return int(db.execute(select(func.count()).select_from(Referral).where(Referral.status == "review")).scalar_one())
 
 
 # ------------------------------------------------------------ navigation

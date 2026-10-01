@@ -139,6 +139,9 @@ export interface InvoiceLine {
   size: string | null;
   color: string | null;
   quantity: number;
+  /** A component of a bundle: the bundle's name and how many were bought. */
+  bundleName?: string;
+  bundleQuantity?: number;
   /** Selling price per unit, as charged. */
   unitPrice: Money;
   /** `unitPrice × quantity`. */

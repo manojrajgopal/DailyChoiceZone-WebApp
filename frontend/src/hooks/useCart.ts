@@ -308,6 +308,27 @@ export function useCart() {
     toast.info("Coupon removed");
   }, [applyGuestCoupon, refresh]);
 
+  const setBundleQuantity = useCallback(async (entryId: number, quantity: number) => {
+    try {
+      const next = await cartService.setBundleQuantity(entryId, quantity);
+      setView(next);
+      publishItemCount(next.breakdown.itemCount);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not change that bundle.");
+    }
+  }, []);
+
+  const removeBundle = useCallback(async (entryId: number, name?: string) => {
+    try {
+      const next = await cartService.removeBundle(entryId);
+      setView(next);
+      publishItemCount(next.breakdown.itemCount);
+      toast.info(name ? `${name} removed` : "Bundle removed from bag");
+    } catch {
+      toast.error("Could not remove that bundle.");
+    }
+  }, []);
+
   const clear = useCallback(async () => {
     if (isSignedIn) {
       try {
@@ -335,7 +356,12 @@ export function useCart() {
     /** The delivery pincode's serviceability, once checkout has an address. */
     delivery: isSignedIn ? (view?.delivery ?? null) : null,
     isLoading: !hydrated || isPending || isLoading,
-    isEmpty: hydrated && !isPending && !isLoading && lines.length === 0,
+    /** Bundles in the bag and what would stop checkout — signed-in bags only. */
+    bundles: isSignedIn ? (view?.bundles ?? []) : [],
+    issues: isSignedIn ? (view?.issues ?? []) : [],
+    setBundleQuantity,
+    removeBundle,
+    isEmpty: hydrated && !isPending && !isLoading && lines.length === 0 && !(isSignedIn && view?.bundles?.length),
     hydrated,
 
     add,
@@ -422,6 +448,11 @@ function useAddAction(onView: ((view: cartService.CartView) => void) | null) {
  * On a page that already shows the cart it takes the count from there rather
  * than fetching one of its own — see `publishItemCount`.
  */
+/** Tell the header badge the bag changed elsewhere (a bundle added from its page). */
+export function announceItemCount(count: number): void {
+  publishItemCount(count);
+}
+
 export function useCartCount(): number {
   const hydrated = useHydrated();
   const guestLines = useCartStore((state) => state.lines);

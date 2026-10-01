@@ -1,4 +1,10 @@
 import {
+  Activity,
+  BarChart3,
+  History,
+  Layers,
+  Share2,
+  Zap,
   Award,
   BellRing,
   Gift,
@@ -75,6 +81,12 @@ const ICONS = {
   giftCards: Gift,
   storeCredit: Wallet,
   loyalty: Award,
+  referrals: Share2,
+  flashSales: Zap,
+  bundles: Layers,
+  analytics: BarChart3,
+  audit: History,
+  health: Activity,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

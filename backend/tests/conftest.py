@@ -101,6 +101,9 @@ def db(engine) -> Iterator[Session]:
     # outside the transaction.
     session = sessionmaker(bind=connection, autoflush=False, future=True,
                            join_transaction_mode="create_savepoint")()
+    # Marks the one shared session, so code that opens and closes its own
+    # (a job heartbeat) leaves this one open — see `services.jobs`.
+    session.info["test_session"] = True
 
     try:
         yield session

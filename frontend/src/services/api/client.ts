@@ -340,6 +340,39 @@ export async function apiGetOrNull<T>(path: string, options?: RequestOptions): P
   }
 }
 
+/**
+ * Download a file the API builds (a CSV export), with the signed-in token.
+ *
+ * A plain link can't carry the Authorization header, so the file is fetched
+ * and handed to the browser as a download. The name comes from the server's
+ * Content-Disposition header.
+ */
+export async function apiDownload(path: string, audience: Audience, fallbackName: string): Promise<void> {
+  const headers: Record<string, string> = { ...TUNNEL_HEADERS };
+  const token = getToken(audience);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(apiUrl(path), { headers, cache: "no-store", signal: AbortSignal.timeout(60_000) });
+  if (!response.ok) {
+    let message = "The download didn't work. Please try again.";
+    try {
+      message = ((await response.json()) as { message?: string }).message ?? message;
+    } catch {
+      // not JSON: keep the plain message
+    }
+    throw new ApiError(message, response.status, "DOWNLOAD_FAILED");
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Build a query string, dropping anything unset. */
 export function query(params: Record<string, unknown>): string {
   const search = new URLSearchParams();

@@ -162,7 +162,20 @@ def update_product(
     Price, category, images, stock, status — all through here. Separate
     endpoints per field would be a dozen routes doing one thing each.
     """
+    from app.models import Product
+    from app.services import audit
+
+    fields = ("name", "price", "original_price", "stock", "status", "tax_rate_percent", "low_stock_threshold",
+              "category_id", "sku")
+    current = db.get(Product, product_id)
+    before = audit.snapshot(current, fields) if current is not None else {}
     product = service.update_product(db, product_id, payload, actor=admin.id)
+    changes = audit.diff(before, audit.snapshot(product, fields))
+    audit.record(db, "products.update", resource_type="products", resource_id=product.id, actor=admin,
+                 summary=f"Changed product {product.name}" + (f" ({', '.join(changes)})" if changes else ""),
+                 changes=changes or None)
+    db.commit()
+    db.refresh(product)
     return ok(
         AdminProductOut.from_model(product).model_dump(by_alias=True),
         message="Product updated.",

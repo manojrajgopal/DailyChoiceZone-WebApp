@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Lock } from "lucide-react";
 
+import { CartBundleRow } from "@/components/cart/CartBundleRow";
 import { CartLineRow } from "@/components/cart/CartLineRow";
 import { CartRecoveryNotice } from "@/components/cart/CartRecoveryNotice";
 import { MemberPerksNote } from "@/components/cart/MemberPerksNote";
@@ -38,9 +39,15 @@ export function CartView() {
     applyCode,
     removeCode,
     refresh,
+    bundles,
+    issues,
+    setBundleQuantity,
+    removeBundle,
   } = useCart();
 
   const hasOutOfStock = lines.some((line) => line.product.stock <= 0);
+  // A flash sale limit or a bundle that can't be bought stops checkout; said here first.
+  const blocked = hasOutOfStock || issues.length > 0;
 
   return (
     <div className="page-shell py-8 sm:py-10">
@@ -94,6 +101,10 @@ export function CartView() {
                   onRemove={remove}
                 />
               ))}
+              {bundles.map((bundle) => (
+                <CartBundleRow key={`b-${bundle.id}`} bundle={bundle} onQuantityChange={(id, q) => void setBundleQuantity(id, q)}
+                  onRemove={(id, name) => void removeBundle(id, name)} />
+              ))}
             </ul>
 
             <Link
@@ -120,11 +131,18 @@ export function CartView() {
 
             <MemberPerksNote membership={membership} />
 
-            {hasOutOfStock ? (
-              <div className="rounded-card border border-danger/30 bg-danger-bg p-3.5">
-                <p role="alert" className="text-sm text-danger">
-                  One or more items in your bag are out of stock. Remove them to continue.
-                </p>
+            {blocked ? (
+              <div className="rounded-card border border-danger/30 bg-danger-bg p-3.5" role="alert">
+                {hasOutOfStock ? (
+                  <p className="text-sm text-danger">
+                    One or more items in your bag are out of stock. Remove them to continue.
+                  </p>
+                ) : null}
+                {issues.map((issue) => (
+                  <p key={`${issue.code}-${issue.cartItemId ?? issue.cartBundleId ?? issue.productId}`} className="text-sm text-danger">
+                    {issue.message}
+                  </p>
+                ))}
               </div>
             ) : (
               <ButtonLink href="/checkout" size="lg" fullWidth>

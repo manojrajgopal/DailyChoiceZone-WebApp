@@ -74,10 +74,19 @@ async def lifespan(_: FastAPI):
     alert_sweeper = asyncio.create_task(alerts.run_forever())
     rewards_sweeper = asyncio.create_task(loyalty.run_forever())
 
+    # Flash sales going live, referrals running out of time, and the health
+    # check that keeps the history and tells the team when something breaks.
+    from app.services import flash_sales, health as health_service, referrals
+
+    flash_sweeper = asyncio.create_task(flash_sales.run_forever())
+    referral_sweeper = asyncio.create_task(referrals.run_forever())
+    health_sweeper = asyncio.create_task(health_service.run_forever())
+
     try:
         yield
     finally:
-        for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper, alert_sweeper, rewards_sweeper):
+        for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper, alert_sweeper, rewards_sweeper,
+                     flash_sweeper, referral_sweeper, health_sweeper):
             if task is None:
                 continue
             task.cancel()
@@ -117,14 +126,49 @@ app.add_middleware(
 
 register_error_handlers(app)
 
+# Every router carries the audit capture: any change an administrator makes,
+# and any request an administrator is refused, is recorded — see
+# `services.audit`. It writes nothing for customers' own requests.
+from fastapi import Depends  # noqa: E402
+
+from app.services import audit  # noqa: E402
+
 for router in all_routers:
-    app.include_router(router, prefix=settings.API_PREFIX)
+    app.include_router(router, prefix=settings.API_PREFIX, dependencies=[Depends(audit.capture)])
 
 # Google's OAuth redirect lands outside /api, at the address the OAuth client
 # is registered with (GOOGLE_REDIRECT_URI = <api>/auth/callback).
 from app.api.routes.email import callback_router  # noqa: E402
 
 app.include_router(callback_router)
+
+
+@app.get("/health/live", tags=["Health"], summary="Liveness: is the process up?")
+def health_live():
+    """No database, no dependencies: only whether the process answers. Nothing internal is shown."""
+    from app.services import health as health_service
+
+    return {"success": True, "data": health_service.liveness()}
+
+
+@app.get("/health/ready", tags=["Health"], summary="Readiness: can it take traffic?")
+def health_ready():
+    """
+    The database answers and the schema is current. 503 otherwise, so a load
+    balancer stops sending traffic. Statuses only — no hosts, versions or errors.
+    """
+    from fastapi.responses import JSONResponse
+
+    from app.core.database import SessionLocal
+    from app.services import health as health_service
+
+    db = SessionLocal()
+    try:
+        ready, payload = health_service.readiness(db)
+    finally:
+        if not db.info.get("test_session"):
+            db.close()
+    return JSONResponse({"success": ready, "data": payload}, status_code=200 if ready else 503)
 
 
 @app.get("/health", tags=["Health"], summary="Liveness and database check")

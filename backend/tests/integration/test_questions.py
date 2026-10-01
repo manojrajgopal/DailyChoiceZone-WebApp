@@ -25,7 +25,7 @@ def mailbox(monkeypatch):
 
     sent = []
 
-    def record(db, key, *, to, customer_id, subject, html, text, reference=""):
+    def record(db, key, *, to, customer_id, subject, html, text, reference="", **_):
         if not email_service.wants(db, key, customer_id):
             return False
         sent.append({"key": key, "to": to, "subject": subject, "html": html})

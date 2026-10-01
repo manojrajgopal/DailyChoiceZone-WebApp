@@ -75,6 +75,12 @@ export interface OrderLine {
   /** The return and replacement policy it was bought under. */
   isReturnable?: boolean;
   isReplaceable?: boolean;
+  /** A component of a bundle: the bundle's name and how many were bought. */
+  bundleName?: string;
+  bundleQuantity?: number;
+  /** The catalogue price when the line was bought for less (flash sale or bundle). */
+  regularUnitPrice?: number | null;
+  flashSaleId?: number | null;
 }
 
 export interface Order {
@@ -133,6 +139,11 @@ export interface PlaceOrderInput {
   giftCardCodes?: string[];
   useStoreCredit?: boolean;
   points?: number;
+  /**
+   * The grand total (paise) the shopper was shown. The server never charges it —
+   * it compares, and refuses the order if a price or offer changed meanwhile.
+   */
+  expectedTotal?: number;
 }
 
 /* --------------------------------------------------------- payment gateway */

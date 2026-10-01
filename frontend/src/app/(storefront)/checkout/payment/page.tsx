@@ -29,6 +29,7 @@ import { addToCart } from "@/services/cartService";
 import { getPaymentSession } from "@/services/payments/paymentGatewayService";
 import { preloadCustomCheckout } from "@/services/payments/razorpayCustom";
 import { cancelOrder, getOrder, placeOrder } from "@/services/orderService";
+import { ApiError } from "@/services/api/client";
 import { getDeliveryMethod, getPaymentMethod } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { toast } from "@/store/toastStore";
@@ -95,7 +96,8 @@ function PaymentStep() {
   const existingPaymentId = searchParams?.get("payment") ?? "";
   const settling = Boolean(existingPaymentId);
   const checkoutHydrated = useCheckoutHydrated();
-  const { lines, totals, breakdown, clear, delivery, couponCode } = useCart();
+  const { lines, totals, breakdown, clear, delivery, couponCode, bundles, refresh } = useCart();
+  const bagEmpty = lines.length === 0 && bundles.length === 0;
 
   /**
    * Gift cards, store credit and points the shopper put towards the order,
@@ -286,7 +288,7 @@ function PaymentStep() {
       return;
     }
 
-    if (!address || lines.length === 0) return;
+    if (!address || bagEmpty) return;
 
     const method = methodFor(choice);
     setPaymentMethod(method);
@@ -310,10 +312,13 @@ function PaymentStep() {
         deliveryMethod: getDeliveryMethod(deliveryMethodId),
         paymentMethod: getPaymentMethod(method),
         email: contact.email,
+        expectedTotal: breakdown.grandTotal,
         ...tenders,
       });
     } catch (error) {
       setIsPlacing(false);
+      // A price or offer changed since the bag was shown: show the new figures.
+      if (error instanceof ApiError && error.code === "PRICE_CHANGED") refresh();
       // The API's message names what actually went wrong — an item that sold
       // out, a coupon that stopped applying.
       toast.error(
@@ -368,7 +373,7 @@ function PaymentStep() {
    * payment method to choose, so the order is placed and confirmed outright.
    */
   const onPlaceCovered = async () => {
-    if (!address || lines.length === 0) return;
+    if (!address || bagEmpty) return;
     setIsPlacing(true);
     try {
       const result = await placeOrder({
@@ -379,6 +384,7 @@ function PaymentStep() {
         deliveryMethod: getDeliveryMethod(deliveryMethodId),
         paymentMethod: { ...getPaymentMethod("upi"), id: "tender" } as PaymentMethod,
         email: contact.email,
+        expectedTotal: breakdown.grandTotal,
         ...tenders,
       });
       setPlaced(true);

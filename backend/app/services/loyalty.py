@@ -94,6 +94,7 @@ KIND_LABELS = {
     "earned": "Earned", "redeemed": "Spent on an order", "restored": "Returned from a cancelled order",
     "reversed": "Taken back (refund or return)", "expired": "Expired", "manual_credit": "Added by our team",
     "manual_debit": "Removed by our team", "adjustment": "Adjustment",
+    "referral": "Referral reward", "referral_reversed": "Referral reward taken back",
 }
 
 
@@ -659,6 +660,54 @@ def _email_expiring(db: Session, customer: Customer, points: int, at: datetime) 
                          text=f"{points:,} points expire on {at:%d %b %Y}. {link}", reference=f"loyalty-expiry-{customer.id}")
 
 
+# ---------------------------------------------------------- system grants
+
+
+def grant(db: Session, customer_id: str, points: int, *, kind: str, reason: str, key: str) -> Optional[LoyaltyTransaction]:
+    """
+    Points the store gives for something other than an order — a referral.
+    Spendable at once, expiring like any others. Once per `key`. Never commits.
+    """
+    if points <= 0 or _seen(db, key):
+        return None
+    conf = settings(db)
+    now = datetime.utcnow().replace(microsecond=0)
+    row = account(db, customer_id, lock=True)
+    expires_at = None
+    if conf["expiryMonths"]:
+        from app.services.membership import add_months
+
+        expires_at = add_months(now, int(conf["expiryMonths"]))
+    entry = _txn(db, customer_id, kind, points, reason=reason, key=key, available_at=now, expires_at=expires_at)
+    lot = LoyaltyLot(customer_id=customer_id, transaction_id=entry.id, order_id=None, points=points,
+                     remaining=points, available_at=now, released=True, expires_at=expires_at, created_at=now)
+    db.add(lot)
+    if row.debt > 0:
+        paid = min(row.debt, points)
+        lot.remaining -= paid
+        row.debt -= paid
+    db.flush()
+    entry.balance_after = spendable(db, customer_id, now)
+    row.lifetime_earned += points
+    row.updated_at = now
+    return entry
+
+
+def revoke(db: Session, customer_id: str, points: int, *, kind: str, reason: str, key: str) -> int:
+    """
+    Take back points granted with `grant`, as many as are still spendable.
+    Returns how many could not be taken (already spent). Once per `key`.
+    """
+    if points <= 0 or _seen(db, key):
+        return 0
+    now = datetime.utcnow().replace(microsecond=0)
+    row = account(db, customer_id, lock=True)
+    taken = _take(db, customer_id, min(points, max(0, spendable(db, customer_id, now))), now)
+    _txn(db, customer_id, kind, -taken, reason=reason, key=key)
+    row.updated_at = now
+    return points - taken
+
+
 # ------------------------------------------------------------------- admin
 
 
@@ -814,7 +863,9 @@ async def run_forever() -> None:
     logger.info("Reward points and gift card housekeeping every %ss.", INTERVAL_SECONDS)
     while True:
         try:
-            await asyncio.to_thread(_sweep_once)
+            from app.services import jobs
+
+            await asyncio.to_thread(jobs.tracked("loyalty", INTERVAL_SECONDS, _sweep_once))
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001

@@ -27,7 +27,23 @@ export interface ProductSpecification {
   value: string;
 }
 
+/** A live flash sale on a product: `price` is then the sale price. Set by the server. */
+export interface ProductFlashSale {
+  saleId: number;
+  itemId: number;
+  name: string;
+  price: number;
+  regularPrice: number;
+  startsAt: string;
+  endsAt: string;
+  stockLimit: number | null;
+  remaining: number | null;
+  perCustomerLimit: number | null;
+  allowCoupons: boolean;
+}
+
 export interface Product {
+  flashSale?: ProductFlashSale | null;
   id: string;
   slug: string;
   name: string;

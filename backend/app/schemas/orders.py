@@ -45,6 +45,10 @@ class PlaceOrderRequest(CamelModel):
     gift_card_codes: List[str] = Field(default_factory=list, max_length=5)
     use_store_credit: bool = False
     points: int = Field(default=0, ge=0, le=10_000_000)
+    # The grand total (paise) the shopper was shown. Never used as a price —
+    # only compared with the server's own total, so an order is refused rather
+    # than charged differently if a price or offer changed meanwhile.
+    expected_total: Optional[int] = Field(default=None, ge=0)
 
 
 class OrderItemOut(CamelModel):
@@ -62,6 +66,14 @@ class OrderItemOut(CamelModel):
     line_total: float
     is_returnable: bool = True
     is_replaceable: bool = True
+    # Set when the line was priced lower than the catalogue — by a flash sale
+    # or as part of a bundle — and, for a bundle, which one it belongs to.
+    regular_unit_price: Optional[float] = None
+    flash_sale_id: Optional[int] = None
+    bundle_id: Optional[int] = None
+    bundle_name: str = ""
+    bundle_group: str = ""
+    bundle_quantity: int = 0
 
 
 class OrderEventOut(CamelModel):

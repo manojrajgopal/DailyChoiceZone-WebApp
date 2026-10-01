@@ -83,6 +83,10 @@ interface ApiOrder {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    bundleName?: string;
+    bundleQuantity?: number;
+    regularUnitPrice?: number | null;
+    flashSaleId?: number | null;
   }[];
   totals: {
     itemCount: number;
@@ -149,6 +153,10 @@ function toOrder(payload: ApiOrder): Order {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       lineTotal: item.lineTotal,
+      bundleName: item.bundleName ?? "",
+      bundleQuantity: item.bundleQuantity ?? 0,
+      regularUnitPrice: item.regularUnitPrice ?? null,
+      flashSaleId: item.flashSaleId ?? null,
     })),
     address: {
       id: "",
@@ -237,6 +245,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlacedOrder> {
         giftCardCodes: input.giftCardCodes ?? [],
         useStoreCredit: input.useStoreCredit ?? false,
         points: input.points ?? 0,
+        expectedTotal: input.expectedTotal,
       },
       AUTH,
     ),

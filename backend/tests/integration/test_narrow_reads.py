@@ -117,7 +117,7 @@ class TestNavCounts:
     def test_an_empty_shop_is_all_zeroes(self, client, admin_auth):
         counts = client.get("/api/admin/nav-counts", headers=admin_auth).json()["data"]
         assert counts == {"lowStock": 0, "openOrders": 0, "pendingReviews": 0, "openReturns": 0,
-                          "openTickets": 0, "pendingQuestions": 0}
+                          "openTickets": 0, "pendingQuestions": 0, "referralsInReview": 0}
 
     def test_low_stock_is_in_stock_but_at_or_below_the_threshold(
         self, client, admin_auth, catalogue, db

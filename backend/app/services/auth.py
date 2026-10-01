@@ -87,7 +87,7 @@ def _claim_first_administrator(db: Session, customer: Customer, password_hash: s
     return True
 
 
-def register(db: Session, payload: RegisterRequest) -> tuple[Customer, TokenOut]:
+def register(db: Session, payload: RegisterRequest, *, ip: str = "") -> tuple[Customer, TokenOut]:
     """
     Create a customer account.
 
@@ -124,6 +124,13 @@ def register(db: Session, payload: RegisterRequest) -> tuple[Customer, TokenOut]
     try:
         _claim_first_administrator(db, customer, password_hash)
         db.flush()
+        # A referral code is checked here, inside the same transaction: a
+        # code that isn't valid refuses the sign-up so it can be corrected,
+        # rather than the account being made without the referral.
+        if payload.referral_code:
+            from app.services import referrals
+
+            referrals.attach_at_signup(db, customer, payload.referral_code, ip)
         # Queued on this transaction, so the email goes out only if the
         # account is actually created.
         from app.services import accounts

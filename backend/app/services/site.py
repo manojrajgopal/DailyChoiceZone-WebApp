@@ -100,6 +100,15 @@ ADDED_NAV_ITEMS = [
                            "icon": "storeCredit"}),
     ("/admin/store-credit", {"id": "loyalty", "label": "Reward points", "href": "/admin/loyalty",
                              "icon": "loyalty"}),
+    ("/admin/loyalty", {"id": "referrals", "label": "Referrals", "href": "/admin/referrals",
+                        "icon": "referrals", "badge": "referralsInReview"}),
+    ("/admin/coupons", {"id": "flash-sales", "label": "Flash sales", "href": "/admin/flash-sales",
+                        "icon": "flashSales"}),
+    ("/admin/flash-sales", {"id": "bundles", "label": "Bundles", "href": "/admin/bundles", "icon": "bundles"}),
+    ("/admin/reports", {"id": "analytics", "label": "Analytics", "href": "/admin/analytics", "icon": "analytics"}),
+    ("/admin/payments/webhooks", {"id": "audit-logs", "label": "Audit log", "href": "/admin/audit-logs",
+                                  "icon": "audit"}),
+    ("/admin/audit-logs", {"id": "health", "label": "System health", "href": "/admin/health", "icon": "health"}),
 ]
 
 

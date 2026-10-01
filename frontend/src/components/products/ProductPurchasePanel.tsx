@@ -14,6 +14,7 @@ import { ColorPicker, QuantityStepper, SizePicker } from "@/components/common/Va
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Price } from "@/components/ui/Price";
+import { FlashSaleNotice } from "@/components/growth/FlashSales";
 import { useProductColour } from "@/components/products/ProductColourScope";
 import { ShareButton } from "@/components/products/ShareButton";
 import { Rating } from "@/components/ui/Rating";
@@ -151,6 +152,7 @@ export function ProductPurchasePanel({
           size="lg"
         />
         <p className="mt-1.5 text-xs text-ink-400">Inclusive of all taxes</p>
+        <FlashSaleNotice product={product} />
 
         <div className="mt-3 flex flex-wrap gap-2">
           {outOfStock ? (

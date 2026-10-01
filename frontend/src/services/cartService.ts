@@ -3,6 +3,7 @@ import type { PincodeCheck } from "@/services/deliveryService";
 import type { BillingBreakdown } from "@/types";
 
 import { apiDelete, apiGet, apiPost, apiPut, query } from "@/services/api/client";
+import type { BagIssue, CartBundleLine } from "@/services/growthService";
 
 import { dataSource } from "./data-source.instance";
 
@@ -37,6 +38,10 @@ interface ApiCartItem {
 
 export interface ServerCart {
   items: ApiCartItem[];
+  /** Bundles in the bag, priced as a set. */
+  bundles?: CartBundleLine[];
+  /** What would stop checkout — a flash sale limit, a bundle sold out. */
+  issues?: BagIssue[];
   breakdown: BillingBreakdown;
   freeDeliveryShortfall: number;
   appliedCoupon: (Coupon & { discount: number }) | null;
@@ -68,6 +73,8 @@ export interface CartView {
   couponError: string | null;
   membership: MemberPerks | null;
   delivery: PincodeCheck | null;
+  bundles: CartBundleLine[];
+  issues: BagIssue[];
 }
 
 /* -------------------------------------------------------------- conversion */
@@ -125,7 +132,20 @@ function toView(cart: ServerCart): CartView {
     couponError: cart.couponError ?? null,
     membership: cart.membership ?? null,
     delivery: cart.delivery ?? null,
+    bundles: cart.bundles ?? [],
+    issues: cart.issues ?? [],
   };
+}
+
+/** Change how many of a bundle are in the bag (zero removes it). */
+export async function setBundleQuantity(entryId: number, quantity: number): Promise<CartView> {
+  const cart = await apiPut<ServerCart>(`/cart/bundles/${entryId}`, { quantity }, AUTH);
+  return toView(cart);
+}
+
+export async function removeBundle(entryId: number): Promise<CartView> {
+  const cart = await apiDelete<ServerCart>(`/cart/bundles/${entryId}`, AUTH);
+  return toView(cart);
 }
 
 /* ------------------------------------------------------------ server cart */

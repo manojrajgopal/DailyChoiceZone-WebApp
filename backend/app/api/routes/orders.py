@@ -73,6 +73,7 @@ def place_order(
         gift_card_codes=[code[:40] for code in payload.gift_card_codes],
         use_store_credit=payload.use_store_credit,
         points=payload.points,
+        expected_total=payload.expected_total,
     )
 
     # Keep the address for next time, if asked. After the order, never before —

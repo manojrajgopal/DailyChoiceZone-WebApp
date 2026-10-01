@@ -116,6 +116,12 @@ export interface AdminOrderLine {
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  /** A component of a bundle: the bundle's name and how many were bought. */
+  bundleName?: string;
+  bundleQuantity?: number;
+  /** The catalogue price when the line was bought for less (flash sale or bundle). */
+  regularUnitPrice?: number | null;
+  flashSaleId?: number | null;
 }
 
 export interface OrderEvent {

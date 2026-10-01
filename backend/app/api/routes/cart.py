@@ -94,6 +94,14 @@ def get_cart_count(
             CartItem.customer_id == customer.id
         )
     ).scalar_one()
+    # A bundle counts as the items inside it, as the priced bag does.
+    from app.models import BundleItem, CartBundle
+
+    total += db.execute(
+        select(func.coalesce(func.sum(CartBundle.quantity * BundleItem.quantity), 0))
+        .join(BundleItem, BundleItem.bundle_id == CartBundle.bundle_id)
+        .where(CartBundle.customer_id == customer.id)
+    ).scalar_one()
 
     return ok({"itemCount": int(total)})
 

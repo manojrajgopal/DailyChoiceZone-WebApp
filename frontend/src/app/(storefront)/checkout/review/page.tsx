@@ -19,7 +19,7 @@ import { useCheckoutStore } from "@/store/checkoutStore";
 export default function CheckoutReviewPage() {
   const router = useRouter();
   const checkoutHydrated = useCheckoutHydrated();
-  const { lines, totals } = useCart();
+  const { lines, totals, bundles } = useCart();
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
@@ -136,10 +136,21 @@ export default function CheckoutReviewPage() {
                 </p>
               </li>
             ))}
+            {bundles.map((bundle) => (
+              <li key={`b-${bundle.id}`} className="flex items-center gap-3.5 py-3 first:pt-0">
+                <ProductImage src={bundle.image} alt="" sizes="64px" wrapperClassName="h-20 w-16 shrink-0 rounded-card" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-ink">{bundle.name} <span className="text-xs text-copper-700">· bundle</span></p>
+                  <p className="mt-0.5 text-xs text-ink-500">{bundle.components.map((c) => `${c.quantity > 1 ? `${c.quantity} × ` : ""}${c.name}${c.size ? ` (${c.size})` : ""}`).join(", ")}</p>
+                  <p className="mt-1 text-xs text-ink-400">Qty {bundle.quantity}</p>
+                </div>
+                <p className="shrink-0 text-sm text-ink tabular-nums">{formatPrice(bundle.lineTotal / 100)}</p>
+              </li>
+            ))}
           </ul>
         </div>
 
-        <Button size="lg" onClick={onContinue} disabled={lines.length === 0} fullWidth>
+        <Button size="lg" onClick={onContinue} disabled={lines.length === 0 && bundles.length === 0} fullWidth>
           Continue to payment · {formatPrice(totals.total)}
         </Button>
 

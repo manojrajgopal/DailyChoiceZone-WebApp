@@ -319,6 +319,7 @@ def place_order(
     gift_card_codes: Optional[List[str]] = None,
     use_store_credit: bool = False,
     points: int = 0,
+    expected_total: Optional[int] = None,
 ) -> Tuple[Order, Invoice, Payment]:
     """
     Turn a cart into an order, an invoice and a payment.
@@ -329,8 +330,15 @@ def place_order(
     the client sent about money is trusted** — not the price, not the discount,
     not the total. The browser's figures are for display; these are what the
     customer is charged.
+
+    `expected_total` is the grand total (paise) the shopper was shown. It is
+    never used as a price: it is compared with the total worked out here, and
+    if they differ — a flash sale sold out, a price changed — the order is
+    refused with the new figure, rather than charging something the shopper
+    didn't see.
     """
     from app.models import CartItem
+    from app.services import bundles as bundle_service, flash_sales, pricing
 
     items = list(
         db.execute(
@@ -343,7 +351,9 @@ def place_order(
         .all()
     )
 
-    if not items:
+    cart_bundles = bundle_service.load_cart_bundles(db, customer.id)
+
+    if not items and not cart_bundles:
         raise ValidationError("Your bag is empty.", error_code="CART_EMPTY")
 
     from app.services import accounts as account_security
@@ -387,9 +397,12 @@ def place_order(
     # Locked before anything is read, so the price and the stock this order is
     # built from are the ones that are true when it commits. Two orders for the
     # last unit now queue here rather than both reading "one left".
-    locked = product_service.lock_products(db, [item.product_id for item in items])
+    locked = product_service.lock_products(
+        db,
+        [item.product_id for item in items]
+        + [component.product_id for entry in cart_bundles if entry.bundle for component in entry.bundle.items],
+    )
 
-    lines: List[billing.BillingLine] = []
     for item in items:
         product = locked.get(item.product_id)
         if product is None or product.status not in ("active", "out-of-stock"):
@@ -408,19 +421,35 @@ def place_order(
                 error_code="INSUFFICIENT_STOCK",
             )
 
-        lines.append(
-            billing.BillingLine(
-                product_id=product.id,
-                name=product.name,
-                sku=product.sku,
-                category=product.category.slug if product.category else None,
-                size=item.size or None,
-                color=item.color or None,
-                quantity=item.quantity,
-                unit_price=billing.to_minor(float(product.price)),
-                list_price=billing.to_minor(float(product.original_price)),
+    # One price per line — bundle share, flash sale price or catalogue price
+    # (see `services.pricing`) — from the rows just locked. The flash sale
+    # items are locked too, and a sale price that can't be honoured any more
+    # (over the units left, or the customer's limit) is refused here.
+    # Everything the order needs from each product, loose and in bundles
+    # together, against what is available — so a bundle and a loose item can't
+    # between them ask for more than there is.
+    needed: dict = {}
+    for item in items:
+        needed[item.product_id] = needed.get(item.product_id, 0) + item.quantity
+    for entry in cart_bundles:
+        for component in (entry.bundle.items if entry.bundle else []):
+            needed[component.product_id] = needed.get(component.product_id, 0) + component.quantity * entry.quantity
+    for product_id, quantity in needed.items():
+        product = locked.get(product_id)
+        if product is not None and quantity > product.available_stock:
+            available = product.available_stock
+            raise ConflictError(
+                f"Only {available} of {product.name} left — your bag needs {quantity}, including any bundles."
+                if available else f"{product.name} has just sold out.",
+                error_code="INSUFFICIENT_STOCK",
             )
-        )
+
+    bag = pricing.price_bag(db, customer.id, items, cart_bundles, products=locked, enforce=True)
+    lines: List[billing.BillingLine] = [priced.line for priced in bag.lines]
+    if not lines:
+        raise ValidationError("Your bag is empty.", error_code="CART_EMPTY")
+    if coupon_code:
+        pricing.refuse_coupon_if_blocked(bag)
 
     subtotal = sum(line.unit_price * line.quantity for line in lines)
     item_count = sum(line.quantity for line in lines)
@@ -463,6 +492,14 @@ def place_order(
         member_discount_percent=perks["discountPercent"],
     )
     breakdown = priced["breakdown"]
+
+    if expected_total is not None and int(expected_total) != breakdown["grandTotal"]:
+        raise ConflictError(
+            "The total has changed since you last saw it — a price or offer in your bag has changed. "
+            "Check your bag and place the order again.",
+            error_code="PRICE_CHANGED",
+            details={"grandTotal": billing.to_major(breakdown["grandTotal"])},
+        )
 
     # --- gift cards, store credit and points --------------------------------
     #
@@ -526,26 +563,34 @@ def place_order(
             shipping_country=shipping_address.get("country", "India"),
         )
 
-        for item, line in zip(items, lines):
+        for priced_line in bag.lines:
+            line, product = priced_line.line, priced_line.product
             order.items.append(
                 OrderItem(
                     product_id=line.product_id,
                     name=line.name,
                     sku=line.sku,
-                    slug=item.product.slug,
-                    brand=item.product.brand,
+                    slug=product.slug,
+                    brand=product.brand,
                     # The photograph of the colour bought, not of the product
                     # in general: the order page shows what is on its way.
-                    image=next(iter(images_for(item.product, item.color)), ""),
+                    image=next(iter(images_for(product, line.color)), ""),
                     size=line.size,
                     color=line.color,
                     quantity=line.quantity,
-                    is_returnable=item.product.is_returnable,
-                    is_replaceable=item.product.is_replaceable,
+                    is_returnable=product.is_returnable,
+                    is_replaceable=product.is_replaceable,
                     # The price **at the time of purchase**. An order's value
                     # must never be recomputed from the current catalogue.
                     unit_price=billing.to_major(line.unit_price),
                     line_total=billing.to_major(line.unit_price * line.quantity),
+                    regular_unit_price=(billing.to_major(priced_line.regular_unit)
+                                        if priced_line.regular_unit > line.unit_price else None),
+                    flash_sale_id=priced_line.offer.sale_id if priced_line.offer is not None else None,
+                    bundle_id=priced_line.bundle.id if priced_line.bundle is not None else None,
+                    bundle_name=priced_line.bundle.name if priced_line.bundle is not None else "",
+                    bundle_group=priced_line.bundle_group,
+                    bundle_quantity=priced_line.bundle_quantity,
                 )
             )
 
@@ -572,6 +617,9 @@ def place_order(
             for line in lines:
                 product_service.consume_stock(db, line.product_id, line.quantity, order.id)
             order.stock_state = "consumed"
+
+        # Units bought at a flash sale price, held or taken with the stock.
+        flash_sales.record_claims(db, order, bag.lines, held=holds_stock)
 
         # --- invoice -----------------------------------------------------
         issued = now
@@ -613,7 +661,11 @@ def place_order(
             terms=config.get("invoice", {}).get("paymentTerms", ""),
         )
 
-        invoice.items = [InvoiceItem(**_invoice_line(line)) for line in priced["lines"]]
+        invoice.items = [
+            InvoiceItem(**_invoice_line(line), bundle_name=source.bundle.name if source.bundle is not None else "",
+                        bundle_group=source.bundle_group, bundle_quantity=source.bundle_quantity)
+            for line, source in zip(priced["lines"], bag.lines)
+        ]
         db.add(invoice)
         db.flush()
 
@@ -751,6 +803,15 @@ def place_order(
         # --- empty the bag -----------------------------------------------
         for item in items:
             db.delete(item)
+        for entry in cart_bundles:
+            db.delete(entry)
+
+        # Paid already (gift cards, a provider that settles at once): a
+        # referral waiting on this customer's first paid order may be due.
+        if order.payment_status == "paid":
+            from app.services import referrals
+
+            referrals.on_order_paid(db, order)
 
         # A bag that had been left and came back is counted as recovered.
         from app.services import cart_recovery
@@ -903,12 +964,18 @@ def update_status(
 
     # Reward points: earned on delivery (pending until it can't be returned),
     # and taken back if the parcel comes back.
-    from app.services import loyalty
+    from app.services import loyalty, referrals
 
     if status == "delivered":
         loyalty.award_for_order(db, order)
+        # Cash on delivery is paid now; and a programme that rewards on
+        # delivery rewards now.
+        referrals.on_order_delivered(db, order)
     if status == "returned":
         loyalty.reverse_for_order(db, order, fraction=1.0, reason=f"Order {order.order_number} returned")
+    # A referral this order earned is taken back if the order doesn't stand.
+    if status in ("cancelled", "returned"):
+        referrals.on_order_reversed(db, order, reason=f"Order {order.order_number} {status}")
 
     db.commit()
 
@@ -1008,15 +1075,20 @@ def return_stock(db: Session, order: Order, *, note: str) -> None:
 
     Called inside the caller's transaction; never commits.
     """
+    from app.services import flash_sales
+
     if order.stock_state == "reserved":
         for item in order.items:
             product_service.release_reservation(db, item.product_id, item.quantity, order.id)
         order.stock_state = "released"
+        # Units held at a flash sale price go back to the sale too.
+        flash_sales.release_claims(db, order)
         return
 
     if order.stock_state == "consumed":
         _restock(db, order, note=note)
         order.stock_state = "released"
+        flash_sales.release_claims(db, order)
 
 
 def refund_if_collected(db: Session, order: Order, *, reason: str) -> None:

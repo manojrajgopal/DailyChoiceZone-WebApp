@@ -66,9 +66,18 @@ def update_status(
     different argument, and the legal transitions are enforced in the service
     rather than implied by which URL was called.
     """
+    from app.services import audit
+
+    previous = service.get_order(db, order_id).status
     order = service.update_status(
         db, order_id, payload.status, note=payload.note, actor=admin.id, confirm=payload.confirm
     )
+    if previous != order.status:
+        audit.record(db, "orders.status", resource_type="orders", resource_id=order.id, actor=admin,
+                     summary=f"Moved order {order.order_number} from {previous} to {order.status}",
+                     changes={"status": {"from": previous, "to": order.status}},
+                     details={"note": payload.note} if payload.note else None)
+        db.commit()
     invoice = db.execute(
         select(Invoice).where(Invoice.order_id == order.id)
     ).scalar_one_or_none()

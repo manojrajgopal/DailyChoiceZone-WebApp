@@ -129,7 +129,11 @@ export function Footer({ config }: { config: SiteConfig }) {
  * Pages added after the footer document was first saved: listed in the shop
  * column unless the store already links them (or has no shop column).
  */
-const ADDED_LINKS = [{ label: "Gift cards", href: "/gift-cards" }];
+const ADDED_LINKS = [
+  { label: "Gift cards", href: "/gift-cards" },
+  { label: "Flash sales", href: "/flash-sales" },
+  { label: "Bundles & combos", href: "/bundles" },
+];
 
 function withAddedLinks<T extends { heading: string; links: { label: string; href: string }[] }>(columns: T[]): T[] {
   return columns.map((column) => {

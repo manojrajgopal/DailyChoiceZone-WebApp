@@ -65,9 +65,31 @@ class ProductOut(CamelModel):
     sku: str
     is_returnable: bool = True
     is_replaceable: bool = True
+    # A live flash sale on the product: `price` is then the sale price, and
+    # this says which sale, until when, and how many are left at that price.
+    flash_sale: Optional[dict] = None
 
     @classmethod
-    def from_model(cls, product) -> "ProductOut":
+    def from_model(cls, product, *, offers: bool = True) -> "ProductOut":
+        """
+        `offers=False` for the portal: an edit form must show the product's
+        own price, or saving it would write the sale price over it.
+        """
+        price = float(product.price)
+        discount = product.discount
+        flash = None
+        if offers:
+            from app.services import pricing
+
+            offer = pricing.offer_for(product)
+            if offer is not None:
+                from app.services import billing
+
+                regular = billing.to_minor(price)
+                flash = offer.view(regular)
+                price = billing.to_major(offer.sale_price)
+                original = float(product.original_price) or float(product.price)
+                discount = max(0, round((original - price) / original * 100)) if original else 0
         return cls(
             id=product.id,
             slug=product.slug,
@@ -77,9 +99,10 @@ class ProductOut(CamelModel):
             # /category/women. The id is what the admin works in.
             category=product.category.slug if product.category else "",
             subcategory=product.subcategory,
-            price=float(product.price),
-            original_price=float(product.original_price),
-            discount=product.discount,
+            price=price,
+            original_price=max(float(product.original_price), float(product.price)) if flash else float(product.original_price),
+            discount=discount,
+            flash_sale=flash,
             currency=product.currency,
             rating=float(product.rating),
             review_count=product.review_count,
@@ -144,7 +167,7 @@ class AdminProductOut(ProductOut):
 
     @classmethod
     def from_model(cls, product) -> "AdminProductOut":
-        base = ProductOut.from_model(product).model_dump(by_alias=False)
+        base = ProductOut.from_model(product, offers=False).model_dump(by_alias=False)
         return cls(
             **base,
             status=product.status,

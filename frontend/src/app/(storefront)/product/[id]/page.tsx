@@ -8,6 +8,8 @@ import { ProductQuestions } from "@/components/products/ProductQuestions";
 import { ProductRail } from "@/components/products/ProductRail";
 import { ProductReviews } from "@/components/products/ProductReviews";
 import { RecentlyViewedRail } from "@/components/products/RecentlyViewedRail";
+import { ProductBundles } from "@/components/growth/Bundles";
+import { ProductViewTracker } from "@/components/growth/Trackers";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Tabs } from "@/components/ui/Tabs";
 import { getProduct, getRelatedProducts } from "@/services/productService";
@@ -283,6 +285,9 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
           <ProductQuestions productId={product.id} productName={product.name} />
         </section>
       </div>
+
+      <ProductViewTracker productId={product.id} />
+      <ProductBundles productId={product.id} />
 
       {/* ------------------------------------------------ related + history */}
       <div className="mt-16 flex flex-col gap-16">

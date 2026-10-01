@@ -36,8 +36,8 @@ admin_auth_router = APIRouter(prefix="/admin/auth", tags=["Authentication"])
 
 
 @router.post("/register", status_code=201, summary="Create a customer account")
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    customer, token = service.register(db, payload)
+def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)):
+    customer, token = service.register(db, payload, ip=client_ip(request))
     return ok(
         {
             "token": token.model_dump(by_alias=True),
@@ -205,7 +205,21 @@ def delete_address(
 
 @admin_auth_router.post("/login", summary="Sign in to the admin portal")
 def admin_login(payload: LoginRequest, db: Session = Depends(get_db)):
-    admin, token = service.login_admin(db, payload)
+    # Every attempt is in the audit trail — the address tried, never the password.
+    from app.core.errors import AppError
+    from app.services import audit
+
+    try:
+        admin, token = service.login_admin(db, payload)
+    except AppError as error:
+        audit.record_now(db, "auth.login_failed", resource_type="auth", resource_id=payload.email.lower()[:80],
+                         summary=f"Failed sign-in to the portal as {payload.email.lower()}", outcome="denied",
+                         status_code=error.status_code, error_code=error.error_code,
+                         details={"email": payload.email.lower()})
+        raise
+    audit.record(db, "auth.login", resource_type="auth", resource_id=admin.id, actor=admin,
+                 summary=f"{admin.name} signed in to the portal")
+    db.commit()
     return ok(
         {
             "token": token.model_dump(by_alias=True),
@@ -232,5 +246,10 @@ def admin_me(admin: AdminUser = Depends(get_current_admin)):
 
 
 @admin_auth_router.post("/logout", summary="Sign out of the admin portal")
-def admin_logout():
+def admin_logout(db: Session = Depends(get_db), admin: AdminUser = Depends(get_current_admin)):
+    from app.services import audit
+
+    audit.record(db, "auth.logout", resource_type="auth", resource_id=admin.id, actor=admin,
+                 summary=f"{admin.name} signed out of the portal")
+    db.commit()
     return ok(message="Signed out.")

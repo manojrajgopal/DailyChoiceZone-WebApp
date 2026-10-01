@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
@@ -98,6 +98,7 @@ def add_item(
 
     wanted = (existing.quantity if existing else 0) + quantity
     capped = max(1, min(wanted, MAX_QUANTITY_PER_LINE, available))
+    _refuse_over_flash_limit(db, customer, product, capped - (existing.quantity if existing else 0))
 
     if existing:
         existing.quantity = capped
@@ -113,9 +114,40 @@ def add_item(
         db.add(item)
 
     cart_recovery.touch(db, customer.id)
+    from app.services import analytics_events
+
+    analytics_events.server_event(db, "add_to_cart", customer_id=customer.id, product_id=product.id,
+                                  quantity=quantity)
     db.commit()
     db.refresh(item)
     return item
+
+
+def _refuse_over_flash_limit(db: Session, customer: Customer, product: Product, adding: int) -> None:
+    """
+    A flash sale's limit per customer, said when the item is added rather than
+    at checkout: what is already in the bag plus what was bought in the sale
+    before, against the limit.
+    """
+    from app.services import pricing
+
+    if adding <= 0:
+        return
+    offer = pricing.offer_for(product, db)
+    if offer is None or offer.per_customer_limit is None:
+        return
+    in_bag = db.execute(
+        select(func.coalesce(func.sum(CartItem.quantity), 0)).where(
+            CartItem.customer_id == customer.id, CartItem.product_id == product.id)
+    ).scalar_one()
+    bought = pricing.claimed_by(db, customer.id, [offer.item_id]).get(offer.item_id, 0)
+    allowed = offer.per_customer_limit - bought - int(in_bag)
+    if adding > allowed:
+        raise ValidationError(
+            f"The {offer.sale_name} flash sale allows {offer.per_customer_limit} of {product.name} per customer"
+            + (f" — you can add {allowed} more." if allowed > 0 else " and you've reached it."),
+            error_code="FLASH_SALE_LIMIT",
+        )
 
 
 def update_quantity(db: Session, customer: Customer, item_id: int, quantity: int) -> Optional[CartItem]:
@@ -130,7 +162,9 @@ def update_quantity(db: Session, customer: Customer, item_id: int, quantity: int
         db.commit()
         return None
 
-    item.quantity = min(quantity, MAX_QUANTITY_PER_LINE, max(1, item.product.available_stock))
+    target = min(quantity, MAX_QUANTITY_PER_LINE, max(1, item.product.available_stock))
+    _refuse_over_flash_limit(db, customer, item.product, target - item.quantity)
+    item.quantity = target
     cart_recovery.touch(db, customer.id)
     db.commit()
     db.refresh(item)
@@ -148,7 +182,10 @@ def remove_item(db: Session, customer: Customer, item_id: int) -> None:
 
 
 def clear(db: Session, customer: Customer) -> None:
+    from app.models import CartBundle
+
     db.execute(delete(CartItem).where(CartItem.customer_id == customer.id))
+    db.execute(delete(CartBundle).where(CartBundle.customer_id == customer.id))
     cart_recovery.touch(db, customer.id)
     db.commit()
 
@@ -175,36 +212,32 @@ def get_cart(
     items = _load_items(db, customer.id)
     live = [item for item in items if item.product and item.product.status in ("active", "out-of-stock")]
 
+    # Priced by the same rules checkout uses: a bundle's share of its price,
+    # a live flash sale price, or the catalogue price — see `services.pricing`.
+    from app.services import bundles as bundle_service, pricing
+
+    cart_bundles = bundle_service.load_cart_bundles(db, customer.id)
+    bag = pricing.price_bag(db, customer.id, live, cart_bundles)
+    lines = [priced.line for priced in bag.lines]
+    unit_prices = {priced.cart_item.id: priced.line.unit_price for priced in bag.lines if priced.cart_item is not None}
+    offers = {priced.cart_item.id: priced.offer for priced in bag.lines if priced.cart_item is not None}
+
     coupon = None
     coupon_error = None
     if coupon_code:
-        subtotal_guess = sum(
-            billing.to_minor(float(i.product.price)) * i.quantity for i in live
-        )
+        subtotal_guess = sum(line.unit_price * line.quantity for line in lines)
         result = validate_coupon(db, coupon_code, subtotal_guess, customer_id=customer.id)
         coupon = result if result.get("valid") else None
         # Said, not swallowed: a code that silently stops applying reads as a
         # broken store.
         coupon_error = None if coupon else result.get("reason")
+        if coupon and bag.coupon_blocked_by:
+            coupon = None
+            coupon_error = f"Coupons can't be used with items from the {bag.coupon_blocked_by} flash sale."
 
     from app.services import membership as membership_service
 
     perks = membership_service.order_benefits(db, customer.id, delivery_method=delivery_method)
-
-    lines = [
-        billing.BillingLine(
-            product_id=item.product.id,
-            name=item.product.name,
-            sku=item.product.sku,
-            category=item.product.category.slug if item.product.category else None,
-            size=item.size or None,
-            color=item.color or None,
-            quantity=item.quantity,
-            unit_price=billing.to_minor(float(item.product.price)),
-            list_price=billing.to_minor(float(item.product.original_price)),
-        )
-        for item in live
-    ]
 
     subtotal = sum(line.unit_price * line.quantity for line in lines)
     item_count = sum(line.quantity for line in lines)
@@ -252,10 +285,15 @@ def get_cart(
                 "color": item.color or None,
                 "quantity": item.quantity,
                 "product": item.product,
-                "lineTotal": billing.to_minor(float(item.product.price)) * item.quantity,
+                "unitPrice": unit_prices.get(item.id, billing.to_minor(float(item.product.price))),
+                "lineTotal": unit_prices.get(item.id, billing.to_minor(float(item.product.price))) * item.quantity,
+                "flashSale": (offers[item.id].view(billing.to_minor(float(item.product.price)))
+                              if offers.get(item.id) is not None else None),
             }
             for item in live
         ],
+        "bundles": bag.bundles,
+        "issues": bag.issues,
         "breakdown": result["breakdown"],
         "freeDeliveryShortfall": max(0, threshold - subtotal),
         "delivery": delivery.view(db) if delivery is not None else None,

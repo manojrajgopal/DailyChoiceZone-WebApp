@@ -148,6 +148,11 @@ export function InvoiceDocument({
                 >
                   <td className="py-2.5 pr-3">
                     <span className="block font-medium text-ink">{line.name}</span>
+                    {line.bundleName ? (
+                      <span className="block text-[0.625rem] text-copper-700">
+                        Part of bundle: {line.bundleName}{line.bundleQuantity && line.bundleQuantity > 1 ? ` × ${line.bundleQuantity}` : ""}
+                      </span>
+                    ) : null}
                     <span className="mt-0.5 block text-[0.625rem] text-ink-400">
                       {line.sku}
                       {line.size ? ` · ${line.size}` : ""}

@@ -103,7 +103,7 @@ TYPES: Dict[str, dict] = {
     },
     "store_team": {
         "label": "Store team alerts",
-        "description": "New product questions, return requests, gift cards bought and failed payment webhooks — sent to your administrators, not to customers.",
+        "description": "New product questions, return requests, gift cards bought, failed payment webhooks, referrals held for review, flash sales selling out and system health problems — sent to your administrators, not to customers.",
         "enabled": True, "optOut": False, "internal": True,
     },
     "account_security": {
@@ -139,6 +139,16 @@ TYPES: Dict[str, dict] = {
     "loyalty": {
         "label": "Reward points",
         "description": "Points earned, points ready to spend, and points about to expire.",
+        "enabled": True, "optOut": True,
+    },
+    "referrals": {
+        "label": "Referrals",
+        "description": "A friend joining with your referral code, and referral rewards earned or taken back.",
+        "enabled": True, "optOut": True,
+    },
+    "flash_sales": {
+        "label": "Flash sales",
+        "description": "When a flash sale starts on something in your wishlist.",
         "enabled": True, "optOut": True,
     },
     "offers": {

@@ -22,13 +22,14 @@ from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import AdminUser, Customer, StoreCreditAccount, StoreCreditTransaction
 from app.services import billing
 
-CREDIT_KINDS = ("grant", "goodwill", "promotion", "refund", "gift-card-refund", "restore", "adjust")
-DEBIT_KINDS = ("redeem", "revoke", "adjust")
+CREDIT_KINDS = ("grant", "goodwill", "promotion", "refund", "gift-card-refund", "restore", "adjust", "referral")
+DEBIT_KINDS = ("redeem", "revoke", "adjust", "referral-reversed")
 ADMIN_KINDS = {"grant": 1, "goodwill": 1, "promotion": 1, "revoke": -1}
 LABELS = {
     "grant": "Credit added", "goodwill": "Goodwill credit", "promotion": "Promotional credit",
     "refund": "Refund to store credit", "gift-card-refund": "Gift card refund", "restore": "Returned from an order",
     "redeem": "Spent on an order", "revoke": "Credit removed", "adjust": "Adjustment",
+    "referral": "Referral reward", "referral-reversed": "Referral reward taken back",
 }
 MAX_ADMIN_AMOUNT = billing.to_minor(100000)
 

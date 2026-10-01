@@ -31,6 +31,8 @@ class RegisterRequest(CamelModel):
     first_name: str = Field(min_length=1, max_length=80)
     last_name: str = Field(default="", max_length=80)
     phone: str = Field(default="", max_length=20)
+    # A friend's referral code, if they signed up with one.
+    referral_code: Optional[str] = Field(default=None, max_length=32)
 
     @field_validator("password")
     @classmethod

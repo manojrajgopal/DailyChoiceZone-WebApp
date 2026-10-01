@@ -59,6 +59,10 @@ class InvoiceLineOut(CamelModel):
     igst: int
     tax: int
     line_total: int
+    # A component of a bundle: the bundle's name, and how many were bought.
+    bundle_name: str = ""
+    bundle_group: str = ""
+    bundle_quantity: int = 0
 
 
 class InvoiceOut(CamelModel):

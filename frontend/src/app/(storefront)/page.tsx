@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { HomeSectionRenderer } from "@/components/home/HomeSectionRenderer";
 import { HomeSections } from "@/components/home/HomeSections";
+import { FlashSaleStrip } from "@/components/growth/FlashSales";
 import {
   getHomepageConfig,
   getHomeSectionLayout,
@@ -36,12 +37,16 @@ export default async function HomePage() {
   ]);
 
   return (
-    <HomeSections
+    <>
+      {/* Shown only while a flash sale is live. */}
+      <FlashSaleStrip />
+      <HomeSections
       initialLayout={layout}
       sections={sections.map((section) => ({
         id: section.id,
         node: <HomeSectionRenderer section={section} />,
       }))}
     />
+    </>
   );
 }

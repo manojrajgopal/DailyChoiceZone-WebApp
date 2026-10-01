@@ -103,6 +103,7 @@ export function CheckoutShell({
     breakdown,
     isLoading,
     isEmpty,
+    bundles,
     coupon,
     couponCode,
     couponError,
@@ -184,7 +185,7 @@ export function CheckoutShell({
             to exist only in the bag, so a shopper who went straight to
             checkout had nowhere to enter a code.
           */}
-          {summary === undefined && !isLoading && lines.length > 0 ? (
+          {summary === undefined && !isLoading && (lines.length > 0 || bundles.length > 0) ? (
             <div className="mb-4 rounded-card border border-ink-200 bg-shell p-4">
               <CouponForm
                 compact

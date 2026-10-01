@@ -47,6 +47,16 @@ RESOURCES = (
     "gift-cards",
     "store-credit",
     "loyalty",
+    # Growth: the referral programme (it pays out credit), flash sales and
+    # bundles (they set prices).
+    "referrals",
+    "flash-sales",
+    "bundles",
+    # Reading: analytics; the audit trail (who did what — the super admin's
+    # unless granted); system health.
+    "analytics",
+    "audit-logs",
+    "health",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -57,9 +67,10 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
     # Configuring support — teams, routing, SLAs — is the super admin's.
     # Money-moving actions (resolving reconciliation, replaying webhooks) are
     # the super admin's; an admin can see both.
-    "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage")],
-    "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts", "alerts", "questions"],
-    "editor": ["products", "content", "questions"],
+    "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage", "audit-logs")],
+    "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts", "alerts", "questions",
+                "flash-sales", "bundles", "analytics"],
+    "editor": ["products", "content", "questions", "bundles"],
     "staff": ["products", "orders", "reviews", "support", "questions"],
 }
 

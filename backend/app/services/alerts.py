@@ -631,7 +631,9 @@ async def run_forever() -> None:
     logger.info("Stock and price alerts checked every %ss.", INTERVAL_SECONDS)
     while True:
         try:
-            await asyncio.to_thread(_sweep_once)
+            from app.services import jobs
+
+            await asyncio.to_thread(jobs.tracked("alerts", INTERVAL_SECONDS, _sweep_once))
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001

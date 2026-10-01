@@ -65,6 +65,11 @@ export function CartLineRow({
               {line.color ? <span>Colour: {line.color}</span> : null}
             </p>
 
+            {product.flashSale ? (
+              <Badge tone="sale" className="mt-2 mr-1.5">
+                {product.flashSale.name}: flash sale price
+              </Badge>
+            ) : null}
             {outOfStock ? (
               <Badge tone="soldout" className="mt-2">
                 Out of stock — remove to check out

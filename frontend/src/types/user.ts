@@ -18,6 +18,8 @@ export interface Credentials {
 export interface RegisterInput extends Credentials {
   firstName: string;
   lastName: string;
+  /** A friend's referral code. Checked by the server; an invalid one is refused. */
+  referralCode?: string;
 }
 
 export interface AuthSession {

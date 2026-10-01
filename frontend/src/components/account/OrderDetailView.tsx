@@ -358,6 +358,11 @@ export function OrderDetailView() {
                       </Link>
                     </p>
                     <p className="mt-0.5 text-xs text-ink-500">{line.brand}</p>
+                    {line.bundleName ? (
+                      <p className="mt-0.5 text-xs text-copper-700">Part of bundle: {line.bundleName}</p>
+                    ) : line.flashSaleId ? (
+                      <p className="mt-0.5 text-xs text-clay-600">Flash sale price</p>
+                    ) : null}
                     <p className="mt-1 text-xs text-ink-400">
                       {[line.size ? `Size ${line.size}` : null, line.color]
                         .filter(Boolean)

@@ -316,6 +316,15 @@ def _apply_paid(db: Session, payment: Payment, result: PaymentResult) -> None:
                 product_service.commit_reservation(db, item.product_id, item.quantity, order.id)
             order.stock_state = "consumed"
             order.payment_expires_at = None
+            # And units held at a flash sale price are now sold.
+            from app.services import flash_sales
+
+            flash_sales.commit_claims(db, order)
+
+        # A referral waiting on this customer's first paid order may be due.
+        from app.services import referrals
+
+        referrals.on_order_paid(db, order)
 
         # An order awaiting a prepaid gateway is not confirmed yet — see
         # `place_order`. Payment is what confirms it.

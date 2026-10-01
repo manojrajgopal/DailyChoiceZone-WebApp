@@ -115,7 +115,9 @@ async def run_forever() -> None:
 
     while True:
         try:
-            await asyncio.to_thread(_sweep_once)
+            from app.services import jobs
+
+            await asyncio.to_thread(jobs.tracked("payment_expiry", interval, _sweep_once))
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001

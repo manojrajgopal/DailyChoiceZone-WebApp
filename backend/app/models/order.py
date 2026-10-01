@@ -162,6 +162,16 @@ class OrderItem(Base):
     is_replaceable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     unit_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     line_total: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    # The catalogue price when the line was priced lower — by a flash sale or
+    # as part of a bundle. NULL for a line at the ordinary price.
+    regular_unit_price: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    flash_sale_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    # A bundle's components share a group key, unique within the order; the
+    # bundle's name and how many bundles were bought are copied onto each.
+    bundle_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    bundle_name: Mapped[str] = mapped_column(String(200), nullable=False, default="", server_default="")
+    bundle_group: Mapped[str] = mapped_column(String(40), nullable=False, default="", server_default="")
+    bundle_quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     order: Mapped["Order"] = relationship(back_populates="items")
 

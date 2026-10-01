@@ -121,6 +121,7 @@ export function ProductCard({
               <Badge tone="soldout">Sold out</Badge>
             ) : (
               <>
+                {product.flashSale ? <Badge tone="sale">Flash sale</Badge> : null}
                 {product.isNew ? <Badge tone="new">New</Badge> : null}
                 {product.isBestSeller ? <Badge tone="bestseller">Bestseller</Badge> : null}
                 {product.discount >= 25 ? (

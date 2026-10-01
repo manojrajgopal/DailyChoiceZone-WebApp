@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { useSession } from "@/hooks/useSession";
 import { safeRedirect } from "@/lib/utils/safeRedirect";
+import { forgetReferralCode, rememberReferralCode, rememberedReferralCode } from "@/services/growthService";
 
 /**
  * Sign in and register, on one panel.
@@ -31,7 +32,19 @@ export function AuthPanel() {
    */
   const next = searchParams?.get("next");
   const returnTo = next ? safeRedirect(next, "/account") : null;
-  const [mode, setMode] = useState<"signin" | "register">("signin");
+  // Arriving from a friend's referral link opens on "Create account" with their code.
+  const referralParam = searchParams?.get("ref") ?? "";
+  const [mode, setMode] = useState<"signin" | "register">(referralParam ? "register" : "signin");
+  const [referralCode, setReferralCode] = useState(referralParam.toUpperCase());
+
+  useEffect(() => {
+    if (referralParam) rememberReferralCode(referralParam);
+    else {
+      const remembered = rememberedReferralCode();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read from storage once, after hydration
+      if (remembered) setReferralCode(remembered);
+    }
+  }, [referralParam]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [firstName, setFirstName] = useState("");
@@ -46,7 +59,9 @@ export function AuthPanel() {
       const result =
         mode === "signin"
           ? await signIn({ email, password })
-          : await register({ firstName, lastName, email, password });
+          : await register({ firstName, lastName, email, password, referralCode: referralCode.trim() || undefined });
+
+      if (result.ok && mode === "register") forgetReferralCode();
 
       // Back to the checkout step they came from, now that they can finish it.
       if (result.ok && returnTo) router.replace(returnTo);
@@ -129,6 +144,17 @@ export function AuthPanel() {
           }
           required
         />
+
+        {mode === "register" ? (
+          <Input
+            label="Referral code (optional)"
+            value={referralCode}
+            onChange={(event) => setReferralCode(event.target.value.toUpperCase())}
+            maxLength={16}
+            autoComplete="off"
+            hint="From a friend who shops with us. You both get a reward after your first order."
+          />
+        ) : null}
 
         {mode === "signin" ? (
           <p className="-mt-2 text-right text-sm">
