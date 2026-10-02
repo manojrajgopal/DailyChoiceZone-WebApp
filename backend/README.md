@@ -645,6 +645,10 @@ fail to verify, and — endpoint by endpoint — who is allowed to call what.
 
 Reorder, multi-channel notifications (email, SMS, WhatsApp, in-app) with retries, the branded email templates, marketing campaigns and automated encrypted database backups are documented in [docs/messaging-and-backups.md](../docs/messaging-and-backups.md) — architecture, provider set-up, environment variables, restore steps and tests.
 
+## Shipping, couriers, suppliers and purchase orders
+
+Shipment tracking (customer timeline and admin management), the provider-agnostic courier layer (Shiprocket and Manual), courier webhooks, supplier management, supplier-product links, purchase orders and goods receiving are documented in [docs/shipping-and-suppliers.md](../docs/shipping-and-suppliers.md): the data model, every endpoint, the shipment and PO lifecycles, courier setup, webhooks and tests.
+
 ## Configuration
 
 Everything is read from `.env`; `.env.example` lists it all. Nothing is

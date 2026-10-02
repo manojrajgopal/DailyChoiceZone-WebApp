@@ -1,0 +1,194 @@
+"use client";
+
+import Link from "next/link";
+import { AlertTriangle, RefreshCw, X } from "lucide-react";
+
+import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { TD, TH, TableState } from "@/components/admin/views/operations/shared";
+import { useAdminResource } from "@/hooks/useAdminResource";
+import { formatDate } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
+import { listShipments, listShippingProviders } from "@/services/shippingService";
+import { SHIPMENT_STATUSES, SHIPMENT_STATUS_LABELS } from "@/types/shipping";
+
+import { ShipmentStatusBadge } from "./shared";
+
+const KEYS = ["status", "q", "courier", "provider", "from", "to"] as const;
+
+const DATE_INPUT =
+  "h-9 rounded-[3px] border border-admin-border bg-admin-surface px-2 text-[0.8125rem] text-admin-ink hover:border-admin-border-strong";
+
+/**
+ * Every shipment, newest first: searchable by shipment, order, AWB or
+ * customer, and filtered by status, courier, provider and date — all kept in
+ * the address bar so a filtered view can be shared.
+ */
+export function AdminShipmentsView() {
+  const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
+  const { status, q, courier, provider, from, to } = filters;
+
+  // Primitive dependencies: the filters object is rebuilt whenever the query string is read.
+  const shipments = useAdminResource(
+    () => listShipments({ status, q, courier, provider, from, to, page, pageSize }),
+    [status, q, courier, provider, from, to, page, pageSize],
+  );
+  // For the provider filter. Optional: without it the filter just isn't offered.
+  const providers = useAdminResource(() => listShippingProviders(), []);
+
+  const data = shipments.data;
+  const counts = data?.counts ?? {};
+  const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+  const filtered = Boolean(status || q || courier || provider || from || to);
+  const rangeInvalid = Boolean(from && to && from > to);
+
+  return (
+    <div>
+      <AdminPageHeader
+        title="Shipments"
+        description="Every parcel handed to a courier: where it is, and anything that needs a hand."
+        breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Shipments" }]}
+        actions={
+          <>
+            <AdminButtonLink href="/admin/settings/couriers" size="sm" variant="ghost">
+              Courier settings
+            </AdminButtonLink>
+            <AdminButton size="sm" onClick={() => void shipments.reload()} loading={shipments.isRefreshing}>
+              {shipments.isRefreshing ? null : <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />}
+              Refresh
+            </AdminButton>
+          </>
+        }
+      />
+
+      <StatusTabs
+        label="Filter shipments by status"
+        value={status}
+        onChange={(next) => setFilters({ status: next })}
+        tabs={[
+          { value: "", label: "All", count: data?.counts ? total : undefined },
+          ...SHIPMENT_STATUSES.map((value) => ({
+            value,
+            label: SHIPMENT_STATUS_LABELS[value],
+            count: data?.counts ? (counts[value] ?? 0) : undefined,
+          })),
+        ]}
+      />
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <LogSearch
+          label="Search shipments"
+          value={q}
+          onChange={(next) => setFilters({ q: next })}
+          placeholder="Shipment, order number, AWB, customer name or email"
+        />
+        <LogSearch label="Filter by courier" value={courier} onChange={(next) => setFilters({ courier: next })} placeholder="Courier name" />
+        {providers.data && providers.data.length > 0 ? (
+          <FilterSelect
+            label="Provider"
+            value={provider}
+            onChange={(next) => setFilters({ provider: next })}
+            options={[{ value: "", label: "All providers" }, ...providers.data.map((entry) => ({ value: entry.code, label: entry.name }))]}
+          />
+        ) : null}
+        <label className="flex items-center gap-1.5 text-xs text-admin-muted">
+          From
+          <input type="date" aria-label="Created from" value={from} max={to || undefined} onChange={(event) => setFilters({ from: event.target.value })} className={DATE_INPUT} />
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-admin-muted">
+          To
+          <input type="date" aria-label="Created to" value={to} min={from || undefined} onChange={(event) => setFilters({ to: event.target.value })} className={DATE_INPUT} />
+        </label>
+        {filtered ? (
+          <AdminButton size="sm" variant="ghost" onClick={clear}>
+            <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+            Clear filters
+          </AdminButton>
+        ) : null}
+      </div>
+      {rangeInvalid ? (
+        <p role="alert" className="mb-3 text-xs text-[#a12b2b]">
+          The start date is after the end date, so nothing can match.
+        </p>
+      ) : null}
+
+      <AdminCard padded={false}>
+        <div className="relative overflow-x-auto">
+          <table className={cn("w-full min-w-[60rem] text-left text-xs", shipments.isRefreshing && "opacity-60")}>
+            <thead className="border-b border-admin-border bg-admin-raised text-admin-muted">
+              <tr>
+                <th className={TH}>Shipment</th>
+                <th className={TH}>Order</th>
+                <th className={TH}>Customer</th>
+                <th className={TH}>Courier</th>
+                <th className={TH}>AWB</th>
+                <th className={TH}>Status</th>
+                <th className={TH}>Expected</th>
+                <th className={cn(TH, "text-right")}>Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-admin-border">
+              <TableState
+                columns={8}
+                loading={shipments.isLoading && !data}
+                failed={Boolean(shipments.error && !data)}
+                empty={Boolean(data && data.items.length === 0)}
+                onRetry={() => void shipments.reload()}
+                title={filtered ? "No shipments match" : "No shipments yet"}
+                hint={filtered ? "Try a different filter or search." : "Create one from an order's page once it's packed."}
+              />
+              {data?.items.map((row) => (
+                <tr key={row.id} className="align-top hover:bg-admin-raised">
+                  <td className={cn(TD, "whitespace-nowrap")}>
+                    <Link
+                      href={`/admin/shipments/detail?id=${encodeURIComponent(String(row.id))}`}
+                      className="font-medium text-admin-ink hover:text-copper-700"
+                    >
+                      {row.shipmentNumber}
+                    </Link>
+                  </td>
+                  <td className={cn(TD, "whitespace-nowrap")}>
+                    <Link href={`/admin/orders/detail?id=${encodeURIComponent(row.orderId)}`} className="text-admin-muted hover:text-copper-700">
+                      #{row.orderNumber}
+                    </Link>
+                  </td>
+                  <td className={cn(TD, "text-admin-ink")}>{row.customerName || "—"}</td>
+                  <td className={cn(TD, "text-admin-ink")}>{row.courierName || "—"}</td>
+                  <td className={cn(TD, "font-mono text-[0.6875rem] text-admin-muted")}>{row.awb || "—"}</td>
+                  <td className={TD}>
+                    <span className="flex flex-col items-start gap-1">
+                      <ShipmentStatusBadge status={row.status} label={row.statusLabel} />
+                      {row.requestStatus === "failed" ? (
+                        <span className="inline-flex max-w-[14rem] items-start gap-1 text-[0.625rem] text-[#a12b2b]" title={row.lastError}>
+                          <AlertTriangle className="mt-px h-3 w-3 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                          <span className="line-clamp-2">Courier request failed{row.lastError ? `: ${row.lastError}` : ""}</span>
+                        </span>
+                      ) : row.requestStatus === "pending" ? (
+                        <span className="text-[0.625rem] text-admin-muted">Waiting for the courier</span>
+                      ) : null}
+                    </span>
+                  </td>
+                  <td className={cn(TD, "whitespace-nowrap text-admin-muted")}>
+                    {row.expectedDeliveryAt ? formatDate(row.expectedDeliveryAt) : "—"}
+                  </td>
+                  <td className={cn(TD, "whitespace-nowrap text-right text-admin-muted")}>{formatDate(row.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AdminCard>
+
+      {data ? (
+        <LogFooter
+          page={data.pagination.page}
+          pageSize={pageSize}
+          total={data.pagination.total}
+          totalPages={data.pagination.total_pages}
+          onPage={setPage}
+          onPageSize={setPageSize}
+        />
+      ) : null}
+    </div>
+  );
+}

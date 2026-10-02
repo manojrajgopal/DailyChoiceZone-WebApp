@@ -23,6 +23,7 @@ import {
   TagListInput,
 } from "@/components/admin/ui/AdminForm";
 import { SettingsLayout, useSettingsSection, type SettingsSection } from "@/components/admin/ui/SettingsLayout";
+import { ProductSuppliersPanel } from "@/components/admin/views/suppliers/ProductSuppliersPanel";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { slugify } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
@@ -74,7 +75,8 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
 
   const [draft, setDraft] = useState<ProductDraft>(() => emptyProductDraft());
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [section, setSection] = useSettingsSection(SECTION_ORDER);
+  // Suppliers exist only for a saved product, so that section is on edit only.
+  const [section, setSection] = useSettingsSection(mode === "edit" ? [...SECTION_ORDER, "suppliers"] : SECTION_ORDER);
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(mode === "create");
 
@@ -583,6 +585,9 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
         </FormSection>
       ),
     },
+    ...(mode === "edit" && productId
+      ? [{ id: "suppliers", label: "Suppliers", group: "Purchasing", content: <ProductSuppliersPanel productId={productId} /> }]
+      : []),
   ];
 
   return (

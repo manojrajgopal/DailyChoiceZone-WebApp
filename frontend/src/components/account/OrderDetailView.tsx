@@ -9,6 +9,7 @@ import type { Order } from "@/types";
 
 import { AccountShell } from "@/components/account/AccountShell";
 import { OrderReturns } from "@/components/account/OrderReturns";
+import { OrderShipments } from "@/components/account/OrderShipments";
 import { ReorderDialog } from "@/components/account/ReorderDialog";
 import {
   ORDER_TIMELINE,
@@ -324,6 +325,9 @@ export function OrderDetailView() {
               </ol>
             </section>
           )}
+
+          {/* ---------------------------------------------------- shipment */}
+          {order.status !== "pending" ? <OrderShipments orderNumber={order.orderNumber} /> : null}
 
           {/* ------------------------------------- returns & replacements */}
           <OrderReturns order={order} />

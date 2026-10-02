@@ -35,6 +35,7 @@ EXPECTED = {
     "notifications": "Sending and retrying notifications",
     "campaigns": "Sending marketing campaigns",
     "backups": "Database backups",
+    "shipping": "Shipment tracking and courier retries",
 }
 
 

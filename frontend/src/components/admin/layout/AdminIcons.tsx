@@ -1,5 +1,8 @@
 import {
   Bell,
+  ClipboardList,
+  Factory,
+  PackageCheck,
   DatabaseBackup,
   Megaphone,
   Activity,
@@ -93,6 +96,9 @@ const ICONS = {
   campaigns: Megaphone,
   notifications: Bell,
   backups: DatabaseBackup,
+  shipments: PackageCheck,
+  suppliers: Factory,
+  purchaseOrders: ClipboardList,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

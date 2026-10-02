@@ -90,12 +90,18 @@ async def lifespan(_: FastAPI):
     campaign_sweeper = asyncio.create_task(campaigns.run_forever())
     backup_sweeper = asyncio.create_task(backups.run_forever())
 
+    # Shipments: retrying failed courier calls, refreshing tracking that is
+    # due, and flagging parcels that have stopped moving.
+    from app.services.shipping import jobs as shipping_jobs
+
+    shipping_sweeper = asyncio.create_task(shipping_jobs.run_forever())
+
     try:
         yield
     finally:
         for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper, alert_sweeper, rewards_sweeper,
                      flash_sweeper, referral_sweeper, health_sweeper, message_sweeper, campaign_sweeper,
-                     backup_sweeper):
+                     backup_sweeper, shipping_sweeper):
             if task is None:
                 continue
             task.cancel()

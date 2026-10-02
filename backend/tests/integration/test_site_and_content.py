@@ -382,7 +382,10 @@ class TestAdminNavigation:
         db.flush()
         groups = client.get("/api/admin/navigation", headers=admin_auth).json()["data"]
         hrefs = [item["href"] for item in groups[0]["items"]]
-        assert hrefs.index("/admin/returns") == hrefs.index("/admin/orders") + 1
+        # Both anchor on Orders; each is placed straight after it, so the later one leads.
+        assert hrefs.index("/admin/shipments") == hrefs.index("/admin/orders") + 1
+        assert hrefs.index("/admin/returns") == hrefs.index("/admin/shipments") + 1
+        assert hrefs.index("/admin/purchase-orders") == hrefs.index("/admin/suppliers") + 1
         assert "/admin/settings/backups" in hrefs  # anchors missing: appended to the last group
         assert len(hrefs) == len(set(hrefs))
 

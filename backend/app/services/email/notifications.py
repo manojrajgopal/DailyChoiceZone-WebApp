@@ -128,6 +128,48 @@ def notify_membership(db: Session, membership, email: str, programme_name: str) 
     )
 
 
+SHIPMENT_COPY = {
+    "shipment_created": ("Packed and ready to ship",
+                         "Your order is packed and booked with {courier}. Tracking number: {awb}."),
+    "delivery_attempted": ("We tried to deliver your order",
+                           "{courier} tried to deliver your order but couldn't. They'll usually try again on "
+                           "the next working day."),
+    "delivery_failed": ("We couldn't deliver your order",
+                        "{courier} couldn't deliver your order. Our team will be in touch to arrange what "
+                        "happens next."),
+    "shipment_returned": ("Your parcel is coming back to us",
+                          "The parcel couldn't be delivered and is on its way back to us. We'll contact you "
+                          "about a refund or a new delivery."),
+}
+
+
+def notify_shipment(db: Session, shipment, order, event_key: str, *, suffix: str = "") -> bool:
+    """
+    A courier moment with no order stage of its own (see `messaging.catalogue`):
+    booked, delivery attempted, delivery failed, returned. Sent once per
+    shipment per event (per attempt, for delivery attempts).
+    """
+    if event_key not in SHIPMENT_COPY or order is None:
+        return False
+    esc = html_lib.escape
+    courier = shipment.courier_name or "the courier"
+    title, body = SHIPMENT_COPY[event_key]
+    sentence = body.format(courier=courier, awb=shipment.awb or "")
+    intro = f"{esc(sentence)} Order <strong>{esc(order.order_number)}</strong>."
+    html = layout(title, intro, _order_rows(order), ("Track your order", _order_link(order)))
+    variables = {**order_variables(order), "courier_name": courier, "tracking_number": shipment.awb or ""}
+    key = f"shipment:{shipment.shipment_number}:{event_key}"
+    if suffix:
+        key = f"{key}:{suffix}"
+    return notify(
+        db, "order_updates", to=order.customer_email, customer_id=order.customer_id,
+        subject=f"{title} — {order.order_number}", html=html,
+        text=f"{sentence} Order {order.order_number}. {_order_link(order)}", reference=order.order_number,
+        inbox={"href": f"/account/order?number={order.order_number}"},
+        event=event_key, variables=variables, extra_html=_order_rows(order), idempotency_key=key[:140],
+    )
+
+
 def notify_invoice(db: Session, invoice) -> bool:
     esc = html_lib.escape
     link = f"{_brand()['url']}/account/invoice?id={invoice.id}"

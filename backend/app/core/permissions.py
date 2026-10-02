@@ -63,6 +63,14 @@ RESOURCES = (
     "campaigns",
     # Database backups hold every customer's data: the super admin's unless granted.
     "backups",
+    # Operating shipments (create, label, pickup, cancel, track), and configuring
+    # the couriers behind them: credentials, so the super admin's unless granted.
+    "shipments",
+    "shipping-config",
+    # The supplier directory and what each supplies; purchase orders and the
+    # goods received against them (which adds stock).
+    "suppliers",
+    "purchasing",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -73,11 +81,12 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
     # Configuring support — teams, routing, SLAs — is the super admin's.
     # Money-moving actions (resolving reconciliation, replaying webhooks) are
     # the super admin's; an admin can see both.
-    "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage", "audit-logs", "backups")],
+    "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage", "audit-logs", "backups",
+                                                   "shipping-config")],
     "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts", "alerts", "questions",
-                "flash-sales", "bundles", "analytics", "campaigns"],
+                "flash-sales", "bundles", "analytics", "campaigns", "shipments", "suppliers", "purchasing"],
     "editor": ["products", "content", "questions", "bundles"],
-    "staff": ["products", "orders", "reviews", "support", "questions"],
+    "staff": ["products", "orders", "reviews", "support", "questions", "shipments"],
 }
 
 

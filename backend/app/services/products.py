@@ -532,6 +532,51 @@ def lock_products(db: Session, product_ids) -> dict:
     return {row.id: row for row in rows}
 
 
+def receive_stock(
+    db: Session,
+    product_id: str,
+    *,
+    quantity: int,
+    reason: str = "purchase-receipt",
+    note: str = "",
+    actor: str = "system",
+) -> Product:
+    """
+    Add `quantity` units to stock: goods received from a supplier.
+
+    The increment counterpart of `adjust_stock`, for callers that add rather
+    than set: a locked read of the row (so a sale committing meanwhile isn't
+    overwritten), the same ledger row, the same status rule. **Doesn't commit**:
+    a goods receipt adds several products in one transaction, and either all of
+    it lands or none of it does. Back-in-stock alerts are the caller's to run
+    after its commit (`alerts.process_product`).
+    """
+    if quantity <= 0:
+        raise ValidationError("The quantity received must be above zero.", error_code="INVALID_QUANTITY")
+
+    product = _locked(db, product_id)
+    before = product.stock
+    product.stock = before + quantity
+    if product.status in ("active", "out-of-stock"):
+        available = max(0, product.stock - product.reserved_stock)
+        product.status = "active" if available > 0 else "out-of-stock"
+
+    db.add(
+        StockAdjustment(
+            product_id=product.id,
+            reason=reason,
+            quantity_before=before,
+            quantity_after=product.stock,
+            delta=quantity,
+            note=note[:500],
+            actor=actor[:40],
+            created_at=datetime.utcnow(),
+        )
+    )
+    db.flush()
+    return product
+
+
 def _locked(db: Session, product_id: str) -> Product:
     # Write what this transaction has already changed first. The locking read
     # below refreshes the row from the database (`populate_existing`), which

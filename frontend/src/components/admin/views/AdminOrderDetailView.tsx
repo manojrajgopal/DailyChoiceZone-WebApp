@@ -17,6 +17,7 @@ import {
 import { AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { DomainStatus, humanStatus } from "@/components/admin/ui/StatusBadge";
 import { OrderBillingPanel } from "@/components/admin/views/OrderBillingPanel";
+import { OrderShippingCard } from "@/components/admin/views/shipping/OrderShippingCard";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice } from "@/lib/utils/format";
@@ -549,6 +550,8 @@ export function AdminOrderDetailView() {
               </div>
             )}
           </AdminCard>
+
+          <OrderShippingCard orderId={order.id} onChanged={() => void reload()} />
 
           <AdminCard title="Customer">
             <p className="text-xs font-medium text-admin-ink">

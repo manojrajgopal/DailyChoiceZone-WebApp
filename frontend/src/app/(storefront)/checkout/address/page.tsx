@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { Address, BillingAddress, DeliveryMethodId } from "@/types";
 
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
+import { DeliveryEstimate } from "@/components/checkout/DeliveryEstimate";
 import { PincodeStatus, usePincodeCheck } from "@/components/common/PincodeChecker";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Input, Radio, Select } from "@/components/ui/Field";
@@ -90,6 +91,9 @@ export default function CheckoutAddressPage() {
   const delivery = usePincodeCheck(form.pincode);
   const serviceability = delivery.result;
   const expressBlocked = serviceability !== null && serviceability.serviceable && !serviceability.expressAvailable;
+  // The store's own answer wins: no second estimate when it already dates the PIN, or can't deliver there.
+  const showCourierEstimate =
+    !errors.pincode && !(serviceability && (!serviceability.serviceable || (serviceability.listed && serviceability.estimate)));
 
   // Contact is required first; jump back if someone deep-linked here. Waits
   // for the store to rehydrate, or a refresh would bounce a valid checkout.
@@ -289,6 +293,9 @@ export default function CheckoutAddressPage() {
           {serviceability && !errors.pincode ? (
             <PincodeStatus check={serviceability} className="-mt-2 sm:col-span-2" />
           ) : null}
+
+          {/* The courier's estimate, for a PIN the store's own list doesn't date. Never blocks. */}
+          {showCourierEstimate ? <DeliveryEstimate pincode={form.pincode} className="-mt-2 sm:col-span-2" /> : null}
 
           <Select
             label="State"

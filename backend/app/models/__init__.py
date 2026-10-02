@@ -149,3 +149,13 @@ from app.models.messaging import (  # noqa: E402
     NotificationTemplate,
     ReorderEvent,
 )
+from app.models.shipping import Shipment, ShipmentEvent, ShippingProvider, ShippingWebhookEvent  # noqa: E402
+from app.models.suppliers import (  # noqa: E402
+    GoodsReceipt,
+    GoodsReceiptItem,
+    PurchaseOrder,
+    PurchaseOrderEvent,
+    PurchaseOrderItem,
+    Supplier,
+    SupplierProduct,
+)

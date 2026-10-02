@@ -118,6 +118,44 @@ EVENTS: Dict[str, dict] = {
         "shortly.",
         "{{store_name}}: Order {{order_number}} has been returned to us."),
 
+    # ----------------------------------------------------------- shipments
+    # The order-stage events above already cover shipped, in transit, out for
+    # delivery and delivered (a shipment moves the order through them). These
+    # are the courier moments that have no order stage of their own.
+    "shipment_created": _event(
+        "Shipment created", "Shipping", "order_updates", ORDER + ["courier_name"],
+        subject="Your order is packed and ready to ship — {{order_number}}",
+        heading="Packed and ready to ship",
+        body="Hello {{customer_name}}, order **{{order_number}}** is packed and booked with {{courier_name}}. "
+             "Tracking number: **{{tracking_number}}**.",
+        cta="Track your order", cta_var="tracking_url",
+        sms="{{store_name}}: Order {{order_number}} is booked with {{courier_name}}. Tracking {{tracking_number}}.",
+        in_app_body="Order {{order_number}}"),
+    "delivery_attempted": _event(
+        "Delivery attempted", "Shipping", "order_updates", ORDER + ["courier_name"],
+        subject="We tried to deliver your order — {{order_number}}", heading="We tried to deliver your order",
+        body="Hello {{customer_name}}, {{courier_name}} tried to deliver order **{{order_number}}** but couldn't. "
+             "They'll usually try again on the next working day.",
+        cta="Track your order", cta_var="tracking_url",
+        sms="{{store_name}}: A delivery attempt for order {{order_number}} didn't succeed. The courier will retry.",
+        in_app_body="Order {{order_number}}", sms_default=True),
+    "delivery_failed": _event(
+        "Delivery failed", "Shipping", "order_updates", ORDER + ["courier_name"],
+        subject="We couldn't deliver your order — {{order_number}}", heading="We couldn't deliver your order",
+        body="Hello {{customer_name}}, {{courier_name}} couldn't deliver order **{{order_number}}**. "
+             "Our team will be in touch to arrange what happens next.",
+        cta="View your order", cta_var="order_url",
+        sms="{{store_name}}: We couldn't deliver order {{order_number}}. We'll be in touch.",
+        in_app_body="Order {{order_number}}", sms_default=True),
+    "shipment_returned": _event(
+        "Shipment returned to us", "Shipping", "order_updates", ORDER + ["courier_name"],
+        subject="Your parcel is coming back to us — {{order_number}}", heading="Your parcel is coming back to us",
+        body="Hello {{customer_name}}, the parcel for order **{{order_number}}** couldn't be delivered and is "
+             "on its way back to us. We'll contact you about a refund or a new delivery.",
+        cta="View your order", cta_var="order_url",
+        sms="{{store_name}}: The parcel for order {{order_number}} is returning to us. We'll be in touch.",
+        in_app_body="Order {{order_number}}"),
+
     # ------------------------------------------------------------ payments
     "payment_received": _event(
         "Payment received", "Payments", "payment_received", ORDER + ["amount"],
@@ -294,6 +332,11 @@ EVENTS: Dict[str, dict] = {
         cta="Shop now", cta_var="action_url", category="marketing"),
 }
 
+SHIPMENT_EVENTS = {
+    "ready-for-pickup": "shipment_created", "delivery-attempted": "delivery_attempted",
+    "delivery-failed": "delivery_failed", "returned-to-origin": "shipment_returned",
+}
+
 ORDER_STAGE_EVENTS = {
     "confirmed": "order_confirmed", "processing": "order_processing", "packed": "order_packed",
     "shipped": "order_shipped", "in-transit": "order_in_transit", "out-for-delivery": "order_out_for_delivery",
@@ -316,7 +359,7 @@ SUPPORT_EVENTS = {
 }
 
 CHANNELS = ("email", "sms", "whatsapp", "in_app")
-GROUPS: List[str] = ["Orders", "Payments", "Returns", "Account", "Membership", "Support", "Marketing"]
+GROUPS: List[str] = ["Orders", "Shipping", "Payments", "Returns", "Account", "Membership", "Support", "Marketing"]
 
 
 def event(key: str) -> dict:

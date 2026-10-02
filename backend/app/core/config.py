@@ -186,6 +186,11 @@ class Settings(BaseSettings):
     BACKUP_S3_PREFIX: str = "database-backups"
     BACKUP_ENCRYPTION_KEY: str = ""
 
+    # Couriers. Credentials are configured in the portal (Settings, then
+    # Shipping), stored encrypted: never here. These only tune the HTTP client.
+    SHIPPING_HTTP_TIMEOUT_SECONDS: int = 15
+    SHIPROCKET_BASE_URL: str = "https://apiv2.shiprocket.in/v1/external"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:

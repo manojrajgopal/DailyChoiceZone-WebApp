@@ -54,6 +54,7 @@ JOBS = [
     ("app.services.messaging.service", ["sweep"], "raised"),
     ("app.services.messaging.campaigns", ["run_due"], "raised"),
     ("app.services.payment_expiry", ["sweep"], "raised"),
+    ("app.services.shipping.jobs", ["sweep"], "raised"),
 ]
 
 

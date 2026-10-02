@@ -114,6 +114,12 @@ ADDED_NAV_ITEMS = [
     ("/admin/settings/email", {"id": "notifications", "label": "Notifications", "href": "/admin/notifications",
                                "icon": "notifications", "badge": "failedNotifications"}),
     ("/admin/health", {"id": "backups", "label": "Backups", "href": "/admin/settings/backups", "icon": "backups"}),
+    ("/admin/orders", {"id": "shipments", "label": "Shipments", "href": "/admin/shipments", "icon": "shipments"}),
+    ("/admin/inventory", {"id": "suppliers", "label": "Suppliers", "href": "/admin/suppliers", "icon": "suppliers"}),
+    ("/admin/suppliers", {"id": "purchase-orders", "label": "Purchase orders", "href": "/admin/purchase-orders",
+                          "icon": "purchaseOrders"}),
+    ("/admin/settings/backups", {"id": "couriers", "label": "Couriers", "href": "/admin/settings/couriers",
+                                 "icon": "delivery"}),
 ]
 
 

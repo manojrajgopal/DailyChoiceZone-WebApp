@@ -90,7 +90,7 @@ class TestTracked:
 
     def test_every_expected_job_has_a_description(self):
         assert all(jobs.EXPECTED.values())
-        assert len(jobs.EXPECTED) == 12
+        assert len(jobs.EXPECTED) == 13
 
 
 # ------------------------------------------------------------------ loops
@@ -109,6 +109,7 @@ LOOPS = [
     ("app.services.messaging.service", "notifications"),
     ("app.services.support.sla", "support_sla"),
     ("app.services.payment_expiry", "payment_expiry"),
+    ("app.services.shipping.jobs", "shipping"),
 ]
 
 
