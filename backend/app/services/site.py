@@ -123,8 +123,105 @@ ADDED_NAV_ITEMS = [
 ]
 
 
+# How the sidebar is arranged: groups, each a list of links (by path) and
+# folders of links. A folder opens and closes in the sidebar; a link keeps its
+# own sub-links (Billing's invoices, payments...). Labels, icons and badges come
+# from the saved document, so editing those in Settings, Navigation still
+# shows. A link this layout doesn't name stays at the end of the group it was
+# saved in, so nothing an administrator adds ever disappears.
+NAV_LAYOUT = [
+    ("nav_overview", "Overview", ["/admin/dashboard", "/admin/reports", "/admin/analytics"]),
+    ("nav_catalogue", "Catalogue", [
+        "/admin/products", "/admin/categories", "/admin/collections",
+        ("stock-folder", "Stock", "inventory", ["/admin/inventory", "/admin/alerts"]),
+        ("purchasing-folder", "Purchasing", "suppliers", ["/admin/suppliers", "/admin/purchase-orders"]),
+    ]),
+    ("nav_sales", "Sales", [
+        "/admin/orders",
+        ("fulfilment-folder", "Fulfilment", "shipments",
+         ["/admin/shipments", "/admin/returns", "/admin/delivery"]),
+        ("payments-folder", "Payments", "billing",
+         ["/admin/billing", "/admin/payments/reconciliation", "/admin/payments/webhooks"]),
+        "/admin/carts",
+    ]),
+    ("nav_customers", "Customers", [
+        "/admin/customers", "/admin/membership",
+        ("engagement-folder", "Feedback & support", "support",
+         ["/admin/support", "/admin/reviews", "/admin/questions"]),
+        ("rewards-folder", "Rewards", "loyalty",
+         ["/admin/gift-cards", "/admin/store-credit", "/admin/loyalty", "/admin/referrals"]),
+    ]),
+    ("nav_marketing", "Marketing", [
+        "/admin/coupons", "/admin/flash-sales", "/admin/bundles", "/admin/marketing/campaigns",
+    ]),
+    ("nav_storefront", "Storefront", ["/admin/homepage", "/admin/banners"]),
+    ("nav_admin", "Administration", [
+        ("store-setup-folder", "Store setup", "settings",
+         ["/admin/settings", "/admin/settings/site", "/admin/settings/content", "/admin/settings/navigation",
+          "/admin/settings/billing", "/admin/settings/couriers"]),
+        ("messaging-folder", "Messaging", "notifications",
+         ["/admin/settings/email", "/admin/notifications", "/admin/support/settings"]),
+        ("system-folder", "System", "health",
+         ["/admin/admin-users", "/admin/audit-logs", "/admin/health", "/admin/settings/backups"]),
+    ]),
+]
+
+
+def _arrange(groups: list) -> list:
+    """The saved groups' links, placed into `NAV_LAYOUT`'s groups and folders."""
+    by_href: dict = {}
+    home: dict = {}  # href -> the saved group it came from, for links the layout doesn't name
+    for group in groups:
+        for item in group.get("items", []):
+            href = item.get("href")
+            if href and href not in by_href:
+                by_href[href] = item
+                home[href] = group
+    placed: set = set()
+
+    def take(href: str):
+        item = by_href.get(href)
+        if item is None or href in placed:
+            return None
+        placed.add(href)
+        return dict(item)
+
+    arranged = []
+    for group_id, heading, entries in NAV_LAYOUT:
+        items = []
+        for entry in entries:
+            if isinstance(entry, str):
+                item = take(entry)
+                if item is not None:
+                    items.append(item)
+                continue
+            folder_id, label, icon, hrefs = entry
+            children = [child for child in (take(h) for h in hrefs) if child is not None]
+            if len(children) == 1:
+                items.append(children[0])  # a folder of one is just a link
+            elif children:
+                items.append({"id": folder_id, "label": label, "href": "", "icon": icon, "children": children})
+        arranged.append({"id": group_id, "heading": heading, "items": items})
+
+    # Anything left keeps its saved group: matched by id or heading, else a group of its own.
+    for group in groups:
+        leftovers = [dict(item) for item in group.get("items", [])
+                     if item.get("href") and item["href"] not in placed and home.get(item["href"]) is group]
+        if not leftovers:
+            continue
+        for item in leftovers:
+            placed.add(item["href"])
+        name = group.get("heading") or group.get("label") or ""
+        target = next((g for g in arranged if g["id"] == group.get("id") or (name and g["heading"] == name)), None)
+        if target is None:
+            target = {"id": group.get("id") or f"nav_{len(arranged)}", "heading": name or "More", "items": []}
+            arranged.append(target)
+        target["items"].extend(leftovers)
+    return [group for group in arranged if group["items"]]
+
+
 def admin_navigation(db: Session) -> list:
-    """The portal's sidebar, grouped, with any newer sections added."""
+    """The portal's sidebar, grouped and nested (`NAV_LAYOUT`), with any newer sections added."""
     groups = _document(db, "admin_navigation").get("groups", [])
     for anchor, entry in ADDED_NAV_ITEMS:
         hrefs = {item.get("href") for group in groups for item in group.get("items", [])}
@@ -140,7 +237,7 @@ def admin_navigation(db: Session) -> list:
                 break
         if not placed and groups:
             groups[-1]["items"] = groups[-1].get("items", []) + [dict(entry)]
-    return groups
+    return _arrange(groups)
 
 
 def site_config(db: Session) -> dict:

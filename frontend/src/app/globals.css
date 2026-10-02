@@ -197,6 +197,27 @@
     outline: none;
   }
 
+  /* Tailwind v4 no longer gives buttons a pointer: restore it for everything
+     clickable. A component's own `cursor-*` utility still wins over this. */
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  [type="checkbox"],
+  [type="radio"],
+  [type="file"]::file-selector-button,
+  select,
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  :disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   ::selection {
     background-color: var(--color-copper-200);
     color: var(--color-ink);

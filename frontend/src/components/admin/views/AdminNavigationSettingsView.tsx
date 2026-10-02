@@ -334,7 +334,7 @@ function PortalMenuEditor({ visible }: { visible: boolean }) {
       content: (
         <FormSection
           title="Groups"
-          description="The headings down the sidebar, in order. Open a group in the menu to edit the links under it."
+          description="The links the sidebar offers. The sidebar arranges the store's own pages into fixed groups and folders; labels, icons and badges set here still apply, and a link you add stays in the group you put it in."
         >
           <RecordListEditor<{ id: string; heading: string }>
             rows={outline(draft)}

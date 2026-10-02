@@ -372,7 +372,30 @@ class TestAdminNotifications:
 
 
 class TestAdminNavigation:
-    def test_newer_sections_are_added_after_their_anchor(self, client, admin_auth, db):
+    @staticmethod
+    def _tree(groups) -> dict:
+        """{group heading: [label, or (folder label, [child labels])]}"""
+        def row(item):
+            if item.get("href"):
+                return item["label"]
+            return (item["label"], [row(child) for child in item["children"]])
+        return {group["heading"]: [row(item) for item in group["items"]] for group in groups}
+
+    @staticmethod
+    def _hrefs(groups) -> list:
+        out = []
+
+        def walk(items):
+            for item in items:
+                if item.get("href"):
+                    out.append(item["href"])
+                walk(item.get("children") or [])
+
+        for group in groups:
+            walk(group["items"])
+        return out
+
+    def test_links_are_arranged_into_groups_and_folders(self, client, admin_auth, db):
         from app.models import SettingDocument
 
         db.add(SettingDocument(key="admin_navigation", value={"groups": [
@@ -381,13 +404,55 @@ class TestAdminNavigation:
         ]}))
         db.flush()
         groups = client.get("/api/admin/navigation", headers=admin_auth).json()["data"]
-        hrefs = [item["href"] for item in groups[0]["items"]]
-        # Both anchor on Orders; each is placed straight after it, so the later one leads.
-        assert hrefs.index("/admin/shipments") == hrefs.index("/admin/orders") + 1
-        assert hrefs.index("/admin/returns") == hrefs.index("/admin/shipments") + 1
-        assert hrefs.index("/admin/purchase-orders") == hrefs.index("/admin/suppliers") + 1
-        assert "/admin/settings/backups" in hrefs  # anchors missing: appended to the last group
-        assert len(hrefs) == len(set(hrefs))
+        tree = self._tree(groups)
+        assert tree["Sales"][:2] == ["Orders", ("Fulfilment", ["Shipments", "Returns", "Delivery pincodes"])]
+        assert ("Purchasing", ["Suppliers", "Purchase orders"]) in tree["Catalogue"]
+        assert ("System", ["Audit log", "System health", "Backups"]) in tree["Administration"]
+        assert tree["Customers"][0] == "Customers"
+        # Every link appears exactly once, and each folder has an id and no href.
+        hrefs = self._hrefs(groups)
+        assert len(hrefs) == len(set(hrefs)) and "/admin/settings/couriers" in hrefs
+        folders = [item for group in groups for item in group["items"] if not item["href"]]
+        assert all(item["id"].endswith("-folder") and item["children"] for item in folders)
+
+    def test_a_folder_of_one_is_just_a_link(self, client, admin_auth, db):
+        from app.models import SettingDocument
+
+        db.add(SettingDocument(key="admin_navigation", value={"groups": [
+            {"heading": "Admin", "items": [{"id": "users", "href": "/admin/admin-users", "label": "Admin users"}]},
+        ]}))
+        db.flush()
+        groups = client.get("/api/admin/navigation", headers=admin_auth).json()["data"]
+        admin = next(g for g in groups if g["heading"] == "Administration")
+        # Payment webhooks etc. are added too, but Store setup has only Couriers: no folder for one link.
+        assert "Couriers" in self._tree([admin])["Administration"]
+
+    def test_saved_labels_and_badges_are_kept(self, client, admin_auth, db):
+        from app.models import SettingDocument
+
+        db.add(SettingDocument(key="admin_navigation", value={"groups": [
+            {"heading": "Sales", "items": [{"id": "orders", "href": "/admin/orders", "label": "All orders",
+                                            "icon": "orders", "badge": "openOrders"}]},
+        ]}))
+        db.flush()
+        groups = client.get("/api/admin/navigation", headers=admin_auth).json()["data"]
+        orders = next(i for g in groups for i in g["items"] if i.get("href") == "/admin/orders")
+        assert orders["label"] == "All orders" and orders["badge"] == "openOrders"
+
+    def test_a_link_the_layout_doesnt_know_stays_in_its_group(self, client, admin_auth, db):
+        from app.models import SettingDocument
+
+        db.add(SettingDocument(key="admin_navigation", value={"groups": [
+            {"id": "nav_sales", "heading": "Sales", "items": [
+                {"id": "orders", "href": "/admin/orders", "label": "Orders"},
+                {"id": "custom", "href": "/admin/custom-report", "label": "Custom report"}]},
+            {"id": "nav_extra", "heading": "Extras", "items": [
+                {"id": "lab", "href": "/admin/lab", "label": "Lab"}]},
+        ]}))
+        db.flush()
+        tree = self._tree(client.get("/api/admin/navigation", headers=admin_auth).json()["data"])
+        assert tree["Sales"][-1] == "Custom report"
+        assert tree["Extras"] == ["Lab"]
 
     def test_empty_sidebar(self, client, admin_auth):
         assert client.get("/api/admin/navigation", headers=admin_auth).json()["data"] == []

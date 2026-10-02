@@ -471,15 +471,15 @@ export interface AdminNotification {
 export interface AdminNavItem {
   id: string;
   label: string;
+  /** "" for a folder: a row that only opens and closes the links under it. */
   href: string;
   icon: string;
   /** Shown as a count chip, resolved at render time. */
   badge?: "pendingReviews" | "openOrders" | "lowStock" | "openReturns" | "openTickets";
   /**
-   * Sub-sections, revealed while the parent section is open.
-   *
-   * One level only. A sidebar that nests further stops being navigable, and
-   * anything needing a third level belongs in tabs on the page itself.
+   * What is nested under this row: a folder's links, or a link's own
+   * sub-pages (Billing's invoices, payments...). Open while the current page
+   * is inside, or when the person opens it; the sidebar renders any depth.
    */
   children?: AdminNavItem[];
 }
