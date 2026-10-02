@@ -33,7 +33,7 @@ export function saveSections(sections: AdminHomeSection[]): Promise<AdminHomeSec
   return adminDataSource.saveHomepage(sections);
 }
 
-/** Move a section one place up or down. The adapter renumbers on save. */
+/** Move a section one place up or down, renumbering the whole list. */
 export async function moveSection(
   id: string,
   direction: "up" | "down",
@@ -50,7 +50,11 @@ export async function moveSection(
   reordered[index] = reordered[target]!;
   reordered[target] = moved;
 
-  return adminDataSource.saveHomepage(reordered);
+  // The server orders by `displayOrder`, not by list position: renumber every
+  // section 1..n so the swap is saved (and duplicate or gappy numbers are repaired).
+  return adminDataSource.saveHomepage(
+    reordered.map((section, position) => ({ ...section, displayOrder: position + 1 })),
+  );
 }
 
 export async function toggleSection(id: string): Promise<AdminHomeSection[]> {

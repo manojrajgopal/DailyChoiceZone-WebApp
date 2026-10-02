@@ -44,6 +44,25 @@ describe("moveSection", () => {
     const result = await homepage.moveSection("S2", "up");
     expect((result as AdminHomeSection[]).map((s) => s.id)).toEqual(["S2", "S1"]);
   });
+
+  it("sends the new positions as displayOrder, since the server sorts by it", async () => {
+    api.put("/admin/homepage", (req) => req.body);
+    await homepage.moveSection("S2", "up");
+    const sent = api.last("PUT", "/admin/homepage")!.body as { id: string; displayOrder: number }[];
+    expect(sent.map((s) => [s.id, s.displayOrder])).toEqual([["S2", 1], ["S1", 2]]);
+  });
+
+  it("renumbers duplicate or gappy orders 1..n", async () => {
+    api.get("/admin/homepage", [
+      { ...SECTIONS[0]!, displayOrder: 5 },
+      { ...SECTIONS[1]!, displayOrder: 5 },
+      { ...SECTIONS[0]!, id: "S3", displayOrder: 9 },
+    ]);
+    api.put("/admin/homepage", (req) => req.body);
+    await homepage.moveSection("S3", "up");
+    const sent = api.last("PUT", "/admin/homepage")!.body as { id: string; displayOrder: number }[];
+    expect(sent.map((s) => [s.id, s.displayOrder])).toEqual([["S1", 1], ["S3", 2], ["S2", 3]]);
+  });
 });
 
 describe("toggleSection", () => {

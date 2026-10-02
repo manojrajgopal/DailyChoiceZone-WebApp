@@ -58,16 +58,26 @@ export function AdminHomepageView() {
 
   const onMove = async (id: string, direction: "up" | "down") => {
     setBusy(true);
-    await moveSection(id, direction);
-    setBusy(false);
+    try {
+      await moveSection(id, direction);
+    } catch {
+      toast.error("The order couldn't be saved. Please try again.");
+    } finally {
+      setBusy(false);
+    }
     await sections.reload();
   };
 
   const onToggle = async (section: AdminHomeSection) => {
     setBusy(true);
-    await toggleSection(section.id);
-    setBusy(false);
-    toast.success(`${section.title} ${section.active ? "hidden" : "shown"} on the homepage`);
+    try {
+      await toggleSection(section.id);
+      toast.success(`${section.title} ${section.active ? "hidden" : "shown"} on the homepage`);
+    } catch {
+      toast.error(`${section.title} couldn't be updated. Please try again.`);
+    } finally {
+      setBusy(false);
+    }
     await sections.reload();
   };
 
