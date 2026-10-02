@@ -369,6 +369,12 @@ class WebhookEvent(Base):
     """
 
     __tablename__ = "webhook_events"
+    # Indexes the migrations create, declared so `create_all` (the tests) builds the same
+    # schema and autogenerate never proposes dropping them.
+    __table_args__ = (
+        Index("ix_webhook_events_gateway_payment", "gateway_payment_id"),
+        Index("ix_webhook_events_status_received", "status", "received_at"),
+    )
 
     event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     event: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
@@ -389,7 +395,7 @@ class WebhookEvent(Base):
     error: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
     order_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     payment_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
-    gateway_payment_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True, index=True)
+    gateway_payment_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     refund_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
     # The fields processing reads — ids, amounts, statuses — never the
     # customer's contact, card, bank or UPI details.
@@ -404,10 +410,13 @@ class WebhookEventAttempt(Base):
     """One try at processing a webhook event: a delivery, a redelivery, or a replay from the portal."""
 
     __tablename__ = "webhook_event_attempts"
+    # Indexes the migrations create, declared so `create_all` (the tests) builds the same
+    # schema and autogenerate never proposes dropping them.
+    __table_args__ = (Index("ix_webhook_event_attempts_event", "event_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     event_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("webhook_events.event_id", ondelete="CASCADE"), nullable=False, index=True
+        String(64), ForeignKey("webhook_events.event_id", ondelete="CASCADE"), nullable=False
     )
     number: Mapped[int] = mapped_column(Integer, nullable=False)
     # delivery | redelivery | replay

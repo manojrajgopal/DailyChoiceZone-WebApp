@@ -36,6 +36,8 @@ class Order(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_orders_customer_placed", "customer_id", "placed_at"),
         Index("ix_orders_status", "status", "payment_status"),
+        # Created by a migration; the payment-expiry sweeper scans it.
+        Index("ix_orders_payment_expiry", "stock_state", "payment_expires_at"),
     )
 
     id: Mapped[str] = mapped_column(BusinessId, primary_key=True)

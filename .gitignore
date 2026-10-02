@@ -20,3 +20,10 @@ __pycache__/
 backend/var/
 *.sql.gz
 *.sql.gz.enc
+
+# Frontend test coverage reports
+frontend/coverage/
+
+# Backend coverage data and reports
+backend/.coverage*
+backend/htmlcov/

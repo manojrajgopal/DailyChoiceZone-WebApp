@@ -223,6 +223,14 @@ def refundable_amount(payment: Payment) -> int:
 def capture_payment(db: Session, payment_id: str) -> Payment:
     """Settle a pending payment — a courier collecting cash, a transfer landing."""
     payment = get_payment(db, payment_id)
+    # Only money still owed can be received. Capturing a refunded (or failed)
+    # payment flipped it back to "paid" and reset the invoice as if the money
+    # given back had been collected again.
+    if payment.status not in ("pending", "authorized"):
+        raise ConflictError(
+            f"This payment is {payment.status}; only a pending payment can be marked as received.",
+            error_code="PAYMENT_NOT_CAPTURABLE",
+        )
     now = datetime.utcnow()
 
     payment.status = "paid"
@@ -447,7 +455,9 @@ def _settle_refund(db: Session, refund: Refund, payment: Payment, invoice: Invoi
     # existed went wholly through the gateway.
     gateway_part = refund.amount if refund.gateway_amount is None else refund.gateway_amount
 
-    direct = not payment.transaction_id or payment.provider == "internal"
+    # A COD payment under a real gateway still carries a `COD-<order>`
+    # reference that the gateway has never seen, so the method decides too.
+    direct = not payment.transaction_id or payment.provider == "internal" or payment.method == "cod"
     if gateway_part <= 0 or direct:
         reference, outcome = None, "completed"
     else:
@@ -652,7 +662,14 @@ def create_credit_note(
 
     if total <= 0:
         raise ValidationError("Enter an amount above zero.", error_code="INVALID_AMOUNT")
-    if total > invoice.grand_total:
+    # Against what is still uncredited, not the whole invoice each time: two
+    # notes of 80% each credited more than was ever invoiced.
+    credited = db.execute(
+        select(func.coalesce(func.sum(CreditNote.total), 0)).where(
+            CreditNote.invoice_id == invoice.id, CreditNote.status != "cancelled"
+        )
+    ).scalar_one()
+    if total > invoice.grand_total - int(credited):
         raise ValidationError("A credit note cannot exceed the invoice it offsets.",
                               error_code="CREDIT_EXCEEDS_INVOICE")
     if not reason.strip():

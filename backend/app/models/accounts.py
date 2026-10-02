@@ -21,7 +21,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -30,6 +30,12 @@ from app.models.base import BusinessId
 
 class CustomerToken(Base):
     __tablename__ = "customer_tokens"
+    # Indexes the migrations create, declared so `create_all` (the tests) builds the same
+    # schema and autogenerate never proposes dropping them.
+    __table_args__ = (
+        Index("ix_customer_tokens_customer_purpose", "customer_id", "purpose"),
+        Index("ix_customer_tokens_expires", "expires_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     customer_id: Mapped[str] = mapped_column(
@@ -40,7 +46,7 @@ class CustomerToken(Base):
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     # used | superseded | expired
     revoked_reason: Mapped[str] = mapped_column(String(20), nullable=False, default="")
@@ -48,6 +54,12 @@ class CustomerToken(Base):
 
 class CartRecovery(Base):
     __tablename__ = "cart_recoveries"
+    # Indexes the migrations create, declared so `create_all` (the tests) builds the same
+    # schema and autogenerate never proposes dropping them.
+    __table_args__ = (
+        Index("ix_cart_recoveries_customer_status", "customer_id", "status"),
+        Index("ix_cart_recoveries_status_activity", "status", "last_activity_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     customer_id: Mapped[str] = mapped_column(

@@ -594,15 +594,34 @@ with professional advice.
 
 ```bash
 pytest                    # everything
-pytest tests/unit         # no database
+pytest tests/unit         # pure functions: rules, schemas, rendering, providers
 pytest -m integration     # the API and the database together
 pytest -k refund          # by name
+pytest --cov=app --cov-report=term-missing   # with coverage (branches on: .coveragerc)
 ```
 
-400 tests. They run against MySQL in a database of their own
+About 6,300 tests, at 98-99% line and branch coverage. `tests/integration/test_api_contract.py` is generated from the route table: every route is checked for 401/403 on bad tokens, for never answering 500 to bad ids, bodies or query strings, and for the error envelope, so a new route is covered the day it is added. `test_migrations.py` builds a database from the Alembic migrations and fails if it differs from the models. They run against MySQL in a database of their own
 (`daily_choice_zone_test`, or `TEST_DATABASE_NAME`), created on first run and
 rebuilt from the models each session. The development database is never touched
-— the fixtures refuse to run if the two names coincide.
+- the fixtures refuse to run if the two names coincide. Because each session
+drops and rebuilds that database's tables, **two runs at once need two names**:
+`TEST_DATABASE_NAME=dcz_test_a pytest tests/unit` beside the main run.
+
+The whole suite takes a while (bcrypt is slow on purpose, and every test talks
+to MySQL); run one file while working on it. With coverage, split it and run the
+parts side by side, each with its own database and coverage file, then combine:
+
+```bash
+TEST_DATABASE_NAME=dcz_t1 COVERAGE_FILE=.coverage.1 pytest --cov=app --cov-report= tests/unit
+TEST_DATABASE_NAME=dcz_t2 COVERAGE_FILE=.coverage.2 pytest --cov=app --cov-report= tests/integration/test_api_contract.py
+# ...the rest of tests/integration in one or two more parts...
+coverage combine && coverage report
+```
+
+**Nothing leaves the machine.** Payment gateways, email (Gmail, SMTP, DNS),
+SMS/WhatsApp, S3 and backups are stubbed, and an autouse guard in `conftest.py`
+fails any test that opens a connection to anything but the database. Tests that
+need real concurrency commit for real and delete what they wrote.
 
 Each test runs inside a transaction that is rolled back afterwards, so tests see
 their fixtures and nothing any other test wrote.

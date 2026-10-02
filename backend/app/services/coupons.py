@@ -165,8 +165,16 @@ def record_usage(
     """
     # Locked, and the limits checked again under the lock: two shoppers
     # redeeming the last use at the same moment must not both succeed.
+    #
+    # `populate_existing`: checkout already loaded this coupon (to price the
+    # discount), and without it the locked read hands back that cached copy,
+    # stale by any redemption committed since. Two shoppers then both saw "one
+    # use left", and the count was written as 1 instead of 2. Flushed first, as
+    # `products._locked` does, so the refresh can't discard an unsaved change.
+    db.flush()
     coupon = db.execute(
         select(Coupon).where(Coupon.code == coupon_code.upper()).with_for_update()
+        .execution_options(populate_existing=True)
     ).scalar_one_or_none()
 
     if coupon is None:
@@ -201,7 +209,34 @@ def record_usage(
 # ------------------------------------------------------------------ admin
 
 
+def _check_payload_types(payload: dict) -> None:
+    """
+    Refuse a field of the wrong kind before anything is written. The portal
+    sends the right shapes; anything else (`"code": 7`, `"usageLimit": "lots"`)
+    was a 500 from deep inside the save rather than a 422 naming the field.
+    """
+    for field in ("code", "description", "type", "audience", "startsAt", "endsAt", "status"):
+        value = payload.get(field)
+        if value is not None and not isinstance(value, str):
+            raise ValidationError(f"{field} must be text.", error_code="INVALID_COUPON_FIELD", details={"field": field})
+    for field in ("value", "minSubtotal", "maxDiscount", "usageLimit", "perCustomerLimit"):
+        value = payload.get(field)
+        if value in (None, ""):
+            continue
+        try:
+            if isinstance(value, bool):
+                raise TypeError
+            float(value)
+        except (TypeError, ValueError):
+            raise ValidationError(f"{field} must be a number.", error_code="INVALID_COUPON_VALUE",
+                                  details={"field": field}) from None
+    if payload.get("customerIds") is not None and not isinstance(payload["customerIds"], list):
+        raise ValidationError("customerIds must be a list.", error_code="INVALID_COUPON_FIELD",
+                              details={"field": "customerIds"})
+
+
 def save_coupon(db: Session, payload: dict, coupon_id: Optional[str] = None) -> Coupon:
+    _check_payload_types(payload)
     if coupon_id:
         coupon = get_coupon(db, coupon_id)
     else:
@@ -239,6 +274,21 @@ def save_coupon(db: Session, payload: dict, coupon_id: Optional[str] = None) -> 
         coupon.active = payload["status"] != "disabled"
     if "active" in payload:
         coupon.active = bool(payload["active"])
+
+    # The kinds billing knows how to price. Anything else was stored and then
+    # silently took nothing off, so a mistyped coupon looked live and did nothing.
+    coupon.type = coupon.type or "percent"  # the column default, which applies only at insert
+    if coupon.type not in COUPON_TYPES:
+        raise ValidationError("Choose percent, flat or free delivery.", error_code="INVALID_COUPON_TYPE")
+    try:
+        amount = float(coupon.value or 0)
+        floor = float(coupon.min_subtotal or 0)
+    except (TypeError, ValueError):
+        raise ValidationError("The coupon's amounts must be numbers.", error_code="INVALID_COUPON_VALUE") from None
+    if amount < 0 or floor < 0 or (coupon.type == "percent" and amount > 100):
+        raise ValidationError(
+            "The discount must be zero or more, and a percentage at most 100.", error_code="INVALID_COUPON_VALUE"
+        )
 
     for key in ("usage_limit", "per_customer_limit", "max_discount"):
         value = getattr(coupon, key)
@@ -303,6 +353,7 @@ def _parse(value: str) -> datetime:
 
 # --------------------------------------------------------------- audience
 
+COUPON_TYPES = ("percent", "flat", "free-shipping")
 AUDIENCES = ("everyone", "selected", "members", "first-order")
 
 
@@ -363,8 +414,10 @@ def release_usage(db: Session, order_id: str) -> None:
         select(CouponUsage).where(CouponUsage.order_id == order_id)
     ).scalars().all()
     for usage in usages:
+        db.flush()  # see `record_usage`: refreshed under the lock, so write pending changes first
         coupon = db.execute(
             select(Coupon).where(Coupon.id == usage.coupon_id).with_for_update()
+            .execution_options(populate_existing=True)
         ).scalar_one_or_none()
         if coupon is not None and coupon.usage_count > 0:
             coupon.usage_count -= 1

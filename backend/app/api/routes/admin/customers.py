@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -19,7 +19,9 @@ router = APIRouter(prefix="/admin/customers", tags=["Customers"])
 
 
 class CustomerStatusUpdate(CamelModel):
-    status: str
+    # Sign-in requires "active": any other string, a typo included, locked the
+    # customer out in a state the portal can't name.
+    status: Literal["active", "blocked"]
 
 
 def _aggregates(db: Session) -> dict:

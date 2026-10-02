@@ -317,7 +317,8 @@ def qr_image_only(qr_id: str):
     the payment page on one origin, and the poster is fetched by this server
     once rather than by every shopper's browser — 396 KB down to about 2 KB.
     """
-    poster = qr_image.fetch(settlement.qr_poster_url(qr_id))
+    url = settlement.qr_poster_url(qr_id)
+    poster = qr_image.fetch(url) if url else None
     if poster is None:
         raise NotFoundError("That code could not be read.", error_code="QR_UNAVAILABLE")
 

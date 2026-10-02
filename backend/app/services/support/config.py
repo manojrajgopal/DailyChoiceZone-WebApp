@@ -70,6 +70,14 @@ def _hours(value, field: str) -> float:
     return number
 
 
+def _whole(value, field: str) -> int:
+    """`int(value)`, refusing a non-number with a 422 rather than a 500."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValidationError(f"{field} must be a whole number.", error_code="INVALID_SETTING") from None
+
+
 def save_settings(db: Session, payload: dict) -> dict:
     """Validate and store the settings document. Unknown keys are dropped."""
     current = settings(db)
@@ -85,9 +93,9 @@ def save_settings(db: Session, payload: dict) -> dict:
         out["defaultPriority"] = payload["defaultPriority"]
     if "defaultTeamId" in payload:
         team_id = payload["defaultTeamId"]
-        if team_id is not None and db.get(SupportTeam, int(team_id)) is None:
+        if team_id is not None and db.get(SupportTeam, _whole(team_id, "The default team")) is None:
             raise ValidationError("That team doesn't exist.", error_code="TEAM_NOT_FOUND")
-        out["defaultTeamId"] = int(team_id) if team_id is not None else None
+        out["defaultTeamId"] = _whole(team_id, "The default team") if team_id is not None else None
     if "sla" in payload:
         sla = {}
         for priority in PRIORITIES:
@@ -102,7 +110,7 @@ def save_settings(db: Session, payload: dict) -> dict:
             sla[priority] = {"response": response, "resolve": resolve}
         out["sla"] = sla
     if "slaWarningPercent" in payload:
-        percent = int(payload["slaWarningPercent"])
+        percent = _whole(payload["slaWarningPercent"], "The SLA warning")
         if not 10 <= percent <= 95:
             raise ValidationError("Warn between 10% and 95% of the way.", error_code="INVALID_SLA")
         out["slaWarningPercent"] = percent
@@ -117,7 +125,7 @@ def save_settings(db: Session, payload: dict) -> dict:
                 "id": str(rule.get("id") or f"rule-{index + 1}")[:40],
                 "label": str(rule.get("label") or "")[:120],
                 "when": rule["when"],
-                "afterMinutes": max(0, int(rule.get("afterMinutes") or 0)),
+                "afterMinutes": max(0, _whole(rule.get("afterMinutes") or 0, "An escalation delay")),
                 "priorities": priorities,
                 "notify": rule["notify"],
             })
@@ -156,16 +164,16 @@ def save_settings(db: Session, payload: dict) -> dict:
     for key, low, high in (("reopenDays", 0, 90), ("autoCloseResolvedDays", 0, 90),
                            ("duplicateWindowDays", 0, 365)):
         if key in payload:
-            value = int(payload[key])
+            value = _whole(payload[key], key)
             if not low <= value <= high:
                 raise ValidationError(f"{key} must be between {low} and {high}.", error_code="INVALID_SETTING")
             out[key] = value
     if "attachments" in payload:
         a = payload["attachments"] or {}
         out["attachments"] = {
-            "maxFiles": min(10, max(1, int(a.get("maxFiles") or 5))),
-            "maxSizeMb": min(25, max(1, int(a.get("maxSizeMb") or 10))),
-            "maxVideoSizeMb": min(100, max(1, int(a.get("maxVideoSizeMb") or 25))),
+            "maxFiles": min(10, max(1, _whole(a.get("maxFiles") or 5, "Files per message"))),
+            "maxSizeMb": min(25, max(1, _whole(a.get("maxSizeMb") or 10, "File size"))),
+            "maxVideoSizeMb": min(100, max(1, _whole(a.get("maxVideoSizeMb") or 25, "Video size"))),
         }
 
     row = db.get(SettingDocument, "support")

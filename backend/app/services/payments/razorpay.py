@@ -135,7 +135,17 @@ class RazorpayPaymentProvider:
             )
             raise RazorpayError(detail or "The payment provider refused the request.", status=response.status_code)
 
-        return response.json()
+        # A 2xx that isn't JSON (a proxy's page, a cut-off answer) is the
+        # gateway failing, and has to reach callers as one: they catch
+        # RazorpayError, and a bare ValueError was a 500 that left a refund the
+        # gateway may have accepted unrecorded.
+        try:
+            return response.json()
+        except ValueError:
+            logger.error("Razorpay %s %s answered %s with a body that isn't JSON", method, path,
+                         response.status_code)
+            raise RazorpayError("The payment provider sent an answer we couldn't read.",
+                                status=response.status_code) from None
 
     # --------------------------------------------------------------- create
 

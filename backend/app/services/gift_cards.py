@@ -444,15 +444,40 @@ def settle_from_gateway(db: Session, card_id: str, entity: dict) -> str:
         return "ignored: bad gift card id"
     if card is None:
         return "ignored: unknown gift card"
-    if card.status != "pending":
+    # Abandoned by the buyer before a payment that then completed anyway (a
+    # UPI app confirming late). Never paid here, so the money is not ours.
+    abandoned = card.status == "cancelled" and card.paid_at is None and not card.gateway_payment_id
+    if card.status != "pending" and not abandoned:
         return "duplicate: gift card already settled"
     if entity.get("status") != "captured":
         return f"ignored: payment {entity.get('status')}"
     if int(entity.get("amount") or 0) != card.initial_amount or entity.get("order_id") != card.gateway_order_id:
         logger.warning("Gift card %s: webhook payment does not match", card.id)
         return "ignored: mismatch"
+    if abandoned:
+        return _refund_abandoned(db, card, entity.get("id") or "")
     activate(db, card.id, payment_id=entity.get("id") or "")
     return "activated gift card"
+
+
+def _refund_abandoned(db: Session, card: GiftCard, payment_id: str) -> str:
+    """
+    Send back a payment for a purchase the buyer abandoned, as orders do for a
+    payment after cancellation. The card stays undelivered; recording the
+    payment on it makes a redelivered webhook a duplicate, not a second refund.
+    """
+    from app.services.payments import get_provider
+
+    result = get_provider().refund(payment_id, card.initial_amount, "Automatic refund: gift card purchase abandoned")
+    if not result.ok:
+        # Raised, so the webhook is recorded as failed and retried.
+        raise ConflictError("The payment provider declined the refund.", error_code="PROVIDER_REFUSED")
+    card.status, card.gateway_payment_id = "refunded", payment_id
+    card.status_reason = "Paid after the purchase was abandoned; refunded automatically."
+    card.updated_at = datetime.utcnow()
+    logger.warning("Gift card %s: payment %s arrived after it was abandoned and was refunded", card.id, payment_id)
+    db.commit()
+    return "refunded: gift card purchase was abandoned"
 
 
 def cancel_pending(db: Session, customer: Customer, card_id: int) -> None:

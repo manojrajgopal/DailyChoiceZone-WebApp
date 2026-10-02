@@ -74,6 +74,17 @@ def placed(client, auth, catalogue, settings_documents, razorpay):  # noqa: F811
     return response.json()["data"]
 
 
+def utc_today() -> date:
+    """
+    Today as the API counts days: in UTC (see `payments_monitor._day_range`).
+
+    Not `date.today()`, which is the machine's local date. On a machine in IST
+    the two differ from midnight to 05:30, and a run "for today" sent the local
+    date missed every payment made in the last few UTC hours of the day before.
+    """
+    return datetime.utcnow().date()
+
+
 def now_epoch():
     import calendar
 
@@ -100,7 +111,7 @@ def mark_paid(db, placed, transaction="pay_rec01", refunded=0):
 
 
 def run(client, admin_auth):
-    today = date.today().isoformat()
+    today = utc_today().isoformat()
     response = client.post(RUN, headers=admin_auth, json={"from": today, "to": today})
     assert response.status_code == 200, response.text
     return response.json()["data"]
@@ -211,7 +222,7 @@ class TestMismatches:
 class TestEvidence:
     def test_an_unreachable_gateway_is_an_error_not_a_match(self, client, db, admin_auth, placed, gateway):
         gateway.down = True
-        today = date.today().isoformat()
+        today = utc_today().isoformat()
         response = client.post(RUN, headers=admin_auth, json={"from": today, "to": today})
         assert response.status_code == 502
         assert db.query(PaymentReconciliation).count() == 0
@@ -230,14 +241,14 @@ class TestEvidence:
         assert row.status == "requires-review" and row.check_error == "timeout"
 
     def test_reconciliation_needs_razorpay(self, client, admin_auth):
-        today = date.today().isoformat()
+        today = utc_today().isoformat()
         response = client.post(RUN, headers=admin_auth, json={"from": today, "to": today})
         assert response.status_code == 422
         assert response.json()["error_code"] == "RECONCILIATION_UNAVAILABLE"
 
     def test_the_range_is_bounded(self, client, admin_auth, gateway):
-        start = (date.today() - timedelta(days=40)).isoformat()
-        response = client.post(RUN, headers=admin_auth, json={"from": start, "to": date.today().isoformat()})
+        start = (utc_today() - timedelta(days=40)).isoformat()
+        response = client.post(RUN, headers=admin_auth, json={"from": start, "to": utc_today().isoformat()})
         assert response.status_code == 422
 
 
@@ -332,7 +343,7 @@ class TestResolution:
                                                            "password": ADMIN_PASSWORD}).json()["data"]["token"]["accessToken"]
         headers = {"Authorization": f"Bearer {token}"}
         assert client.get("/api/admin/payments/reconciliation", headers=headers).status_code == 200
-        today = date.today().isoformat()
+        today = utc_today().isoformat()
         assert client.post(RUN, headers=headers, json={"from": today, "to": today}).status_code == 403
         assert client.post(f"/api/admin/payments/reconciliation/{mismatch}/resolve", headers=headers,
                            json={"note": "Trying to close it."}).status_code == 403

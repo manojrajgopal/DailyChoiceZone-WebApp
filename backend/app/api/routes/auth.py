@@ -31,6 +31,31 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 account_router = APIRouter(prefix="/account", tags=["Customers"])
 admin_auth_router = APIRouter(prefix="/admin/auth", tags=["Authentication"])
 
+# Failed sign-ins allowed per address and per caller before both are paused.
+# Only failures count, so somebody who signs in normally never meets the limit;
+# and the check comes before the password is looked at, so a paused attacker
+# learns nothing even by guessing right.
+LOGIN_FAILURES_PER_EMAIL = 10
+LOGIN_FAILURES_PER_IP = 50
+LOGIN_WINDOW_SECONDS = 15 * 60
+
+
+def _throttled(scope: str, email: str, request: Request, attempt):
+    """Run `attempt()`, refusing while too many recent sign-ins failed, and counting a new failure."""
+    from app.core.errors import AuthenticationError, RateLimitedError
+
+    keys = ((f"{scope}-fail:{email.strip().lower()}", LOGIN_FAILURES_PER_EMAIL),
+            (f"{scope}-fail-ip:{client_ip(request)}", LOGIN_FAILURES_PER_IP))
+    if any(rate_limit.exceeded(key, limit=limit, window_seconds=LOGIN_WINDOW_SECONDS) for key, limit in keys):
+        raise RateLimitedError("Too many sign-in attempts. Please wait 15 minutes and try again.",
+                               error_code="TOO_MANY_ATTEMPTS")
+    try:
+        return attempt()
+    except AuthenticationError:
+        for key, _ in keys:
+            rate_limit.record(key)
+        raise
+
 
 # ------------------------------------------------------------- customers
 
@@ -48,8 +73,8 @@ def register(payload: RegisterRequest, request: Request, db: Session = Depends(g
 
 
 @router.post("/login", summary="Sign in as a customer")
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    customer, token = service.login_customer(db, payload)
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    customer, token = _throttled("login", payload.email, request, lambda: service.login_customer(db, payload))
     return ok(
         {
             "token": token.model_dump(by_alias=True),
@@ -204,13 +229,14 @@ def delete_address(
 
 
 @admin_auth_router.post("/login", summary="Sign in to the admin portal")
-def admin_login(payload: LoginRequest, db: Session = Depends(get_db)):
+def admin_login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     # Every attempt is in the audit trail — the address tried, never the password.
     from app.core.errors import AppError
     from app.services import audit
 
     try:
-        admin, token = service.login_admin(db, payload)
+        admin, token = _throttled("admin-login", payload.email, request,
+                                  lambda: service.login_admin(db, payload))
     except AppError as error:
         audit.record_now(db, "auth.login_failed", resource_type="auth", resource_id=payload.email.lower()[:80],
                          summary=f"Failed sign-in to the portal as {payload.email.lower()}", outcome="denied",

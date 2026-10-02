@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -252,7 +252,8 @@ def delete_coupon(
 
 
 class ReviewStatusUpdate(CamelModel):
-    status: str
+    # Anything else was stored and hid the review in a state no screen shows.
+    status: Literal["pending", "approved", "rejected"]
 
 
 @marketing_router.get("/reviews", summary="Every review, for moderation")

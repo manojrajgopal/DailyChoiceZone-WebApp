@@ -226,6 +226,9 @@ def images_for(product: "Product", color: Optional[str] = None) -> List[str]:
 
 class ProductImage(Base):
     __tablename__ = "product_images"
+    # Indexes the migrations create, declared so `create_all` (the tests) builds the same
+    # schema and autogenerate never proposes dropping them.
+    __table_args__ = (Index("ix_product_images_color", "product_id", "color"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_id: Mapped[str] = mapped_column(

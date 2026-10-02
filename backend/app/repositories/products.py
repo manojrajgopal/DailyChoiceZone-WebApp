@@ -115,7 +115,9 @@ def _apply_filters(statement: Select, query: ProductQuery) -> Select:
             .exists()
         )
 
-    if query.search:
+    # Blank or whitespace-only search is no search: `_search_condition` returns
+    # None for it, and a None condition filtered out every product.
+    if query.search and query.search.strip():
         conditions.append(_search_condition(query.search))
 
     return statement.where(and_(*conditions)) if conditions else statement

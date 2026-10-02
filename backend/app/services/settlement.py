@@ -609,8 +609,22 @@ def open_qr(db: Session, payment: Payment) -> dict:
 
 
 def qr_poster_url(qr_id: str) -> str:
-    """Where the gateway serves this code's image. See `qr_image`."""
-    return get_provider().qr_poster_url(qr_id)
+    """
+    Where the gateway serves this code's image, or "" when there is none. See `qr_image`.
+
+    "" rather than an error for a provider without QR codes (the mock) and for
+    a code the gateway doesn't know: the route is public and keyed on any
+    string, so both are a 404 for the caller, never a 500.
+    """
+    from app.services.payments.razorpay import RazorpayError
+
+    provider = get_provider()
+    if not hasattr(provider, "qr_poster_url"):
+        return ""
+    try:
+        return provider.qr_poster_url(qr_id) or ""
+    except RazorpayError:
+        return ""
 
 
 def settle_qr(db: Session, payment: Payment, qr_id: str) -> Payment:

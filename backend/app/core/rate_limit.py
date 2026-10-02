@@ -34,6 +34,22 @@ def check(key: str, *, limit: int, window_seconds: int, message: str = "") -> No
         hits.append(now)
 
 
+def exceeded(key: str, *, limit: int, window_seconds: int) -> bool:
+    """True when `key` already has `limit` hits inside the window. Records nothing."""
+    now = time.monotonic()
+    with _lock:
+        hits = _hits[key]
+        while hits and now - hits[0] > window_seconds:
+            hits.popleft()
+        return len(hits) >= limit
+
+
+def record(key: str) -> None:
+    """Count one hit for `key` without refusing it; pair with `exceeded`."""
+    with _lock:
+        _hits[key].append(time.monotonic())
+
+
 def reset() -> None:
     """Forget every hit — for tests."""
     with _lock:

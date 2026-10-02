@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -22,6 +22,12 @@ from app.models.base import BusinessId
 
 class PaymentReconciliation(Base):
     __tablename__ = "payment_reconciliations"
+    # Indexes the migrations create, declared so `create_all` (the tests) builds the same
+    # schema and autogenerate never proposes dropping them.
+    __table_args__ = (
+        Index("ix_payment_reconciliations_checked", "checked_at"),
+        Index("ix_payment_reconciliations_status", "status", "resolution"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     payment_id: Mapped[Optional[str]] = mapped_column(
@@ -63,10 +69,13 @@ class PaymentReconciliationEvent(Base):
     """The audit trail: every check and every review action."""
 
     __tablename__ = "payment_reconciliation_events"
+    # Indexes the migrations create, declared so `create_all` (the tests) builds the same
+    # schema and autogenerate never proposes dropping them.
+    __table_args__ = (Index("ix_payment_reconciliation_events_rec", "reconciliation_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     reconciliation_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("payment_reconciliations.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("payment_reconciliations.id", ondelete="CASCADE"), nullable=False
     )
     # checked | status | resolved | reopened | note
     action: Mapped[str] = mapped_column(String(20), nullable=False)

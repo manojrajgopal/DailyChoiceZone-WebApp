@@ -237,6 +237,14 @@ def create_product(db: Session, payload: ProductWrite, actor: Optional[str] = No
     return product
 
 
+_NOT_NULL_FIELDS = {
+    "name", "brand", "subcategory", "currency", "description", "material", "care", "is_new", "is_trending",
+    "is_best_seller", "is_featured", "status", "stock", "reserved_stock", "low_stock_threshold", "barcode",
+    "tax_rate_percent", "is_returnable", "is_replaceable", "meta_title", "meta_description", "price",
+    "original_price",
+}
+
+
 def update_product(
     db: Session, product_id: str, payload: ProductWrite, actor: Optional[str] = None
 ) -> Product:
@@ -250,6 +258,18 @@ def update_product(
     product = get_product(db, product_id)
     provided = payload.model_dump(exclude_unset=True, by_alias=False)
     old_price, old_original = float(product.price), float(product.original_price)
+
+    # The scalar columns written below are all NOT NULL, so an explicit null is
+    # a mistake to refuse, not a value to write: `float(None)` was a 500, and a
+    # null name reached MySQL and came back as a misleading "already exists".
+    # (category, slug, sku and the lists already treat null as "leave it".)
+    nulled = sorted(field for field, value in provided.items() if value is None and field in _NOT_NULL_FIELDS)
+    if nulled:
+        raise ValidationError(
+            f"These fields can't be empty: {', '.join(nulled)}.",
+            error_code="PRODUCT_FIELD_REQUIRED",
+            details={"fields": nulled},
+        )
 
     if "category" in provided and payload.category:
         product.category_id = _resolve_category(db, payload.category).id

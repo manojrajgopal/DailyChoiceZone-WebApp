@@ -120,7 +120,8 @@ def _audit_filters(q: str, action: str, resource_type: str, resource_id: str, ac
     if start:
         conditions.append(AuditLog.occurred_at >= start)
     if end:
-        conditions.append(AuditLog.occurred_at < end + timedelta(days=1) if len(date_to or "") == 10 else end)
+        # A bare date means "through the end of that day"; a timestamp is exact.
+        conditions.append(AuditLog.occurred_at < (end + timedelta(days=1) if len(date_to or "") == 10 else end))
     return conditions
 
 

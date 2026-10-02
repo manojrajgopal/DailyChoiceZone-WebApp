@@ -52,7 +52,7 @@ def arena(engine):
 def _cleanup(Session, created_billing):
     from app.models import (
         Bundle, CartBundle, CartItem, CartRecovery, Category, Customer, FlashSale, FlashSaleClaim, Invoice,
-        InvoiceItem, Order, OrderEvent, OrderItem, Payment, PaymentEvent, Product, Referral, ReferralCode,
+        InvoiceItem, Notification, Order, OrderEvent, OrderItem, Payment, PaymentEvent, Product, Referral, ReferralCode,
         SettingDocument, StockAdjustment, StoreCreditAccount, StoreCreditTransaction,
     )
 
@@ -81,6 +81,9 @@ def _cleanup(Session, created_billing):
     for name in ("Race sale",):
         for sale in db.execute(select(FlashSale).where(FlashSale.name == name)).scalars():
             db.delete(sale)
+        # Selling the last unit tells the team it sold out. Committed with the
+        # race, so it has to go too, or every later test sees it in the tray.
+        db.execute(delete(Notification).where(Notification.title.like(f"%{name}%")))
     for bundle in db.execute(select(Bundle).where(Bundle.slug == "race-bundle")).scalars():
         db.delete(bundle)
     db.flush()

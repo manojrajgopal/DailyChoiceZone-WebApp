@@ -166,7 +166,9 @@ def update_admin(
     provided = payload.model_dump(exclude_unset=True, by_alias=False)
     losing_super = (
         user.role == "super-admin"
-        and (provided.get("role", user.role) != "super-admin" or provided.get("status") == "suspended")
+        # Any status but "active" signs them out for good, not only "suspended".
+        and (provided.get("role", user.role) != "super-admin"
+             or ("status" in provided and provided["status"] != "active"))
     )
 
     if losing_super:

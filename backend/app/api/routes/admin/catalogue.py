@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -180,7 +180,9 @@ def update_stock(
 
 @inventory_router.get("/log", summary="Every stock movement")
 def stock_log(
-    limit: int = 200,
+    # Bounded: a negative limit reached MySQL as `LIMIT -5` (a 500), and an
+    # unbounded one read the whole ledger.
+    limit: int = Query(200, ge=1, le=1000),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):

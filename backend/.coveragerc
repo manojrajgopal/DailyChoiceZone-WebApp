@@ -1,0 +1,15 @@
+# Coverage settings for `pytest --cov=app --cov-report=term-missing`.
+#
+# Branch coverage is on: a line that ran is not the same as both sides of its
+# `if` having run, and the business rules here are mostly `if`s.
+
+[run]
+source = app
+branch = True
+
+[report]
+skip_empty = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:

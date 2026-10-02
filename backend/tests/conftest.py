@@ -39,6 +39,20 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 import app.models  # noqa: F401 — every table registered before the schema is built
+# Every module imported before any test patches one. A module first imported
+# *during* a monkeypatch binds the stub with `from ... import` and keeps it
+# after teardown. It happened twice: `orders` kept a stubbed `get_provider` and
+# the next test reached the real gateway; `email.notifications` (imported lazily,
+# inside a function) kept a test's fake `notify` and silently swallowed every
+# invoice email after it. Importing the whole package up front closes the door.
+import importlib  # noqa: E402
+import pkgutil  # noqa: E402
+
+import app  # noqa: E402
+import app.main  # noqa: F401,E402
+
+for _module in pkgutil.walk_packages(app.__path__, "app."):
+    importlib.import_module(_module.name)
 from app.core import database as db_module
 from app.core.config import settings
 from app.core.database import Base
@@ -147,6 +161,43 @@ def _no_real_database(monkeypatch, db):
     failure rather than a silent one.
     """
     monkeypatch.setattr(db_module, "SessionLocal", lambda: db)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    """
+    The rate limiter is in memory and shared by the whole process, so one
+    test's failed sign-ins would otherwise pause sign-in for the tests after it.
+    """
+    from app.core import rate_limit
+
+    rate_limit.reset()
+    yield
+    rate_limit.reset()
+
+
+@pytest.fixture(autouse=True)
+def _no_internet(monkeypatch):
+    """
+    Refuse every network connection except to the database.
+
+    The other guards here stub the services the suite is known to call. This
+    one catches the call nobody knew about: a test that would have reached
+    Razorpay, Google or Twilio fails with a clear error instead of quietly
+    depending on somebody else's uptime (or a live account).
+    """
+    import socket
+
+    allowed = {"localhost", "127.0.0.1", "::1", settings.DATABASE_HOST}
+    real_connect = socket.socket.connect
+
+    def guarded_connect(sock, address, *args, **kwargs):
+        host = address[0] if isinstance(address, tuple) else address
+        if sock.family in (socket.AF_INET, socket.AF_INET6) and host not in allowed:
+            raise RuntimeError(f"Test tried to reach the network ({host}). Stub the service instead.")
+        return real_connect(sock, address, *args, **kwargs)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
 
 
 @pytest.fixture(autouse=True)

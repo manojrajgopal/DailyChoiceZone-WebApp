@@ -420,6 +420,10 @@ def settle_from_gateway(db: Session, membership_id: str, entity: dict) -> str:
         return "ignored: unknown membership"
     if membership.status == "active":
         return "duplicate: already active"
+    # Paid once already. Razorpay reports one payment twice (payment.captured
+    # and order.paid); a membership ended between the two must stay ended.
+    if membership.paid_at is not None:
+        return "duplicate: already settled"
     if entity.get("status") not in ("captured",):
         return f"ignored: payment {entity.get('status')}"
     if int(entity.get("amount") or 0) != membership.amount or entity.get("order_id") != membership.gateway_order_id:
@@ -434,10 +438,18 @@ def activate(db: Session, membership: CustomerMembership, *, payment_id: str, am
     Start the membership. A live membership of the same customer is extended
     rather than overlapped: the new term begins when the current one ends.
     """
+    # `populate_existing`: the caller holds this membership already, and without
+    # it the locked read returns that cached copy. A membership the other
+    # settlement path (webhook or browser) had activated, and the store had since
+    # ended, still looked pending here and was revived with a fresh term.
+    # Flushed first all the same, so a refresh can never discard an unsaved change.
+    db.flush()
     locked = db.execute(
         select(CustomerMembership).where(CustomerMembership.id == membership.id).with_for_update()
+        .execution_options(populate_existing=True)
     ).scalar_one()
-    if locked.status == "active":
+    if locked.status == "active" or locked.paid_at is not None:
+        # Live, or paid for once and since ended: either way, settled.
         return locked
 
     # Whole seconds: MySQL DATETIME rounds fractions *up*, which would start a

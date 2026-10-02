@@ -404,8 +404,11 @@ def admin_run_backup(db: Session = Depends(get_db), admin: AdminUser = Depends(B
     row = backups.start_manual(db, admin)
     view = backups.view(row)
     if row.status != "succeeded":
-        return JSONResponse({"success": False, "message": f"The backup failed: {row.error}", "error_code": "BACKUP_FAILED",
-                             "data": view}, status_code=500)
+        from fastapi.encoders import jsonable_encoder
+
+        # Encoded first: the view holds datetimes, which plain JSON cannot.
+        return JSONResponse(jsonable_encoder({"success": False, "message": f"The backup failed: {row.error}",
+                                              "error_code": "BACKUP_FAILED", "data": view}), status_code=500)
     return ok(view, message="Backup complete and verified.")
 
 
