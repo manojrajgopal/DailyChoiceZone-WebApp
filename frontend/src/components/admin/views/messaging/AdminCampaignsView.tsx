@@ -212,7 +212,13 @@ export function AdminCampaignDetailView() {
   const id = Number(params.get("id")) || null;
   const campaign = useAdminResource(() => getCampaign(id ?? 0), [id], { enabled: id !== null });
   const options = useAdminResource(() => getCampaignOptions(), []);
-  const [form, setForm] = useState<CampaignInput>(blank);
+  // "Send campaign to this segment" opens a new campaign with ?segmentId=N (customer segmentation).
+  const [form, setForm] = useState<CampaignInput>(() => {
+    const draft = blank();
+    const segmentId = Number(params.get("segmentId")) || null;
+    if (!id && segmentId) draft.audience = { ...draft.audience, segmentId };
+    return draft;
+  });
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState("");
   const [estimate, setEstimate] = useState<Estimate | null>(null);
@@ -299,6 +305,10 @@ export function AdminCampaignDetailView() {
   };
 
   const opts = options.data;
+  const savedSegments = opts?.savedSegments ?? [];
+  const segmentName = form.audience.segmentId
+    ? (savedSegments.find((s) => s.id === form.audience.segmentId)?.name ?? `Segment #${form.audience.segmentId}`)
+    : "";
   const readiness = current?.readiness ?? [];
   const starter = opts?.starters[form.kind];
 
@@ -396,6 +406,11 @@ export function AdminCampaignDetailView() {
               <FormGrid>
                 <AdminSelect label="Customers" value={form.audience.segment} onChange={(e) => setAudience({ segment: e.target.value as Audience["segment"] })}
                   options={(opts?.segments ?? Object.keys(SEGMENT_LABELS)).map((s) => ({ value: s, label: SEGMENT_LABELS[s] ?? s }))} />
+                <AdminSelect label="Saved segment" value={form.audience.segmentId ? String(form.audience.segmentId) : ""}
+                  onChange={(e) => setAudience({ segmentId: e.target.value ? Number(e.target.value) : null })}
+                  hint="Only this segment's members; the filters here still apply on top."
+                  options={[{ value: "", label: "No segment" }, ...savedSegments.map((s) => ({ value: String(s.id), label: `${s.name} (${s.memberCount.toLocaleString("en-IN")})` })),
+                    ...(form.audience.segmentId && !savedSegments.some((s) => s.id === form.audience.segmentId) ? [{ value: String(form.audience.segmentId), label: `Segment #${form.audience.segmentId}` }] : [])]} />
                 <AdminInput label="Joined in the last (days)" type="number" min={1} value={form.audience.joinedWithinDays ?? ""} onChange={(e) => setAudience({ joinedWithinDays: e.target.value ? Number(e.target.value) : null })} />
                 <AdminInput label="Ordered from" type="date" value={form.audience.orderedFrom ?? ""} onChange={(e) => setAudience({ orderedFrom: e.target.value || null })} />
                 <AdminInput label="Ordered until" name="orderedTo" error={errors.orderedTo} type="date" value={form.audience.orderedTo ?? ""} onChange={(e) => setAudience({ orderedTo: e.target.value || null })} />
@@ -497,7 +512,7 @@ export function AdminCampaignDetailView() {
           {step === 4 ? (
             <AdminCard title="Review and launch">
               <dl className="grid gap-2 text-xs sm:grid-cols-2">
-                <div><dt className="text-admin-muted">Audience</dt><dd className="text-admin-ink">{SEGMENT_LABELS[form.audience.segment]}{estimate ? ` · ${estimate.matching} customers match` : ""}</dd></div>
+                <div><dt className="text-admin-muted">Audience</dt><dd className="text-admin-ink">{SEGMENT_LABELS[form.audience.segment]}{segmentName ? ` · segment: ${segmentName}` : ""}{estimate ? ` · ${estimate.matching} customers match` : ""}</dd></div>
                 <div><dt className="text-admin-muted">Channels</dt><dd className="text-admin-ink">{form.channels.map((c) => `${CHANNEL_LABELS[c]}: ${estimate?.channels[c] ?? "…"}`).join(" · ")}</dd></div>
                 <div><dt className="text-admin-muted">Messages</dt><dd className="text-lg font-semibold text-admin-ink tabular-nums">{estimate?.messages ?? "…"}</dd></div>
                 <div><dt className="text-admin-muted">Sends</dt><dd className="text-admin-ink">{schedule === "later" && sendAt ? new Date(sendAt).toLocaleString("en-IN") : "As soon as it's launched"}</dd></div>

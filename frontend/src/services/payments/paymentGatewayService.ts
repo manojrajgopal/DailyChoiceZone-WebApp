@@ -3,7 +3,12 @@ import type { GatewayHandoff } from "@/types";
 import { pageCache } from "@/services/api/cache";
 import { apiDelete, apiGet, apiImageSrc, apiPost } from "@/services/api/client";
 
-import type { RazorpayResponse } from "./razorpayCheckout";
+/** The three references the gateway returns when a payment goes through. */
+export interface RazorpayResponse {
+  razorpayPaymentId: string;
+  razorpayOrderId: string;
+  razorpaySignature: string;
+}
 
 /**
  * Talking to our own server about payments.
@@ -192,7 +197,17 @@ export function getPaymentSession(paymentId: string): Promise<PaymentSession> {
   );
 }
 
-/** The five parameters Razorpay appends when it sends a customer back from a payment link. */
+/**
+ * Pay an unpaid order online in our own payment interface — a cash-on-delivery
+ * order the customer would rather pay now (the link the store sends them, or
+ * "Pay online now" on the order). Opens a gateway order once and hands back
+ * the same one every time after.
+ */
+export function openOnlinePayment(paymentId: string): Promise<PaymentSession> {
+  return apiPost<PaymentSession>(`/payments/${encodeURIComponent(paymentId)}/online`, undefined, AUTH);
+}
+
+/** The five parameters Razorpay appends when it sends a customer back from a (legacy) payment link. */
 export const PAYMENT_LINK_PARAMS = [
   "razorpay_payment_id",
   "razorpay_payment_link_id",

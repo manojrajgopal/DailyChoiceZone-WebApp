@@ -31,6 +31,15 @@ from app.utils.ids import next_id
 INVALID_CREDENTIALS = "That email and password do not match."
 
 
+def _require_method(db: Session) -> None:
+    """Refuse email-and-password sign-in when the store has switched it off (Settings, Authentication)."""
+    from app.services.identity import methods
+
+    if not methods.enabled(db, "emailPassword"):
+        raise AuthorizationError("Signing in with a password is switched off. Use another way to sign in.",
+                                 error_code="AUTH_METHOD_DISABLED")
+
+
 def _token_for(subject: str, actor: str, role: Optional[str] = None) -> TokenOut:
     return TokenOut(
         access_token=create_access_token(subject, actor, role),  # type: ignore[arg-type]
@@ -87,7 +96,8 @@ def _claim_first_administrator(db: Session, customer: Customer, password_hash: s
     return True
 
 
-def register(db: Session, payload: RegisterRequest, *, ip: str = "") -> tuple[Customer, TokenOut]:
+def register(db: Session, payload: RegisterRequest, *, ip: str = "",
+             user_agent: str = "") -> tuple[Customer, TokenOut]:
     """
     Create a customer account.
 
@@ -96,6 +106,7 @@ def register(db: Session, payload: RegisterRequest, *, ip: str = "") -> tuple[Cu
     the same transaction, so there is no moment where the account exists
     without the role it was promised, or the other way round.
     """
+    _require_method(db)
     existing = db.execute(
         select(Customer.id).where(Customer.email == payload.email.lower())
     ).scalar_one_or_none()
@@ -140,7 +151,16 @@ def register(db: Session, payload: RegisterRequest, *, ip: str = "") -> tuple[Cu
         # account is actually created.
         from app.services import accounts
 
-        accounts.send_verification(db, customer)
+        # The confirmation link, unless the store confirms new accounts with a
+        # code only (Settings, Authentication); the code is sent by the route.
+        from app.services.identity import methods as auth_methods
+
+        if auth_methods.signup_verification(db) in ("link", "both"):
+            accounts.send_verification(db, customer)
+        # A signed-in session from the start (docs/authentication.md).
+        from app.services import sessions
+
+        token = sessions.issue(db, customer, "signup", ip=ip, user_agent=user_agent)
         db.commit()
     except Exception:
         db.rollback()
@@ -148,10 +168,12 @@ def register(db: Session, payload: RegisterRequest, *, ip: str = "") -> tuple[Cu
 
     db.refresh(customer)
 
-    return customer, _token_for(customer.id, "customer")
+    return customer, token
 
 
-def login_customer(db: Session, payload: LoginRequest) -> tuple[Customer, TokenOut]:
+def login_customer(db: Session, payload: LoginRequest, *, ip: str = "",
+                   user_agent: str = "") -> tuple[Customer, TokenOut]:
+    _require_method(db)
     customer = db.execute(
         select(Customer).where(Customer.email == payload.email.lower())
     ).scalar_one_or_none()
@@ -160,7 +182,11 @@ def login_customer(db: Session, payload: LoginRequest) -> tuple[Customer, TokenO
     # takes the same time either way. Returning early on a missing email makes
     # the difference measurable, and measurable is enumerable.
     placeholder = "$2b$12$" + "." * 53
-    matches = verify_password(payload.password, customer.password_hash if customer else placeholder)
+    # An account with no password (Google, Apple, Microsoft or a code only) is
+    # checked against the placeholder too, and fails exactly like a wrong
+    # password: the answer never says which accounts have one.
+    stored = customer.password_hash if customer is not None and customer.password_hash else placeholder
+    matches = verify_password(payload.password, stored) and stored != placeholder
 
     if customer is None or not matches:
         raise AuthenticationError(INVALID_CREDENTIALS, error_code="INVALID_CREDENTIALS")
@@ -171,25 +197,30 @@ def login_customer(db: Session, payload: LoginRequest) -> tuple[Customer, TokenO
             error_code="ACCOUNT_BLOCKED",
         )
 
-    customer.last_login_at = datetime.utcnow()
-    _login_alert(db, customer)
+    from app.services.identity import accounts as identity_accounts
+
+    token = identity_accounts.sign_in(db, customer, "password", ip=ip, user_agent=user_agent)
     db.commit()
 
-    return customer, _token_for(customer.id, "customer")
+    return customer, token
 
 
-def _login_alert(db: Session, customer: Customer) -> None:
-    """The sign-in alert — off unless the store switches it on in Notifications."""
+def _login_alert(db: Session, customer: Customer, method: str = "password") -> None:
+    """The sign-in alert for every method (password, Google, a code...) — off unless the store switches it on."""
     from app.core.config import settings as app_settings
     from app.services import email as email_service
+    from app.services.sessions import METHOD_LABELS
 
     base = app_settings.STOREFRONT_URL.rstrip("/")
+    how = METHOD_LABELS.get(method, "")
+    detail = f" (with {how})" if how and method != "password" else ""
     email_service.notify(
         db, "account_security", to=customer.email, customer_id=customer.id,
         subject="New sign-in to your Daily Choice Zone account",
         html=email_service.layout("A new sign-in to your account",
-                                  "Your account was just signed in to. If this was you, there's nothing to do. If not, "
-                                  "reset your password now.", cta=("Go to your account", f"{base}/account")),
+                                  f"Your account was just signed in to{detail}. If this was you, there's nothing to "
+                                  "do. If not, reset your password now and sign out other devices from your security "
+                                  "settings.", cta=("Go to your account", f"{base}/account")),
         text="Your Daily Choice Zone account was just signed in to. Not you? Reset your password.",
         reference="login", event="login_alert", variables={"account_url": f"{base}/account"}, inbox=False,
     )
@@ -202,20 +233,52 @@ def update_customer(db: Session, customer: Customer, payload: CustomerUpdate) ->
         if field in provided and provided[field] is not None:
             setattr(customer, field, provided[field].strip())
 
+    # A new or changed number is a contact number only until it is confirmed
+    # with a code (Settings, Security): it never becomes the sign-in phone, and
+    # the account stops showing a confirmed phone when it no longer matches.
+    if "phone" in provided and provided["phone"] is not None:
+        from app.services.identity import accounts as identity_accounts
+        from app.services.messaging.service import normalise_phone
+
+        identity = identity_accounts.phone_identity(db, customer)
+        if identity is None or normalise_phone(customer.phone) != identity.provider_user_id:
+            customer.phone_verified_at = None
+        elif customer.phone_verified_at is None and identity.verified_at is not None:
+            customer.phone_verified_at = identity.verified_at
+
     db.commit()
     db.refresh(customer)
     return customer
 
 
-def change_password(db: Session, customer: Customer, payload: PasswordChange) -> None:
-    """The current password is required — a stolen session must not be able to
-    lock the owner out of their own account."""
+def change_password(db: Session, customer: Customer, payload: PasswordChange, claims: Optional[dict] = None,
+                    *, ip: str = "", user_agent: str = "") -> TokenOut:
+    """
+    The current password is required — a stolen session must not be able to
+    lock the owner out of their own account.
+
+    Every other device is signed out: `password_changed_at` retires every token
+    issued before it (this used to be left unset, so a changed password kept
+    every other device signed in), and the other sessions are revoked. This
+    device carries on with the fresh token returned, in the same session.
+    """
+    if not customer.password_hash:
+        raise ConflictError("You haven't set a password yet. Use 'Set a password' in your security settings.",
+                            error_code="PASSWORD_NOT_SET")
     if not verify_password(payload.current_password, customer.password_hash):
         raise AuthenticationError("Your current password is not correct.", error_code="INVALID_CREDENTIALS")
 
+    from app.services.identity import accounts as identity_accounts
+
     customer.password_hash = hash_password(payload.new_password)
+    # Whole seconds, as in a reset: a JWT's `iat` is whole seconds.
+    customer.password_changed_at = datetime.utcnow().replace(microsecond=0)
+    token = identity_accounts._keep_this_device(db, customer, claims or {}, "password-changed", ip=ip,
+                                                user_agent=user_agent)
     notify_password_changed(db, customer)
+    identity_accounts.audit(db, customer, "password_changed", "Changed the password")
     db.commit()
+    return token
 
 
 def notify_password_changed(db: Session, customer: Customer) -> None:

@@ -118,11 +118,15 @@ class CustomerOut(CamelModel):
     status: str
     joined_at: datetime
     email_verified: bool = False
+    # Whether the sign-in mobile number is confirmed. (Whether a password is set
+    # is read from /account/security: the word never appears in this body.)
+    phone_verified: bool = False
     addresses: List[AddressOut] = []
 
     @classmethod
     def from_model(cls, customer) -> "CustomerOut":
         return cls(
+            phone_verified=getattr(customer, "phone_verified_at", None) is not None,
             id=customer.id,
             email=customer.email,
             first_name=customer.first_name,

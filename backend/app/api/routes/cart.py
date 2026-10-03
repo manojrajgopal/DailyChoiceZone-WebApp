@@ -35,6 +35,8 @@ class AddToCart(CamelModel):
     size: Optional[str] = Field(default=None, max_length=30)
     color: Optional[str] = Field(default=None, max_length=60)
     quantity: int = Field(default=1, ge=1, le=MAX_QUANTITY_PER_LINE)
+    # The rail it was added from, for recommendation analytics ("pdp-related").
+    source: str = Field(default="", max_length=60)
 
 
 class UpdateQuantity(CamelModel):
@@ -119,6 +121,7 @@ def add_item(
         size=payload.size,
         color=payload.color,
         quantity=payload.quantity,
+        source=payload.source,
     )
     return ok(_render(service.get_cart(db, customer)), message="Added to bag.")
 

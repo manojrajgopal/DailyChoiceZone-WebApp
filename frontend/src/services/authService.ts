@@ -1,6 +1,8 @@
 import type { AuthSession, Credentials, RegisterInput, User } from "@/types";
+import type { ApiToken, IssuedOtp } from "@/types/identity";
 
 import { ApiError, apiGet, apiPost, apiPut, setToken } from "@/services/api/client";
+import { stopSessionRefresh, storeCustomerToken } from "@/services/sessionRefresh";
 
 /**
  * Customer authentication.
@@ -19,7 +21,7 @@ import { ApiError, apiGet, apiPost, apiPut, setToken } from "@/services/api/clie
  * account page or hook had to be touched.
  */
 
-interface ApiCustomer {
+export interface ApiCustomer {
   id: string;
   email: string;
   firstName: string;
@@ -29,16 +31,33 @@ interface ApiCustomer {
   status: string;
   joinedAt: string;
   emailVerified?: boolean;
+  phoneVerified?: boolean;
 }
 
-interface ApiAuthPayload {
-  token: { accessToken: string; tokenType: string; expiresIn: number };
+export interface ApiAuthPayload {
+  token: ApiToken;
   customer: ApiCustomer;
+  /**
+   * After registering, when the store confirms new accounts with a code: the
+   * code sent to the new email address and (when a number was given) to the
+   * mobile number. Absent when it confirms with the emailed link; null when a
+   * code could not be sent (it can be asked for again).
+   */
+  verification?: IssuedOtp | null;
+  phoneVerification?: IssuedOtp | null;
 }
 
-export type AuthResult = { ok: true; session: AuthSession } | { ok: false; reason: string };
+export type AuthResult =
+  | {
+      ok: true;
+      session: AuthSession;
+      /** Codes to type in before the account is fully confirmed (registration only). */
+      verification?: IssuedOtp | null;
+      phoneVerification?: IssuedOtp | null;
+    }
+  | { ok: false; reason: string; code?: string };
 
-function toUser(payload: ApiCustomer): User {
+export function toUser(payload: ApiCustomer): User {
   return {
     id: payload.id,
     firstName: payload.firstName,
@@ -47,21 +66,34 @@ function toUser(payload: ApiCustomer): User {
     phone: payload.phone,
     memberSince: payload.joinedAt,
     emailVerified: payload.emailVerified ?? false,
+    phoneVerified: payload.phoneVerified ?? false,
   };
+}
+
+/** Store the token from a sign-in and turn the payload into a session. */
+export function acceptAuthPayload(payload: ApiAuthPayload): AuthSession {
+  storeCustomerToken(payload.token);
+  return { user: toUser(payload.customer), token: payload.token.accessToken };
 }
 
 async function authenticate(path: string, body: unknown): Promise<AuthResult> {
   try {
     const payload = await apiPost<ApiAuthPayload>(path, body);
-    setToken(payload.token.accessToken, "customer");
-    return {
-      ok: true,
-      session: { user: toUser(payload.customer), token: payload.token.accessToken },
-    };
+    const session = acceptAuthPayload(payload);
+    const result: AuthResult = { ok: true, session };
+    if (payload.verification !== undefined) result.verification = payload.verification;
+    if (payload.phoneVerification !== undefined) result.phoneVerification = payload.phoneVerification;
+    return result;
   } catch (error) {
     // The API's messages are already written for a customer to read — "That
     // email and password do not match", not a status code.
-    if (error instanceof ApiError) return { ok: false, reason: error.message };
+    if (error instanceof ApiError) {
+      // AUTH_METHOD_DISABLED is worth branching on (the page can stop offering
+      // the form); other codes are only noise next to the message.
+      return error.code === "AUTH_METHOD_DISABLED"
+        ? { ok: false, reason: error.message, code: error.code }
+        : { ok: false, reason: error.message };
+    }
     return { ok: false, reason: "Something went wrong. Please try again." };
   }
 }
@@ -83,6 +115,7 @@ export async function signOut(): Promise<void> {
   } catch {
     /* signing out has to succeed even when the request does not */
   }
+  stopSessionRefresh();
   setToken(null, "customer");
 }
 
@@ -124,12 +157,22 @@ export async function updateProfile(patch: Partial<User>): Promise<User | null> 
 export async function changePassword(
   currentPassword: string,
   newPassword: string,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<{ ok: true } | { ok: false; reason: string; code?: string }> {
   try {
-    await apiPut("/account/password", { currentPassword, newPassword }, { auth: "customer" });
+    // Other devices are signed out; this one carries on with the new token.
+    const data = await apiPut<{ token?: ApiToken } | null>(
+      "/account/password",
+      { currentPassword, newPassword },
+      { auth: "customer" },
+    );
+    if (data?.token?.accessToken) storeCustomerToken(data.token);
     return { ok: true };
   } catch (error) {
-    if (error instanceof ApiError) return { ok: false, reason: error.message };
+    if (error instanceof ApiError) {
+      return error.code === "PASSWORD_NOT_SET"
+        ? { ok: false, reason: error.message, code: error.code }
+        : { ok: false, reason: error.message };
+    }
     return { ok: false, reason: "Could not change your password." };
   }
 }

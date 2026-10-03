@@ -156,9 +156,9 @@ describe("orders", () => {
   });
 
   it("sendPaymentLink POSTs with an empty body", async () => {
-    api.post("/admin/orders/O1/payment-link", { id: "pl_1", shortUrl: "https://x", status: "created" });
+    api.post("/admin/orders/O1/payment-link", { url: "https://x/checkout/payment?payment=PAY1&online=1", shortUrl: "https://x/checkout/payment?payment=PAY1&online=1", paymentId: "PAY1", orderNumber: "DCZ1" });
     const link = await httpAdminAdapter.sendPaymentLink("O1");
-    expect(link.id).toBe("pl_1");
+    expect(link.paymentId).toBe("PAY1");
     expect(api.last("POST", "/admin/orders/O1/payment-link")!.body).toEqual({});
   });
 });

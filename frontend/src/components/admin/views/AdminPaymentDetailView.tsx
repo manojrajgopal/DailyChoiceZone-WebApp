@@ -9,7 +9,7 @@ import type { Invoice, Payment, Refund } from "@/types";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
-import { CreateRefundDialog } from "@/components/admin/views/CreateRefundDialog";
+import { RefundWizardLauncher } from "@/components/admin/views/refunds/RefundWizardLauncher";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
@@ -258,12 +258,11 @@ function AdminPaymentDetail() {
       </div>
 
       {invoice ? (
-        <CreateRefundDialog
+        <RefundWizardLauncher
+          orderId={invoice.orderId}
           open={refundOpen}
-          onOpenChange={setRefundOpen}
-          invoice={invoice}
-          payment={payment}
-          onDone={load}
+          onClose={() => setRefundOpen(false)}
+          onDone={() => void load()}
         />
       ) : null}
     </div>

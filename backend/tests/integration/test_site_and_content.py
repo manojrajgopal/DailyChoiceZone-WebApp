@@ -405,7 +405,7 @@ class TestAdminNavigation:
         db.flush()
         groups = client.get("/api/admin/navigation", headers=admin_auth).json()["data"]
         tree = self._tree(groups)
-        assert tree["Sales"][:2] == ["Orders", ("Fulfilment", ["Shipments", "Returns", "Delivery pincodes"])]
+        assert tree["Sales"][:2] == ["Orders", ("Fulfilment", ["Packing", "Shipments", "Returns", "Delivery pincodes"])]
         assert ("Purchasing", ["Suppliers", "Purchase orders"]) in tree["Catalogue"]
         assert ("System", ["Audit log", "System health", "Backups"]) in tree["Administration"]
         assert tree["Customers"][0] == "Customers"
@@ -415,9 +415,13 @@ class TestAdminNavigation:
         folders = [item for group in groups for item in group["items"] if not item["href"]]
         assert all(item["id"].endswith("-folder") and item["children"] for item in folders)
 
-    def test_a_folder_of_one_is_just_a_link(self, client, admin_auth, db):
+    def test_a_folder_of_one_is_just_a_link(self, client, admin_auth, db, monkeypatch):
         from app.models import SettingDocument
+        from app.services import site
 
+        # Store setup holds Couriers and Authentication; without Authentication it is a folder of one.
+        monkeypatch.setattr(site, "ADDED_NAV_ITEMS",
+                            [entry for entry in site.ADDED_NAV_ITEMS if entry[1]["id"] != "authentication"])
         db.add(SettingDocument(key="admin_navigation", value={"groups": [
             {"heading": "Admin", "items": [{"id": "users", "href": "/admin/admin-users", "label": "Admin users"}]},
         ]}))

@@ -1,7 +1,9 @@
-import type { Paginated, Product, ProductFacets, ProductQuery } from "@/types";
+import type { Paginated, Product, ProductFacets, ProductFilters, ProductQuery } from "@/types";
 
 import { dataSource } from "./data-source.instance";
 import { findRecommended } from "@/lib/recommendations/related";
+import { getToken } from "@/services/api/client";
+import { getForYou } from "@/services/discoveryService";
 
 /**
  * The catalogue API the UI codes against.
@@ -59,9 +61,7 @@ export function getProductsByCategory(
   return dataSource.queryProducts({ ...query, category: [category] });
 }
 
-export function getFacets(
-  scope?: Pick<ProductQuery, "category" | "subcategory" | "query">,
-): Promise<ProductFacets> {
+export function getFacets(scope?: ProductFilters): Promise<ProductFacets> {
   return dataSource.getFacets(scope);
 }
 
@@ -110,14 +110,29 @@ export function getRelatedProducts(productId: string, limit = 8): Promise<Produc
 /**
  * Recommendations for this shopper.
  *
- * Driven by recently viewed ids, which the caller supplies because only the
- * browser knows them. With no history, fall back to featured products so the
- * rail is never empty on a first visit.
+ * The server's ranking first (`/recommendations/for-you`): signed in, it works
+ * from the account's own history and purchases; signed out, from the recently
+ * viewed ids the caller supplies, because only the browser knows them.
+ *
+ * If that can't be reached, the same idea is worked out here from the
+ * catalogue — and with no history at all, featured products — so the rail is
+ * never empty on a first visit.
  */
 export async function getRecommendedProducts(
   recentlyViewedIds: string[],
   limit = 6,
 ): Promise<Product[]> {
+  try {
+    const items = await getForYou({
+      seed: recentlyViewedIds.slice(0, 6),
+      limit,
+      signedIn: Boolean(getToken("customer")),
+    });
+    if (items.length > 0) return items;
+  } catch {
+    /* worked out below instead */
+  }
+
   if (recentlyViewedIds.length === 0) {
     return getFeaturedProducts(limit);
   }

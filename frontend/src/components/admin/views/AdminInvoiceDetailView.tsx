@@ -11,7 +11,7 @@ import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/A
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { InvoiceDocument } from "@/components/billing/InvoiceDocument";
 import { InvoiceDownloadMenu, useInvoicePrint } from "@/components/billing/InvoiceActions";
-import { CreateRefundDialog } from "@/components/admin/views/CreateRefundDialog";
+import { RefundWizardLauncher } from "@/components/admin/views/refunds/RefundWizardLauncher";
 import { CreateCreditNoteDialog } from "@/components/admin/views/CreateCreditNoteDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useBillingConfig, useTaxConfig } from "@/hooks/useBillingConfig";
@@ -317,12 +317,11 @@ function AdminInvoiceDetail() {
         </div>
       </div>
 
-      <CreateRefundDialog
+      <RefundWizardLauncher
+        orderId={invoice.orderId}
         open={refundOpen}
-        onOpenChange={setRefundOpen}
-        invoice={invoice}
-        payment={payment}
-        onDone={load}
+        onClose={() => setRefundOpen(false)}
+        onDone={() => void load()}
       />
 
       <CreateCreditNoteDialog

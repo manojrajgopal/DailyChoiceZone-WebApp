@@ -143,10 +143,17 @@ def client(db) -> Iterator[TestClient]:
     from app.core.database import get_db
     from app.main import app
 
+    from app.core.config import settings
+
     app.dependency_overrides[get_db] = lambda: db
+    # The test client connects as "testclient"; trust it like the proxy in front of the API, so
+    # tests can play different callers with X-Forwarded-For.
+    trusted = settings.TRUSTED_PROXIES
+    settings.TRUSTED_PROXIES = [*trusted, "testclient"]
     try:
         yield TestClient(app, raise_server_exceptions=False)
     finally:
+        settings.TRUSTED_PROXIES = trusted
         app.dependency_overrides.clear()
 
 
@@ -174,6 +181,20 @@ def _fresh_rate_limits():
     rate_limit.reset()
     yield
     rate_limit.reset()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_cache():
+    """
+    The recommendation and delivery caches are in memory and outlive a test's
+    rolled-back transaction, so one test's answers would otherwise reach the
+    next. See `app.core.cache`.
+    """
+    from app.core import cache
+
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

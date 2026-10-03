@@ -475,7 +475,15 @@ def search(db: Session, *, q: str = "", status: str = "", courier: str = "", pro
     total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
     rows = db.execute(base.order_by(Shipment.created_at.desc(), Shipment.id.desc())
                       .offset((max(1, page) - 1) * page_size).limit(page_size)).all()
-    return [summary_view(s, o) for s, o in rows], total, {k: int(v) for k, v in counts.items()}
+    from app.services.fulfilment import labels
+
+    label_states = labels.states(db, [s.id for s, _ in rows])
+    items = []
+    for shipment, order in rows:
+        item = summary_view(shipment, order)
+        item["labelStatus"] = label_states.get(shipment.id, "not-generated")
+        items.append(item)
+    return items, total, {k: int(v) for k, v in counts.items()}
 
 
 # --------------------------------------------------------- order overview
@@ -509,6 +517,10 @@ def order_overview(db: Session, order_id: str) -> dict:
         can_create, reason = False, "No courier is switched on. Set one up in Settings, Couriers."
     default = registry.default_row(db)
     default_package = provider_config.settings_of(default)["defaultPackage"] if default is not None else None
+    if not default_package:
+        from app.services.fulfilment import settings as fulfilment_settings
+
+        default_package = fulfilment_settings.settings(db)["defaultPackage"]
     provider_list = []
     for row in rows:
         adapter = registry.adapter_for(row.code, row)
@@ -520,7 +532,20 @@ def order_overview(db: Session, order_id: str) -> dict:
         "activeShipmentId": active.id if active is not None else None,
         "canCreate": can_create, "reason": reason, "providers": provider_list,
         "defaultPackage": default_package,
+        # The packed order's packages, aggregated, to prefill the shipment (docs/packing-and-labels.md).
+        "packing": _packing_of(db, order),
     }
+
+
+def _packing_of(db: Session, order: Order) -> Optional[dict]:
+    from app.models.fulfilment import PackingJob
+    from app.services.fulfilment import packing
+
+    job = db.execute(select(PackingJob).where(PackingJob.active_key == order.id)).scalar_one_or_none()
+    if job is None:
+        return None
+    return {"jobId": job.id, "status": job.status, "statusLabel": packing.STATUS_LABELS.get(job.status, job.status),
+            "package": packing.shipment_prefill(db, order.id)}
 
 
 def rates(db: Session, order_id: str, payload: dict) -> dict:
@@ -595,8 +620,14 @@ def create(db: Session, admin, payload: dict) -> Tuple[Shipment, bool]:
     row, adapter = registry.active_provider(db, provider_code)
     config = provider_config.settings_of(row)
     raw_package = payload.get("package")
-    if raw_package in (None, {}) and config.get("defaultPackage"):
-        raw_package = config["defaultPackage"]
+    if raw_package in (None, {}):
+        # A packed order's packages first (docs/packing-and-labels.md), then the
+        # courier's default package, then the store's.
+        from app.services.fulfilment import packing
+        from app.services.fulfilment import settings as fulfilment_settings
+
+        raw_package = (packing.shipment_prefill(db, order.id) or config.get("defaultPackage")
+                       or fulfilment_settings.settings(db)["defaultPackage"])
     package = clean_package(raw_package, require_dimensions=not adapter.manual_awb)
     service_name = _clean_text(payload.get("service"), 60) or config.get("defaultService") or ""
     courier_code = _clean_text(payload.get("courierCode"), 40)
@@ -667,6 +698,14 @@ def create(db: Session, admin, payload: dict) -> Tuple[Shipment, bool]:
                 raise ConflictError("The shipment couldn't be recorded just now. Please try again.",
                                     error_code="SHIPMENT_BUSY") from None
 
+    # A packed order's packages go with this shipment (its packing job is ready to ship).
+    try:
+        from app.services.fulfilment import packing
+
+        packing.on_shipment_created(db, shipment, admin=admin)
+    except Exception:  # packing is optional; it must never stop a shipment
+        db.rollback()
+        logger.exception("Could not hand order %s's packages to shipment %s", order.id, shipment.id)
     attempt_create(db, shipment, adapter=adapter, actor=getattr(admin, "id", "") or "system")
     return shipment, True
 
@@ -1018,6 +1057,11 @@ def _do_cancel(db: Session, shipment: Shipment, *, reason: str, actor: str) -> O
     order = db.get(Order, shipment.order_id)
     if order is not None and shipment.awb and order.tracking_number == shipment.awb:
         order.tracking_number = None
+    # Its label is void, and its packages are back in the warehouse (docs/packing-and-labels.md).
+    from app.services.fulfilment import labels, packing
+
+    labels.on_shipment_cancelled(db, shipment)
+    packing.on_shipment_cancelled(db, shipment)
     db.commit()
     return None
 

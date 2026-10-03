@@ -247,8 +247,23 @@ class TestClientIp:
                  "client": client}
         return Request(scope)
 
-    def test_forwarded_for_first_hop(self):
-        assert deps.client_ip(self._request({"X-Forwarded-For": " 1.2.3.4 , 5.6.7.8"})) == "1.2.3.4"
+    def test_forwarded_for_is_ignored_from_an_untrusted_peer(self):
+        # Anyone can send the header; from a peer that isn't a trusted proxy it must not change the address.
+        assert deps.client_ip(self._request({"X-Forwarded-For": "1.2.3.4"})) == "10.0.0.1"
+
+    def test_forwarded_for_from_a_trusted_proxy_is_the_last_untrusted_hop(self, monkeypatch):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "TRUSTED_PROXIES", ["10.0.0.1", "10.0.0.2"])
+        # "1.2.3.4" was sent by the caller; 5.6.7.8 is who connected to our proxies.
+        request = self._request({"X-Forwarded-For": " 1.2.3.4 , 5.6.7.8, 10.0.0.2"})
+        assert deps.client_ip(request) == "5.6.7.8"
+
+    def test_only_proxies_in_the_chain_falls_back_to_the_first(self, monkeypatch):
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "TRUSTED_PROXIES", ["10.0.0.1", "10.0.0.2"])
+        assert deps.client_ip(self._request({"X-Forwarded-For": "10.0.0.2"})) == "10.0.0.2"
 
     def test_falls_back_to_the_socket(self):
         assert deps.client_ip(self._request()) == "10.0.0.1"

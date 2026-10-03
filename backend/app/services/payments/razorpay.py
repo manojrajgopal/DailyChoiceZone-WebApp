@@ -569,12 +569,23 @@ class RazorpayPaymentProvider:
 
     # --------------------------------------------------------------- refund
 
-    def refund(self, transaction_id: str, amount: int, reason: str) -> RefundResult:
+    def refund(self, transaction_id: str, amount: int, reason: str, *, receipt: Optional[str] = None,
+               notes: Optional[Dict[str, str]] = None) -> RefundResult:
         """
         Send money back against a captured payment.
 
         `amount` is in minor units, which is what Razorpay expects too, so
         there is no conversion to get wrong.
+
+        `receipt` is our refund number. Razorpay keeps it on the refund (and
+        `notes` with it), which is what lets `find_refund` recognise a refund
+        we sent but never heard back about — and a webhook that arrives before
+        we recorded the answer find its way to the right row.
+
+        **A refusal and a silence are different answers.** A 4xx is Razorpay
+        saying no: `rejected`. A timeout, a connection failure, a 5xx or an
+        answer that can't be read may have gone through: `unknown`, which the
+        caller must resolve with `find_refund` before ever sending it again.
         """
         if transaction_id.startswith(("order_", "COD-")):
             # No gateway payment to refund against. A COD order was settled in
@@ -586,25 +597,53 @@ class RazorpayPaymentProvider:
                 failure_reason="There is no gateway payment to refund against.",
             )
 
+        body: Dict[str, Any] = {
+            "amount": amount,
+            # Razorpay's speed setting. "normal" goes through the
+            # regular settlement cycle; "optimum" costs more.
+            "speed": "normal",
+            "notes": {"reason": reason[:255], **{k: str(v)[:255] for k, v in (notes or {}).items()}},
+        }
+        if receipt:
+            body["receipt"] = receipt[:40]
+
         try:
-            refund = self._request(
-                "POST",
-                f"/payments/{transaction_id}/refund",
-                json={
-                    "amount": amount,
-                    # Razorpay's speed setting. "normal" goes through the
-                    # regular settlement cycle; "optimum" costs more.
-                    "speed": "normal",
-                    "notes": {"reason": reason[:255]},
-                },
-            )
+            refund = self._request("POST", f"/payments/{transaction_id}/refund", json=body)
         except RazorpayError as error:
+            unknown = error.status is None or error.status >= 500
             return RefundResult(
-                ok=False, reference="", status="rejected", failure_reason=str(error)
+                ok=False, reference="", status="unknown" if unknown else "rejected", failure_reason=str(error)
             )
 
         status = _REFUND_STATUS.get(refund.get("status", ""), "processing")
-        return RefundResult(ok=status != "rejected", reference=refund["id"], status=status)
+        return RefundResult(ok=status != "rejected", reference=refund.get("id", ""), status=status,
+                            amount=refund.get("amount"))
+
+    def find_refund(self, transaction_id: str, receipt: str) -> Optional[RefundResult]:
+        """
+        Our refund on this payment, if Razorpay has one: matched on the receipt
+        (or `notes.refundNumber`) we sent with it. None means "there is none" —
+        it raises `RazorpayError` when the gateway can't be asked, because
+        "couldn't find out" must never be taken for "not sent".
+        """
+        items = self._request("GET", f"/payments/{transaction_id}/refunds", params={"count": 100}).get("items", [])
+        for item in items or []:
+            noted = (item.get("notes") or {}).get("refundNumber") if isinstance(item.get("notes"), dict) else None
+            if receipt and (item.get("receipt") == receipt or noted == receipt):
+                status = _REFUND_STATUS.get(item.get("status", ""), "processing")
+                return RefundResult(ok=status != "rejected", reference=item.get("id", ""), status=status,
+                                    amount=item.get("amount"))
+        return None
+
+    def fetch_refund(self, transaction_id: str, reference: str) -> Optional[RefundResult]:
+        """A refund's current state. None when the gateway can't be asked."""
+        try:
+            item = self._request("GET", f"/payments/{transaction_id}/refunds/{reference}")
+        except RazorpayError:
+            return None
+        status = _REFUND_STATUS.get(item.get("status", ""), "processing")
+        return RefundResult(ok=status != "rejected", reference=item.get("id", reference), status=status,
+                            amount=item.get("amount"))
 
     # -------------------------------------------------------------- mapping
 

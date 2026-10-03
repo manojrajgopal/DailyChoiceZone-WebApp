@@ -444,6 +444,15 @@ def place_order(
                 error_code="INSUFFICIENT_STOCK",
             )
 
+    # The products' own delivery rules — a place one isn't sent to, no cash on
+    # delivery, no express — on the rows just locked (`services.availability`).
+    from app.services import availability
+
+    handling_days = availability.enforce_for_order(
+        db, locked.values(), pincode=shipping_address.get("pincode", ""), payment_method=payment_method,
+        delivery_method=delivery_method,
+    )
+
     bag = pricing.price_bag(db, customer.id, items, cart_bundles, products=locked, enforce=True)
     lines: List[billing.BillingLine] = [priced.line for priced in bag.lines]
     if not lines:
@@ -453,6 +462,7 @@ def place_order(
 
     subtotal = sum(line.unit_price * line.quantity for line in lines)
     item_count = sum(line.quantity for line in lines)
+    availability.enforce_cod_limit(db, payment_method=payment_method, goods_value=subtotal)
 
     coupon = None
     if coupon_code:
@@ -542,7 +552,8 @@ def place_order(
             payment_method=payment_method,
             delivery_method=delivery_method,
             delivery_fee=billing.to_major(shipping),
-            expected_delivery=_delivery_estimate(delivery_method, days=_pincode_days(delivery, delivery_method)),
+            expected_delivery=availability.order_estimate(db, delivery, method=delivery_method,
+                                                          extra_days=handling_days),
             item_count=item_count,
             subtotal=billing.to_major(breakdown["subtotal"]),
             catalogue_savings=billing.to_major(breakdown["productDiscount"]),
@@ -800,6 +811,12 @@ def place_order(
                 db, coupon["code"], customer.id, order.id, breakdown["couponDiscount"]
             )
 
+        # Bought from a recommendation rail? Counted for the recommendation
+        # report, from the add-to-bag events (`services.recommendations`).
+        from app.services import recommendations
+
+        recommendations.attribute_purchase(db, customer.id, order.id, [item.product_id for item in items])
+
         # --- empty the bag -----------------------------------------------
         for item in items:
             db.delete(item)
@@ -853,29 +870,6 @@ def _invoice_line(line: dict) -> dict:
         "tax": line["tax"],
         "line_total": line["lineTotal"],
     }
-
-
-def _pincode_days(delivery, method: str) -> Optional[int]:
-    """The delivery time a listed pincode sets: its latest for standard, its earliest for express."""
-    if delivery is None or not delivery.listed:
-        return None
-    if method == "express":
-        return delivery.min_days if delivery.min_days is not None else None
-    return delivery.max_days
-
-
-def _delivery_estimate(method: str, from_date: Optional[datetime] = None, days: Optional[int] = None) -> str:
-    """A date in plain language, counting business days only."""
-    date = from_date or datetime.utcnow()
-    remaining = days if days is not None else (2 if method == "express" else 5)
-
-    while remaining > 0:
-        date += timedelta(days=1)
-        if date.weekday() < 5:
-            remaining -= 1
-
-    # Built by hand rather than with `%-d`, which is not portable to Windows.
-    return f"{date:%a}, {date.day} {date:%b}"
 
 
 # --------------------------------------------------------------- updating
@@ -961,6 +955,10 @@ def update_status(
         ).scalar_one_or_none()
         if invoice is not None and invoice.status not in ("paid", "cancelled") and not invoice.amount_paid:
             invoice.status = "cancelled"
+        # Packing: the warehouse stops working on it (docs/packing-and-labels.md).
+        from app.services.fulfilment import packing
+
+        packing.on_order_cancelled(db, order)
 
     # Reward points: earned on delivery (pending until it can't be returned),
     # and taken back if the parcel comes back.
@@ -1111,7 +1109,18 @@ def refund_if_collected(db: Session, order: Order, *, reason: str) -> None:
     if payment is None or payment.status not in ("paid", "partially-refunded"):
         return
 
-    owed = invoice_service.refundable_amount(payment)
+    # Partial refunds (docs/refunds.md): a refund still waiting (requested) is
+    # superseded by this one, which pays back everything left — so it is
+    # cancelled first rather than left holding money it will never send.
+    from app.models import Refund
+
+    for waiting in db.execute(select(Refund).where(Refund.order_id == order.id, Refund.status == "requested")
+                              ).scalars():
+        waiting.status = "cancelled"
+        waiting.internal_note = (f"{waiting.internal_note}\nSuperseded by the cancellation refund.").strip()[:1000]
+    db.flush()
+
+    owed = invoice_service.refund_rooms(db, invoice, payment, tender_split=False)["payment"]
     if owed <= 0:
         return
 
@@ -1126,6 +1135,8 @@ def refund_if_collected(db: Session, order: Order, *, reason: str) -> None:
             # Gift cards, store credit and points were already given back in
             # full by the cancellation; this refund is the gateway's part only.
             tender_split=False,
+            reason_code="cancellation",
+            idempotency_key=f"cancel:{order.id}",
         )
     except (ConflictError, ValidationError) as error:
         logger.warning("Order %s: no refund raised on cancellation: %s", order.id, error)

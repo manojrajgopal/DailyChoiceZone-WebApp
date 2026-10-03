@@ -61,8 +61,9 @@ class TestRecording:
 
     def test_customers_own_changes_are_not_in_the_portal_trail(self, client, db, catalogue, customer, auth,
                                                                settings_documents):
+        before = {e.id for e in entries(db)}  # the fixture's sign-in is a recorded security event
         client.post("/api/cart/items", headers=auth, json={"productId": "PRD001", "quantity": 1})
-        assert entries(db) == []
+        assert [e for e in entries(db) if e.id not in before] == []
 
     def test_sign_ins_are_recorded_and_the_password_never_is(self, client, db, admin):
         assert client.post("/api/admin/auth/login", json={"email": admin.email, "password": "Wrong@1234"}).status_code == 401

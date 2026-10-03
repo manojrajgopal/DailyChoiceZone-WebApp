@@ -7,12 +7,15 @@ import type { AdminCoupon, AdminCustomer } from "@/types/admin";
 
 import { AdminCheckbox, AdminInput, AdminSelect } from "@/components/admin/ui/AdminForm";
 import { listCustomers } from "@/services/admin/customerAdminService";
+import { listSegments } from "@/services/segmentsService";
+import type { SegmentSummary } from "@/types/segments";
 
 const AUDIENCES = [
   { value: "everyone", label: "Everyone" },
   { value: "selected", label: "Selected customers only" },
   { value: "members", label: "Members only" },
   { value: "first-order", label: "First order only" },
+  { value: "segment", label: "Customers in a segment" },
 ];
 
 /**
@@ -46,6 +49,24 @@ export function CouponAudienceFields({
     };
   }, [audience, customers]);
 
+  // Customer segmentation: the active segments, fetched once "segment" is chosen.
+  const [segments, setSegments] = useState<SegmentSummary[] | null>(null);
+  const [segmentsFailed, setSegmentsFailed] = useState(false);
+  useEffect(() => {
+    if (audience !== "segment" || segments) return;
+    let active = true;
+    void listSegments({ status: "active", pageSize: 100 })
+      .then((page) => active && setSegments(page.items))
+      .catch(() => {
+        if (!active) return;
+        setSegments([]);
+        setSegmentsFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [audience, segments]);
+
   const byId = useMemo(() => new Map((customers ?? []).map((c) => [c.id, c])), [customers]);
   const matches = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -77,9 +98,11 @@ export function CouponAudienceFields({
       <AdminSelect
         label="Who can use it"
         value={audience}
-        onChange={(event) =>
-          onChange({ ...coupon, audience: event.target.value as AdminCoupon["audience"] })
-        }
+        onChange={(event) => {
+          const next = event.target.value as AdminCoupon["audience"];
+          // A segment only means something for the "segment" audience.
+          onChange({ ...coupon, audience: next, ...(next !== "segment" && coupon.segmentId ? { segmentId: null } : {}) });
+        }}
         options={AUDIENCES}
         hint={
           audience === "members"
@@ -88,9 +111,41 @@ export function CouponAudienceFields({
               ? "Only customers who haven't ordered before."
               : audience === "selected"
                 ? "Only the customers you pick below."
-                : "Any shopper."
+                : audience === "segment"
+                  ? "Only signed-in customers who match the segment's rules when they apply the code."
+                  : "Any shopper."
         }
       />
+
+      {audience === "segment" ? (
+        <AdminSelect
+          label="Segment"
+          value={coupon.segmentId ? String(coupon.segmentId) : ""}
+          onChange={(event) =>
+            onChange({ ...coupon, segmentId: event.target.value ? Number(event.target.value) : null })
+          }
+          disabled={!segments}
+          placeholder={segments ? "Choose a segment" : "Loading segments…"}
+          options={[
+            ...(segments ?? []).map((segment) => ({
+              value: String(segment.id),
+              label: `${segment.name} (${segment.memberCount.toLocaleString("en-IN")})`,
+            })),
+            // Keep a chosen segment visible even if it isn't in the active list (archived since).
+            ...(coupon.segmentId && segments && !segments.some((segment) => segment.id === coupon.segmentId)
+              ? [{ value: String(coupon.segmentId), label: coupon.segmentName || `Segment #${coupon.segmentId}` }]
+              : []),
+          ]}
+          error={
+            segmentsFailed
+              ? "Segments didn't load. Your role may not include segments."
+              : segments && !coupon.segmentId
+                ? "Choose a segment."
+                : undefined
+          }
+          hint="Segments are managed under Customers → Segments."
+        />
+      ) : null}
 
       {audience === "selected" ? (
         <div className="sm:col-span-2">

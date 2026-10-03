@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil, Plus, Power, Trash2 } from "lucide-react";
 
 import type { AdminCoupon, CouponStatus } from "@/types/admin";
@@ -48,6 +49,19 @@ export function AdminCouponsView() {
   const [editing, setEditing] = useState<AdminCoupon | null>(null);
   const [pendingDelete, setPendingDelete] = useState<AdminCoupon | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // "Create coupon for this segment" links here with ?new=1&segmentId=N (customer segmentation):
+  // open the new-coupon dialog once, prefilled, then drop the parameters so a reload doesn't reopen it.
+  const params = useSearchParams();
+  const router = useRouter();
+  const openNew = params.get("new") === "1";
+  const presetSegment = Number(params.get("segmentId")) || null;
+  useEffect(() => {
+    if (!openNew) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a deep link opens the dialog once
+    setEditing(presetSegment ? { ...emptyCoupon(), audience: "segment", segmentId: presetSegment } : emptyCoupon());
+    router.replace("/admin/coupons", { scroll: false });
+  }, [openNew, presetSegment, router]);
 
   const rows = coupons.data ?? [];
 
@@ -172,7 +186,13 @@ export function AdminCouponsView() {
           ) : null}
           {coupon.audience && coupon.audience !== "everyone" ? (
             <span className="block text-[0.625rem] text-copper-700">
-              {coupon.audience === "members" ? "Members only" : coupon.audience === "selected" ? `${coupon.customerIds?.length ?? 0} selected` : "First order only"}
+              {coupon.audience === "members"
+                ? "Members only"
+                : coupon.audience === "selected"
+                  ? `${coupon.customerIds?.length ?? 0} selected`
+                  : coupon.audience === "segment"
+                    ? `Segment: ${coupon.segmentName || (coupon.segmentId ? `#${coupon.segmentId}` : "none chosen")}`
+                    : "First order only"}
             </span>
           ) : null}
         </span>

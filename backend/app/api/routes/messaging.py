@@ -34,6 +34,7 @@ from app.models import (
 from app.schemas.base import CamelModel
 from app.services import backups, reorder
 from app.services.messaging import campaigns, catalogue, service as messaging
+from app.services.segments import service as segment_service
 from app.utils.dates import parse_dt
 from app.utils.response import Pagination, ok
 
@@ -274,6 +275,8 @@ def admin_campaign_options(db: Session = Depends(get_db), admin: AdminUser = Dep
         "plans": [{"id": p.id, "name": p.name} for p in db.execute(select(MembershipPlan)).scalars()],
         "categories": [{"id": c.id, "name": c.name} for c in db.execute(select(Category).order_by(Category.name)).scalars()],
         "openTracking": bool(campaigns.tracking_base()),
+        # Saved customer segments a campaign can target (docs/customer-segmentation.md).
+        "savedSegments": segment_service.active_choices(db),
     })
 
 

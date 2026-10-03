@@ -67,9 +67,15 @@ class PaymentResult:
 class RefundResult:
     ok: bool
     reference: str
-    # processing | completed | rejected
+    # processing | completed | rejected | unknown
+    #
+    # `unknown` is the answer that matters for money: the request may or may
+    # not have reached the gateway (a timeout, a 5xx, an unreadable answer).
+    # It must never be read as "refused" — retrying it blindly is how a
+    # customer is refunded twice. See `invoices._send_refund`.
     status: str
     failure_reason: Optional[str] = None
+    amount: Optional[int] = None
 
 
 class PaymentProvider(Protocol):
@@ -83,4 +89,11 @@ class PaymentProvider(Protocol):
 
     def fetch(self, transaction_id: str) -> Optional[PaymentResult]: ...
 
-    def refund(self, transaction_id: str, amount: int, reason: str) -> RefundResult: ...
+    def refund(self, transaction_id: str, amount: int, reason: str, *, receipt: Optional[str] = None,
+               notes: Optional[Dict[str, str]] = None) -> RefundResult: ...
+
+    # Optional, for providers whose refunds are asynchronous (see razorpay.py):
+    #   find_refund(transaction_id, receipt) -> Optional[RefundResult]
+    #       our refund, looked up by our own reference — before any retry
+    #   fetch_refund(transaction_id, reference) -> Optional[RefundResult]
+    #       its current state, for the refunds job

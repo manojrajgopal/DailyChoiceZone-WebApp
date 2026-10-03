@@ -20,15 +20,11 @@ vi.mock("@/services/payments/paymentGatewayService", () => ({
   closeQr: vi.fn(),
   verifyPayment: vi.fn(),
 }));
-vi.mock("@/services/payments/razorpayCheckout", () => ({
-  openRazorpayCheckout: vi.fn(),
-}));
 vi.mock("@/services/payments/razorpayCustom", () => ({
   startCustomPayment: vi.fn(),
 }));
 
 import { closeQr, createQr, pollQr, verifyPayment } from "@/services/payments/paymentGatewayService";
-import { openRazorpayCheckout } from "@/services/payments/razorpayCheckout";
 import { startCustomPayment } from "@/services/payments/razorpayCustom";
 
 const HANDOFF: GatewayHandoff = {
@@ -54,66 +50,76 @@ describe("useGatewayPayment", () => {
       const { result } = renderHook(() => useGatewayPayment());
       const outcome = await act(() => result.current.pay(HANDOFF, { kind: "cod" }));
       expect(outcome).toBe("paid");
-      expect(openRazorpayCheckout).not.toHaveBeenCalled();
       expect(startCustomPayment).not.toHaveBeenCalled();
     });
   });
 
-  describe("card", () => {
-    it("opens Standard Checkout restricted to card, then confirms on success", async () => {
-      vi.mocked(openRazorpayCheckout).mockResolvedValue({
-        status: "completed",
-        response: { razorpayPaymentId: "pay_1", razorpayOrderId: "order_1", razorpaySignature: "sig" },
+  describe("card (our own form, through Custom Checkout)", () => {
+    const CARD = { number: "4111111111111111", name: "Asha Rao", expiryMonth: "12", expiryYear: "30", cvv: "123" };
+
+    /** Make Custom Checkout report one event as soon as it starts. */
+    function customReports(event: Parameters<Parameters<typeof startCustomPayment>[2]>[0]) {
+      vi.mocked(startCustomPayment).mockImplementation(async (_handoff, _selection, onEvent) => {
+        setTimeout(() => onEvent(event), 0);
+        return vi.fn();
       });
+    }
+
+    it("sends the card to Custom Checkout — never a processor window — then confirms", async () => {
+      customReports({ type: "success", response: { razorpayPaymentId: "pay_1", razorpayOrderId: "order_1",
+        razorpaySignature: "sig" } });
       vi.mocked(verifyPayment).mockResolvedValue({ status: "paid" });
 
       const { result } = renderHook(() => useGatewayPayment());
-      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card", container: "#card" }));
+      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card", card: CARD }));
 
       expect(outcome).toBe("paid");
-      expect(openRazorpayCheckout).toHaveBeenCalledWith(
-        HANDOFF,
-        expect.objectContaining({ container: "#card", only: "card" }),
-      );
-      expect(verifyPayment).toHaveBeenCalledWith("PAY1", { razorpayPaymentId: "pay_1", razorpayOrderId: "order_1", razorpaySignature: "sig" });
+      expect(startCustomPayment).toHaveBeenCalledWith(HANDOFF, { method: "card", card: CARD }, expect.any(Function));
+      expect(verifyPayment).toHaveBeenCalledWith("PAY1", { razorpayPaymentId: "pay_1", razorpayOrderId: "order_1",
+        razorpaySignature: "sig" });
       expect(lastToast()).toBe("Payment received");
       expect(result.current.stage).toBe("choosing");
     });
 
-    it("reports abandoned and toasts when the shopper closes the sheet themselves", async () => {
-      vi.mocked(openRazorpayCheckout).mockResolvedValue({ status: "dismissed" });
+    it("reports failed with the bank's reason", async () => {
+      customReports({ type: "error", reason: "Card declined" });
       const { result } = renderHook(() => useGatewayPayment());
-      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card" }));
-      expect(outcome).toBe("abandoned");
-      expect(lastToast()).toBe("Payment cancelled. Your order is saved — you can pay any time.");
-    });
-
-    it("reports failed and toasts the processor's reason", async () => {
-      vi.mocked(openRazorpayCheckout).mockResolvedValue({ status: "failed", reason: "Card declined" });
-      const { result } = renderHook(() => useGatewayPayment());
-      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card" }));
+      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card", card: CARD }));
       expect(outcome).toBe("failed");
       expect(lastToast()).toBe("Card declined");
     });
 
-    it("falls back to a generic message when opening the window itself throws", async () => {
-      vi.mocked(openRazorpayCheckout).mockRejectedValue(new Error(""));
-      const { result } = renderHook(() => useGatewayPayment());
-      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card" }));
-      expect(outcome).toBe("failed");
-      expect(lastToast()).toBe("We couldn't open the payment window. Please try again.");
-    });
-
-    it("confirm() reports failed, without calling it a lost payment, when verification itself fails", async () => {
-      vi.mocked(openRazorpayCheckout).mockResolvedValue({
-        status: "completed",
-        response: { razorpayPaymentId: "p", razorpayOrderId: "o", razorpaySignature: "s" },
-      });
+    it("reports failed, without calling it a lost payment, when verification itself fails", async () => {
+      customReports({ type: "success", response: { razorpayPaymentId: "p", razorpayOrderId: "o", razorpaySignature: "s" } });
       vi.mocked(verifyPayment).mockRejectedValue(new Error(""));
       const { result } = renderHook(() => useGatewayPayment());
-      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card" }));
+      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card", card: CARD }));
       expect(outcome).toBe("failed");
       expect(lastToast()).toContain("please do not pay again");
+    });
+
+    it("uses the caller's own verify (a membership, a gift card)", async () => {
+      customReports({ type: "success", response: { razorpayPaymentId: "p", razorpayOrderId: "o", razorpaySignature: "s" } });
+      const verify = vi.fn().mockResolvedValue({});
+      const { result } = renderHook(() => useGatewayPayment({ verify, successMessage: "Welcome!" }));
+      const outcome = await act(() => result.current.pay(HANDOFF, { kind: "card", card: CARD }));
+      expect(outcome).toBe("paid");
+      expect(verify).toHaveBeenCalledWith("PAY1", { razorpayPaymentId: "p", razorpayOrderId: "o", razorpaySignature: "s" });
+      expect(verifyPayment).not.toHaveBeenCalled();
+      expect(lastToast()).toBe("Welcome!");
+    });
+  });
+
+  describe("UPI QR without the server's codes", () => {
+    it("uses Custom Checkout's own QR when serverQr is off", async () => {
+      vi.mocked(startCustomPayment).mockResolvedValue(vi.fn());
+      const { result } = renderHook(() => useGatewayPayment({ serverQr: false }));
+      act(() => {
+        void result.current.pay(HANDOFF, { kind: "upi-qr" });
+      });
+      await waitFor(() => expect(startCustomPayment).toHaveBeenCalledWith(HANDOFF, { method: "upi", flow: "qr" },
+        expect.any(Function)));
+      expect(createQr).not.toHaveBeenCalled();
     });
   });
 

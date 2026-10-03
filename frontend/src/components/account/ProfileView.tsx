@@ -7,9 +7,14 @@ import { ArrowRight, Heart, MapPin, Package } from "lucide-react";
 import type { Order } from "@/types";
 
 import { AccountShell } from "@/components/account/AccountShell";
+import { PhoneVerifyDialog } from "@/components/account/PhoneVerifyDialog";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { useSession } from "@/hooks/useSession";
+import { normaliseMobile, sameMobile } from "@/lib/utils/phone";
+import { useSessionStore } from "@/store/sessionStore";
+import { toast } from "@/store/toastStore";
 import { useWishlistCount } from "@/hooks/useWishlist";
 import { getAddresses } from "@/services/accountService";
 import { getOrders } from "@/services/orderService";
@@ -18,6 +23,8 @@ import { formatDate, formatPrice } from "@/lib/utils/format";
 /** The account overview: editable profile plus at-a-glance counts. */
 export function ProfileView() {
   const { user, isSignedIn, updateProfile } = useSession();
+  const updateUser = useSessionStore((state) => state.updateUser);
+  const [verifyOpen, setVerifyOpen] = useState(false);
   const wishlistCount = useWishlistCount();
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -49,15 +56,18 @@ export function ProfileView() {
 
   // Seed the form once the session has hydrated.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seeded from the session once it has hydrated
     setFirstName((current) => current || user?.firstName || "");
     setLastName((current) => current || user?.lastName || "");
-    setPhone((current) => current || user?.phone || "");
+    // A confirmed number comes back as +91XXXXXXXXXX: shown as the ten digits typed.
+    setPhone((current) => current || normaliseMobile(user?.phone) || user?.phone || "");
   }, [user?.firstName, user?.lastName, user?.phone]);
 
   const onSave = (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (phone.trim() !== "" && !/^[6-9]\d{9}$/.test(phone.replace(/\D/g, ""))) {
+    const mobile = phone.trim() === "" ? "" : normaliseMobile(phone);
+    if (mobile === null) {
       setPhoneError("Enter a 10-digit mobile number, or leave it blank.");
       return;
     }
@@ -66,9 +76,15 @@ export function ProfileView() {
     updateProfile({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      phone: phone.replace(/\D/g, ""),
+      phone: mobile,
+      // A different number is a contact number until it is confirmed with a
+      // code: the server stops calling it verified, and so does this page.
+      ...(sameMobile(mobile, user?.phone) ? {} : { phoneVerified: false }),
     });
   };
+
+  // Verified only when the server said so, for the number in the box.
+  const phoneVerified = Boolean(user?.phoneVerified) && sameMobile(phone, user?.phone);
 
   const lastOrder = orders[0];
 
@@ -165,6 +181,18 @@ export function ProfileView() {
               placeholder="98765 43210"
               className="sm:col-span-2"
             />
+            <div className="-mt-2 flex flex-wrap items-center gap-3 sm:col-span-2" aria-live="polite">
+              {phone.trim() || user?.phone ? (
+                <Badge tone={phoneVerified ? "stock" : "neutral"}>{phoneVerified ? "Verified" : "Not verified"}</Badge>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setVerifyOpen(true)}
+                className="text-sm text-ink underline underline-offset-4 transition-colors hover:text-copper-700"
+              >
+                {phoneVerified ? "Change number" : "Verify phone"}
+              </button>
+            </div>
           </div>
 
           <Button type="submit" className="mt-6">
@@ -172,6 +200,20 @@ export function ProfileView() {
           </Button>
         </form>
       </section>
+
+      <PhoneVerifyDialog
+        open={verifyOpen}
+        onOpenChange={setVerifyOpen}
+        initialPhone={phone}
+        title={phoneVerified ? "Change your mobile number" : "Verify your mobile number"}
+        onVerified={(security) => {
+          updateUser({ phone: security.phone, phoneVerified: security.phoneVerified });
+          setPhone(normaliseMobile(security.phone) ?? security.phone);
+          setPhoneError(undefined);
+          setVerifyOpen(false);
+          toast.success("Your mobile number is confirmed");
+        }}
+      />
     </AccountShell>
   );
 }

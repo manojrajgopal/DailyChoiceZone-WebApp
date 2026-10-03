@@ -7,6 +7,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { useCompareStore } from "@/store/compareStore";
 import { useRecentlyViewedStore } from "@/store/recentlyViewedStore";
+import { useSavedForLaterStore } from "@/store/savedForLaterStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useToastStore } from "@/store/toastStore";
 import { useWishlistStore } from "@/store/wishlistStore";
@@ -17,6 +18,7 @@ const STORES = [
   useCheckoutStore,
   useCompareStore,
   useRecentlyViewedStore,
+  useSavedForLaterStore,
   useSessionStore,
   useToastStore,
   useWishlistStore,

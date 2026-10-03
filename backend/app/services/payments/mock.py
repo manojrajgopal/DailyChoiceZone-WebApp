@@ -80,10 +80,21 @@ class MockPaymentProvider:
     def fetch(self, transaction_id: str) -> Optional[PaymentResult]:
         return PaymentResult(ok=True, transaction_id=transaction_id, status="paid")
 
-    def refund(self, transaction_id: str, amount: int, reason: str) -> RefundResult:
+    def refund(self, transaction_id: str, amount: int, reason: str, *, receipt: Optional[str] = None,
+               notes: Optional[Dict[str, str]] = None) -> RefundResult:
+        # Distinct per refund when there is a receipt: several partial refunds
+        # of one payment must not share a reference.
+        suffix = f"-{receipt}" if receipt else ""
         return RefundResult(
-            ok=True, reference=f"RFND{transaction_id[3:]}", status="completed"
+            ok=True, reference=f"RFND{transaction_id[3:]}{suffix}", status="completed", amount=amount
         )
+
+    def find_refund(self, transaction_id: str, receipt: str) -> Optional[RefundResult]:
+        # Nothing is ever left half-sent here: every refund completes on the spot.
+        return None
+
+    def fetch_refund(self, transaction_id: str, reference: str) -> Optional[RefundResult]:
+        return RefundResult(ok=True, reference=reference, status="completed")
 
     @staticmethod
     def _hint(method: str, seed: int) -> str:

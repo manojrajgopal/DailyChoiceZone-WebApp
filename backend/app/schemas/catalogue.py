@@ -354,6 +354,9 @@ class FacetValue(CamelModel):
     value: str
     label: str
     count: int
+    # A subcategory's category slug; a colour's swatch.
+    parent: Optional[str] = None
+    hex: Optional[str] = None
 
 
 class PriceRange(CamelModel):
@@ -361,8 +364,29 @@ class PriceRange(CamelModel):
     max: float
 
 
+class PriceBucket(CamelModel):
+    min: float
+    max: Optional[float] = None
+    label: str
+    count: int
+
+
+class AvailabilityCounts(CamelModel):
+    in_stock: int = 0
+    out_of_stock: int = 0
+
+
+class AttributeFacet(CamelModel):
+    code: str
+    label: str
+    type: str
+    unit: str = ""
+    options: List[FacetValue] = []
+    range: Optional[PriceRange] = None
+
+
 class ProductFacets(CamelModel):
-    """The filter options for a result set, with counts."""
+    """The filter options for a result set, with counts (disjunctive: see docs/search-and-filters.md)."""
 
     categories: List[FacetValue]
     subcategories: List[FacetValue]
@@ -370,13 +394,20 @@ class ProductFacets(CamelModel):
     sizes: List[FacetValue]
     colors: List[FacetValue]
     price_range: PriceRange
+    price_buckets: List[PriceBucket] = []
+    ratings: List[FacetValue] = []
+    discounts: List[FacetValue] = []
+    availability: AvailabilityCounts = AvailabilityCounts()
+    attributes: List[AttributeFacet] = []
 
 
 # ---------------------------------------------------------------- queries
 
 
 SortOption = Literal[
-    "recommended", "newest", "price-asc", "price-desc", "rating", "popular", "discount"
+    "recommended", "newest", "price-asc", "price-desc", "rating", "popular", "discount",
+    # Search & filters (docs/search-and-filters.md).
+    "relevance", "oldest", "best-selling", "availability",
 ]
 """
 The orders a listing can be asked for.
@@ -385,6 +416,19 @@ Hyphenated because these appear in the storefront's own URLs — `?sort=price-as
 is a link somebody can copy — and an API that spelt them differently would mean
 a translation layer whose only job is to be got wrong once.
 """
+
+
+class AttributeFilter(CamelModel):
+    """One `attr.<code>` filter: option values (select / multi / boolean) or a number range."""
+
+    code: str
+    values: List[str] = []
+    min: Optional[float] = None
+    max: Optional[float] = None
+
+
+MAX_LIST_VALUES = 50
+MAX_VALUE_LENGTH = 120
 
 
 class ProductQuery(CamelModel):
@@ -398,31 +442,46 @@ class ProductQuery(CamelModel):
 
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=24, ge=1, le=100)
-    search: Optional[str] = None
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    collection: Optional[str] = None
+    search: Optional[str] = Field(default=None, max_length=200)
+    # One or more, by slug or id (a CSV on the wire).
+    category: Optional[List[str]] = None
+    subcategory: Optional[List[str]] = None
+    collection: Optional[str] = Field(default=None, max_length=120)
     brands: Optional[List[str]] = None
     sizes: Optional[List[str]] = None
     colors: Optional[List[str]] = None
-    min_price: Optional[float] = None
-    max_price: Optional[float] = None
-    min_rating: Optional[float] = None
-    min_discount: Optional[int] = None
+    min_price: Optional[float] = Field(default=None, ge=0, le=10_000_000)
+    max_price: Optional[float] = Field(default=None, ge=0, le=10_000_000)
+    min_rating: Optional[float] = Field(default=None, ge=0, le=5)
+    min_discount: Optional[int] = Field(default=None, ge=0, le=100)
     in_stock_only: bool = False
+    # in-stock | out-of-stock, by *available* stock (stock minus reserved).
+    availability: Optional[Literal["in-stock", "out-of-stock"]] = None
     is_new: Optional[bool] = None
     is_trending: Optional[bool] = None
     is_best_seller: Optional[bool] = None
     is_featured: Optional[bool] = None
+    # Dynamic attribute filters, parsed from `attr.<code>` parameters.
+    attributes: List[AttributeFilter] = []
     sort: SortOption = "recommended"
     # Admin-only: include drafts and archived products.
     include_unpublished: bool = False
     status: Optional[str] = None
+    # Admin-only: in-stock | low-stock | out-of-stock, and the barcode in search.
+    stock_level: Optional[str] = None
+    admin_sort: Optional[str] = None
 
-    @field_validator("brands", "sizes", "colors", mode="before")
+    @field_validator("brands", "sizes", "colors", "category", "subcategory", mode="before")
     @classmethod
     def _split_csv(cls, value):
         """Accept `brands=Nyra,Stride` as well as repeated parameters."""
         if isinstance(value, str):
-            return [part.strip() for part in value.split(",") if part.strip()]
+            value = [part.strip() for part in value.split(",") if part.strip()]
+        if isinstance(value, list):
+            if len(value) > MAX_LIST_VALUES:
+                raise ValueError(f"At most {MAX_LIST_VALUES} values.")
+            if any(isinstance(part, str) and len(part) > MAX_VALUE_LENGTH for part in value):
+                raise ValueError(f"Each value is at most {MAX_VALUE_LENGTH} characters.")
+            value = [part.strip() if isinstance(part, str) else part for part in value]
+            value = [part for part in value if part != ""] or None
         return value

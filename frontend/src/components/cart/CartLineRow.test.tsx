@@ -146,17 +146,17 @@ describe("CartLineRow", () => {
 
     it("saves a guest's item to the local wishlist, then un-saves it", async () => {
       const { user } = setup();
-      const save = screen.getByRole("button", { name: "Save" });
+      const save = screen.getByRole("button", { name: "Wishlist" });
       expect(save).toHaveAttribute("aria-pressed", "false");
 
       await user.click(save);
-      expect(screen.getByRole("button", { name: "Saved" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "In wishlist" })).toHaveAttribute("aria-pressed", "true");
       expect(useWishlistStore.getState().productIds).toContain("P1");
       expect(useToastStore.getState().toasts.at(-1)?.message).toBe("Linen Shirt saved to wishlist");
       // A guest's save never reaches the server.
       expect(api.requests("POST", /^\/wishlist/)).toHaveLength(0);
 
-      await user.click(screen.getByRole("button", { name: "Saved" }));
+      await user.click(screen.getByRole("button", { name: "In wishlist" }));
       expect(useWishlistStore.getState().productIds).not.toContain("P1");
       expect(useToastStore.getState().toasts.at(-1)?.message).toBe("Linen Shirt removed from wishlist");
     });
@@ -167,7 +167,7 @@ describe("CartLineRow", () => {
       api.post("/wishlist/P1", ["P1"]);
       const { user } = setup();
       await waitFor(() => expect(api.requests("GET", "/wishlist/ids")).toHaveLength(1));
-      await user.click(screen.getByRole("button", { name: "Save" }));
+      await user.click(screen.getByRole("button", { name: "Wishlist" }));
       await waitFor(() => expect(api.last("POST", "/wishlist/P1")?.headers.authorization).toBe("Bearer test-token"));
     });
   });

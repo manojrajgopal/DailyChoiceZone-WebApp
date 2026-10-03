@@ -8,6 +8,12 @@ export interface User {
   memberSince: string;
   /** Whether the email address has been confirmed with the emailed link. */
   emailVerified?: boolean;
+  /**
+   * Whether `phone` is a sign-in number confirmed with a code. Only ever set
+   * from what the server says — a number typed on the profile is a contact
+   * number until it is confirmed.
+   */
+  phoneVerified?: boolean;
 }
 
 export interface Credentials {
@@ -22,6 +28,8 @@ export interface RegisterInput extends Credentials {
   referralCode?: string;
   /** Ticked "send me offers" — marketing email consent. Off unless ticked. */
   marketingOptIn?: boolean;
+  /** A mobile number, offered when the store signs in with SMS codes. */
+  phone?: string;
 }
 
 export interface AuthSession {

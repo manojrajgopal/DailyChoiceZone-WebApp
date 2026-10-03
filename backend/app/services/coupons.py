@@ -310,6 +310,17 @@ def save_coupon(db: Session, payload: dict, coupon_id: Optional[str] = None) -> 
             db.execute(select(Customer.id).where(Customer.id.in_(wanted))).scalars()
         ) if wanted else set()
         coupon.customers = [CouponCustomer(coupon_id=coupon.id, customer_id=cid) for cid in wanted if cid in known]
+    # A segment coupon names an active segment (docs/customer-segmentation.md).
+    if "segmentId" in payload and payload["segmentId"] not in (None, ""):
+        from app.services.segments import service as segments
+
+        coupon.segment_id = segments.require_active(db, payload["segmentId"]).id
+    elif "segmentId" in payload:
+        coupon.segment_id = None
+    if coupon.audience == "segment":
+        from app.services.segments import service as segments
+
+        segments.require_active(db, coupon.segment_id)
     if coupon.audience == "selected" and not coupon.customers:
         raise ValidationError(
             "Choose at least one customer for a coupon meant for selected customers.",
@@ -354,7 +365,7 @@ def _parse(value: str) -> datetime:
 # --------------------------------------------------------------- audience
 
 COUPON_TYPES = ("percent", "flat", "free-shipping")
-AUDIENCES = ("everyone", "selected", "members", "first-order")
+AUDIENCES = ("everyone", "selected", "members", "first-order", "segment")
 
 
 def audience_refusal(db: Session, coupon: Coupon, customer_id: Optional[str]) -> Optional[str]:
@@ -374,6 +385,12 @@ def audience_refusal(db: Session, coupon: Coupon, customer_id: Optional[str]) ->
         if not membership.is_member(db, customer_id):
             name = membership.programme(db)["name"]
             return f"That code is for {name} members."
+        return None
+    if audience == "segment":
+        from app.services.segments import service as segments
+
+        if not segments.matches_now(db, coupon.segment_id, customer_id):
+            return "That code isn't available on your account."
         return None
     if audience == "first-order":
         placed = db.execute(

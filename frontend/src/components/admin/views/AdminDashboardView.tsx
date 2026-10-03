@@ -16,6 +16,7 @@ import {
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { StatCard } from "@/components/admin/ui/StatCard";
+import { DashboardOperations } from "@/components/admin/views/DashboardOperations";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import { useAdminSession } from "@/hooks/useAdminSession";
@@ -128,6 +129,11 @@ export function AdminDashboardView() {
               />
             ))
           : (dashboard.data?.stats ?? []).map((stat) => <StatCard key={stat.id} stat={stat} />)}
+      </div>
+
+      {/* ------------------------------------------- the newer modules */}
+      <div className="mt-4">
+        <DashboardOperations />
       </div>
 
       {/* -------------------------------------------------- sales overview */}

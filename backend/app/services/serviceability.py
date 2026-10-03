@@ -26,7 +26,7 @@ import csv
 import io
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 from sqlalchemy import func, or_, select
@@ -38,9 +38,34 @@ from app.models import DeliveryPincode, SettingDocument
 # Indian PIN codes: six digits, never starting with 0.
 PINCODE = re.compile(r"^[1-9][0-9]{5}$")
 
-DEFAULTS = {"restrictToListed": False}
+DEFAULTS = {
+    "restrictToListed": False,
+    # The delivery estimate (docs/product-discovery.md). The defaults reproduce
+    # the estimate this store always gave — dispatched today, then business
+    # days Monday to Friday — so nothing changes until the store sets these.
+    #
+    # Orders after this hour (store time) go out the next working day. None:
+    # no cutoff.
+    "dispatchCutoffHour": None,
+    # Working days to get an order ready before it ships.
+    "processingDays": 0,
+    # Days in transit, for a pincode that doesn't set its own.
+    "standardMinDays": 3,
+    "standardMaxDays": 5,
+    "expressMinDays": 1,
+    "expressMaxDays": 2,
+    # 0 = Monday … 6 = Sunday: the days parcels move.
+    "workingDays": [0, 1, 2, 3, 4],
+    # ISO dates nothing moves on — public holidays, a warehouse closure.
+    "holidays": [],
+    # The store's clock, in minutes east of UTC (India: 330).
+    "utcOffsetMinutes": 330,
+    # The largest order (rupees) cash on delivery is offered for. None: no limit.
+    "codMaxOrderValue": None,
+}
 
 MAX_IMPORT_ROWS = 5000
+MAX_HOLIDAYS = 120
 
 
 # --------------------------------------------------------------- settings
@@ -53,10 +78,67 @@ def settings(db: Session) -> dict:
     return merged
 
 
+def _whole(payload: dict, key: str, low: int, high: int, *, nullable: bool = False) -> Optional[int]:
+    value = payload.get(key)
+    if value in (None, "") and nullable:
+        return None
+    if isinstance(value, bool):
+        raise ValidationError(f"{key} must be a whole number.", error_code="INVALID_SETTING")
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        raise ValidationError(f"{key} must be a whole number.", error_code="INVALID_SETTING") from None
+    if not low <= number <= high:
+        raise ValidationError(f"{key} must be between {low} and {high}.", error_code="INVALID_SETTING")
+    return number
+
+
 def save_settings(db: Session, payload: dict) -> dict:
     out = settings(db)
     if "restrictToListed" in payload:
         out["restrictToListed"] = bool(payload["restrictToListed"])
+    if "dispatchCutoffHour" in payload:
+        out["dispatchCutoffHour"] = _whole(payload, "dispatchCutoffHour", 0, 23, nullable=True)
+    for key, high in (("processingDays", 30), ("standardMinDays", 60), ("standardMaxDays", 60),
+                      ("expressMinDays", 30), ("expressMaxDays", 30)):
+        if key in payload:
+            out[key] = _whole(payload, key, 0, high)
+    if out["standardMinDays"] > out["standardMaxDays"] or out["expressMinDays"] > out["expressMaxDays"]:
+        raise ValidationError("The earliest delivery can't be after the latest.", error_code="INVALID_DAYS")
+    if "utcOffsetMinutes" in payload:
+        out["utcOffsetMinutes"] = _whole(payload, "utcOffsetMinutes", -720, 840)
+    if "workingDays" in payload:
+        days = payload.get("workingDays")
+        if (not isinstance(days, list) or not days
+                or any(isinstance(d, bool) or not isinstance(d, int) or not 0 <= d <= 6 for d in days)):
+            raise ValidationError("Choose at least one working day (0 = Monday … 6 = Sunday).",
+                                  error_code="INVALID_SETTING")
+        out["workingDays"] = sorted(set(days))
+    if "holidays" in payload:
+        raw = payload.get("holidays") or []
+        if not isinstance(raw, list) or len(raw) > MAX_HOLIDAYS:
+            raise ValidationError(f"List up to {MAX_HOLIDAYS} holidays.", error_code="INVALID_SETTING")
+        holidays = set()
+        for value in raw:
+            try:
+                holidays.add(date.fromisoformat(str(value)[:10]).isoformat())
+            except ValueError:
+                raise ValidationError(f"'{value}' is not a date (YYYY-MM-DD).",
+                                      error_code="INVALID_SETTING") from None
+        out["holidays"] = sorted(holidays)
+    if "codMaxOrderValue" in payload:
+        value = payload.get("codMaxOrderValue")
+        if value in (None, ""):
+            out["codMaxOrderValue"] = None
+        else:
+            try:
+                amount = float(value)
+            except (TypeError, ValueError):
+                raise ValidationError("The cash-on-delivery limit must be a number.",
+                                      error_code="INVALID_SETTING") from None
+            if not 0 < amount <= 10_000_000:
+                raise ValidationError("The cash-on-delivery limit must be above ₹0.", error_code="INVALID_SETTING")
+            out["codMaxOrderValue"] = amount
     now = datetime.utcnow()
     row = db.get(SettingDocument, "serviceability")
     if row is None:
@@ -65,7 +147,15 @@ def save_settings(db: Session, payload: dict) -> dict:
         row.value = out
         row.updated_at = now
     db.commit()
+    changed()
     return out
+
+
+def changed() -> None:
+    """Coverage or rules changed: forget every cached pincode answer."""
+    from app.core import cache
+
+    cache.invalidate("delivery")
 
 
 # ------------------------------------------------------------------ check
@@ -94,6 +184,78 @@ def estimate_label(days: int) -> str:
     return f"{date:%a}, {date.day} {date:%b}"
 
 
+def day_label(day: date) -> str:
+    # Built by hand rather than with `%-d`, which is not portable to Windows.
+    return f"{day:%a}, {day.day} {day:%b}"
+
+
+def range_label(first: date, last: date) -> str:
+    """'Fri, 9 Oct', '9–12 Oct' or '30 Sep – 2 Oct'."""
+    if first == last:
+        return day_label(first)
+    if (first.year, first.month) == (last.year, last.month):
+        return f"{first.day}–{last.day} {last:%b}"
+    return f"{first.day} {first:%b} – {last.day} {last:%b}"
+
+
+def _working(day: date, rules: dict, holidays: set) -> bool:
+    return day.weekday() in (rules.get("workingDays") or [0, 1, 2, 3, 4]) and day.isoformat() not in holidays
+
+
+def _advance(day: date, days: int, rules: dict, holidays: set) -> date:
+    """`days` working days after `day`."""
+    remaining, guard = max(0, days), 0
+    while remaining > 0 and guard < 400:
+        day += timedelta(days=1)
+        guard += 1
+        if _working(day, rules, holidays):
+            remaining -= 1
+    return day
+
+
+def delivery_window(rules: dict, *, min_days: int, max_days: int, extra_dispatch_days: int = 0,
+                    now: Optional[datetime] = None) -> dict:
+    """
+    When an order placed `now` arrives, as `{dispatchBy, from, to, label, latestLabel}`.
+
+    In the store's own clock and working days: past the dispatch cutoff, or on
+    a day nothing moves, the order goes out the next working day; then the
+    processing days (the store's, plus a product's own handling days); then
+    `min_days`–`max_days` working days in transit.
+    """
+    holidays = set(rules.get("holidays") or [])
+    local = (now or datetime.utcnow()) + timedelta(minutes=int(rules.get("utcOffsetMinutes") or 0))
+    start = local.date()
+    cutoff = rules.get("dispatchCutoffHour")
+    if cutoff is not None and (local.hour >= int(cutoff) or not _working(start, rules, holidays)):
+        start = _advance(start, 1, rules, holidays)
+    dispatch = _advance(start, int(rules.get("processingDays") or 0) + max(0, int(extra_dispatch_days or 0)),
+                        rules, holidays)
+    low, high = sorted((max(0, int(min_days)), max(0, int(max_days))))
+    first, last = _advance(dispatch, low, rules, holidays), _advance(dispatch, high, rules, holidays)
+    return {"dispatchBy": dispatch.isoformat(), "from": first.isoformat(), "to": last.isoformat(),
+            "label": range_label(first, last), "latestLabel": day_label(last)}
+
+
+def transit_days(result: "Serviceability", rules: dict, method: str) -> tuple:
+    """
+    (min, max) days in transit for a pincode answer and a delivery method.
+
+    A listed pincode's own days are its standard delivery, and its fastest
+    day is what express promises there; elsewhere, the store's days.
+    """
+    own = result.listed and result.max_days is not None
+    if method == "express":
+        if own:
+            fastest = result.min_days if result.min_days is not None else result.max_days
+            return fastest, fastest
+        return rules["expressMinDays"], rules["expressMaxDays"]
+    if own:
+        low = result.min_days if result.min_days is not None else result.max_days
+        return min(low, result.max_days), result.max_days
+    return rules["standardMinDays"], rules["standardMaxDays"]
+
+
 @dataclass
 class Serviceability:
     pincode: str
@@ -120,7 +282,8 @@ class Serviceability:
         estimate = None
         if self.serviceable:
             estimate = (
-                estimate_label(self.max_days) if self.max_days
+                delivery_window(settings(db), min_days=self.max_days, max_days=self.max_days)["latestLabel"]
+                if self.max_days
                 else shipping.get("standardEstimate") or None
             )
         return {
@@ -275,6 +438,7 @@ def save(db: Session, payload: dict, row_id: Optional[int] = None) -> DeliveryPi
             setattr(row, key, value)
         row.updated_at = now
     db.commit()
+    changed()
     db.refresh(row)
     return row
 
@@ -285,6 +449,7 @@ def delete(db: Session, row_id: int) -> None:
         raise NotFoundError("No such pincode entry.", error_code="NOT_FOUND")
     db.delete(row)
     db.commit()
+    changed()
 
 
 def search(db: Session, *, q: str = "", state: str = "", active: str = "", serviceable: str = "",
@@ -364,6 +529,7 @@ def import_csv(db: Session, content: str) -> dict:
             row.updated_at = now
             updated += 1
     db.commit()
+    changed()
     return {"created": created, "updated": updated, "errors": [], "errorCount": 0}
 
 

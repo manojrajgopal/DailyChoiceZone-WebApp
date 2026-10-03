@@ -3,14 +3,21 @@
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import type { ProductQuery, SortOption } from "@/types";
+import type { AvailabilityFilter, ProductQuery, SortOption } from "@/types";
 
 import { countActiveFilters } from "@/lib/filters/apply-filters";
 import {
   buildQueryString,
   clearFilters,
   parseProductQuery,
+  toggleAttributeValue,
   toggleFilterValue,
+  withAttributeRange,
+  withAvailability,
+  withInStockOnly,
+  withMinDiscount,
+  withMinRating,
+  withPriceRange,
 } from "@/lib/filters/search-params";
 
 export type MultiFilterKey = "category" | "subcategory" | "brand" | "size" | "color";
@@ -58,14 +65,25 @@ export function useProductQuery({ basePath, locked }: Options) {
     ...(locked?.query ? { query: locked.query } : {}),
   };
 
-  const push = useCallback(
-    (next: ProductQuery) => {
+  /**
+   * Write a whole new query to the URL.
+   *
+   * Filter changes `push`, so back undoes them one at a time; `replace` is for
+   * changes made while typing, which should not leave a history entry per
+   * keystroke.
+   */
+  const apply = useCallback(
+    (next: ProductQuery, { replace = false }: { replace?: boolean } = {}) => {
       // `scroll: false` keeps the shopper's place in a long grid when they
       // tick a filter; page changes opt back in explicitly below.
-      router.push(`${basePath}${buildQueryString(next)}`, { scroll: false });
+      const href = `${basePath}${buildQueryString(next)}`;
+      if (replace) router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
     },
     [basePath, router],
   );
+
+  const push = useCallback((next: ProductQuery) => apply(next), [apply]);
 
   const setSort = useCallback(
     (sort: SortOption) => push({ ...urlQuery, sort, page: 1 }),
@@ -78,48 +96,39 @@ export function useProductQuery({ basePath, locked }: Options) {
   );
 
   const setPriceRange = useCallback(
-    (min?: number, max?: number) => {
-      const next: ProductQuery = { ...urlQuery, page: 1 };
-      if (typeof min === "number") next.minPrice = min;
-      else delete next.minPrice;
-      if (typeof max === "number") next.maxPrice = max;
-      else delete next.maxPrice;
-      push(next);
-    },
+    (min?: number, max?: number) => push(withPriceRange(urlQuery, min, max)),
     [push, urlQuery],
   );
 
   /** Passing the already-selected value clears it, so the control toggles. */
   const setMinRating = useCallback(
-    (rating?: number) => {
-      const next: ProductQuery = { ...urlQuery, page: 1 };
-      if (typeof rating === "number" && rating !== urlQuery.minRating) next.minRating = rating;
-      else delete next.minRating;
-      push(next);
-    },
+    (rating?: number) => push(withMinRating(urlQuery, rating)),
     [push, urlQuery],
   );
 
   const setMinDiscount = useCallback(
-    (discount?: number) => {
-      const next: ProductQuery = { ...urlQuery, page: 1 };
-      if (typeof discount === "number" && discount !== urlQuery.minDiscount) {
-        next.minDiscount = discount;
-      } else {
-        delete next.minDiscount;
-      }
-      push(next);
-    },
+    (discount?: number) => push(withMinDiscount(urlQuery, discount)),
     [push, urlQuery],
   );
 
   const setInStockOnly = useCallback(
-    (only: boolean) => {
-      const next: ProductQuery = { ...urlQuery, page: 1 };
-      if (only) next.inStockOnly = true;
-      else delete next.inStockOnly;
-      push(next);
-    },
+    (only: boolean) => push(withInStockOnly(urlQuery, only)),
+    [push, urlQuery],
+  );
+
+  /** In stock / out of stock; the selected value clears it. */
+  const setAvailability = useCallback(
+    (value?: AvailabilityFilter) => push(withAvailability(urlQuery, value)),
+    [push, urlQuery],
+  );
+
+  const toggleAttribute = useCallback(
+    (code: string, value: string) => push(toggleAttributeValue(urlQuery, code, value)),
+    [push, urlQuery],
+  );
+
+  const setAttributeRange = useCallback(
+    (code: string, min?: number, max?: number) => push(withAttributeRange(urlQuery, code, min, max)),
     [push, urlQuery],
   );
 
@@ -145,7 +154,11 @@ export function useProductQuery({ basePath, locked }: Options) {
     setMinRating,
     setMinDiscount,
     setInStockOnly,
+    setAvailability,
+    toggleAttribute,
+    setAttributeRange,
     setPage,
     clearAll,
+    apply,
   };
 }

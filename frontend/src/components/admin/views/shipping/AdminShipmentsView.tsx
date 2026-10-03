@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { AlertTriangle, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState } from "@/components/admin/views/operations/shared";
+import { BulkLabelBar } from "@/components/admin/views/packing/BulkLabelBar";
+import { LabelStatusBadge } from "@/components/admin/views/packing/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -41,6 +44,25 @@ export function AdminShipmentsView() {
   const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
   const filtered = Boolean(status || q || courier || provider || from || to);
   const rangeInvalid = Boolean(from && to && from > to);
+  // Picked rows for the label actions; kept across pages so a batch can span them.
+  const [selected, setSelected] = useState<Record<number, string>>({});
+  const selectedIds = Object.keys(selected).map(Number);
+  const pageIds = data?.items.map((row) => row.id) ?? [];
+  const allOnPage = pageIds.length > 0 && pageIds.every((rowId) => rowId in selected);
+  const toggle = (rowId: number, label: string) => setSelected((current) => {
+    const next = { ...current };
+    if (rowId in next) delete next[rowId];
+    else next[rowId] = label;
+    return next;
+  });
+  const togglePage = () => setSelected((current) => {
+    const next = { ...current };
+    for (const row of data?.items ?? []) {
+      if (allOnPage) delete next[row.id];
+      else next[row.id] = row.shipmentNumber;
+    }
+    return next;
+  });
 
   return (
     <div>
@@ -112,24 +134,32 @@ export function AdminShipmentsView() {
         </p>
       ) : null}
 
+      <BulkLabelBar selected={selectedIds} labels={selected} onClear={() => setSelected({})}
+        onDone={() => void shipments.reload()} />
+
       <AdminCard padded={false}>
         <div className="relative overflow-x-auto">
-          <table className={cn("w-full min-w-[60rem] text-left text-xs", shipments.isRefreshing && "opacity-60")}>
+          <table className={cn("w-full min-w-[66rem] text-left text-xs", shipments.isRefreshing && "opacity-60")}>
             <thead className="border-b border-admin-border bg-admin-raised text-admin-muted">
               <tr>
+                <th className={cn(TH, "w-8")}>
+                  <input type="checkbox" aria-label="Select every shipment on this page" checked={allOnPage}
+                    disabled={pageIds.length === 0} onChange={togglePage} />
+                </th>
                 <th className={TH}>Shipment</th>
                 <th className={TH}>Order</th>
                 <th className={TH}>Customer</th>
                 <th className={TH}>Courier</th>
                 <th className={TH}>AWB</th>
                 <th className={TH}>Status</th>
+                <th className={TH}>Label</th>
                 <th className={TH}>Expected</th>
                 <th className={cn(TH, "text-right")}>Created</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-border">
               <TableState
-                columns={8}
+                columns={10}
                 loading={shipments.isLoading && !data}
                 failed={Boolean(shipments.error && !data)}
                 empty={Boolean(data && data.items.length === 0)}
@@ -139,6 +169,10 @@ export function AdminShipmentsView() {
               />
               {data?.items.map((row) => (
                 <tr key={row.id} className="align-top hover:bg-admin-raised">
+                  <td className={TD}>
+                    <input type="checkbox" aria-label={`Select ${row.shipmentNumber}`} checked={row.id in selected}
+                      onChange={() => toggle(row.id, row.shipmentNumber)} />
+                  </td>
                   <td className={cn(TD, "whitespace-nowrap")}>
                     <Link
                       href={`/admin/shipments/detail?id=${encodeURIComponent(String(row.id))}`}
@@ -168,6 +202,7 @@ export function AdminShipmentsView() {
                       ) : null}
                     </span>
                   </td>
+                  <td className={TD}>{row.labelStatus ? <LabelStatusBadge status={row.labelStatus} /> : null}</td>
                   <td className={cn(TD, "whitespace-nowrap text-admin-muted")}>
                     {row.expectedDeliveryAt ? formatDate(row.expectedDeliveryAt) : "—"}
                   </td>

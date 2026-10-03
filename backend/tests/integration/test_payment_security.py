@@ -864,22 +864,47 @@ class TestPaymentLinks:
     def _link(self, client, admin_auth, placed):
         return client.post(f"/api/admin/orders/{placed['order']['id']}/payment-link", headers=admin_auth)
 
-    def test_a_link_is_raised_for_a_cash_order(self, client, admin_auth, gateway, cod_order, db):
+    def test_a_cash_order_is_sent_our_own_payment_page(self, client, admin_auth, gateway, cod_order, db):
+        """Not a Razorpay Payment Link: the customer never lands on a Razorpay page."""
         from app.models import Payment
 
-        gateway.responses["/payment_links"] = {
-            "id": "plink_test0001", "short_url": "https://rzp.io/i/abc", "status": "created"}
         response = self._link(client, admin_auth, cod_order)
         assert response.status_code == 201, response.text
-
-        sent = next(c for c in gateway.calls if c["path"] == "/payment_links")
-        assert sent["json"]["reference_id"] == cod_order["paymentId"]
-        assert sent["json"]["accept_partial"] is False
-        assert sent["json"]["amount"] == cod_order["amount"]
-
+        assert response.json()["data"]["url"].endswith(f"/checkout/payment?payment={cod_order['paymentId']}&online=1")
+        assert not [c for c in gateway.calls if c["path"].startswith("/payment_links")]
         payment = db.get(Payment, cod_order["paymentId"])
         db.refresh(payment)
-        assert payment.payment_link_id == "plink_test0001"
+        assert payment.payment_link_id is None
+
+    def test_the_customer_pays_a_cash_order_online_in_our_ui(self, client, auth, gateway, cod_order, db):
+        from app.models import Order, Payment
+
+        opened = client.post(f"/api/payments/{cod_order['paymentId']}/online", headers=auth)
+        assert opened.status_code == 200, opened.text
+        handoff = opened.json()["data"]["gateway"]
+        assert handoff["orderReference"].startswith("order_") and handoff["amount"] == cod_order["amount"]
+        # Asking again reuses the same gateway order — never two for one invoice.
+        again = client.post(f"/api/payments/{cod_order['paymentId']}/online", headers=auth).json()["data"]
+        assert again["gateway"]["orderReference"] == handoff["orderReference"]
+        assert len([c for c in gateway.calls if c["path"] == "/orders"]) == 1
+
+        gateway.responses["/payments/pay_online0001"] = captured(handoff["orderReference"], "pay_online0001",
+                                                                 cod_order["amount"])
+        verified = verify(client, auth, {**cod_order, "gateway": handoff}, "pay_online0001")
+        assert verified.status_code == 200, verified.text
+        order = db.get(Order, cod_order["order"]["id"])
+        db.refresh(order)
+        assert order.payment_status == "paid"
+        assert db.get(Payment, cod_order["paymentId"]).status == "paid"
+        # Paid: nothing more to open.
+        assert client.post(f"/api/payments/{cod_order['paymentId']}/online", headers=auth).json()["error_code"] \
+            == "ALREADY_PAID"
+
+    def test_only_the_customers_own_payment_can_be_paid_online(self, client, gateway, cod_order, other_customer):
+        login = client.post("/api/auth/login", json={"email": other_customer.email, "password": "Customer@123"})
+        headers = {"Authorization": f"Bearer {login.json()['data']['token']['accessToken']}"}
+        assert client.post(f"/api/payments/{cod_order['paymentId']}/online", headers=headers).status_code == 404
+        assert client.post(f"/api/payments/{cod_order['paymentId']}/online").status_code == 401
 
     def test_a_link_needs_the_orders_permission(self, client, editor, cod_order):
         response = client.post("/api/admin/auth/login",
@@ -899,8 +924,11 @@ class TestPaymentLinks:
     def test_a_forged_callback_settles_nothing(self, client, admin_auth, gateway, cod_order, db):
         from app.models import Order
 
+        from app.models import Payment
+        from app.services import settlement
+
         gateway.responses["/payment_links"] = {"id": "plink_forge001", "short_url": "x", "status": "created"}
-        self._link(client, admin_auth, cod_order)
+        settlement.open_payment_link(db, db.get(Payment, cod_order["paymentId"]))
 
         response = client.get("/api/payments/link-callback", params={
             "razorpay_payment_id": "pay_forged01",
@@ -918,8 +946,12 @@ class TestPaymentLinks:
     def test_a_signed_callback_settles_the_order(self, client, admin_auth, gateway, cod_order, db):
         from app.models import Order
 
+        # A link raised before the store moved to its own payment page still settles.
+        from app.models import Payment
+        from app.services import settlement
+
         gateway.responses["/payment_links"] = {"id": "plink_good0001", "short_url": "x", "status": "created"}
-        self._link(client, admin_auth, cod_order)
+        settlement.open_payment_link(db, db.get(Payment, cod_order["paymentId"]))
         gateway.responses["/payments/pay_link0001"] = {
             "id": "pay_link0001", "status": "captured", "amount": cod_order["amount"],
             "currency": "INR", "method": "upi", "vpa": "asha@okhdfc", "notes": {},

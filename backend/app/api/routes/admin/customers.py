@@ -9,13 +9,29 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
-from app.core.errors import NotFoundError
-from app.dependencies.auth import get_current_admin, require_permission
+from app.core.errors import AuthorizationError, NotFoundError
+from app.dependencies.auth import get_current_admin, require_access, require_permission
 from app.models import AdminUser, Address, Customer, Order, WishlistItem
 from app.schemas.base import CamelModel
 from app.utils.response import ok, ok_list
 
 router = APIRouter(prefix="/admin/customers", tags=["Customers"])
+
+
+def _customer_or_order_access(admin: AdminUser = Depends(get_current_admin)) -> AdminUser:
+    """
+    One customer's record: the `customers` permission, or `orders` — staff
+    working an order can open the customer behind it. The full list (every
+    customer's contact details) needs `customers`.
+    """
+    from app.core.permissions import permissions_for
+
+    if admin.role == "super-admin":
+        return admin
+    granted = set(admin.permissions or []) | set(permissions_for(admin.role))
+    if granted & {"customers", "orders"}:
+        return admin
+    raise AuthorizationError("Your role does not include 'customers'.", error_code="PERMISSION_DENIED")
 
 
 class CustomerStatusUpdate(CamelModel):
@@ -86,7 +102,7 @@ def _to_dict(customer: Customer, stats: dict, wishlist: list[str]) -> dict:
 @router.get("", summary="Every customer")
 def list_customers(
     db: Session = Depends(get_db),
-    admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(require_access("customers")),
 ):
     customers = (
         db.execute(select(Customer).options(selectinload(Customer.addresses)).order_by(Customer.id))
@@ -114,7 +130,7 @@ def list_customers(
 def get_customer(
     customer_id: str,
     db: Session = Depends(get_db),
-    admin: AdminUser = Depends(get_current_admin),
+    admin: AdminUser = Depends(_customer_or_order_access),
 ):
     customer = db.get(Customer, customer_id)
     if customer is None:

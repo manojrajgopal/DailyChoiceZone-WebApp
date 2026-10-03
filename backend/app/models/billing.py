@@ -277,8 +277,12 @@ class Refund(Base, TimestampMixin):
     # tenders existed, which went wholly through the gateway.
     gateway_amount: Mapped[Optional[int]] = mapped_column(Money, nullable=True)
     tender_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    # Free text, for the team's own records. `reason_code` is what customers see
+    # (as a label) and what reports group by. See docs/refunds.md.
     reason: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    # requested | processing | completed | rejected
+    # requested | processing | completed | failed | cancelled — and `rejected`,
+    # kept for refunds turned down at approval (and the ones raised before
+    # approval existed). See `services/refunds.STATUSES`.
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="requested", index=True)
 
     requested_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
@@ -295,13 +299,54 @@ class Refund(Base, TimestampMixin):
     # An admin id, or "customer".
     initiated_by: Mapped[str] = mapped_column(String(40), nullable=False, default="customer")
 
+    # ---- partial refunds (docs/refunds.md) -------------------------------
+    # How the payment's share goes back: `original` (the gateway; for cash on
+    # delivery, a bank/UPI transfer the team makes and records) or
+    # `store-credit`. Gift card, store credit and points shares always go back
+    # to the tender that paid them.
+    method: Mapped[str] = mapped_column(String(20), nullable=False, default="original", server_default="original")
+    reason_code: Mapped[str] = mapped_column(String(30), nullable=False, default="other", server_default="other")
+    # For the team only. Never in a customer view, an email or the gateway.
+    internal_note: Mapped[str] = mapped_column(String(1000), nullable=False, default="", server_default="")
+    # Sent by the client; the same key again is the same refund.
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, unique=True, index=True)
+    # What of `amount` is the delivery fee, and the tax inside it (paise).
+    shipping_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    tax_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    # The coupon/member discount the refunded units carried — already netted out
+    # of `amount`, kept so the adjustment is visible.
+    discount_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    # Above the approval threshold, raised by someone without `refunds-large`.
+    requires_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    approved_by: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # A bank transfer's UTR, for a cash-on-delivery refund paid back by hand.
+    manual_reference: Mapped[str] = mapped_column(String(120), nullable=False, default="", server_default="")
+    failure_reason: Mapped[str] = mapped_column(String(255), nullable=False, default="", server_default="")
+    # Gateway attempts, and when the background job should next look at it.
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_attempt_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    next_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    # Whether the payment's share and the tenders' share have been booked
+    # against the payment, the invoice and the tenders. Each is applied once,
+    # and the payment's is undone if the gateway later fails the refund.
+    gateway_settled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    tenders_settled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    completed_effects: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+
     items: Mapped[List["RefundItem"]] = relationship(
         back_populates="refund", cascade="all, delete-orphan", lazy="selectin"
     )
 
 
 class RefundItem(Base):
-    """A per-item refund line. Empty for a whole-order refund."""
+    """
+    A per-item refund line. Empty for a whole-order amount refund.
+
+    Lines raised through the calculation (`services/refunds.calculate`) name
+    the order line and the invoice line they refund and carry its share of
+    the discount and tax, so a later refund knows what is left of each.
+    """
 
     __tablename__ = "refund_items"
 
@@ -313,6 +358,19 @@ class RefundItem(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     amount: Mapped[int] = mapped_column(Money, nullable=False, default=0)
+    order_item_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("order_items.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    invoice_item_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("invoice_items.id", ondelete="SET NULL"), nullable=True
+    )
+    discount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    taxable_amount: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    tax_rate_percent: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=0, server_default="0")
+    cgst: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    sgst: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    igst: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    tax: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
 
     refund: Mapped["Refund"] = relationship(back_populates="items")
 
@@ -347,6 +405,11 @@ class CreditNote(Base, TimestampMixin):
     amount: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     tax: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     total: Mapped[int] = mapped_column(Money, nullable=False, default=0)
+    # The tax, split the way the invoice charged it (see `invoices.credit_note_tax`).
+    tax_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="none", server_default="none")
+    cgst: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    sgst: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
+    igst: Mapped[int] = mapped_column(Money, nullable=False, default=0, server_default="0")
 
     issued_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     # draft | issued | cancelled

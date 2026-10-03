@@ -55,6 +55,8 @@ JOBS = [
     ("app.services.messaging.campaigns", ["run_due"], "raised"),
     ("app.services.payment_expiry", ["sweep"], "raised"),
     ("app.services.shipping.jobs", ["sweep"], "raised"),
+    ("app.services.refunds", ["sweep"], "raised"),  # partial refunds
+    ("app.services.search.jobs", ["sweep"], "raised"),  # search & filters
 ]
 
 

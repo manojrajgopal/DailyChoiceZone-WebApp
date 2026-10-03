@@ -5,6 +5,7 @@ import { AlertTriangle, Check, Loader2 } from "lucide-react";
 
 import { AccountShell } from "@/components/account/AccountShell";
 import { ChannelPreferencesSection } from "@/components/account/ChannelPreferencesSection";
+import { SecuritySettings } from "@/components/account/SecuritySettings";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Dialog";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -46,9 +47,12 @@ export function SettingsView() {
   return (
     <AccountShell
       title="Settings"
-      description="Your email preferences and the items saved on this device."
+      description="How you sign in, your email preferences and the items saved on this device."
       breadcrumb={[{ label: "Settings" }]}
     >
+      {/* -------------------------------------------------------- security */}
+      <SecuritySettings />
+
       {/* --------------------------------------------------- notifications */}
       <EmailPreferencesSection />
       <ChannelPreferencesSection />

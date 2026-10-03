@@ -77,6 +77,8 @@ describe("AccountShell", () => {
         ["Support requests", "/account/support"],
         ["Addresses", "/account/addresses"],
         ["Wishlist", "/account/wishlist"],
+        ["Recently viewed", "/account/recently-viewed"],
+        ["Saved for later", "/account/saved-for-later"],
         ["Stock & price alerts", "/account/alerts"],
         ["Membership", "/account/membership"],
         ["Reward points", "/account/rewards"],
@@ -116,6 +118,8 @@ describe("AccountShell", () => {
         "/account/wallet",
         "/account/referrals",
         "/account/alerts",
+        "/account/saved-for-later",
+        "/account/recently-viewed",
       ]);
     });
 

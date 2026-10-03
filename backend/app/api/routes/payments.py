@@ -16,6 +16,7 @@ import logging
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from sqlalchemy.orm import Session
 
+from app.core import rate_limit
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import NotFoundError, ValidationError
@@ -252,6 +253,25 @@ def payment_session(
             else None,
         }
     )
+
+
+@router.post("/{payment_id}/online", summary="Pay an unpaid order online, on our own payment page")
+def pay_online(
+    payment_id: str,
+    db: Session = Depends(get_db),
+    customer: Customer = Depends(get_current_customer),
+):
+    """
+    The handoff for paying an unpaid order online in the store's own payment
+    interface — a cash-on-delivery order the customer would rather pay now, or
+    a checkout payment being finished. Replaces Razorpay Payment Links, which
+    took the customer to a Razorpay page. Scoped to the caller's own payments.
+    """
+    rate_limit.check(f"pay-online:{customer.id}", limit=20, window_seconds=300)
+    payment = settlement.get_payment(db, payment_id, customer_id=customer.id)
+    handoff = settlement.open_online_payment(db, payment)
+    order = db.get(Order, payment.order_id)
+    return ok({"status": payment.status, "orderNumber": order.order_number if order else "", "gateway": handoff})
 
 
 @router.post("/{payment_id}/qr", summary="Mint a QR code for this payment")

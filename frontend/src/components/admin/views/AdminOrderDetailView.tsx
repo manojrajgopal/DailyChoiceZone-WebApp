@@ -17,6 +17,8 @@ import {
 import { AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { DomainStatus, humanStatus } from "@/components/admin/ui/StatusBadge";
 import { OrderBillingPanel } from "@/components/admin/views/OrderBillingPanel";
+import { OrderRefundsCard } from "@/components/admin/views/refunds/OrderRefundsCard";
+import { OrderPackingPanel } from "@/components/admin/views/packing/OrderPackingPanel";
 import { OrderShippingCard } from "@/components/admin/views/shipping/OrderShippingCard";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
@@ -72,6 +74,8 @@ export function AdminOrderDetailView() {
   );
 
   const [nextStatus, setNextStatus] = useState<AdminOrderStatus | "">("");
+  // Bumped after a refund, so the billing figures are read again.
+  const [billingKey, setBillingKey] = useState(0);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -221,7 +225,7 @@ export function AdminOrderDetailView() {
     }
 
     setLinkUrl(result.data.shortUrl);
-    toast.success(`Payment link sent to ${order.customerName}`);
+    toast.success(`Payment request sent to ${order.customerName}`);
     await reload();
   };
 
@@ -417,7 +421,8 @@ export function AdminOrderDetailView() {
           </AdminCard>
 
           {/* ------------------------------------------------------- billing */}
-          <OrderBillingPanel orderId={order.id} />
+          <OrderBillingPanel key={billingKey} orderId={order.id} />
+          <OrderRefundsCard orderId={order.id} onChanged={() => { setBillingKey((value) => value + 1); void reload(); }} />
 
           {/* ------------------------------------------------------ timeline */}
           <AdminCard title="Timeline" description="Every update to this order.">
@@ -551,6 +556,7 @@ export function AdminOrderDetailView() {
             )}
           </AdminCard>
 
+          <OrderPackingPanel orderId={order.id} />
           <OrderShippingCard orderId={order.id} onChanged={() => void reload()} />
 
           <AdminCard title="Customer">
@@ -630,9 +636,10 @@ export function AdminOrderDetailView() {
             {canSendPaymentLink(order) ? (
               <div className="mt-4 border-t border-admin-border pt-4">
                 <p className="mb-3 text-[0.6875rem] leading-relaxed text-admin-muted">
-                  Razorpay texts and emails the customer a link to pay now
-                  instead of in cash. It stays open for 24 hours. The order is
-                  marked paid only when Razorpay confirms the payment.
+                  We email the customer (and text them, if SMS is switched on
+                  for payments) a link to pay now instead of in cash, on this
+                  store&rsquo;s own payment page. The order is marked paid only
+                  when the payment is confirmed. You can send it again.
                 </p>
                 <AdminButton
                   variant="secondary"
@@ -644,7 +651,7 @@ export function AdminOrderDetailView() {
                     strokeWidth={1.75}
                     aria-hidden="true"
                   />
-                  Send payment link
+                  Ask to pay online
                 </AdminButton>
                 {linkUrl ? (
                   <p className="mt-2 break-all text-[0.6875rem] text-admin-muted">

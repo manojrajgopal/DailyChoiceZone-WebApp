@@ -61,6 +61,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
+    # Reverse proxies whose `X-Forwarded-For` is believed. Anyone can send that
+    # header, so it is read only when the connection itself comes from one of
+    # these (e.g. the nginx in front of the API); otherwise the socket address
+    # is the caller. Rate limits (sign-in codes, logins) key on this address.
+    TRUSTED_PROXIES: Annotated[List[str], NoDecode] = ["127.0.0.1", "::1"]
+
     # -------------------------------------------------------------- startup
     # Each step of the startup sequence can be turned off independently, so a
     # production deployment can run migrations from its own pipeline instead.
@@ -191,7 +197,66 @@ class Settings(BaseSettings):
     SHIPPING_HTTP_TIMEOUT_SECONDS: int = 15
     SHIPROCKET_BASE_URL: str = "https://apiv2.shiprocket.in/v1/external"
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    # Customer segmentation (docs/customer-segmentation.md): how often the
+    # `segments` job refreshes changed customers' metrics. The full refresh
+    # interval is an RFM setting in the portal.
+    SEGMENTS_JOB_INTERVAL_SECONDS: int = 600
+
+    # Search & filters (docs/search-and-filters.md): which search backend
+    # (only `mysql` today), and how many days raw search rows are kept (the
+    # daily aggregates are kept regardless).
+    SEARCH_BACKEND: str = "mysql"
+    SEARCH_LOG_RETENTION_DAYS: int = 180
+
+    # Product discovery (docs/product-discovery.md). How much browsing history
+    # a customer keeps, how long it is kept, how many lines can be saved for
+    # later, and how long a computed recommendation or a pincode's delivery
+    # terms are reused before being worked out again. Stock is never cached.
+    RECENTLY_VIEWED_LIMIT: int = 50
+    RECENTLY_VIEWED_RETENTION_DAYS: int = 180
+    SAVED_FOR_LATER_LIMIT: int = 100
+    RECOMMENDATION_CACHE_SECONDS: int = 300
+    AVAILABILITY_CACHE_SECONDS: int = 120
+
+    # Customer sign-in: social login, one-time codes and sessions
+    # (docs/authentication.md). Each social provider is offered only when its
+    # credentials are set here AND the store switches it on in the portal
+    # (Settings, then Authentication). Secrets never leave this process.
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    # Apple: the Services ID (client id), the team, and a Sign in with Apple
+    # key (its id and the .p8 private key; "\n" may be written as \\n).
+    APPLE_CLIENT_ID: str = ""
+    APPLE_TEAM_ID: str = ""
+    APPLE_KEY_ID: str = ""
+    APPLE_PRIVATE_KEY: str = ""
+    # Microsoft: "common" (work and personal accounts), "consumers",
+    # "organizations", or one directory's tenant id.
+    MICROSOFT_CLIENT_ID: str = ""
+    MICROSOFT_CLIENT_SECRET: str = ""
+    MICROSOFT_TENANT: str = "common"
+    OAUTH_HTTP_TIMEOUT_SECONDS: int = 10
+    # How long a signed-in device stays signed in without signing in again.
+    # Each access token still lasts ACCESS_TOKEN_EXPIRE_MINUTES and is renewed
+    # through /auth/session/refresh while the session is alive.
+    SESSION_LIFETIME_DAYS: int = 30
+    # One-time codes. OTP_SMS_PROVIDER: "console" (development only: the code
+    # is written to the server log, refused in production), "twilio" (the
+    # TWILIO_* credentials above), "msg91", or "none".
+    OTP_SMS_PROVIDER: str = "console"
+    OTP_SENDER_ID: str = ""
+    OTP_EXPIRY_SECONDS: int = 300
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_RESEND_SECONDS: int = 45
+    OTP_LENGTH: int = 6
+    OTP_PER_DESTINATION_HOURLY: int = 5
+    OTP_PER_DESTINATION_DAILY: int = 10
+    OTP_PER_IP_HOURLY: int = 20
+    OTP_PER_ACCOUNT_HOURLY: int = 10
+    MSG91_AUTH_KEY: str = ""
+    MSG91_TEMPLATE_ID: str = ""
+
+    @field_validator("CORS_ORIGINS", "TRUSTED_PROXIES", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
         """Accept a comma-separated string, because .env files cannot hold lists."""

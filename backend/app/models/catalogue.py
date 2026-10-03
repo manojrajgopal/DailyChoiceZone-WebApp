@@ -108,6 +108,13 @@ class Product(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_products_listing", "status", "category_id"),
         Index("ix_products_flags", "is_new", "is_trending", "is_best_seller", "is_featured"),
+        # Search & filters: the sorts and ranges a listing uses, alone (the
+        # portal sees every status) and behind the published-status filter.
+        Index("ix_products_price", "price"),
+        Index("ix_products_rating", "rating"),
+        Index("ix_products_created_at", "created_at"),
+        Index("ix_products_status_price", "status", "price"),
+        Index("ix_products_status_created", "status", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(BusinessId, primary_key=True)
@@ -246,6 +253,8 @@ class ProductImage(Base):
 
 class ProductColor(Base):
     __tablename__ = "product_colors"
+    # The colour filter and facet look up by name.
+    __table_args__ = (Index("ix_product_colors_name", "name", "product_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_id: Mapped[str] = mapped_column(
@@ -260,6 +269,8 @@ class ProductColor(Base):
 
 class ProductSize(Base):
     __tablename__ = "product_sizes"
+    # The size filter and facet look up by label.
+    __table_args__ = (Index("ix_product_sizes_label", "label", "product_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_id: Mapped[str] = mapped_column(

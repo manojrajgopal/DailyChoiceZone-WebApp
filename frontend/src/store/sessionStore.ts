@@ -6,6 +6,8 @@ import { persist } from "zustand/middleware";
 import type { AuthSession, User } from "@/types";
 
 import { STORAGE_KEYS } from "@/lib/storage/local-storage";
+import { onCustomerSessionEnded } from "@/services/api/client";
+import { toast } from "@/store/toastStore";
 
 interface SessionState {
   session: AuthSession | null;
@@ -43,3 +45,16 @@ export const useSessionStore = create<SessionState>()(
     },
   ),
 );
+
+/**
+ * Signed out from another device, or the session ran out: the API said so on
+ * some request, the token is already forgotten (see `client.ts`), and here the
+ * signed-in shell goes too — rather than every page finding out on its own.
+ */
+if (typeof window !== "undefined") {
+  onCustomerSessionEnded((message) => {
+    if (useSessionStore.getState().session === null) return;
+    useSessionStore.getState().signOut();
+    toast.info(message);
+  });
+}

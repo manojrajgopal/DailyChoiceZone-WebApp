@@ -22,7 +22,9 @@ import type {
 } from "@/types/admin";
 
 import { pageCache } from "@/services/api/cache";
-import { apiDelete, apiGet, apiGetPage, apiPost, apiPut, query } from "@/services/api/client";
+import type { AdminProductListParams, AdminProductPage } from "@/types/searchAdmin";
+
+import { apiDelete, apiGet, apiGetPage, apiGetPageWithMeta, apiPost, apiPut, query } from "@/services/api/client";
 
 import type { AdminDataSource, NavCounts, PaymentLinkSent } from "../admin-data-source";
 
@@ -149,6 +151,36 @@ export const httpAdminAdapter: AdminDataSource = {
     }
 
     return all;
+  },
+
+  async listProductsPage(params: AdminProductListParams): Promise<AdminProductPage> {
+    /**
+     * The product list screen: one page, filtered, sorted and counted by the
+     * server (docs/search-and-filters.md §6), never the whole catalogue.
+     */
+    const { flag, status, ...rest } = params;
+    const result = await apiGetPageWithMeta<AdminProduct, Pick<AdminProductPage, "counts" | "filters">>(
+      `/admin/products${query({
+        ...rest,
+        status: status && status !== "all" ? status : undefined,
+        ...(flag ? { [flag]: true } : {}),
+      })}`,
+      AUTH,
+    );
+    return {
+      items: result.items,
+      pagination: {
+        page: result.page,
+        pageSize: result.pageSize,
+        total: result.total,
+        totalPages: result.totalPages,
+      },
+      counts: { all: 0, active: 0, draft: 0, "out-of-stock": 0, archived: 0, ...result.meta.counts },
+      filters: {
+        categories: result.meta.filters?.categories ?? [],
+        brands: result.meta.filters?.brands ?? [],
+      },
+    };
   },
 
   getProduct(id: string): Promise<AdminProduct | null> {

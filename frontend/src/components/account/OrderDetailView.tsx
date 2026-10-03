@@ -8,6 +8,7 @@ import { AlertCircle, Check, FileText, LifeBuoy } from "lucide-react";
 import type { Order } from "@/types";
 
 import { AccountShell } from "@/components/account/AccountShell";
+import { OrderRefunds } from "@/components/account/OrderRefunds";
 import { OrderReturns } from "@/components/account/OrderReturns";
 import { OrderShipments } from "@/components/account/OrderShipments";
 import { ReorderDialog } from "@/components/account/ReorderDialog";
@@ -332,6 +333,8 @@ export function OrderDetailView() {
           {/* ------------------------------------- returns & replacements */}
           <OrderReturns order={order} />
 
+          <OrderRefunds orderNumber={order.orderNumber} />
+
           {/* ------------------------------------------------------- items */}
           <section className="rounded-card border border-ink-200 bg-shell p-5">
             <h2 className="label-wide text-ink">
@@ -521,6 +524,16 @@ export function OrderDetailView() {
                         ? "Refunded to your original payment method."
                         : "No payment was taken."}
               </p>
+
+              {/* Rather pay now than in cash? Our own payment page, not a payment link. */}
+              {payOnDelivery && order.paymentId && order.status !== "delivered" ? (
+                <Link
+                  href={`/checkout/payment?payment=${encodeURIComponent(order.paymentId)}&online=1`}
+                  className="mt-2 inline-block text-xs font-medium text-copper-700 underline underline-offset-2 hover:text-ink"
+                >
+                  Pay online now instead
+                </Link>
+              ) : null}
 
               {/*
                 The invoice raised for this order.

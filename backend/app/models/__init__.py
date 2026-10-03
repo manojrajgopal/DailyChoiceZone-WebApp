@@ -150,6 +150,15 @@ from app.models.messaging import (  # noqa: E402
     ReorderEvent,
 )
 from app.models.shipping import Shipment, ShipmentEvent, ShippingProvider, ShippingWebhookEvent  # noqa: E402
+# Packing and shipping labels (docs/packing-and-labels.md).
+from app.models.fulfilment import (  # noqa: E402
+    PackingEvent,
+    PackingJob,
+    PackingLine,
+    PackingPackage,
+    PackingPackageItem,
+    ShippingLabel,
+)
 from app.models.suppliers import (  # noqa: E402
     GoodsReceipt,
     GoodsReceiptItem,
@@ -159,3 +168,30 @@ from app.models.suppliers import (  # noqa: E402
     Supplier,
     SupplierProduct,
 )
+# Search & filters: attributes, the search index and dictionary, the search log (docs/search-and-filters.md).
+from app.models.search import (  # noqa: E402
+    ProductAttribute,
+    ProductAttributeOption,
+    ProductAttributeValue,
+    ProductSearchIndex,
+    SearchClick,
+    SearchDailyStat,
+    SearchQuery,
+    SearchTerm,
+)
+# Customer sign-in: linked providers, one-time codes, OAuth trips, sessions.
+from app.models.identity import CustomerIdentity, CustomerSession, OAuthState, OtpChallenge  # noqa: E402
+# Product discovery: recently viewed, saved for later, relationships, size
+# guides, per-product delivery rules (docs/product-discovery.md).
+from app.models.discovery import (  # noqa: E402
+    ProductDeliveryExclusion,
+    ProductDeliveryProfile,
+    ProductRelationship,
+    ProductSizeGuide,
+    RecentlyViewedProduct,
+    SavedCartItem,
+    SizeGuide,
+    SizeGuideCategory,
+)
+# Customer segmentation: per-customer metrics, segments, members, history (docs/customer-segmentation.md).
+from app.models.segments import CustomerMetrics, Segment, SegmentEvent, SegmentMember  # noqa: E402

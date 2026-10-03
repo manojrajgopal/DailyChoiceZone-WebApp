@@ -17,8 +17,9 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children),
   motion: {
     li: forwardRef<HTMLLIElement, HTMLAttributes<HTMLLIElement> & { layout?: boolean; initial?: unknown; animate?: unknown; exit?: unknown; transition?: unknown }>(
-      ({ layout: _layout, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...rest }, ref) =>
-        createElement("li", { ...rest, ref }),
+      function MotionLi({ layout: _layout, initial: _initial, animate: _animate, exit: _exit, transition: _transition, ...rest }, ref) {
+        return createElement("li", { ...rest, ref });
+      },
     ),
   },
 }));

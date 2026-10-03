@@ -7,14 +7,17 @@ import type {
   Paginated,
   Product,
   ProductFacets,
+  ProductFilters,
   ProductQuery,
   PromoBanner,
   Review,
   ReviewSummary,
+  SearchMeta,
   SiteConfig,
 } from "@/types";
 
-import { apiGet, apiGetOrNull, apiGetPage, query } from "@/services/api/client";
+import { getVisitorId } from "@/lib/search/visitor";
+import { apiGet, apiGetOrNull, apiGetPageWithMeta, query } from "@/services/api/client";
 
 import type { DataSource } from "../data-source";
 
@@ -36,39 +39,77 @@ import type { DataSource } from "../data-source";
  * and nowhere else needs to change when it lands.
  */
 
+/**
+ * The listing's query parameters, shared by `GET /products` and
+ * `GET /products/facets` (which takes exactly the same filters, so its counts
+ * reflect everything that is ticked).
+ *
+ * Every category and subcategory goes as CSV, and the dynamic attribute
+ * filters as `attr.<code>=a,b` / `attr.<code>.min|max`.
+ */
+export function listingParams(productQuery: ProductFilters): Record<string, unknown> {
+  const params: Record<string, unknown> = {
+    search: productQuery.query?.trim() || undefined,
+    category: productQuery.category,
+    subcategory: productQuery.subcategory,
+    collection: productQuery.collection,
+    brands: productQuery.brand,
+    sizes: productQuery.size,
+    colors: productQuery.color,
+    minPrice: productQuery.minPrice,
+    maxPrice: productQuery.maxPrice,
+    minRating: productQuery.minRating,
+    minDiscount: productQuery.minDiscount,
+    inStockOnly: productQuery.inStockOnly || undefined,
+    availability: productQuery.availability,
+    isNew: productQuery.isNew,
+    isTrending: productQuery.isTrending,
+    isBestSeller: productQuery.isBestSeller,
+    isFeatured: productQuery.isFeatured,
+  };
+
+  for (const code of Object.keys(productQuery.attributes ?? {}).sort()) {
+    const values = productQuery.attributes?.[code];
+    if (values?.length) params[`attr.${code}`] = values;
+  }
+  for (const code of Object.keys(productQuery.attributeRanges ?? {}).sort()) {
+    const range = productQuery.attributeRanges?.[code];
+    if (typeof range?.min === "number") params[`attr.${code}.min`] = range.min;
+    if (typeof range?.max === "number") params[`attr.${code}.max`] = range.max;
+  }
+  return params;
+}
+
 export const httpAdapter: DataSource = {
   async queryProducts(productQuery: ProductQuery): Promise<Paginated<Product>> {
-    const page = await apiGetPage<Product>(
+    const searching = Boolean(productQuery.query?.trim());
+    const page = await apiGetPageWithMeta<Product, { search: SearchMeta }>(
       `/products${query({
         page: productQuery.page,
         pageSize: productQuery.pageSize,
-        search: productQuery.query,
-        category: productQuery.category?.[0],
-        subcategory: productQuery.subcategory?.[0],
-        collection: productQuery.collection,
-        brands: productQuery.brand,
-        sizes: productQuery.size,
-        colors: productQuery.color,
-        minPrice: productQuery.minPrice,
-        maxPrice: productQuery.maxPrice,
-        minRating: productQuery.minRating,
-        minDiscount: productQuery.minDiscount,
-        inStockOnly: productQuery.inStockOnly || undefined,
-        isNew: productQuery.isNew,
-        isTrending: productQuery.isTrending,
-        isBestSeller: productQuery.isBestSeller,
-        isFeatured: productQuery.isFeatured,
+        ...listingParams(productQuery),
         sort: productQuery.sort,
+        // Only a search is logged, so only a search needs the visitor.
+        visitorId: searching ? getVisitorId() : undefined,
       })}`,
     );
 
-    return {
+    const result: Paginated<Product> = {
       items: page.items,
       total: page.total,
       page: page.page,
       pageSize: page.pageSize,
       totalPages: page.totalPages,
     };
+    const search = page.meta.search;
+    if (search && typeof search === "object") {
+      result.search = {
+        term: search.term ?? productQuery.query ?? "",
+        correctedTerm: search.correctedTerm ?? null,
+        searchId: search.searchId ?? null,
+      };
+    }
+    return result;
   },
 
   getProduct(idOrSlug: string): Promise<Product | null> {
@@ -99,13 +140,8 @@ export const httpAdapter: DataSource = {
   },
 
   getFacets(scope): Promise<ProductFacets> {
-    return apiGet<ProductFacets>(
-      `/products/facets${query({
-        search: scope?.query,
-        category: scope?.category,
-        subcategory: scope?.subcategory,
-      })}`,
-    );
+    // The whole current query, so the counts reflect what is already ticked.
+    return apiGet<ProductFacets>(`/products/facets${query(scope ? listingParams(scope) : {})}`);
   },
 
   listCategories(): Promise<Category[]> {

@@ -320,8 +320,9 @@ class TestRefunds:
 
 class TestRefundsThatWait:
     def test_a_requested_refund_moves_no_money_until_completed(self, client, db, admin_auth, paid):
+        # "pending" was never an official status; it is read as "requested" (docs/refunds.md).
         response = raise_refund(client, admin_auth, paid["invoiceId"], 40000, status="pending")
-        assert response.status_code == 201 and response.json()["data"]["status"] == "pending"
+        assert response.status_code == 201 and response.json()["data"]["status"] == "requested"
         assert fresh(db, Payment, paid["paymentId"]).refunded_amount == 0
 
         overview = client.get("/api/admin/billing/overview", headers=admin_auth).json()["data"]
@@ -347,18 +348,19 @@ class TestRefundsThatWait:
         assert fresh(db, Payment, paid["paymentId"]).status == "paid"
         assert fresh(db, Invoice, paid["invoiceId"]).amount_refunded == 0
 
+    # Regression (partial refunds, bug 4): a requested refund used to hold no
+    # money, so a second one could be raised against the same rupees and only
+    # completing it caught the over-refund. Requested refunds are now reserved.
     def test_two_requests_that_together_exceed_the_payment(self, client, db, admin_auth, paid):
-        """Each fits on its own; completing the second would refund more than was paid."""
+        """Each fits on its own; the second is refused when it is raised."""
         first = raise_refund(client, admin_auth, paid["invoiceId"], 70000, status="pending").json()["data"]["id"]
-        second = raise_refund(client, admin_auth, paid["invoiceId"], 70000, status="pending").json()["data"]["id"]
+        refused = raise_refund(client, admin_auth, paid["invoiceId"], 70000, status="pending")
+        assert refused.status_code == 409 and refused.json()["error_code"] == "REFUND_EXCEEDS_PAYMENT"
 
         assert client.put(f"{REFUNDS}/{first}", headers=admin_auth, json={"status": "completed"}).status_code == 200
-        refused = client.put(f"{REFUNDS}/{second}", headers=admin_auth, json={"status": "completed"})
-
-        assert refused.status_code == 409 and refused.json()["error_code"] == "REFUND_EXCEEDS_PAYMENT"
         payment = fresh(db, Payment, paid["paymentId"])
         assert payment.refunded_amount == 70000 and payment.status == "partially-refunded"
-        assert fresh(db, Refund, second).status == "pending"
+        assert db.query(Refund).count() == 1
 
 
 class TestRefundsAtTheGateway:
@@ -382,7 +384,10 @@ class TestRefundsAtTheGateway:
 
         assert response.status_code == 409 and response.json()["error_code"] == "PROVIDER_REFUSED"
         db.rollback()
-        assert db.query(Refund).count() == 0
+        # Recorded before it was sent (partial refunds, bug 1), so the refusal is
+        # on record — failed, with the gateway's reason — and nothing moved.
+        refund = db.query(Refund).one()
+        assert refund.status == "failed" and "Insufficient balance" in refund.failure_reason
         payment = fresh(db, Payment, gateway_paid["paymentId"])
         assert payment.refunded_amount == 0 and payment.status == "paid"
 

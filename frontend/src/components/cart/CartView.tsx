@@ -9,11 +9,13 @@ import { CartRecoveryNotice } from "@/components/cart/CartRecoveryNotice";
 import { MemberPerksNote } from "@/components/cart/MemberPerksNote";
 import { CouponForm } from "@/components/cart/CouponForm";
 import { OrderSummary } from "@/components/cart/OrderSummary";
+import { SavedForLaterSection } from "@/components/cart/SavedForLaterSection";
 import { EmptyState } from "@/components/common/States";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useCart } from "@/hooks/useCart";
+import { useSavedForLater } from "@/hooks/useSavedForLater";
 
 /**
  * The shopping bag.
@@ -43,7 +45,23 @@ export function CartView() {
     issues,
     setBundleQuantity,
     removeBundle,
+    applyServerCart,
   } = useCart();
+  // "Not now": lines put aside, below the bag. Moving one either way redraws
+  // both from the one answer the server gives.
+  const saved = useSavedForLater({ onCart: applyServerCart });
+  const savedSection = (
+    <SavedForLaterSection
+      entries={saved.entries}
+      isLoading={saved.isLoading}
+      failed={saved.failed}
+      busy={saved.busy}
+      onMoveToCart={(entry) => void saved.moveToCart(entry)}
+      onRemove={(entry) => void saved.remove(entry)}
+      onClear={saved.clear}
+      onRetry={saved.refresh}
+    />
+  );
 
   const hasOutOfStock = lines.some((line) => line.product.stock <= 0);
   // A flash sale limit or a bundle that can't be bought stops checkout; said here first.
@@ -82,12 +100,17 @@ export function CartView() {
           <Skeleton className="h-72 w-full" />
         </div>
       ) : isEmpty ? (
-        <EmptyState
-          title="Your bag is empty"
-          description="Once you find something you like, it will show up here. Delivery is free on orders above ₹999."
-          action={{ label: "Start shopping", href: "/shop" }}
-          className="mt-4"
-        />
+        <>
+          <EmptyState
+            title="Your bag is empty"
+            description={saved.count > 0
+              ? "Your saved items are below — move any of them back when you're ready."
+              : "Once you find something you like, it will show up here. Delivery is free on orders above ₹999."}
+            action={{ label: "Start shopping", href: "/shop" }}
+            className="mt-4"
+          />
+          {savedSection}
+        </>
       ) : (
         <div className="mt-8 grid items-start gap-10 lg:grid-cols-[1fr_22rem] lg:gap-14">
           {/* ------------------------------------------------------- lines */}
@@ -99,6 +122,8 @@ export function CartView() {
                   line={line}
                   onQuantityChange={setQuantity}
                   onRemove={remove}
+                  onSaveForLater={(entry) => void saved.saveLine(entry)}
+                  saving={saved.busy === `c-${line.lineId}`}
                 />
               ))}
               {bundles.map((bundle) => (
@@ -114,6 +139,8 @@ export function CartView() {
               <ArrowLeft className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
               Continue shopping
             </Link>
+
+            {savedSection}
           </div>
 
           {/* ----------------------------------------------------- summary */}

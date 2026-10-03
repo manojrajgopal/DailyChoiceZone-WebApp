@@ -137,9 +137,9 @@ describe("canSendPaymentLink", () => {
 
 describe("sendPaymentLink", () => {
   it("resolves ok with the link on success", async () => {
-    api.post("/admin/orders/O1/payment-link", { id: "pl_1", shortUrl: "https://x", status: "created" });
+    api.post("/admin/orders/O1/payment-link", { url: "https://x/checkout/payment?payment=PAY1&online=1", shortUrl: "https://x/checkout/payment?payment=PAY1&online=1", paymentId: "PAY1", orderNumber: "DCZ1" });
     const result = await orders.sendPaymentLink("O1");
-    expect(result).toEqual({ ok: true, data: { id: "pl_1", shortUrl: "https://x", status: "created" } });
+    expect(result).toEqual({ ok: true, data: { url: "https://x/checkout/payment?payment=PAY1&online=1", shortUrl: "https://x/checkout/payment?payment=PAY1&online=1", paymentId: "PAY1", orderNumber: "DCZ1" } });
   });
 
   it("surfaces the server's error message on failure", async () => {

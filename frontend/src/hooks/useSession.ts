@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { Credentials, RegisterInput, User } from "@/types";
+import type { AuthSession, Credentials, RegisterInput, User } from "@/types";
 
+import { clearRecentSearches } from "@/lib/search/recent-searches";
 import * as authService from "@/services/authService";
+import { scheduleSessionRefresh } from "@/services/sessionRefresh";
 import { useSessionStore } from "@/store/sessionStore";
 import { toast } from "@/store/toastStore";
 
@@ -45,6 +47,7 @@ function useVerifiedSession() {
 
     if (session === null) {
       settled = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- nothing to ask the server: settled at once
       setChecked(true);
       return;
     }
@@ -57,8 +60,11 @@ function useVerifiedSession() {
     checkStarted = true;
 
     void authService.getCurrentUser().then((user) => {
-      if (user) updateUser(user);
-      else clearSession();
+      if (user) {
+        updateUser(user);
+        // Keep the token fresh for as long as the page is open.
+        scheduleSessionRefresh();
+      } else clearSession();
 
       settled = true;
       setChecked(true);
@@ -131,13 +137,38 @@ export function useSession() {
     [setSession],
   );
 
+  /**
+   * Adopt a session the server has just handed over — a code sign-in, a
+   * Google / Apple / Microsoft sign-in, or a registration whose codes have
+   * been typed in. The token is already stored by the service.
+   */
+  const acceptSession = useCallback(
+    (next: AuthSession, message?: string) => {
+      markVerified();
+      setSession(next);
+      if (message) toast.success(message);
+    },
+    [setSession],
+  );
+
+  /**
+   * Create an account.
+   *
+   * When the store confirms new accounts with a code, the session is *not*
+   * adopted yet: the sign-up page stays up to take the code(s), and calls
+   * `acceptSession` when they are done (the token is already stored, so the
+   * code endpoints can be called). Otherwise the shopper is signed in at once.
+   */
   const register = useCallback(
     async (input: RegisterInput) => {
       const result = await authService.register(input);
       if (result.ok) {
-        // Straight from the server, so there is nothing to confirm.
-        markVerified();
-        setSession(result.session);
+        const awaitingCodes = Boolean(result.verification || result.phoneVerification);
+        if (!awaitingCodes) {
+          // Straight from the server, so there is nothing to confirm.
+          markVerified();
+          setSession(result.session);
+        }
         toast.success("Account created");
       } else {
         toast.error(result.reason);
@@ -150,6 +181,8 @@ export function useSession() {
   const signOut = useCallback(async () => {
     await authService.signOut();
     clearSession();
+    // What this person searched for stays with them, not with the next person on this device.
+    clearRecentSearches();
     toast.info("Signed out");
   }, [clearSession]);
 
@@ -169,6 +202,7 @@ export function useSession() {
     isLoading: !hydrated,
     signIn,
     register,
+    acceptSession,
     signOut,
     updateProfile,
   };

@@ -186,6 +186,10 @@ def list_coupons(
     admin: AdminUser = Depends(get_current_admin),
 ):
     coupons = coupon_service.list_coupons(db, active_only=False)
+    from app.models.segments import Segment
+
+    wanted = {c.segment_id for c in coupons if c.segment_id}
+    segment_names = dict(db.execute(select(Segment.id, Segment.name).where(Segment.id.in_(wanted))).all()) if wanted else {}
     return ok_list(
         [
             {
@@ -206,6 +210,9 @@ def list_coupons(
                 "audience": coupon.audience,
                 "showInStore": coupon.show_in_store,
                 "customerIds": [entry.customer_id for entry in coupon.customers],
+                # audience "segment" (docs/customer-segmentation.md)
+                "segmentId": coupon.segment_id,
+                "segmentName": segment_names.get(coupon.segment_id, "") if coupon.segment_id else "",
                 **coupon_service.usage_summary(db, coupon),
                 # Derived, so a scheduled coupon goes live on its own and an
                 # expired one stops being offered without anyone editing it.

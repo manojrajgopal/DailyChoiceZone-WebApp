@@ -13,6 +13,15 @@ import { useCartStore } from "@/store/cartStore";
 
 import { CartView } from "./CartView";
 
+/**
+ * The signed-in bag, at every `/cart…` read — and an empty "saved for later"
+ * list, which the bag page reads too and which isn't a bag.
+ */
+function serveBag(cart: Parameters<typeof api.get>[1]) {
+  api.get(/^\/cart/, cart);
+  api.get("/cart/saved", { items: [], limit: 100 });
+}
+
 describe("CartView", () => {
   describe("guest, empty bag", () => {
     it("shows the empty state with a link back to the shop", async () => {
@@ -89,7 +98,7 @@ describe("CartView", () => {
   describe("signed in", () => {
     it("blocks nothing while the cart is loading", async () => {
       signInCustomer();
-      api.get(/^\/cart/, hang());
+      serveBag(hang());
       renderUI(<CartView />);
       expect(screen.getByRole("heading", { name: "Shopping bag" })).toBeInTheDocument();
       expect(screen.queryByText("Your bag is empty")).not.toBeInTheDocument();
@@ -99,7 +108,7 @@ describe("CartView", () => {
     it("shows server lines, bundles, the item count and a working checkout link", async () => {
       signInCustomer();
       const product = makeProduct({ id: "P1", name: "Linen Shirt" });
-      api.get(/^\/cart/, makeServerCart({
+      serveBag(makeServerCart({
         items: [makeServerItem(1, product, 2)],
         bundles: [makeBundle()],
         breakdown: makeServerCart().breakdown,
@@ -113,7 +122,7 @@ describe("CartView", () => {
 
     it("shows the empty state when the server cart has nothing", async () => {
       signInCustomer();
-      api.get(/^\/cart/, makeServerCart({ items: [] }));
+      serveBag(makeServerCart({ items: [] }));
       renderUI(<CartView />);
       expect(await screen.findByText("Your bag is empty")).toBeInTheDocument();
     });
@@ -121,7 +130,7 @@ describe("CartView", () => {
     it("blocks checkout and explains when an item is out of stock", async () => {
       signInCustomer();
       const outOfStock = makeProduct({ id: "P1", name: "Sold Out Shirt", stock: 0 });
-      api.get(/^\/cart/, makeServerCart({ items: [makeServerItem(1, outOfStock, 1)] }));
+      serveBag(makeServerCart({ items: [makeServerItem(1, outOfStock, 1)] }));
 
       renderUI(<CartView />);
       await screen.findByText("Sold Out Shirt");
@@ -132,7 +141,7 @@ describe("CartView", () => {
     it("blocks checkout and lists each bag issue (e.g. a flash sale limit)", async () => {
       signInCustomer();
       const product = makeProduct({ id: "P1" });
-      api.get(/^\/cart/, makeServerCart({
+      serveBag(makeServerCart({
         items: [makeServerItem(1, product, 1)],
         issues: [{ code: "FLASH_SALE_LIMIT", message: "Only 1 of this flash sale item per order.", productId: "P1" }],
       }));
@@ -146,7 +155,7 @@ describe("CartView", () => {
     it("shows the member perks note when the cart carries a membership", async () => {
       signInCustomer();
       const product = makeProduct({ id: "P1" });
-      api.get(/^\/cart/, makeServerCart({
+      serveBag(makeServerCart({
         items: [makeServerItem(1, product, 1)],
         membership: { name: "Choice Circle", planName: "Annual", endsAt: "2027-01-01", discountPercent: 10, freeDelivery: true, freeDeliveriesLeft: 2 },
       }));
@@ -157,7 +166,7 @@ describe("CartView", () => {
 
     it("falls back to an empty cart (and does not crash) when the server read fails", async () => {
       signInCustomer();
-      api.get(/^\/cart/, fail(500));
+      serveBag(fail(500));
       renderUI(<CartView />);
       expect(await screen.findByText("Your bag is empty")).toBeInTheDocument();
     });

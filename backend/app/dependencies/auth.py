@@ -57,6 +57,14 @@ def get_current_customer(
     if _issued_before_password_change(payload, customer):
         raise AuthenticationError("Your password was changed. Sign in again.", error_code="TOKEN_INVALID")
 
+    # The signed-in session the token belongs to: signed out, signed out
+    # everywhere, or expired ends it now (see `services.sessions`).
+    from app.services import sessions
+
+    refused = sessions.problem(db, payload, customer)
+    if refused is not None:
+        raise AuthenticationError(refused[1], error_code=refused[0])
+
     return customer
 
 
@@ -81,7 +89,18 @@ def get_optional_customer(
     customer = db.get(Customer, payload.get("sub"))
     if customer is None or customer.status != "active" or _issued_before_password_change(payload, customer):
         return None
+    from app.services import sessions
+
+    if sessions.problem(db, payload, customer) is not None:
+        return None
     return customer
+
+
+def token_claims(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> dict:
+    """The verified token's claims ({} without a valid one) — for routes that need its session id."""
+    if credentials is None or not credentials.credentials:
+        return {}
+    return decode_access_token(credentials.credentials) or {}
 
 
 def _issued_before_password_change(payload: dict, customer: Customer) -> bool:
@@ -173,8 +192,25 @@ def require_access(permission: str):
 
 
 def client_ip(request: Request) -> str:
-    """Best-effort caller address, for audit notes."""
+    """
+    The caller's address, for rate limits and audit notes.
+
+    `X-Forwarded-For` is only believed when the connection comes from a
+    trusted proxy (`TRUSTED_PROXIES`): anyone else could set it to dodge a
+    per-address limit. Read right to left, skipping trusted proxies, the
+    first other address is the client — the left-most entries are whatever
+    the caller chose to send.
+    """
+    from app.core.config import settings
+
+    peer = request.client.host if request.client else ""
+    trusted = set(settings.TRUSTED_PROXIES)
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    if forwarded and peer in trusted:
+        hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+        for hop in reversed(hops):
+            if hop not in trusted:
+                return hop
+        if hops:
+            return hops[0]
+    return peer or "unknown"

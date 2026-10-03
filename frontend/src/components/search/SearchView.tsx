@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { EmptyState } from "@/components/common/States";
 import { ProductListing } from "@/components/products/ProductListing";
-import { useSiteContent } from "@/hooks/useSiteContent";
+import { addRecentSearch } from "@/lib/search/recent-searches";
+
+import { PopularSearches } from "./PopularSearches";
 
 /**
  * Search results.
@@ -23,7 +25,11 @@ import { useSiteContent } from "@/hooks/useSiteContent";
 export function SearchView() {
   const searchParams = useSearchParams();
   const term = (searchParams?.get("q") ?? "").trim();
-  const popularSearches = useSiteContent()?.popularSearches ?? [];
+
+  // Remembered in this browser only, for the search box's "Recent searches".
+  useEffect(() => {
+    if (term) addRecentSearch(term);
+  }, [term]);
 
   return (
     <div className="page-shell py-8 sm:py-10">
@@ -49,21 +55,7 @@ export function SearchView() {
             description="Search by product, brand, category or even material — try “linen” or “sneakers”."
           />
 
-          <div className="mx-auto max-w-lg pb-8">
-            <p className="label-wide mb-3 text-center text-ink-500">Popular searches</p>
-            <ul className="flex flex-wrap justify-center gap-2">
-              {popularSearches.map((popular) => (
-                <li key={popular}>
-                  <Link
-                    href={`/search?q=${encodeURIComponent(popular)}`}
-                    className="inline-flex rounded-pill border border-ink-200 px-3.5 py-1.5 text-sm text-ink-700 transition-colors hover:border-ink hover:text-ink"
-                  >
-                    {popular}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <PopularSearches className="pb-8" />
         </div>
       ) : (
         /*
@@ -77,6 +69,7 @@ export function SearchView() {
           facetScope={{ query: term }}
           emptyTitle={`No results for “${term}”`}
           emptyDescription="Check the spelling, try a broader word, or browse the full catalogue."
+          emptyExtra={<PopularSearches title="Try a popular search" className="pb-8" />}
         />
       )}
     </div>

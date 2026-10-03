@@ -87,21 +87,23 @@ def update_status(
     )
 
 
-@router.post("/{order_id}/payment-link", status_code=201, summary="Send a payment link")
+@router.post("/{order_id}/payment-link", status_code=201, summary="Ask the customer to pay online")
 def send_payment_link(
     order_id: str,
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_permission("orders")),
 ):
     """
-    Raise a Razorpay Payment Link for a confirmed, unpaid order and send it.
+    Ask the customer to pay a confirmed, unpaid order online.
 
-    Razorpay delivers it to the customer by SMS and email. The order is marked
-    paid only when the gateway confirms the payment — by the link's callback
-    or its `payment_link.paid` webhook — never when the link is sent.
+    Sent by the store's own email (and SMS/WhatsApp where switched on), with a
+    link to the store's own payment page — not a Razorpay Payment Link, so the
+    customer never sees a Razorpay page (docs/payments-in-our-ui.md). The order
+    is marked paid only when the gateway confirms the payment, never when the
+    request is sent. Can be sent again.
 
-    Cash-on-delivery orders only: see `settlement.open_payment_link` for why a
-    checkout order still holding stock cannot be paid this way.
+    Cash-on-delivery orders only, as before: a checkout order still holding
+    stock is paid from its own payment page within its window.
     """
     from app.models import Payment
     from app.services import settlement
@@ -112,6 +114,5 @@ def send_payment_link(
         from app.core.errors import NotFoundError
 
         raise NotFoundError("That order has no payment record.", error_code="PAYMENT_NOT_FOUND")
-
-    link = settlement.open_payment_link(db, payment)
-    return ok(link, message="Payment link sent to the customer.")
+    sent = settlement.request_online_payment(db, payment)
+    return ok({**sent, "shortUrl": sent["url"]}, message="Payment request sent to the customer.")

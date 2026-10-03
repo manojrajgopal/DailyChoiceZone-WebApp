@@ -30,7 +30,8 @@ import {
   type MembershipStatus,
   type MembershipSummary,
 } from "@/services/membershipService";
-import { openRazorpayCheckout } from "@/services/payments/razorpayCheckout";
+import { EmbeddedPayment } from "@/components/checkout/EmbeddedPayment";
+import type { GatewayHandoff } from "@/types";
 import { toast } from "@/store/toastStore";
 
 /* ------------------------------------------------------------------ helpers */
@@ -207,6 +208,10 @@ export function MembershipView() {
   const [failed, setFailed] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  /** A plan waiting to be paid for, in our own payment panel. */
+  const [paying, setPaying] = useState<{ membershipId: string; gateway: GatewayHandoff; planName: string } | null>(
+    null,
+  );
 
   // State is set only once the answer arrives, never synchronously.
   const load = useCallback(
@@ -245,44 +250,10 @@ export function MembershipView() {
         return;
       }
 
-      setStatus("Complete your payment in the secure window.");
-      const outcome = await openRazorpayCheckout(checkout.gateway, {});
-
-      if (outcome.status === "completed") {
-        setStatus("Confirming your payment…");
-        try {
-          await verifyMembershipPayment(
-            checkout.membershipId,
-            outcome.response,
-          );
-          setStatus(`Welcome to ${name}.`);
-          toast.success(`Welcome to ${name}!`);
-          await load();
-        } catch (error) {
-          setStatus("");
-          toast.error(
-            messageOf(
-              error,
-              "We couldn't confirm your payment just yet. If money has left your account, it will be credited back or your membership activated shortly.",
-            ),
-          );
-        }
-        return;
-      }
-
-      await abandonMembershipCheckout(checkout.membershipId).catch(
-        () => undefined,
-      );
-      setStatus("");
-      if (outcome.status === "failed") {
-        toast.error(
-          `${outcome.reason} You can try again whenever you're ready.`,
-        );
-      } else {
-        toast.info(
-          "Payment not completed — no money has been taken. You can join whenever you're ready.",
-        );
-      }
+      // Paid in our own panel below — see `EmbeddedPayment`.
+      setStatus("Choose how you'd like to pay.");
+      setPaying({ membershipId: checkout.membershipId, gateway: checkout.gateway, planName: plan.name });
+      membershipId = null;
     } catch (error) {
       if (membershipId)
         await abandonMembershipCheckout(membershipId).catch(() => undefined);
@@ -357,6 +328,29 @@ export function MembershipView() {
           <MemberCard membership={membership} programmeName={name} />
         ) : null}
 
+        {paying ? (
+          <div className="mx-auto mt-8 max-w-2xl rounded-card border border-ink-200 bg-shell p-5 sm:p-6">
+            <EmbeddedPayment
+              heading={`Pay for ${paying.planName}`}
+              handoff={paying.gateway}
+              successMessage={`Welcome to ${name}!`}
+              verify={(response) => verifyMembershipPayment(paying.membershipId, response)}
+              onPaid={() => {
+                setPaying(null);
+                setStatus(`Welcome to ${name}.`);
+                void load();
+              }}
+              onCancel={() => {
+                const pending = paying;
+                setPaying(null);
+                setStatus("");
+                void abandonMembershipCheckout(pending.membershipId).catch(() => undefined);
+                toast.info("Payment not completed — no money has been taken. You can join whenever you're ready.");
+              }}
+            />
+          </div>
+        ) : null}
+
         {!open ? (
           <EmptyState
             title="Membership opens soon"
@@ -398,7 +392,7 @@ export function MembershipView() {
                       signedIn={isSignedIn}
                       pending={isPending}
                       busy={buying === plan.id}
-                      disabled={buying !== null && buying !== plan.id}
+                      disabled={(buying !== null && buying !== plan.id) || paying !== null}
                       onJoin={() => void join(plan)}
                     />
                   </li>

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { CompareTray } from "@/components/compare/CompareControls";
+import { GuestDataSync } from "@/components/growth/GuestDataSync";
 import { VisitTracker } from "@/components/growth/Trackers";
 import { Footer } from "@/components/layout/Footer";
 import { PromoStrip } from "@/components/layout/PromoStrip";
@@ -49,6 +50,8 @@ export default async function StorefrontLayout({
       <Suspense fallback={null}>
         <VisitTracker />
       </Suspense>
+      {/* A guest's recently viewed and saved-for-later lists, handed to the account at sign-in. */}
+      <GuestDataSync />
     </div>
   );
 }

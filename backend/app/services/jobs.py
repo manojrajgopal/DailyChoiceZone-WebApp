@@ -36,6 +36,15 @@ EXPECTED = {
     "campaigns": "Sending marketing campaigns",
     "backups": "Database backups",
     "shipping": "Shipment tracking and courier retries",
+    # Partial refunds (docs/refunds.md).
+    "refunds": "Refund status checks and retries",
+    "discovery": "Recently viewed clean-up",
+    # Customer segmentation.
+    "segments": "Customer metrics and segments",
+    # Customer sign-in.
+    "auth": "Expired sign-in codes and sessions clean-up",
+    # Search & filters (docs/search-and-filters.md).
+    "search": "Search analytics and the search index",
 }
 
 

@@ -238,6 +238,16 @@ class RefundOut(CamelModel):
     # and points (for an order they paid part of).
     gateway_amount: int = 0
     tender_amount: int = 0
+    # Partial refunds (docs/refunds.md). `internalNote` is for the portal only;
+    # no customer route uses this schema.
+    method: str = "original"
+    reason_code: str = "other"
+    internal_note: str = ""
+    shipping_amount: int = 0
+    tax_amount: int = 0
+    requires_approval: bool = False
+    failure_reason: str = ""
+    attempts: int = 0
 
     @classmethod
     def from_model(cls, refund) -> "RefundOut":
@@ -254,6 +264,14 @@ class RefundOut(CamelModel):
             lines=[RefundLineOut.model_validate(line) for line in refund.items],
             gateway_amount=refund.amount if refund.gateway_amount is None else refund.gateway_amount,
             tender_amount=refund.tender_amount or 0,
+            method=refund.method or "original",
+            reason_code=refund.reason_code or "other",
+            internal_note=refund.internal_note or "",
+            shipping_amount=refund.shipping_amount or 0,
+            tax_amount=refund.tax_amount or 0,
+            requires_approval=bool(refund.requires_approval),
+            failure_reason=refund.failure_reason or "",
+            attempts=refund.attempts or 0,
         )
 
 
@@ -273,17 +291,27 @@ class CreditNoteOut(CamelModel):
     total: int
     issued_at: datetime
     status: str
+    tax_mode: str = "none"
+    cgst: int = 0
+    sgst: int = 0
+    igst: int = 0
 
 
 # ------------------------------------------------------------- requests
 
 
 class RefundCreate(CamelModel):
-    invoice_id: str
+    """An amount refund against an invoice. Line refunds go through `/api/admin/refunds`."""
+
+    invoice_id: str = Field(max_length=20)
     amount: int = Field(gt=0)
-    reason: str = Field(min_length=2)
-    lines: Optional[List[dict]] = None
-    status: str = "completed"
+    reason: str = Field(min_length=2, max_length=255)
+    lines: Optional[List[dict]] = Field(default=None, max_length=100)
+    status: str = Field(default="completed", max_length=20)
+    method: str = Field(default="original", max_length=20)
+    reason_code: str = Field(default="other", max_length=30)
+    internal_note: str = Field(default="", max_length=1000)
+    idempotency_key: Optional[str] = Field(default=None, max_length=80)
 
 
 class RefundStatusUpdate(CamelModel):

@@ -47,9 +47,16 @@ def add_item(
     size: Optional[str],
     color: Optional[str],
     quantity: int = 1,
+    source: str = "",
+    commit: bool = True,
 ) -> CartItem:
     """
     Add to the cart, or increase the line that is already there.
+
+    `source` names the rail the shopper added it from ("pdp-related"), kept on
+    the add-to-cart event so recommendations can be measured. `commit=False`
+    leaves the transaction open for a caller doing more in the same one
+    (moving a saved-for-later line back, which must also delete it).
 
     The unique constraint on (customer, product, size, colour) is what makes
     this idempotent per variant: the same shirt in two sizes is two lines, the
@@ -117,7 +124,10 @@ def add_item(
     from app.services import analytics_events
 
     analytics_events.server_event(db, "add_to_cart", customer_id=customer.id, product_id=product.id,
-                                  quantity=quantity)
+                                  quantity=quantity, source=source)
+    if not commit:
+        db.flush()
+        return item
     db.commit()
     db.refresh(item)
     return item

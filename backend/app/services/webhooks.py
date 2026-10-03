@@ -53,7 +53,9 @@ _SAFE_KEYS = {
     "error_step", "created_at", "speed_processed", "speed_requested", "bank", "wallet", "attempts",
     "payments_amount_received", "payments_count_received", "close_by", "closed_at", "usage", "type",
 }
-_SAFE_NOTES = {"paymentId", "orderId", "membershipId", "giftCardId", "orderNumber", "invoiceId", "reason"}
+_SAFE_NOTES = {"paymentId", "orderId", "membershipId", "giftCardId", "orderNumber", "invoiceId", "reason",
+               # refunds (docs/refunds.md): how a refund webhook finds its row
+               "refundId", "refundNumber"}
 _ENTITIES = ("payment", "order", "refund", "payment_link", "qr_code")
 
 

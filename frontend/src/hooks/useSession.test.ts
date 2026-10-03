@@ -94,6 +94,15 @@ describe("useSession family", () => {
       expect(useToastStore.getState().toasts.some((t) => t.message === "Signed out")).toBe(true);
     });
 
+    it("signOut forgets this person's recent searches on this device", async () => {
+      useSessionStore.setState({ session: SESSION });
+      window.localStorage.setItem("dcz:recent-searches", JSON.stringify(["kurta"]));
+      api.post("/auth/logout", {});
+      const { result } = renderHook(() => useSession());
+      await act(() => result.current.signOut());
+      expect(window.localStorage.getItem("dcz:recent-searches")).toBeNull();
+    });
+
     it("updateProfile patches the local user and toasts", () => {
       useSessionStore.setState({ session: SESSION });
       api.put("/account/profile", { ...SESSION.user, firstName: "Changed", name: "Changed Menon" });

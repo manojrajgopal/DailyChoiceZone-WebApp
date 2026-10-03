@@ -13,7 +13,8 @@ describe("StatCard", () => {
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/admin/orders");
     expect(link).toHaveTextContent("Revenue");
-    expect(screen.getByText("₹2.5L")).toBeInTheDocument();
+    // formatCompactINR keeps a single trailing zero (see format.test.ts).
+    expect(screen.getByText("₹2.50L")).toBeInTheDocument();
     expect(screen.getByText("+12.5%")).toHaveClass("text-[#0a6b0a]");
     expect(screen.getByText("vs previous period")).toBeInTheDocument();
   });

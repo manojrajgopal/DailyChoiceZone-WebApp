@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.dependencies.auth import get_current_admin, get_current_customer, require_permission
+from app.dependencies.auth import get_current_admin, get_current_customer, require_access, require_permission
 from app.models import AdminUser, CreditNote, Customer, Invoice, Payment, Refund
 from app.schemas.billing import (
     CreditNoteCreate,
@@ -160,8 +160,18 @@ def list_refunds(
 def create_refund(
     payload: RefundCreate,
     db: Session = Depends(get_db),
-    admin: AdminUser = Depends(require_permission("orders")),
+    admin: AdminUser = Depends(require_access("refunds")),
 ):
+    """
+    An amount refund. Above the approval threshold, raised by an admin
+    without `refunds-large`, it is recorded `requested` to await approval
+    rather than sent (docs/refunds.md).
+    """
+    from app.services import refunds as refund_service
+
+    status = service.normalise_refund_status(payload.status)
+    threshold = refund_service.threshold_paise(db)
+    waits = bool(threshold and payload.amount > threshold and not refund_service.has_access(admin, "refunds-large"))
     refund = service.create_refund(
         db,
         invoice_id=payload.invoice_id,
@@ -169,9 +179,15 @@ def create_refund(
         reason=payload.reason,
         lines=payload.lines,
         initiated_by=admin.id,
-        status=payload.status,
+        status="requested" if waits else status,
+        method=payload.method,
+        reason_code=payload.reason_code,
+        internal_note=payload.internal_note,
+        idempotency_key=payload.idempotency_key,
+        requires_approval=waits,
     )
-    return ok(RefundOut.from_model(refund).model_dump(by_alias=True), message="Refund raised.")
+    return ok(RefundOut.from_model(refund).model_dump(by_alias=True),
+              message="Refund recorded; it needs approval before it is sent." if waits else "Refund raised.")
 
 
 @admin_router.put("/refunds/{refund_id}", summary="Move a refund along")
@@ -179,10 +195,24 @@ def update_refund(
     refund_id: str,
     payload: RefundStatusUpdate,
     db: Session = Depends(get_db),
-    admin: AdminUser = Depends(require_permission("orders")),
+    admin: AdminUser = Depends(require_access("refunds")),
 ):
-    refund = service.set_refund_status(db, refund_id, payload.status)
-    return ok(RefundOut.from_model(refund).model_dump(by_alias=True), message=f"Refund {payload.status}.")
+    from app.services import refunds as refund_service
+
+    status = service.normalise_refund_status(payload.status)
+    if status == "completed":
+        current = service.get_refund(db, refund_id)
+        if current.status == "requested":
+            # Sending a requested refund is approving it: the approval rules apply.
+            refund = refund_service.approve(db, refund_id, admin)
+            if refund.status == "failed":
+                from app.core.errors import ConflictError
+
+                raise ConflictError("The payment provider declined this refund. Please try again or contact support.",
+                                    error_code="PROVIDER_REFUSED")
+            return ok(RefundOut.from_model(refund).model_dump(by_alias=True), message=f"Refund {status}.")
+    refund = service.set_refund_status(db, refund_id, status)
+    return ok(RefundOut.from_model(refund).model_dump(by_alias=True), message=f"Refund {status}.")
 
 
 @admin_router.get("/credit-notes", summary="Every credit note")
@@ -200,7 +230,7 @@ def list_credit_notes(
 def create_credit_note(
     payload: CreditNoteCreate,
     db: Session = Depends(get_db),
-    admin: AdminUser = Depends(require_permission("orders")),
+    admin: AdminUser = Depends(require_access("refunds")),
 ):
     note = service.create_credit_note(
         db,
@@ -221,7 +251,7 @@ def update_credit_note(
     note_id: str,
     payload: CreditNoteStatusUpdate,
     db: Session = Depends(get_db),
-    admin: AdminUser = Depends(require_permission("orders")),
+    admin: AdminUser = Depends(require_access("refunds")),
 ):
     note = service.set_credit_note_status(db, note_id, payload.status)
     return ok(CreditNoteOut.model_validate(note).model_dump(by_alias=True))
@@ -261,7 +291,7 @@ def billing_overview(
     open_refunds = [
         refund
         for refund in service.list_refunds(db)
-        if refund.status not in ("completed", "rejected")
+        if refund.status not in ("completed", "rejected", "cancelled")
     ]
 
     by_method = db.execute(

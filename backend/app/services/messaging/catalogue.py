@@ -44,6 +44,8 @@ SAMPLE = {
     "message": "We've checked with the courier — it arrives tomorrow.", "action_url": "https://dailychoicezone.com",
     "product_name": "Cotton Kurta", "product_image": "", "cart_url": "https://dailychoicezone.com/cart",
     "account_url": "https://dailychoicezone.com/account", "campaign_title": "The festive edit is here",
+    # Customer sign-in (docs/authentication.md).
+    "provider_name": "Google",
 }
 
 
@@ -171,6 +173,14 @@ EVENTS: Dict[str, dict] = {
         cta="Try again", cta_var="payment_url",
         sms="{{store_name}}: Payment for order {{order_number}} didn't go through. Try again: {{payment_url}}",
         sms_default=True),
+    "payment_request": _event(
+        "Pay online", "Payments", "payment_failed", ORDER + ["payment_url"],
+        subject="Pay online for order {{order_number}}", heading="Pay for your order online",
+        body="Hello {{customer_name}}, you can pay **{{order_total}}** for order **{{order_number}}** online now "
+             "instead of in cash on delivery — on our secure payment page, by UPI, card, net banking or wallet.",
+        cta="Pay online", cta_var="payment_url",
+        sms="{{store_name}}: Pay {{order_total}} for order {{order_number}} online: {{payment_url}}",
+        sms_default=True),
     "refund_initiated": _event(
         "Refund initiated", "Payments", "refund_updates", ORDER + ["refund_amount"],
         subject="Refund of {{refund_amount}} started — {{order_number}}", heading="We've started your refund",
@@ -269,6 +279,25 @@ EVENTS: Dict[str, dict] = {
         body="Hello {{customer_name}}, your account was just signed in to. If this was you, there's nothing to do. "
              "If not, reset your password now.",
         cta="Go to your account", cta_var="account_url", default_on=False),
+    # Customer sign-in (docs/authentication.md): linked accounts and the sign-in phone.
+    "identity_linked": _event(
+        "Sign-in account connected", "Account", "account_security", COMMON + ["account_url", "provider_name"],
+        subject="{{provider_name}} is now connected to your account", heading="{{provider_name}} connected",
+        body="Hello {{customer_name}}, your {{provider_name}} account was connected, so you can now sign in with "
+             "it. If this wasn't you, disconnect it from your security settings and change your password.",
+        cta="Review your security settings", cta_var="account_url", locked=True),
+    "identity_unlinked": _event(
+        "Sign-in account disconnected", "Account", "account_security", COMMON + ["account_url", "provider_name"],
+        subject="{{provider_name}} was disconnected from your account", heading="{{provider_name}} disconnected",
+        body="Hello {{customer_name}}, your {{provider_name}} account can no longer be used to sign in. If this "
+             "wasn't you, change your password straight away.",
+        cta="Review your security settings", cta_var="account_url", locked=True),
+    "phone_verified": _event(
+        "Mobile number confirmed", "Account", "account_security", COMMON + ["account_url"],
+        subject="Your mobile number is confirmed", heading="Your mobile number is confirmed",
+        body="Hello {{customer_name}}, your mobile number is now confirmed on your account and can be used to "
+             "sign in. If this wasn't you, contact us straight away.",
+        cta="Review your security settings", cta_var="account_url", locked=True),
 
     # ---------------------------------------------------------- membership
     "membership_activated": _event(

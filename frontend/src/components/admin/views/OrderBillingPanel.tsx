@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { FileMinus, FileText, Undo2 } from "lucide-react";
+import { FileMinus, FileText } from "lucide-react";
 
 import type { CreditNote, Invoice, Payment, Refund } from "@/types";
 
@@ -10,7 +10,6 @@ import { AdminButton, AdminButtonLink, AdminCard } from "@/components/admin/ui/A
 import { BillingBreakdownRows, GrandTotalRow } from "@/components/billing/BillingBreakdownRows";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { CreateCreditNoteDialog } from "@/components/admin/views/CreateCreditNoteDialog";
-import { CreateRefundDialog } from "@/components/admin/views/CreateRefundDialog";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/utils/format";
 import { getCreditNotesForOrder } from "@/services/billing/creditNoteService";
@@ -24,7 +23,8 @@ import { getRefundsForOrder } from "@/services/billing/refundService";
  * An administrator looking at an order should not have to go somewhere else to
  * find out whether it was paid for. Everything the billing module knows about
  * this order is here — invoice, payment, refunds, credit notes — with the
- * actions that change any of it, and links through to the full records when the
+ * actions that change any of it (refunds are raised from the Refunds card beside it,
+ * which works out each item's share on the server), and links through to the full records when the
  * answer needs more than a summary.
  *
  * Reloaded wholesale after an action, for the same reason the invoice page is:
@@ -38,7 +38,6 @@ export function OrderBillingPanel({ orderId }: { orderId: string }) {
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [refundOpen, setRefundOpen] = useState(false);
   const [creditNoteOpen, setCreditNoteOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -219,15 +218,6 @@ export function OrderBillingPanel({ orderId }: { orderId: string }) {
 
           {/* -------------------------------------------------------- actions */}
           <div className="flex flex-wrap gap-2 border-t border-admin-border pt-3">
-            <AdminButton
-              size="sm"
-              variant="ghost"
-              onClick={() => setRefundOpen(true)}
-              disabled={!payment}
-            >
-              <Undo2 className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
-              Refund
-            </AdminButton>
             <AdminButton size="sm" variant="ghost" onClick={() => setCreditNoteOpen(true)}>
               <FileMinus className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
               Credit note
@@ -244,14 +234,6 @@ export function OrderBillingPanel({ orderId }: { orderId: string }) {
           </div>
         </div>
       </AdminCard>
-
-      <CreateRefundDialog
-        open={refundOpen}
-        onOpenChange={setRefundOpen}
-        invoice={invoice}
-        payment={payment}
-        onDone={load}
-      />
 
       <CreateCreditNoteDialog
         open={creditNoteOpen}

@@ -12,7 +12,8 @@ import { useSession } from "@/hooks/useSession";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format";
 import { ApiError } from "@/services/api/client";
-import { openRazorpayCheckout } from "@/services/payments/razorpayCheckout";
+import { EmbeddedPayment } from "@/components/checkout/EmbeddedPayment";
+import type { GatewayHandoff } from "@/types";
 import {
   abandonGiftCard,
   buyGiftCard,
@@ -42,6 +43,9 @@ export function GiftCardPurchaseView() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<{ name: string; email: string; amount: number } | null>(null);
+  /** A gift card waiting to be paid for, in our own payment panel. */
+  const [paying, setPaying] = useState<{ cardId: number; gateway: GatewayHandoff; name: string; email: string;
+    amount: number } | null>(null);
 
   useEffect(() => {
     getGiftCardOptions()
@@ -81,14 +85,11 @@ export function GiftCardPurchaseView() {
       });
       cardId = started.giftCard.id;
       if (started.gateway) {
-        const outcome = await openRazorpayCheckout(started.gateway, {});
-        if (outcome.status !== "completed") {
-          await abandonGiftCard(started.giftCard.id).catch(() => undefined);
-          if (outcome.status === "failed") toast.error(`${outcome.reason} No gift card was sent.`);
-          else toast.info("Payment not completed — no money has been taken.");
-          return;
-        }
-        await verifyGiftCardPayment(started.giftCard.id, outcome.response as unknown as Record<string, string>);
+        // Paid in our own panel — see `EmbeddedPayment`. The card is sent
+        // once that payment is confirmed.
+        setPaying({ cardId: started.giftCard.id, gateway: started.gateway, name: recipientName.trim(),
+          email: recipientEmail.trim(), amount: chosen });
+        return;
       }
       setSent({ name: recipientName.trim(), email: recipientEmail.trim(), amount: chosen });
       toast.success("Gift card sent!");
@@ -125,6 +126,25 @@ export function GiftCardPurchaseView() {
             <p className="mt-8 rounded-card border border-ink-200 bg-shell p-5 text-sm text-ink-600">
               Gift cards aren&rsquo;t available right now. Please check back soon.
             </p>
+          ) : paying ? (
+            <div className="mt-8 max-w-xl rounded-card border border-ink-200 bg-shell p-5 sm:p-6">
+              <EmbeddedPayment
+                heading={`Pay for a ${formatPrice(paying.amount)} gift card`}
+                handoff={paying.gateway}
+                successMessage="Gift card sent!"
+                verify={(response) => verifyGiftCardPayment(paying.cardId, { ...response })}
+                onPaid={() => {
+                  setSent({ name: paying.name, email: paying.email, amount: paying.amount });
+                  setPaying(null);
+                }}
+                onCancel={() => {
+                  const pending = paying;
+                  setPaying(null);
+                  void abandonGiftCard(pending.cardId).catch(() => undefined);
+                  toast.info("Payment not completed — no money has been taken. No gift card was sent.");
+                }}
+              />
+            </div>
           ) : sent ? (
             <div className="mt-8 rounded-card border border-sage-200 bg-sage-50 p-6" role="status">
               <CheckCircle2 className="h-6 w-6 text-sage-600" strokeWidth={1.5} aria-hidden="true" />

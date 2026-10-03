@@ -34,8 +34,10 @@ class Customer(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(BusinessId, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
-    # Never a password. bcrypt output, always.
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Never a password. bcrypt output, always. NULL for an account that signs
+    # in only with Google/Apple/Microsoft or a one-time code until it sets a
+    # password (docs/authentication.md).
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     first_name: Mapped[str] = mapped_column(String(80), nullable=False)
     last_name: Mapped[str] = mapped_column(String(80), nullable=False, default="")
@@ -50,6 +52,11 @@ class Customer(Base, TimestampMixin):
     # Set by a password reset or change. A token issued before it is refused,
     # which is how resetting a password signs out every other device.
     password_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # When the sign-in phone number (the `phone` identity) was proved with a code.
+    phone_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # "Sign out everywhere": a token without a session id (issued before
+    # sessions existed) and issued before this is refused.
+    sessions_revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     addresses: Mapped[List["Address"]] = relationship(
         back_populates="customer", cascade="all, delete-orphan", lazy="selectin"

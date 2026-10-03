@@ -551,8 +551,13 @@ class TestDeliveryScreens:
         return response.json()["data"]
 
     def test_the_settings_are_read_and_saved(self, client, db, admin_auth):
-        assert client.get("/api/admin/delivery/settings", headers=admin_auth).json()["data"] == {
-            "restrictToListed": False}
+        from app.services import serviceability
+
+        # Every setting at its default — `restrictToListed`, and the delivery
+        # estimate's dispatch rules (docs/product-discovery.md).
+        assert client.get("/api/admin/delivery/settings", headers=admin_auth).json()["data"] == \
+            serviceability.DEFAULTS
+        assert serviceability.DEFAULTS["restrictToListed"] is False
         for value in (True, False, True):
             saved = client.put("/api/admin/delivery/settings", headers=admin_auth, json={"restrictToListed": value})
             assert saved.status_code == 200 and saved.json()["data"]["restrictToListed"] is value

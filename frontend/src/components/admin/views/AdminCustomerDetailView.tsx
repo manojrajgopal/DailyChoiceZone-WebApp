@@ -13,6 +13,7 @@ import {
   ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
+import { CustomerDiscoveryCard } from "@/components/admin/views/discovery/CustomerDiscoveryCard";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import {
@@ -246,9 +247,11 @@ export function AdminCustomerDetailView() {
             <p className="text-xs text-admin-muted">
               {record.wishlistProductIds.length === 0
                 ? "Nothing saved."
-                : `${record.wishlistProductIds.length} product${record.wishlistProductIds.length === 1 ? "" : "s"} saved for later.`}
+                : `${record.wishlistProductIds.length} product${record.wishlistProductIds.length === 1 ? "" : "s"} in their wishlist.`}
             </p>
           </AdminCard>
+
+          <CustomerDiscoveryCard customerId={customerId} />
         </div>
       </div>
 

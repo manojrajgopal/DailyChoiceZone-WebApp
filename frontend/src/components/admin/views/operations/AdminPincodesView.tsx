@@ -6,6 +6,7 @@ import { Download, Pencil, Plus, RefreshCw, Trash2, Upload, X } from "lucide-rea
 import { AdminButton, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminCheckbox, AdminInput, AdminToggle } from "@/components/admin/ui/AdminForm";
 import { FilterSelect, LogFooter, LogSearch, StatusTabs, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { DeliveryEstimateSettings } from "@/components/admin/views/discovery/DeliveryEstimateSettings";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
@@ -184,6 +185,8 @@ export function AdminPincodesView() {
           onChange={(value) => void toggleRestrict(value)}
         />
       </AdminCard>
+
+      <DeliveryEstimateSettings />
 
       {imported && imported.errorCount ? (
         <AdminCard title="Import problems" description="Fix these rows and import the file again. Nothing was changed." className="mb-5" action={

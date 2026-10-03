@@ -6,10 +6,12 @@ import { useState } from "react";
 import { Heart, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 
 import type { Product, SiteConfig } from "@/types";
+import type { SizeGuide } from "@/services/discoveryService";
 
-import { PincodeChecker } from "@/components/common/PincodeChecker";
 import { CompareButton } from "@/components/compare/CompareControls";
 import { PriceAlertLink, StockAlertButton } from "@/components/products/ProductAlerts";
+import { ProductAvailability } from "@/components/products/ProductAvailability";
+import { SizeGuideButton } from "@/components/products/SizeGuideDialog";
 import { ColorPicker, QuantityStepper, SizePicker } from "@/components/common/VariantPickers";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -19,10 +21,9 @@ import { useProductColour } from "@/components/products/ProductColourScope";
 import { ShareButton } from "@/components/products/ShareButton";
 import { Rating } from "@/components/ui/Rating";
 import { useAddToCart } from "@/hooks/useCart";
-import { useHydrated } from "@/hooks/useHydrated";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
-import { deliveryEstimate, formatPrice, humanize } from "@/lib/utils/format";
+import { formatPrice, humanize } from "@/lib/utils/format";
 import { toast } from "@/store/toastStore";
 
 /**
@@ -36,9 +37,12 @@ import { toast } from "@/store/toastStore";
 export function ProductPurchasePanel({
   product: prerendered,
   config,
+  sizeGuide = null,
 }: {
   product: Product;
   config: SiteConfig;
+  /** The size guide this product shows (its own, its category's or the default), if any. */
+  sizeGuide?: SizeGuide | null;
 }) {
   const router = useRouter();
   const add = useAddToCart();
@@ -54,16 +58,6 @@ export function ProductPurchasePanel({
    */
   const product = prerendered;
 
-  /**
-   * The arrival date is computed in the browser, never at build time.
-   *
-   * Product pages are prerendered, so a date baked in at build would be wrong
-   * for every visitor after that day — and would disagree with what the client
-   * computes, which is a hydration mismatch. Until hydration completes the
-   * panel shows the delivery window instead of a specific date.
-   */
-  const hydrated = useHydrated();
-  const arrivalDate = hydrated ? deliveryEstimate(5) : null;
   const { isWishlisted, toggle } = useWishlistItem(product.id);
 
   const [size, setSize] = useState<string | null>(null);
@@ -182,12 +176,24 @@ export function ProductPurchasePanel({
         <div className="mt-6">
           <div className="mb-2.5 flex items-center justify-between">
             <p className="label-wide text-ink-700">Size</p>
-            <Link
-              href="/faq#size-guide"
-              className="text-xs text-copper-700 underline underline-offset-2 transition-colors hover:text-ink"
-            >
-              Size guide
-            </Link>
+            {sizeGuide ? (
+              <SizeGuideButton
+                guide={sizeGuide}
+                selectedSize={size}
+                onSelectSize={(next) => {
+                  setSize(next);
+                  setSizeError(false);
+                }}
+              />
+            ) : (
+              // No guide set up for this product: the store's general charts.
+              <Link
+                href="/faq#size-guide"
+                className="text-xs text-copper-700 underline underline-offset-2 transition-colors hover:text-ink"
+              >
+                Size guide
+              </Link>
+            )}
           </div>
           <SizePicker
             sizes={product.sizes}
@@ -281,13 +287,18 @@ export function ProductPurchasePanel({
                 : `Delivery ${formatPrice(config.standardDeliveryFee)}`}
             </dt>
             <dd className="mt-0.5 text-xs leading-relaxed text-ink-500">
-              {arrivalDate
-                ? `Order today for arrival by ${arrivalDate}. `
-                : "Arrives in 3–5 business days. "}
-              Free over {formatPrice(config.freeDeliveryThreshold)}.
+              {/* No date here: when it arrives depends on where it is going, checked below. */}
+              Free over {formatPrice(config.freeDeliveryThreshold)}. Enter your pincode for delivery dates,
+              cash on delivery and express options.
             </dd>
             <dd className="mt-3">
-              <PincodeChecker />
+              <ProductAvailability
+                productId={product.id}
+                size={size}
+                color={color}
+                quantity={quantity}
+                needsSize={needsSize}
+              />
             </dd>
           </div>
         </div>

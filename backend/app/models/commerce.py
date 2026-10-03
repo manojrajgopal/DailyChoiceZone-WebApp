@@ -53,10 +53,15 @@ class Coupon(Base, TimestampMixin):
     #   selected     — only the customers listed in `coupon_customers`
     #   members      — only customers with an active membership
     #   first-order  — only customers who have never placed an order
+    #   segment      — only customers in the segment `segment_id` names
     audience: Mapped[str] = mapped_column(String(20), nullable=False, default="everyone", server_default="everyone")
     # Listed on the storefront for those who may use it; off for codes handed
     # out privately (an apology, an influencer's code).
     show_in_store: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    # audience "segment": only customers who match this segment's rules when they use it.
+    segment_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("segments.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     usages: Mapped[List["CouponUsage"]] = relationship(
         back_populates="coupon", cascade="all, delete-orphan"

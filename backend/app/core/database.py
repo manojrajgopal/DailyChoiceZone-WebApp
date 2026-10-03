@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Generator
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -16,6 +17,23 @@ logger = logging.getLogger(__name__)
 
 class Base(DeclarativeBase):
     """Declarative base for every model."""
+
+
+@event.listens_for(Engine, "connect")
+def _utc_session(dbapi_connection, _record) -> None:
+    """
+    Every MySQL session runs in UTC.
+
+    The app stores naive UTC (`datetime.utcnow()`), and many columns default
+    to the server's `NOW()`. Without this, `NOW()` is the server's local time
+    (IST here), so a row made between 00:00 and 05:30 IST would carry
+    tomorrow's date against everything else's today.
+    """
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("SET time_zone = '+00:00'")
+    finally:
+        cursor.close()
 
 
 # `pool_pre_ping` costs one cheap round trip per checkout and saves the class of

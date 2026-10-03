@@ -44,6 +44,7 @@ def create_access_token(
     actor: Actor,
     role: Optional[str] = None,
     expires_minutes: Optional[int] = None,
+    sid: Optional[str] = None,
 ) -> str:
     """
     Issue a signed token.
@@ -51,6 +52,10 @@ def create_access_token(
     `actor` separates customers from administrators inside the token itself, so
     a valid customer token can never satisfy an admin dependency — the check is
     on the claim, not on which endpoint happened to issue it.
+
+    `sid` names the customer's signed-in session (`CustomerSession`). A token
+    that carries one is refused once that session is signed out or expires;
+    see `dependencies.auth`.
     """
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=expires_minutes or settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -62,6 +67,8 @@ def create_access_token(
         "iat": int(now.timestamp()),
         "exp": int(expires.timestamp()),
     }
+    if sid:
+        payload["sid"] = sid
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 

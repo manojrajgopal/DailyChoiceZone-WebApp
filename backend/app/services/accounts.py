@@ -307,6 +307,11 @@ def reset_password(db: Session, raw: str, new_password: str) -> Customer:
         customer.email_verified_at = now
     token.used_at = now
     token.revoked_reason = "used"
+    # Every signed-in device is signed out (the timestamp above retires their
+    # tokens; this ends their sessions so the sessions list says so too).
+    from app.services import sessions
+
+    sessions.revoke_all(db, customer, "password-reset")
     # Any other outstanding reset link for this account dies with this one.
     db.execute(
         update(CustomerToken)

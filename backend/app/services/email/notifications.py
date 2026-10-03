@@ -45,17 +45,53 @@ def notify_payment_failed(db: Session, order, payment) -> None:
     )
 
 
+def notify_payment_request(db: Session, order, payment, link: str, *, attempt: int = 1) -> None:
+    """
+    "Pay online for your order" — the store's own message and the store's own
+    payment page, in place of a Razorpay Payment Link.
+    """
+    esc = html_lib.escape
+    intro = (
+        f"You can pay <strong>₹{payment.amount / 100:,.2f}</strong> for order "
+        f"<strong>{esc(order.order_number)}</strong> online now, instead of in cash when it arrives — "
+        "on our secure payment page, by UPI, card, net banking or wallet."
+    )
+    notify(
+        db, "payment_failed", to=order.customer_email, customer_id=order.customer_id,
+        subject=f"Pay online for order {order.order_number}",
+        html=layout("Pay for your order online", intro, _order_rows(order), ("Pay online", link)),
+        text=f"Pay for order {order.order_number} online: {link}",
+        reference=order.order_number,
+        event="payment_request", variables={**order_variables(order), "payment_url": link},
+        extra_html=_order_rows(order), idempotency_key=f"payment:{payment.id}:request:{attempt}",
+    )
+
+
 def notify_refund(db: Session, refund, email: str) -> None:
+    """
+    "Refund of ₹X initiated" while the gateway works on it, "refund completed"
+    once it is done — each sent once per refund (the key carries the status).
+    A refund of part of an order says so. Nothing internal is ever included.
+    """
     esc = html_lib.escape
     amount = f"₹{refund.amount / 100:,.2f}"
+    from app.models import Invoice
+
+    invoice = db.get(Invoice, refund.invoice_id) if getattr(refund, "invoice_id", None) else None
+    kind = "partial refund" if invoice is not None and refund.amount < invoice.grand_total else "refund"
+    done = refund.status == "completed"
+    store_credit = getattr(refund, "method", "") == "store-credit"
+    where = ("It has been added to your store credit." if store_credit
+             else "Online payments usually reach your account within 5–7 working days.")
     intro = (
-        f"We've issued a refund of <strong>{amount}</strong> for order <strong>{esc(refund.order_number)}</strong>. "
-        "Online payments usually reach your account within 5–7 working days."
+        f"We've {'issued' if done else 'started'} a {kind} of <strong>{amount}</strong> for order "
+        f"<strong>{esc(refund.order_number)}</strong>. {where}"
     )
     notify(
         db, "refund_updates", to=email, customer_id=refund.customer_id,
-        subject=f"Refund of {amount} — {refund.order_number}", html=layout("Your refund is on its way", intro),
-        text=f"We've issued a refund of {amount} for order {refund.order_number}.",
+        subject=f"{kind.capitalize()} of {amount} {'' if done else 'initiated '}— {refund.order_number}",
+        html=layout("Your refund is on its way" if done else "We've started your refund", intro),
+        text=f"We've {'issued' if done else 'started'} a {kind} of {amount} for order {refund.order_number}.",
         reference=refund.refund_number or "",
         inbox={"href": f"/account/order?number={refund.order_number}"},
         event="refund_completed" if refund.status == "completed" else "refund_initiated",

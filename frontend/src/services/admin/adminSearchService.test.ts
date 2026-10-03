@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { api } from "@/test/api";
+import { api, fail } from "@/test/api";
 import { setUpAdmin } from "@/test/sliceB-admin";
 
 import { EMPTY_SEARCH_RESULTS, listNotifications, markAllNotificationsRead, markNotificationRead, search } from "./adminSearchService";
@@ -29,15 +29,27 @@ describe("search", () => {
     expect(api.calls).toHaveLength(0);
   });
 
-  it("matches a product by name, sku, brand, category or subcategory", async () => {
-    const result = await search("kurta");
+  it("asks the server for matching products, one page of perGroup, instead of loading the catalogue", async () => {
+    const result = await search(" kurta ");
     expect(result.products).toHaveLength(1);
-    expect(result.products[0]).toMatchObject({ kind: "product", id: "P1", title: "Cotton Kurta", href: "/admin/products/edit?id=P1" });
+    expect(result.products[0]).toMatchObject({ kind: "product", id: "P1", title: "Cotton Kurta", subtitle: "SKU1 · Daily Choice", href: "/admin/products/edit?id=P1" });
+    const requests = api.requests("GET", "/admin/products");
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.query.get("search")).toBe("kurta");
+    expect(requests[0]!.query.get("pageSize")).toBe("5");
   });
 
-  it("requires every word to match (an AND search)", async () => {
-    const result = await search("cotton skirt");
-    expect(result.products).toHaveLength(0);
+  it("shows the server's product hits as they come, capped at perGroup", async () => {
+    api.get(/^\/admin\/products/, [PRODUCT, { ...PRODUCT, id: "P2" }, { ...PRODUCT, id: "P3" }]);
+    const result = await search("anything", 2);
+    expect(result.products.map((hit) => hit.id)).toEqual(["P1", "P2"]);
+    expect(api.last("GET", "/admin/products")!.query.get("pageSize")).toBe("2");
+  });
+
+  it("requires every word to match orders and customers (an AND search)", async () => {
+    const result = await search("asha skirt");
+    expect(result.customers).toHaveLength(0);
+    expect(result.orders).toHaveLength(0);
   });
 
   it("matches orders, customers and shapes billing hits straight through", async () => {
@@ -60,9 +72,17 @@ describe("search", () => {
     expect(result.customers).toHaveLength(2);
   });
 
+  it("still searches everything else when the role can't list customers (403)", async () => {
+    api.get("/admin/customers", fail(403, "Forbidden", "FORBIDDEN"));
+    const result = await search("asha");
+    expect(result.customers).toEqual([]);
+    expect(result.orders[0]).toMatchObject({ kind: "order", title: "DCZ100" });
+    expect(result.invoices).toHaveLength(1);
+  });
+
   it("is case-insensitive", async () => {
-    const result = await search("KURTA");
-    expect(result.products).toHaveLength(1);
+    const result = await search("ASHA");
+    expect(result.customers).toHaveLength(1);
   });
 });
 

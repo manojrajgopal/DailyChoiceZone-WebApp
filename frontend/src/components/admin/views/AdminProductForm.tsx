@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import type { Category } from "@/types";
@@ -24,6 +24,10 @@ import {
 } from "@/components/admin/ui/AdminForm";
 import { SettingsLayout, useSettingsSection, type SettingsSection } from "@/components/admin/ui/SettingsLayout";
 import { ProductSuppliersPanel } from "@/components/admin/views/suppliers/ProductSuppliersPanel";
+import { ProductDeliveryRulesPanel } from "@/components/admin/views/discovery/ProductDeliveryRulesPanel";
+import { ProductRelationshipsPanel } from "@/components/admin/views/discovery/ProductRelationshipsPanel";
+import { ProductSizeGuidePanel } from "@/components/admin/views/discovery/ProductSizeGuidePanel";
+import { ProductAttributesPanel } from "@/components/admin/views/search/ProductAttributesPanel";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { slugify } from "@/lib/utils/format";
 import { currentActorId } from "@/services/admin/adminAuthService";
@@ -76,14 +80,18 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
   const [draft, setDraft] = useState<ProductDraft>(() => emptyProductDraft());
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Suppliers exist only for a saved product, so that section is on edit only.
-  const [section, setSection] = useSettingsSection(mode === "edit" ? [...SECTION_ORDER, "suppliers"] : SECTION_ORDER);
+  // Suppliers, relationships, the size guide and delivery rules hang off a
+  // saved product, so those sections are on edit only.
+  const [section, setSection] = useSettingsSection(
+    mode === "edit" ? [...SECTION_ORDER, "attributes", "related", "size-guide", "delivery", "suppliers"] : SECTION_ORDER,
+  );
   const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(mode === "create");
 
   // Seed once, when the product arrives. Guarded so a later reload cannot
-  // overwrite edits the admin has already typed.
-  useEffect(() => {
-    if (mode !== "edit" || seeded || !existing.data) return;
+  // overwrite edits the admin has already typed. Done while rendering (React's
+  // "adjust state when a prop changes" pattern) rather than in an effect.
+  if (mode === "edit" && !seeded && existing.data) {
     // `discount` and the audit fields are derived on save, so the form never
     // holds them — picking explicitly avoids four unused discards.
     const product = existing.data;
@@ -106,7 +114,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
       taxRatePercent: product.taxRatePercent, seo: product.seo,
     });
     setSeeded(true);
-  }, [mode, seeded, existing.data]);
+  }
 
   const categories = categoriesResource.data ?? [];
   const selectedCategory = categories.find((entry) => entry.slug === draft.category);
@@ -586,7 +594,18 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
       ),
     },
     ...(mode === "edit" && productId
-      ? [{ id: "suppliers", label: "Suppliers", group: "Purchasing", content: <ProductSuppliersPanel productId={productId} /> }]
+      ? [
+          // Attribute values hang off a saved product too, and save on their own button.
+          { id: "attributes", label: "Attributes", group: "Visibility & search",
+            content: <ProductAttributesPanel productId={productId} /> },
+          { id: "related", label: "Related products", group: "Discovery",
+            content: <ProductRelationshipsPanel productId={productId} /> },
+          { id: "size-guide", label: "Size guide", group: "Discovery",
+            content: <ProductSizeGuidePanel productId={productId} /> },
+          { id: "delivery", label: "Delivery rules", group: "Discovery",
+            content: <ProductDeliveryRulesPanel productId={productId} /> },
+          { id: "suppliers", label: "Suppliers", group: "Purchasing", content: <ProductSuppliersPanel productId={productId} /> },
+        ]
       : []),
   ];
 

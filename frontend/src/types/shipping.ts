@@ -214,6 +214,8 @@ export interface ShipmentSummary {
   expectedDeliveryAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** The store's own label (see types/packing `LabelStatus`). */
+  labelStatus?: "not-generated" | "generating" | "generated" | "failed" | "regenerated" | "cancelled";
 }
 
 export interface ShipmentList {

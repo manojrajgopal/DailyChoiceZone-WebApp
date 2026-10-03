@@ -19,6 +19,8 @@ interface RecordedAttempt {
 interface RecordedInstance {
   options: Record<string, unknown>;
   lastRequest: Record<string, unknown> | null;
+  /** A copy taken at the moment of the call. */
+  sent: Record<string, unknown> | null;
   lastAppOption: { app: string } | undefined;
   handlers: Record<string, (event: never) => void>;
   attempt: RecordedAttempt;
@@ -30,13 +32,14 @@ class FakeRazorpayCustom {
   options: Record<string, unknown>;
   constructor(options: Record<string, unknown>) {
     this.options = options;
-    lastInstance = { options, lastRequest: null, lastAppOption: undefined, handlers: {}, attempt: { handlers: {} } };
+    lastInstance = { options, lastRequest: null, sent: null, lastAppOption: undefined, handlers: {}, attempt: { handlers: {} } };
   }
   on(event: string, handler: (event: never) => void) {
     lastInstance!.handlers[event] = handler;
   }
   createPayment(request: Record<string, unknown>, appOption?: { app: string }) {
     lastInstance!.lastRequest = request;
+    lastInstance!.sent = { ...request };
     lastInstance!.lastAppOption = appOption;
     return {
       on(event: string, handler: (e: never) => void) {
@@ -93,8 +96,8 @@ describe("supportsUpiIntent / isAndroid", () => {
 });
 
 describe("CARD_NOTE / UPI_APPS", () => {
-  it("explains why cards are not handled here", () => {
-    expect(CARD_NOTE).toMatch(/never sees or stores/);
+  it("tells the shopper where card details go", () => {
+    expect(CARD_NOTE).toMatch(/never store them/);
   });
 
   it("lists the known UPI apps by Razorpay's package codes", () => {
@@ -105,8 +108,7 @@ describe("CARD_NOTE / UPI_APPS", () => {
 describe("startCustomPayment", () => {
   // This failure-path test must run before any test lets the SDK load
   // successfully: once it has, the module caches the constructor and every
-  // later call skips script loading — see the equivalent note in
-  // razorpayCheckout.test.ts.
+  // later call skips script loading.
   it("rejects when the script fails to load, and lets a later attempt retry", async () => {
     const outcome = startCustomPayment(HANDOFF, { method: "upi", flow: "qr" }, vi.fn());
     const script = document.getElementById(SCRIPT_ID)!;
@@ -171,6 +173,22 @@ describe("startCustomPayment", () => {
 
     lastInstance!.attempt.handlers["payment.error"]!({ error: { description: "Bank timed out" } } as never);
     expect(events.at(-1)).toEqual({ type: "error", reason: "Bank timed out" });
+  });
+
+  it("sends a card in Razorpay's field names, then keeps none of it", async () => {
+    const events: CustomPaymentEvent[] = [];
+    const card = { number: "4111111111111111", name: "Asha Rao", expiryMonth: "12", expiryYear: "30", cvv: "123" };
+    const started = startCustomPayment(HANDOFF, { method: "card", card }, (event) => events.push(event));
+    await loadWithFakeSdk();
+    await started;
+    // What reached createPayment, recorded at the moment of the call.
+    expect(lastInstance!.sent).toMatchObject({
+      method: "card", order_id: "order_abc", "card[number]": "4111111111111111", "card[name]": "Asha Rao",
+      "card[expiry_month]": "12", "card[expiry_year]": "30", "card[cvv]": "123",
+    });
+    expect(events[0]).toMatchObject({ type: "waiting", message: expect.stringMatching(/bank may ask/) });
+    // The request object is emptied of card fields straight after the call.
+    expect(Object.keys(lastInstance!.lastRequest!).some((key) => key.startsWith("card["))).toBe(false);
   });
 
   it("reports a wallet payment's waiting message", async () => {

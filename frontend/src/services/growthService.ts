@@ -168,7 +168,19 @@ function visitorId(): string {
  * Tell the server about a visit, a product viewed or checkout opened. Fire
  * and forget: analytics must never slow down or break the page.
  */
-export function trackEvent(event: "visit" | "product_view" | "checkout_start", extra: { productId?: string; utmSource?: string } = {}): void {
+export type TrackedEvent =
+  | "visit"
+  | "product_view"
+  | "checkout_start"
+  // Product discovery: a recommendation rail seen or clicked, a recently viewed product reopened.
+  | "recommendation_impression"
+  | "recommendation_click"
+  | "recently_viewed_click";
+
+export function trackEvent(
+  event: TrackedEvent,
+  extra: { productId?: string; utmSource?: string; placement?: string } = {},
+): void {
   if (typeof window === "undefined") return;
   const id = visitorId();
   if (!id) return;
@@ -176,5 +188,6 @@ export function trackEvent(event: "visit" | "product_view" | "checkout_start", e
   void apiPost("/analytics/events", {
     event, visitorId: id, productId: extra.productId, referrer: document.referrer.slice(0, 500),
     utmSource: (extra.utmSource ?? "").slice(0, 60),
+    ...(extra.placement ? { placement: extra.placement.slice(0, 60) } : {}),
   }, signedIn ? AUTH : {}).catch(() => undefined);
 }

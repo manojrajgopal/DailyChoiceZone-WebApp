@@ -143,6 +143,8 @@ export interface Audience {
   categoryIds?: string[];
   membershipPlanIds?: string[];
   abandonedCart?: boolean;
+  /** A saved customer segment; the filters above still apply on top (docs/customer-segmentation.md §6). */
+  segmentId?: number | null;
 }
 
 export interface CampaignContent {
@@ -204,6 +206,8 @@ export interface CampaignOptions {
   plans: { id: string; name: string }[];
   categories: { id: string; name: string }[];
   openTracking: boolean;
+  /** Active saved segments a campaign can target. */
+  savedSegments?: { id: number; name: string; memberCount: number; lastCalculatedAt: string | null }[];
 }
 
 export interface Estimate {

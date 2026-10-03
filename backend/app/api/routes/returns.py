@@ -49,6 +49,9 @@ class ReturnRequestIn(CamelModel):
 class ReturnStatusIn(CamelModel):
     status: str = Field(min_length=1, max_length=24)
     note: str = Field(default="", max_length=500)
+    # Partial refunds (docs/refunds.md): how a return's refund goes back —
+    # `original` or `store-credit`. Omitted: the refund settings' default.
+    refund_method: Optional[str] = Field(default=None, max_length=20)
 
 
 def serialise(request: ReturnRequest, *, for_admin: bool = False) -> dict:
@@ -180,5 +183,13 @@ def move_return(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_permission("orders")),
 ):
-    request = service.update_status(db, request_id, payload.status, note=payload.note, actor=admin.id)
+    if payload.status == "refunded":
+        # Marking a return refunded sends money: the refunds permission, not just orders.
+        from app.core.errors import AuthorizationError
+        from app.services import refunds as refund_service
+
+        if not refund_service.has_access(admin, "refunds"):
+            raise AuthorizationError("Your role does not include 'refunds'.", error_code="PERMISSION_DENIED")
+    request = service.update_status(db, request_id, payload.status, note=payload.note, actor=admin.id,
+                                    refund_method=payload.refund_method)
     return ok(serialise(request, for_admin=True), message="Request updated.")

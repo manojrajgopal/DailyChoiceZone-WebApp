@@ -27,7 +27,7 @@ export function AccountWishlistView() {
   return (
     <AccountShell
       title="Wishlist"
-      description="The pieces you have saved for later."
+      description="The pieces you love and may come back for."
       breadcrumb={[{ label: "Wishlist" }]}
     >
       {isLoading && shown.length === 0 ? (

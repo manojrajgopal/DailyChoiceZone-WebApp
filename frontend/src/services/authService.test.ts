@@ -31,7 +31,7 @@ const CUSTOMER = {
 
 describe("signIn", () => {
   it("POSTs credentials and stores the returned token", async () => {
-    api.post("/auth/login", (req) => ({
+    api.post("/auth/login", () => ({
       token: { accessToken: "tok-1", tokenType: "Bearer", expiresIn: 3600 },
       customer: CUSTOMER,
     }));
@@ -47,6 +47,8 @@ describe("signIn", () => {
           phone: "9876543210",
           memberSince: "2026-01-01T00:00:00Z",
           emailVerified: true,
+          // Not in the API's answer: a phone is only verified when the server says so.
+          phoneVerified: false,
         },
         token: "tok-1",
       },

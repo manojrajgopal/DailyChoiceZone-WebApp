@@ -49,7 +49,30 @@ export interface DataTableProps<T> {
   emptyDescription?: string;
   /** Default sort on first render. */
   initialSort?: { columnId: string; direction: "asc" | "desc" };
+  /**
+   * Server mode, sorting: pass the current sort and a handler, and the table
+   * shows the arrows and reports clicks but leaves `rows` in the order given.
+   * A column is still sortable by having a `sortValue`.
+   */
+  sort?: DataTableSort | null;
+  onSortChange?: (sort: DataTableSort) => void;
+  /**
+   * Server mode, paging: `rows` is already the current page, and the footer
+   * shows the server's totals and asks for another page through `onPageChange`.
+   */
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  };
   className?: string;
+}
+
+export interface DataTableSort {
+  columnId: string;
+  direction: "asc" | "desc";
 }
 
 const HIDE_BELOW: Record<NonNullable<Column<unknown>["hideBelow"]>, string> = {
@@ -87,10 +110,16 @@ export function DataTable<T>({
   emptyTitle = "Nothing to show",
   emptyDescription = "Try adjusting the filters above.",
   initialSort,
+  sort: controlledSort,
+  onSortChange,
+  pagination,
   className,
 }: DataTableProps<T>) {
-  const [sort, setSort] = useState(initialSort ?? null);
-  const [page, setPage] = useState(1);
+  const [localSort, setLocalSort] = useState(initialSort ?? null);
+  const [localPage, setPage] = useState(1);
+  const serverSort = onSortChange !== undefined;
+  const sort = serverSort ? (controlledSort ?? null) : localSort;
+  const page = pagination ? pagination.page : localPage;
   const [selected, setSelected] = useState<string[]>([]);
 
   // A filter change upstream shortens the list; staying on page 6 of the old
@@ -104,7 +133,8 @@ export function DataTable<T>({
   }, [selected, onSelectionChange]);
 
   const sorted = useMemo(() => {
-    if (!sort) return rows;
+    // The server already ordered the rows.
+    if (serverSort || !sort) return rows;
     const column = columns.find((entry) => entry.id === sort.columnId);
     if (!column?.sortValue) return rows;
 
@@ -116,11 +146,18 @@ export function DataTable<T>({
       if (typeof av === "number" && typeof bv === "number") return (av - bv) * direction;
       return String(av).localeCompare(String(bv)) * direction;
     });
-  }, [rows, sort, columns]);
+  }, [rows, sort, columns, serverSort]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const effectivePageSize = pagination ? pagination.pageSize : pageSize;
+  const totalRows = pagination ? pagination.total : sorted.length;
+  const totalPages = pagination
+    ? Math.max(1, pagination.totalPages)
+    : Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const visible = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const visible = pagination
+    ? sorted
+    : sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const onPageChange = pagination ? pagination.onPageChange : setPage;
 
   const visibleIds = visible.map(getRowId);
   const allVisibleSelected =
@@ -128,11 +165,12 @@ export function DataTable<T>({
 
   const toggleSort = (column: Column<T>) => {
     if (!column.sortValue) return;
-    setSort((current) =>
+    const next = (current: DataTableSort | null): DataTableSort =>
       current?.columnId === column.id
         ? { columnId: column.id, direction: current.direction === "asc" ? "desc" : "asc" }
-        : { columnId: column.id, direction: "asc" },
-    );
+        : { columnId: column.id, direction: "asc" };
+    if (serverSort) onSortChange(next(sort));
+    else setLocalSort(next);
   };
 
   const toggleRow = (id: string) => {
@@ -314,10 +352,10 @@ export function DataTable<T>({
       {!isLoading && sorted.length > 0 ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-admin-muted tabular-nums">
-            Showing {(safePage - 1) * pageSize + 1}–
-            {Math.min(safePage * pageSize, sorted.length)} of {sorted.length}
+            Showing {(safePage - 1) * effectivePageSize + 1}–
+            {Math.min(safePage * effectivePageSize, totalRows)} of {totalRows}
           </p>
-          <AdminPagination page={safePage} totalPages={totalPages} onPageChange={setPage} />
+          <AdminPagination page={safePage} totalPages={totalPages} onPageChange={onPageChange} />
         </div>
       ) : null}
     </div>

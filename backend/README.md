@@ -290,11 +290,14 @@ total changes nothing — there is a test called exactly that.
 signature and handling a webhook are secret-key operations and all of them live
 in `app/services/payments/`. The frontend never names a gateway.
 
-**No card data is stored anywhere.** The only payment detail kept is a masked
-`instrument_hint` of the kind a gateway returns *after* processing. No card
-number, expiry, CVV, UPI PIN or bank credential is collected, stored or
-transmitted, and none may be added — real card entry belongs in the provider's
-own hosted fields.
+**No card data is stored anywhere, and none reaches this server.** The only
+payment detail kept is a masked `instrument_hint` of the kind a gateway returns
+*after* processing. Card details are typed into the storefront's own form and
+sent from the browser straight to Razorpay (Custom Checkout) — never to this
+API, never into storage, logs or analytics. That puts the storefront in
+PCI-DSS SAQ-D scope and needs Razorpay to enable card payments through Custom
+Checkout on the account: see `docs/payments-in-our-ui.md`. No UPI PIN or bank
+credential is ever collected.
 
 **Errors say what went wrong, not how.** A driver message or a stack trace
 describes your schema to whoever asked for it. Database errors are logged in
@@ -648,6 +651,30 @@ Reorder, multi-channel notifications (email, SMS, WhatsApp, in-app) with retries
 ## Shipping, couriers, suppliers and purchase orders
 
 Shipment tracking (customer timeline and admin management), the provider-agnostic courier layer (Shiprocket and Manual), courier webhooks, supplier management, supplier-product links, purchase orders and goods receiving are documented in [docs/shipping-and-suppliers.md](../docs/shipping-and-suppliers.md): the data model, every endpoint, the shipment and PO lifecycles, courier setup, webhooks and tests.
+
+## Product discovery
+
+Recently viewed, save for later, related products, size guides and delivery-by-pincode availability: [docs/product-discovery.md](../docs/product-discovery.md).
+
+## Packing and shipping labels
+
+The packing queue and workspace (pick, problems, packages, checks, packing slip, history) and the store's own label PDFs (single, bulk, versions with reasons): [docs/packing-and-labels.md](../docs/packing-and-labels.md).
+
+## Partial refunds
+
+Item, quantity and delivery refunds worked out on the server in integer paise, approval above a threshold, retries, idempotent creation and the customer's refund history: [docs/refunds.md](../docs/refunds.md).
+
+## Customer segmentation
+
+Rule-based and manual segments, member metrics, and their use in coupons and campaigns: [docs/customer-segmentation.md](../docs/customer-segmentation.md).
+
+## Search and filters
+
+Relevance, typo tolerance, synonyms, suggestions, disjunctive facets, dynamic attributes and search analytics: [docs/search-and-filters.md](../docs/search-and-filters.md).
+
+## Sign-in methods
+
+Email and password, one-time codes by text or email, Google / Apple / Microsoft, phone confirmation by code, linked accounts and device sessions: [docs/authentication.md](../docs/authentication.md). Set `TRUSTED_PROXIES` to the load balancer's address in production: `X-Forwarded-For` is believed only from those, and the sign-in rate limits key on the caller's address.
 
 ## Configuration
 

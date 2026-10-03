@@ -96,7 +96,21 @@ export type SortOption =
   | "price-desc"
   | "rating"
   | "popular"
-  | "discount";
+  | "discount"
+  /* Search & filters: `relevance` is the default once there is a search term. */
+  | "relevance"
+  | "oldest"
+  | "best-selling"
+  | "availability";
+
+/** `availability` filter values (`?availability=`). */
+export type AvailabilityFilter = "in-stock" | "out-of-stock";
+
+/** A number attribute's range filter (`attr.<code>.min` / `attr.<code>.max`). */
+export interface AttributeRange {
+  min?: number;
+  max?: number;
+}
 
 /**
  * Every filter a listing page can apply.
@@ -118,6 +132,15 @@ export interface ProductFilters {
   minDiscount?: number;
   /** When true, hide out-of-stock products. */
   inStockOnly?: boolean;
+  /** Only products in stock, or only those out of stock. */
+  availability?: AvailabilityFilter;
+  /**
+   * Dynamic attribute filters, by attribute code: option values for select /
+   * multi attributes, `"true"` / `"false"` for boolean ones (`attr.<code>=a,b`).
+   */
+  attributes?: Record<string, string[]>;
+  /** Number attribute ranges, by attribute code. */
+  attributeRanges?: Record<string, AttributeRange>;
   /** Free-text search term. */
   query?: string;
   /** Narrow to one collection, by slug or id. */
@@ -157,6 +180,17 @@ export interface Paginated<T> {
   page: number;
   pageSize: number;
   totalPages: number;
+  /** Set on a product listing that carried a search term. */
+  search?: SearchMeta;
+}
+
+/** What the listing says about a search: the term, a typo correction, the log id. */
+export interface SearchMeta {
+  term: string;
+  /** The corrected term when the original found nothing and this did. */
+  correctedTerm: string | null;
+  /** Set on page 1 of a search; what result clicks are recorded against. */
+  searchId: number | null;
 }
 
 /** One selectable value in a filter panel, with its result count. */
@@ -164,6 +198,30 @@ export interface FacetOption {
   value: string;
   label: string;
   count: number;
+  /** Subcategories: the category slug they belong to. */
+  parent?: string | null;
+  /** Colours: the swatch colour, when known. */
+  hex?: string | null;
+}
+
+/** A preset price band; `max` is null for the open-ended top band. */
+export interface PriceBucket {
+  min: number;
+  max: number | null;
+  label: string;
+  count: number;
+}
+
+export type AttributeType = "select" | "multi" | "number" | "boolean";
+
+/** One dynamic attribute's filter options (or range, for a number attribute). */
+export interface AttributeFacet {
+  code: string;
+  label: string;
+  type: AttributeType;
+  unit: string;
+  options: FacetOption[];
+  range: { min: number; max: number } | null;
 }
 
 /** The option lists a filter panel renders, derived from the catalogue. */
@@ -174,4 +232,41 @@ export interface ProductFacets {
   sizes: FacetOption[];
   colors: FacetOption[];
   priceRange: { min: number; max: number };
+  /*
+   * Search & filters. Optional so a facet set computed locally (see
+   * `buildFacets`) is still valid; the API always sends them.
+   */
+  priceBuckets?: PriceBucket[];
+  ratings?: FacetOption[];
+  discounts?: FacetOption[];
+  availability?: { inStock: number; outOfStock: number };
+  attributes?: AttributeFacet[];
+}
+
+/* ------------------------------------------------------------- suggestions */
+
+/** One product in the search-as-you-type dropdown (a light payload, not a `Product`). */
+export interface SuggestedProduct {
+  id: string;
+  slug: string;
+  name: string;
+  brand: string;
+  /** The first image's URL, or "" when the product has none. */
+  image: string;
+  /** Rupees, a live flash sale included — as the product card shows it. */
+  price: number;
+  originalPrice: number;
+}
+
+/** `GET /api/search/suggest`. */
+export interface SearchSuggestions {
+  /** The term as the server normalised it. */
+  query: string;
+  /** Set when nothing matched the typed term and these suggestions are for the correction. */
+  correctedTerm: string | null;
+  products: SuggestedProduct[];
+  categories: { slug: string; name: string }[];
+  brands: { value: string; label: string }[];
+  /** The store's popular searches (always filled, even for a blank term). */
+  popular: string[];
 }

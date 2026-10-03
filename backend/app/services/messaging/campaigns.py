@@ -132,6 +132,20 @@ def _number(value, label: str, *, whole: bool = True) -> Optional[float]:
     return int(number) if whole else number
 
 
+def _segment_id(value) -> Optional[int]:
+    if value in (None, "", 0):
+        return None
+    if isinstance(value, bool):
+        raise ValidationError("Choose a segment from the list.", error_code="INVALID_AUDIENCE")
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        raise ValidationError("Choose a segment from the list.", error_code="INVALID_AUDIENCE") from None
+    if number < 1 or str(number) != str(value).strip():
+        raise ValidationError("Choose a segment from the list.", error_code="INVALID_AUDIENCE")
+    return number
+
+
 def clean_audience(raw: Optional[dict]) -> dict:
     raw = raw or {}
     segment = raw.get("segment") or "all"
@@ -151,6 +165,8 @@ def clean_audience(raw: Optional[dict]) -> dict:
         "categoryIds": [str(c)[:20] for c in (raw.get("categoryIds") or [])][:50],
         "membershipPlanIds": [str(m)[:20] for m in (raw.get("membershipPlanIds") or [])][:20],
         "abandonedCart": bool(raw.get("abandonedCart")),
+        # A saved customer segment (docs/customer-segmentation.md): its members, intersected with the rest.
+        "segmentId": _segment_id(raw.get("segmentId")),
     }
     _date(audience["orderedFrom"], "Ordered from")
     _date(audience["orderedTo"], "Ordered to")
@@ -217,6 +233,10 @@ def audience_ids(db: Session, audience: dict) -> List[str]:
     if audience.get("abandonedCart"):
         query = query.where(exists().where(CartRecovery.customer_id == Customer.id,
                                            CartRecovery.status == "abandoned"))
+    if audience.get("segmentId"):
+        from app.services.segments import service as segments
+
+        query = query.where(Customer.id.in_(segments.member_ids_query(db, audience["segmentId"])))
     return list(db.execute(query.order_by(Customer.id).limit(MAX_AUDIENCE)).scalars())
 
 

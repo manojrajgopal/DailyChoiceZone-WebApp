@@ -1,25 +1,25 @@
 /**
  * Razorpay Custom Checkout.
  *
- * The difference from `razorpayCheckout.ts` — which this replaces on the
- * payment page — is whose interface the shopper is looking at. Standard
- * Checkout renders Razorpay's modal in an iframe: their layout, their
- * branding, their "Test Mode" ribbon. Custom Checkout renders **nothing**. It
- * is a script that exposes `createPayment`, and every pixel is ours.
+ * The only way this store talks to Razorpay from the browser. Standard
+ * Checkout (Razorpay's modal: their layout, their branding) is not used
+ * anywhere. Custom Checkout renders **nothing**: it is a script that exposes
+ * `createPayment`, and every pixel the shopper sees is ours.
  *
- * ## What that does and does not change about safety
+ * ## Safety
  *
- * For UPI, net banking and wallets it changes nothing at all. The only things
- * that pass through this page are a bank code, a wallet name or a UPI address
- * — none of them a credential. The shopper authenticates in their own bank's
- * page or their own UPI app, exactly as before.
+ * For UPI, net banking and wallets nothing sensitive passes through this page
+ * — a bank code, a wallet name — and the shopper authenticates in their own
+ * bank's page or UPI app.
  *
- * **Cards are different and are deliberately not handled here.** Sending a
- * card number through `createPayment` would put PANs and CVVs in this
- * application's own JavaScript, which moves the whole site from PCI-DSS SAQ-A
- * to SAQ-D, and Razorpay gates that behind a PCI certification on the account.
- * `openCardPayment` in `razorpayCheckout.ts` stays the card path for that
- * reason, and `CARD_NOTE` below is what the UI says about it.
+ * **Cards are entered in our own form** (the store chose this; see
+ * docs/payments-in-our-ui.md). The card number, expiry and CVV go from the
+ * form's state straight into `createPayment`, over TLS to Razorpay — never to
+ * our server, never into storage, logs or analytics. That puts this site in
+ * PCI-DSS SAQ-D scope, and Razorpay accepts card payments this way only once
+ * it has enabled card payments through Custom Checkout on the account. The
+ * bank's own 3-D Secure page (its OTP) still opens: that is the bank's
+ * authentication, which no merchant can replace.
  *
  * ## The shapes `createPayment` takes
  *
@@ -28,17 +28,19 @@
  *     method: "upi",        upi: { flow: "collect", vpa }  → request to their app
  *     method: "netbanking", bank: "HDFC"                   → the bank's page
  *     method: "wallet",     wallet: "mobikwik"             → the wallet's page
+ *     method: "card",       card[number], card[expiry_month]… → the bank's 3-D Secure page
  */
 
 import type { GatewayHandoff } from "@/types";
+import type { CardDetails } from "@/lib/payments/card";
 
 const SCRIPT_URL = "https://checkout.razorpay.com/v1/razorpay.js";
 const SCRIPT_ID = "razorpay-custom-checkout";
 
-/** Why cards do not use this file. Shown in the UI beside the card option. */
+/** What the card form says about where the details go. */
 export const CARD_NOTE =
-  "Card details are entered on a secure field provided by our payment " +
-  "processor, so this site never sees or stores them.";
+  "Your card details go straight to our payment processor over an encrypted connection. " +
+  "We never store them, and they never reach our servers.";
 
 export interface UpiIntentApp {
   /** The Android package, which is what the intent is addressed to. */
@@ -76,7 +78,9 @@ export type PaymentSelection =
   | { method: "upi"; flow: "qr" }
   | { method: "upi"; flow: "collect"; vpa: string }
   | { method: "netbanking"; bank: string }
-  | { method: "wallet"; wallet: string };
+  | { method: "wallet"; wallet: string }
+  /** Typed into our form; used for this one request and not kept. */
+  | { method: "card"; card: CardDetails };
 
 export interface RazorpaySuccess {
   razorpayPaymentId: string;
@@ -260,6 +264,16 @@ export async function startCustomPayment(
     emit({ type: "waiting", message: "Taking you to your wallet to approve…" });
   }
 
+  if (selection.method === "card") {
+    // Razorpay's documented field names for Custom Checkout cards.
+    request["card[number]"] = selection.card.number;
+    request["card[name]"] = selection.card.name;
+    request["card[expiry_month]"] = selection.card.expiryMonth;
+    request["card[expiry_year]"] = selection.card.expiryYear;
+    request["card[cvv]"] = selection.card.cvv;
+    emit({ type: "waiting", message: "Your bank may ask you to confirm with a one-time password…" });
+  }
+
   const launch = () => {
     try {
       const attempt = intentApp
@@ -267,6 +281,7 @@ export async function startCustomPayment(
         : razorpay.createPayment!(request);
       wire(attempt);
     } catch (error) {
+      // Never echo the request (it may hold card details) — only the reason.
       emit({
         type: "error",
         reason:
@@ -290,6 +305,9 @@ export async function startCustomPayment(
   } else {
     launch();
   }
+
+  // Card details are needed only for the call just made; don't keep them.
+  for (const key of Object.keys(request)) if (key.startsWith("card[")) delete request[key];
 
   return () => {
     abandoned = true;

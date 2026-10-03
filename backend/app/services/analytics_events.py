@@ -30,9 +30,19 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import AnalyticsEvent, Product
 
-CLIENT_EVENTS = {"visit", "product_view", "checkout_start"}
-SERVER_EVENTS = {"add_to_cart"}
-DEDUPE = {"visit": timedelta(hours=24), "product_view": timedelta(minutes=30), "checkout_start": timedelta(minutes=30)}
+CLIENT_EVENTS = {"visit", "product_view", "checkout_start",
+                 # Product discovery (docs/product-discovery.md): a recommendation
+                 # rail shown or clicked, and a recently-viewed product reopened.
+                 # `placement` says which rail ("pdp-related", "home-recommended").
+                 "recommendation_impression", "recommendation_click", "recently_viewed_click"}
+SERVER_EVENTS = {"add_to_cart", "recently_viewed_remove", "recently_viewed_clear",
+                 "saved_for_later", "saved_moved_to_cart", "recommendation_purchase"}
+DEDUPE = {"visit": timedelta(hours=24), "product_view": timedelta(minutes=30), "checkout_start": timedelta(minutes=30),
+          "recommendation_impression": timedelta(minutes=30), "recommendation_click": timedelta(minutes=5),
+          "recently_viewed_click": timedelta(minutes=5)}
+# Events about one product, which must name a published one.
+PRODUCT_EVENTS = {"product_view", "recommendation_impression", "recommendation_click", "recently_viewed_click"}
+_PLACEMENT = re.compile(r"[^a-z0-9:_-]")
 _BOT = re.compile(r"bot|crawl|spider|slurp|headless|lighthouse|preview|monitor|curl|wget|python-requests", re.I)
 _VISITOR = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
@@ -74,15 +84,20 @@ def _seen(db: Session, event: str, visitor: str, product_id: Optional[str], sinc
     return db.execute(select(AnalyticsEvent.id).where(*conditions).limit(1)).first() is not None
 
 
+def placement_of(value: str) -> str:
+    """A rail's name as stored: lower-case, a short safe vocabulary, at most 60 characters."""
+    return _PLACEMENT.sub("", (value or "").lower())[:60]
+
+
 def client_event(db: Session, *, event: str, visitor_id: str, customer_id: Optional[str], product_id: Optional[str],
-                 user_agent: str, referrer: str = "", utm_source: str = "") -> bool:
+                 user_agent: str, referrer: str = "", utm_source: str = "", placement: str = "") -> bool:
     """Record one event sent by the storefront. Returns whether it was kept."""
     if event not in CLIENT_EVENTS or not _VISITOR.match(visitor_id or ""):
         return False
     if _BOT.search(user_agent or ""):
         return False
     product = None
-    if event == "product_view":
+    if event in PRODUCT_EVENTS:
         product = db.get(Product, product_id) if product_id else None
         if product is None or product.status not in ("active", "out-of-stock"):
             return False
@@ -95,7 +110,8 @@ def client_event(db: Session, *, event: str, visitor_id: str, customer_id: Optio
     db.add(AnalyticsEvent(
         occurred_at=now, event=event, visitor_id=visitor, customer_id=customer_id,
         product_id=product.id if product else None, quantity=0,
-        source=source_of(referrer, utm_source) if event == "visit" else "",
+        source=(source_of(referrer, utm_source) if event == "visit"
+                else placement_of(placement) if event in PRODUCT_EVENTS else ""),
         device=device_of(user_agent),
     ))
     db.commit()
@@ -103,11 +119,11 @@ def client_event(db: Session, *, event: str, visitor_id: str, customer_id: Optio
 
 
 def server_event(db: Session, event: str, *, customer_id: Optional[str], product_id: Optional[str] = None,
-                 quantity: int = 0) -> None:
+                 quantity: int = 0, source: str = "") -> None:
     """An event the server saw happen. Added to the caller's transaction."""
     if event not in SERVER_EVENTS:
         return
     db.add(AnalyticsEvent(occurred_at=datetime.utcnow(), event=event,
                           visitor_id=visitor_key(customer_id=customer_id) if customer_id else "",
                           customer_id=customer_id, product_id=product_id, quantity=max(0, int(quantity)),
-                          source="", device=""))
+                          source=placement_of(source), device=""))

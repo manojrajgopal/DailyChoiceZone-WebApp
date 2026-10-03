@@ -137,6 +137,11 @@ function toView(cart: ServerCart): CartView {
   };
 }
 
+/** A cart the server returned from another call (saving a line for later), ready to render. */
+export function cartViewFrom(cart: ServerCart): CartView {
+  return toView(cart);
+}
+
 /** Change how many of a bundle are in the bag (zero removes it). */
 export async function setBundleQuantity(entryId: number, quantity: number): Promise<CartView> {
   const cart = await apiPut<ServerCart>(`/cart/bundles/${entryId}`, { quantity }, AUTH);
@@ -186,6 +191,8 @@ export async function addToCart(input: {
   size?: string | null;
   color?: string | null;
   quantity?: number;
+  /** The rail it was added from ("rec:pdp-related"), for recommendation analytics. */
+  source?: string;
 }): Promise<CartView> {
   const cart = await apiPost<ServerCart>(
     "/cart/items",
@@ -194,6 +201,7 @@ export async function addToCart(input: {
       size: input.size ?? null,
       color: input.color ?? null,
       quantity: input.quantity ?? 1,
+      ...(input.source ? { source: input.source } : {}),
     },
     AUTH,
   );

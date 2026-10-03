@@ -153,9 +153,20 @@ class TestUnique:
 
 
 class TestRequired:
-    @pytest.mark.parametrize("field", ["email", "password_hash", "first_name"])
+    @pytest.mark.parametrize("field", ["email", "first_name"])
     def test_a_customer_needs(self, db, field):
         _refused(db, _person(**{field: None}))
+
+    def test_a_customer_may_have_no_password(self, db):
+        """
+        Deliberately allowed since social sign-in and one-time codes
+        (docs/authentication.md): such an account has no password until it
+        sets one, and password sign-in refuses it like a wrong password.
+        """
+        db.add(_person(password_hash=None))
+        db.flush()
+        stored = db.execute(text("SELECT password_hash FROM customers WHERE id = 'CUS100'")).scalar_one()
+        assert stored is None
 
     @pytest.mark.parametrize("field", ["name", "sku", "slug", "price", "category_id"])
     def test_a_product_needs(self, db, catalogue, field):

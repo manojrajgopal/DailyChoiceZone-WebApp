@@ -70,18 +70,19 @@ export async function search(term: string, perGroup = 5): Promise<AdminSearchRes
   const terms = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
 
   const [products, orders, customers, invoices, payments, refunds] = await Promise.all([
-    adminDataSource.listProducts(),
+    // Matched and capped by the server (search & filters): the global search
+    // never downloads the catalogue.
+    adminDataSource.listProductsPage({ search: trimmed, pageSize: perGroup }),
     adminDataSource.listOrders(),
-    adminDataSource.listCustomers(),
+    // Roles without `customers` get 403 here (docs/customer-segmentation.md §2):
+    // the search then simply shows no customer hits.
+    adminDataSource.listCustomers().catch(() => []),
     billingDataSource.listInvoices({ search: trimmed }),
     billingDataSource.listPayments({ search: trimmed }),
     billingDataSource.listRefunds({ search: trimmed }),
   ]);
 
-  const productHits: AdminSearchResult[] = products
-    .filter((product) =>
-      matches([product.name, product.sku, product.brand, product.category, product.subcategory].join(" "), terms),
-    )
+  const productHits: AdminSearchResult[] = products.items
     .slice(0, perGroup)
     .map((product) => ({
       kind: "product" as const,

@@ -21,6 +21,8 @@ export const STORAGE_KEYS = {
   addresses: `${NAMESPACE}:addresses`,
   checkout: `${NAMESPACE}:checkout`,
   compare: `${NAMESPACE}:compare`,
+  savedForLater: `${NAMESPACE}:saved-for-later`,
+  recentSearches: `${NAMESPACE}:recent-searches`,
 } as const;
 
 function available(): boolean {

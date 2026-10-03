@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { makeProduct } from "@/test/sliceA-fixtures";
-import { api, fail, ok } from "@/test/api";
+import { api, fail, ok, raw } from "@/test/api";
 
 import { httpAdapter } from "./http-adapter";
 
@@ -50,6 +50,55 @@ describe("queryProducts", () => {
     expect(request.query.get("isBestSeller")).toBe("true");
     expect(request.query.get("isFeatured")).toBe("true");
     expect(request.query.get("sort")).toBe("price-asc");
+  });
+
+  it("sends every category and subcategory as CSV, availability and the attribute filters", async () => {
+    api.get("/products", ok([]));
+    await httpAdapter.queryProducts({
+      category: ["men", "women"],
+      subcategory: ["shirts", "kurtas"],
+      availability: "out-of-stock",
+      attributes: { material: ["steel", "glass"], dishwasher_safe: ["true"] },
+      attributeRanges: { capacity: { min: 250, max: 1500 }, weight: { max: 2 } },
+      sort: "best-selling",
+    });
+    const request = api.last("GET", "/products")!;
+    expect(request.query.get("category")).toBe("men,women");
+    expect(request.query.get("subcategory")).toBe("shirts,kurtas");
+    expect(request.query.get("availability")).toBe("out-of-stock");
+    expect(request.query.get("attr.material")).toBe("steel,glass");
+    expect(request.query.get("attr.dishwasher_safe")).toBe("true");
+    expect(request.query.get("attr.capacity.min")).toBe("250");
+    expect(request.query.get("attr.capacity.max")).toBe("1500");
+    expect(request.query.get("attr.weight.max")).toBe("2");
+    expect(request.query.has("attr.weight.min")).toBe(false);
+    expect(request.query.get("sort")).toBe("best-selling");
+  });
+
+  it("sends the visitor id with a search, and only with a search", async () => {
+    window.localStorage.setItem("dcz:visitor", "visitor-abc123");
+    api.get("/products", ok([]));
+    await httpAdapter.queryProducts({ query: "bottle" });
+    expect(api.last("GET", "/products")!.query.get("visitorId")).toBe("visitor-abc123");
+
+    await httpAdapter.queryProducts({ category: ["men"] });
+    expect(api.last("GET", "/products")!.query.has("visitorId")).toBe(false);
+  });
+
+  it("returns the search meta the listing carries", async () => {
+    api.get("/products", raw(200, {
+      success: true,
+      data: [],
+      pagination: { page: 1, page_size: 24, total: 0, total_pages: 1 },
+      search: { term: "stel botle", correctedTerm: "steel bottle", searchId: 812 },
+    }));
+    const result = await httpAdapter.queryProducts({ query: "stel botle" });
+    expect(result.search).toEqual({ term: "stel botle", correctedTerm: "steel bottle", searchId: 812 });
+  });
+
+  it("has no search meta without a term", async () => {
+    api.get("/products", ok([]));
+    expect((await httpAdapter.queryProducts({})).search).toBeUndefined();
   });
 
   it("omits inStockOnly entirely when false", async () => {
@@ -133,6 +182,39 @@ describe("getFacets", () => {
     expect(request.query.get("search")).toBe("blue");
     expect(request.query.get("category")).toBe("men");
     expect(request.query.get("subcategory")).toBe("shirts");
+  });
+
+  it("passes the full current query so the counts reflect active filters", async () => {
+    api.get("/products/facets", ok({}));
+    await httpAdapter.getFacets({
+      query: "bottle",
+      category: ["kitchen", "home"],
+      brand: ["Anvi"],
+      size: ["M"],
+      color: ["Red"],
+      minPrice: 100,
+      maxPrice: 900,
+      minRating: 4,
+      minDiscount: 20,
+      availability: "in-stock",
+      attributes: { material: ["steel"] },
+      attributeRanges: { capacity: { min: 500 } },
+    });
+    const request = api.last("GET", "/products/facets")!;
+    expect(Object.fromEntries(request.query)).toEqual({
+      search: "bottle",
+      category: "kitchen,home",
+      brands: "Anvi",
+      sizes: "M",
+      colors: "Red",
+      minPrice: "100",
+      maxPrice: "900",
+      minRating: "4",
+      minDiscount: "20",
+      availability: "in-stock",
+      "attr.material": "steel",
+      "attr.capacity.min": "500",
+    });
   });
 
   it("GETs unscoped facets when called with nothing", async () => {

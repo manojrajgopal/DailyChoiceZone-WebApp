@@ -16,6 +16,11 @@ const NONE: Shipment["actions"] = { label: false, pickup: false, cancel: false, 
 async function open(data: Shipment = shipment()) {
   setLocation(`/admin/shipments/detail?id=${data.id}`);
   api.get(`/admin/shipments/${data.id}`, data);
+  // The store's own label panel (covered in packing/ShipmentLabelPanel.test.tsx).
+  api.get(`/admin/shipments/${data.id}/labels`, {
+    shipmentId: data.id, status: "not-generated", current: null, history: [], problems: [], canGenerate: false,
+    courierLabelUrl: "", formats: [], defaultFormat: "4x6",
+  });
   const view = renderUI(<AdminShipmentDetailView />);
   await screen.findByRole("heading", { name: `Shipment ${data.shipmentNumber}` });
   return view;
@@ -92,7 +97,7 @@ describe("AdminShipmentDetailView", () => {
       expect(within(panel).getByText("98765")).toBeInTheDocument();
       expect(within(panel).getByText("Never")).toBeInTheDocument(); // no webhook yet
 
-      const download = screen.getByRole("link", { name: "Download label" });
+      const download = screen.getByRole("link", { name: "Courier label" });
       expect(download).toHaveAttribute("href", "https://labels.example/12.pdf");
       expect(download).toHaveAttribute("rel", "noopener noreferrer");
     });
@@ -100,11 +105,12 @@ describe("AdminShipmentDetailView", () => {
     it("says the AWB isn't assigned yet and leaves the label link out when there's none", async () => {
       await open(shipment({ awb: "", label: { available: false, url: "" }, cod: true, codAmount: 2498, pickup: { status: "scheduled", scheduledAt: "2026-10-04T05:30:00", token: "PK-7" } }));
       expect(screen.getByText("Not assigned yet")).toBeInTheDocument();
-      expect(screen.getByText("Not generated")).toBeInTheDocument();
+      // The courier's label (the store's own label panel has its own status badge).
+      expect(screen.getByText("Courier label", { selector: "dt" }).nextElementSibling).toHaveTextContent("Not generated");
       expect(screen.getByText("Collect ₹2,498")).toBeInTheDocument();
       expect(screen.getByText(/^Scheduled for .* · token PK-7$/)).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "Download label" })).not.toBeInTheDocument();
-      expect(within(actionsGroup()).getByRole("button", { name: "Generate label" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Courier label" })).not.toBeInTheDocument();
+      expect(within(actionsGroup()).getByRole("button", { name: "Get courier label" })).toBeInTheDocument();
     });
 
     it("warns about a failed courier request with the error and the next automatic retry", async () => {
@@ -128,7 +134,7 @@ describe("AdminShipmentDetailView", () => {
       await open();
       const group = actionsGroup();
       expect(within(group).getByRole("button", { name: "Refresh tracking" })).toBeInTheDocument();
-      expect(within(group).getByRole("button", { name: "Regenerate label" })).toBeInTheDocument();
+      expect(within(group).getByRole("button", { name: "Ask courier for a new label" })).toBeInTheDocument();
       expect(within(group).getByRole("button", { name: "Schedule pickup" })).toBeInTheDocument();
       expect(within(group).getByRole("button", { name: "Record event" })).toBeInTheDocument();
       expect(within(group).getByRole("button", { name: "Cancel shipment" })).toBeInTheDocument();
@@ -144,7 +150,7 @@ describe("AdminShipmentDetailView", () => {
     it.each([
       ["refresh", "Refresh tracking"],
       ["retry", "Retry"],
-      ["label", "Regenerate label"],
+      ["label", "Ask courier for a new label"],
       ["pickup", "Schedule pickup"],
       ["manualEvent", "Record event"],
       ["editPackage", "Edit package"],
@@ -190,15 +196,15 @@ describe("AdminShipmentDetailView", () => {
     it("generates a label and offers the download", async () => {
       const { user } = await open(shipment({ label: { available: false, url: "" } }));
       api.post("/admin/shipments/12/label", shipment({ label: { available: true, url: "https://labels.example/new.pdf" } }));
-      await user.click(screen.getByRole("button", { name: "Generate label" }));
-      expect(await screen.findByRole("link", { name: "Download label" })).toHaveAttribute("href", "https://labels.example/new.pdf");
+      await user.click(screen.getByRole("button", { name: "Get courier label" }));
+      expect(await screen.findByRole("link", { name: "Courier label" })).toHaveAttribute("href", "https://labels.example/new.pdf");
       expect(toasts()).toContain("success:Label ready to download.");
     });
 
     it("says the label was only requested when there's no file yet", async () => {
       const { user } = await open(shipment({ label: { available: false, url: "" } }));
       api.post("/admin/shipments/12/label", shipment({ label: { available: false, url: "" } }));
-      await user.click(screen.getByRole("button", { name: "Generate label" }));
+      await user.click(screen.getByRole("button", { name: "Get courier label" }));
       await waitFor(() => expect(toasts()).toContain("success:Label requested."));
     });
 

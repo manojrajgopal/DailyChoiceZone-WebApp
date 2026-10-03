@@ -148,14 +148,37 @@ describe("PaymentMethods", () => {
   });
 
   describe("card", () => {
-    it("pays with the given container selector", async () => {
+    it("takes the card in our own form and pays with it — no processor window", async () => {
       api.get("/payments/methods", methods());
       const PaymentMethods = await load();
       const onPay = vi.fn();
-      const { user } = renderUI(<PaymentMethods onPay={onPay} isPaying={false} total="₹999" cardContainer="#card-el" />);
+      const { user } = renderUI(<PaymentMethods onPay={onPay} isPaying={false} total="₹999" />);
       await user.click(await screen.findByRole("button", { name: /Credit or debit card/ }));
-      await user.click(screen.getByRole("button", { name: "Continue to secure card entry" }));
-      expect(onPay).toHaveBeenCalledWith({ kind: "card", container: "#card-el" });
+      await user.type(screen.getByLabelText("Card number"), "4111111111111111");
+      await user.type(screen.getByLabelText("Name on card"), "Asha Rao");
+      await user.type(screen.getByLabelText("Expiry (MM / YY)"), "1230");
+      await user.type(screen.getByLabelText("CVV"), "123");
+      await user.click(screen.getByRole("button", { name: "Pay ₹999" }));
+      expect(onPay).toHaveBeenCalledWith({
+        kind: "card",
+        card: { number: "4111111111111111", name: "Asha Rao", expiryMonth: "12", expiryYear: "30", cvv: "123" },
+      });
+      // Cleared from the page once handed over.
+      expect(screen.getByLabelText("Card number")).toHaveValue("");
+      expect(screen.getByLabelText("CVV")).toHaveValue("");
+    });
+
+    it("says what's wrong and sends nothing", async () => {
+      api.get("/payments/methods", methods());
+      const PaymentMethods = await load();
+      const onPay = vi.fn();
+      const { user } = renderUI(<PaymentMethods onPay={onPay} isPaying={false} total="₹999" />);
+      await user.click(await screen.findByRole("button", { name: /Credit or debit card/ }));
+      await user.type(screen.getByLabelText("Card number"), "4111111111111112");
+      await user.click(screen.getByRole("button", { name: "Pay ₹999" }));
+      expect(onPay).not.toHaveBeenCalled();
+      expect(screen.getByText(/Check your card number/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Card number")).toHaveFocus();
     });
   });
 
@@ -205,17 +228,30 @@ describe("PaymentMethods", () => {
   });
 
   describe("cash on delivery", () => {
-    it("places the order, showing a spinner while isPaying", async () => {
+    it("places the order with a slide, not a tap, showing progress while isPaying", async () => {
       api.get("/payments/methods", methods());
       const PaymentMethods = await load();
       const onPay = vi.fn();
       const { user, rerender } = renderUI(<PaymentMethods onPay={onPay} isPaying={false} total="₹999" />);
       await user.click(await screen.findByRole("button", { name: /Cash on delivery/ }));
-      await user.click(screen.getByRole("button", { name: "Place order · ₹999" }));
+      expect(screen.queryByRole("button", { name: /Place order/ })).not.toBeInTheDocument();
+      const slider = screen.getByRole("slider", { name: "Slide to place order · ₹999" });
+      slider.focus();
+      await user.keyboard("{Enter}");
       expect(onPay).toHaveBeenCalledWith({ kind: "cod" });
 
       rerender(<PaymentMethods onPay={onPay} isPaying total="₹999" />);
-      expect(screen.getByRole("button", { name: /Placing order…/ })).toBeDisabled();
+      expect(screen.getByRole("slider", { name: /Slide to place order/ })).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByText("Placing order…")).toBeInTheDocument();
+    });
+
+    it("isn't offered for things other than orders", async () => {
+      api.get("/payments/methods", methods());
+      const PaymentMethods = await load();
+      renderUI(<PaymentMethods onPay={vi.fn()} isPaying={false} total="₹999" allowCod={false} serverQr={false} />);
+      await screen.findByRole("button", { name: /Credit or debit card/ });
+      expect(screen.queryByRole("button", { name: /Cash on delivery/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Scan to pay/ })).not.toBeInTheDocument();
     });
 
     it("explains COD isn't available for this PIN code instead of offering it", async () => {
@@ -263,7 +299,8 @@ describe("PaymentMethods", () => {
       expect(describeChoice({ kind: "upi-qr" }, m)).toBe("Scan to pay");
       expect(describeChoice({ kind: "upi-vpa", vpa: "a@bank" }, m)).toBe("a@bank");
       expect(describeChoice({ kind: "upi-vpa", vpa: "" }, m)).toBe("UPI ID");
-      expect(describeChoice({ kind: "card" }, m)).toBe("Card");
+      const card = { number: "4111111111111111", name: "A", expiryMonth: "12", expiryYear: "30", cvv: "123" };
+      expect(describeChoice({ kind: "card", card }, m)).toBe("Card");
       expect(describeChoice({ kind: "netbanking", bank: "hdfc" }, m)).toBe("HDFC Bank");
       expect(describeChoice({ kind: "netbanking", bank: "unknown" }, m)).toBe("Net banking");
       expect(describeChoice({ kind: "netbanking", bank: "hdfc" }, null)).toBe("Net banking");
@@ -274,7 +311,7 @@ describe("PaymentMethods", () => {
       expect(methodFor({ kind: "upi-intent" })).toBe("upi");
       expect(methodFor({ kind: "upi-qr" })).toBe("upi");
       expect(methodFor({ kind: "upi-vpa", vpa: "" })).toBe("upi");
-      expect(methodFor({ kind: "card" })).toBe("card");
+      expect(methodFor({ kind: "card", card })).toBe("card");
       expect(methodFor({ kind: "netbanking", bank: "hdfc" })).toBe("netbanking");
       expect(methodFor({ kind: "wallet", wallet: "paytm" })).toBe("wallet");
       expect(methodFor({ kind: "cod" })).toBe("cod");

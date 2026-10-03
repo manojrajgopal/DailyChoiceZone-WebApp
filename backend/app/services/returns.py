@@ -166,6 +166,23 @@ def _unit_amounts(db: Session, order: Order) -> dict:
     return amounts
 
 
+def _amount_for(db: Session, order: Order, line: OrderItem, before: int, quantity: int, fallback_unit: int) -> int:
+    """
+    What `quantity` units of a line cost, after the units already claimed —
+    their exact cumulative share of the invoice line (see
+    `services/refunds.share_of_units`), so two returns of one line add up to
+    the line to the paisa. The old `line_total // qty` lost the remainder.
+    """
+    from app.services import refunds
+
+    invoice = db.execute(select(Invoice).where(Invoice.order_id == order.id)).scalar_one_or_none()
+    if invoice is not None:
+        for item, invoice_line in refunds._pairs(order, invoice):
+            if item.id == line.id and invoice_line is not None:
+                return refunds.share_of_units(invoice_line, before, quantity)["amount"]
+    return fallback_unit * quantity
+
+
 def eligibility(db: Session, order: Order, now: Optional[datetime] = None) -> dict:
     """
     What can be sent back from this order, and why not when nothing can.
@@ -289,6 +306,7 @@ def create(
     by_id = {entry["orderItemId"]: entry for entry in status["items"]}
     lines = {item.id: item for item in order.items}
     amounts = _unit_amounts(db, order)
+    claimed = _claimed(db, order)
     flag = "returnable" if kind == "return" else "replaceable"
 
     chosen = []
@@ -340,7 +358,8 @@ def create(
                 size=line.size,
                 color=line.color,
                 quantity=quantity,
-                amount=amounts.get(line.id, 0) * quantity,
+                amount=_amount_for(db, order, line, claimed.get(line.id, 0), quantity,
+                                   amounts.get(line.id, 0)),
             )
         )
     request.amount = sum(entry.amount for entry in request.items)
@@ -375,7 +394,8 @@ def cancel_by_customer(db: Session, customer: Customer, request_id: str) -> Retu
 
 
 def update_status(
-    db: Session, request_id: str, status: str, *, note: str = "", actor: str = "system"
+    db: Session, request_id: str, status: str, *, note: str = "", actor: str = "system",
+    refund_method: Optional[str] = None,
 ) -> ReturnRequest:
     request = get(db, request_id)
     if status not in next_steps(request):
@@ -384,10 +404,11 @@ def update_status(
             f"{status.replace('-', ' ')}.",
             error_code="INVALID_TRANSITION",
         )
-    return _move(db, request, status, note=note, actor=actor)
+    return _move(db, request, status, note=note, actor=actor, refund_method=refund_method)
 
 
-def _move(db: Session, request: ReturnRequest, status: str, *, note: str, actor: str) -> ReturnRequest:
+def _move(db: Session, request: ReturnRequest, status: str, *, note: str, actor: str,
+          refund_method: Optional[str] = None) -> ReturnRequest:
     now = datetime.utcnow()
 
     if status == "received" and request.kind == "return":
@@ -395,7 +416,7 @@ def _move(db: Session, request: ReturnRequest, status: str, *, note: str, actor:
     if status == "replacement-shipped":
         _ship_replacement(db, request, now, actor)
     if status == "refunded":
-        _refund(db, request, actor)
+        _refund(db, request, actor, method=refund_method)
 
     request.status = status
     request.updated_at = now
@@ -458,48 +479,41 @@ def _ship_replacement(db: Session, request: ReturnRequest, now: datetime, actor:
         _adjust(db, product, -item.quantity, "sale", f"Replacement sent ({request.id})", actor, now)
 
 
-def _refund(db: Session, request: ReturnRequest, actor: str) -> None:
+def _refund(db: Session, request: ReturnRequest, actor: str, *, method: Optional[str] = None) -> None:
     """
-    Pay back what the returned items cost, through the order's own payment.
+    Pay back exactly the returned units, through the same calculation and
+    refund system as the portal's wizard (docs/refunds.md): their share of
+    the line, discount and tax, within what is left on the order.
 
-    Recorded first, then sent — the same pattern as a cancelled order — so a
-    gateway that refuses leaves the refund on record to retry.
+    Recorded first, then sent — so a gateway that refuses leaves the refund on
+    record to retry, and a retry never raises a second one:
+
+    - already completed, or processing (on its way at the gateway): the
+      return is refunded; nothing is sent again;
+    - requested or failed: that same refund is sent (again);
+    - waiting for approval: the return stays received until it is approved.
     """
     from app.models import Refund
     from app.services import invoices as invoice_service
+    from app.services import refunds
 
-    # A retry after the gateway refused: send the refund already on record,
-    # never raise a second one.
-    if request.refund_id:
-        existing = db.get(Refund, request.refund_id)
-        if existing is not None:
-            if existing.status != "completed":
-                invoice_service.set_refund_status(db, existing.id, "completed")
-            return
-
-    invoice = db.execute(
-        select(Invoice).where(Invoice.order_id == request.order_id)
-    ).scalar_one_or_none()
-    if invoice is None:
-        raise ConflictError("This order has no invoice to refund against.", error_code="NO_INVOICE")
-
-    refund = invoice_service.create_refund(
-        db,
-        invoice_id=invoice.id,
-        amount=request.amount,
-        reason=f"Return {request.id}: {request.reason}"[:200],
-        lines=[
-            {
-                "productId": item.product_id,
-                "name": item.name,
-                "quantity": item.quantity,
-                "amount": item.amount,
-            }
-            for item in request.items
-        ],
-        initiated_by="admin",
-        status="requested",
-    )
-    request.refund_id = refund.id
-    db.commit()
-    invoice_service.set_refund_status(db, refund.id, "completed")
+    existing = db.get(Refund, request.refund_id) if request.refund_id else None
+    if existing is not None and existing.status in ("completed", "processing"):
+        return
+    if existing is None or existing.status in ("cancelled", "rejected"):
+        conf = refunds.settings(db)
+        refund = refunds.create_for_order(
+            db, request.order_id, actor=None,
+            idempotency_key=f"return:{request.id}:{existing.id if existing is not None else 'first'}",
+            lines=[{"orderItemId": item.order_item_id, "quantity": item.quantity} for item in request.items],
+            method=method or conf["returnsMethod"], reason_code="return-approved",
+            reason=f"Return {request.id}: {request.reason}"[:200], process_now=False,
+            initiated_by=(actor or "admin")[:40], skip_approval=bool(conf["returnsSkipApproval"]), clamp=True,
+        )
+        request.refund_id = refund.id
+        db.commit()
+        existing = refund
+    if existing.requires_approval and existing.approved_by is None:
+        raise ConflictError("This return's refund is waiting for approval by an admin with 'refunds-large'.",
+                            error_code="REFUND_AWAITING_APPROVAL")
+    invoice_service.set_refund_status(db, existing.id, "completed")

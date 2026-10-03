@@ -96,12 +96,41 @@ async def lifespan(_: FastAPI):
 
     shipping_sweeper = asyncio.create_task(shipping_jobs.run_forever())
 
+    # Recently-viewed history past its retention window.
+    from app.services import discovery_jobs
+
+    discovery_sweeper = asyncio.create_task(discovery_jobs.run_forever())
+
+    # Customer segmentation: changed customers' metrics, the periodic full
+    # refresh, and segment memberships.
+    from app.services.segments import jobs as segment_jobs
+
+    segments_sweeper = asyncio.create_task(segment_jobs.run_forever())
+
+    # Customer sign-in: expired one-time codes, OAuth trips and sessions.
+    from app.services.identity import jobs as auth_jobs
+
+    auth_sweeper = asyncio.create_task(auth_jobs.run_forever())
+
+    # Refunds: checking processing refunds at the gateway, and sending ones it
+    # never confirmed (docs/refunds.md).
+    from app.services import refunds as refund_service
+
+    refunds_sweeper = asyncio.create_task(refund_service.run_forever())
+
+    # Search & filters: search analytics aggregates, conversions, and the
+    # search index, dictionary and units-sold rebuild (docs/search-and-filters.md).
+    from app.services.search import jobs as search_jobs
+
+    search_sweeper = asyncio.create_task(search_jobs.run_forever())
+
     try:
         yield
     finally:
         for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper, alert_sweeper, rewards_sweeper,
                      flash_sweeper, referral_sweeper, health_sweeper, message_sweeper, campaign_sweeper,
-                     backup_sweeper, shipping_sweeper):
+                     backup_sweeper, shipping_sweeper, discovery_sweeper, segments_sweeper,
+                     auth_sweeper, refunds_sweeper, search_sweeper):
             if task is None:
                 continue
             task.cancel()

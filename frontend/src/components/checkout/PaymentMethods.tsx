@@ -5,7 +5,6 @@ import {
   Banknote,
   CreditCard,
   Landmark,
-  Loader2,
   QrCode,
   Smartphone,
   Wallet as WalletIcon,
@@ -13,8 +12,11 @@ import {
 
 import type { PaymentMethodId } from "@/types";
 
+import { CardForm } from "@/components/checkout/CardForm";
 import { Button } from "@/components/ui/Button";
 import { Radio } from "@/components/ui/Field";
+import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
+import type { CardDetails } from "@/lib/payments/card";
 import { cn } from "@/lib/utils/cn";
 import { getPaymentMethods, type AvailableMethods } from "@/services/payments/paymentGatewayService";
 import { UPI_APPS, supportsUpiIntent, isAndroid } from "@/services/payments/razorpayCustom";
@@ -48,11 +50,8 @@ export type Choice =
   | { kind: "upi-intent"; app?: string; tappedAt?: number }
   | { kind: "upi-qr" }
   | { kind: "upi-vpa"; vpa: string }
-  /**
-   * `container` is the element the processor's card field is drawn into, so
-   * the card step is part of this page rather than a window over it.
-   */
-  | { kind: "card"; container?: string }
+  /** Typed into our own card form; passed straight to the gateway and not kept. */
+  | { kind: "card"; card: CardDetails }
   | { kind: "netbanking"; bank: string }
   | { kind: "wallet"; wallet: string }
   | { kind: "cod" };
@@ -114,23 +113,20 @@ export function PaymentMethods({
   onPay,
   isPaying,
   total,
-  cardContainer,
   codUnavailable = false,
+  allowCod = true,
+  serverQr = true,
 }: {
   onPay: (choice: Choice) => void;
   isPaying: boolean;
   /** Formatted, for the button. */
   total: string;
-  /**
-   * A CSS selector the processor's card field is drawn into.
-   *
-   * Passing one is what keeps the card step inside the page instead of a
-   * floating window; without it Checkout falls back to its modal, which is
-   * what a screen too narrow to embed actually wants.
-   */
-  cardContainer?: string;
   /** The delivery pincode doesn't offer cash on delivery (the server refuses it too). */
   codUnavailable?: boolean;
+  /** Cash on delivery is for orders only — not a membership or a gift card. */
+  allowCod?: boolean;
+  /** The server's "Scan to pay" codes are minted per order payment. */
+  serverQr?: boolean;
 }) {
   const [methods, setMethods] = useState<AvailableMethods | null>(null);
   const [failed, setFailed] = useState(false);
@@ -288,7 +284,7 @@ export function PaymentMethods({
       ) : null}
 
       {/* --------------------------------------------------------- scan to pay */}
-      {available.has("qr") && methods.qrCodes ? (
+      {serverQr && available.has("qr") && methods.qrCodes ? (
         <Panel
           id="qr"
           open={open}
@@ -324,17 +320,7 @@ export function PaymentMethods({
           title="Credit or debit card"
           subtitle="Visa, Mastercard, RuPay and Amex"
         >
-          <p className="text-xs leading-relaxed text-ink-500">
-            Your card details are entered securely with our payment partner and are never stored by us.
-          </p>
-          <Button
-            fullWidth
-            disabled={isPaying}
-            onClick={() => pay({ kind: "card", container: cardContainer })}
-            className="mt-3"
-          >
-            Continue to secure card entry
-          </Button>
+          <CardForm total={total} disabled={isPaying} onPay={(card) => pay({ kind: "card", card })} />
         </Panel>
       ) : null}
 
@@ -422,11 +408,11 @@ export function PaymentMethods({
       ) : null}
 
       {/* ------------------------------------------------ cash on delivery */}
-      {available.has("cod") && codUnavailable ? (
+      {allowCod && available.has("cod") && codUnavailable ? (
         <p className="rounded-card border border-ink-200 bg-shell px-4 py-3 text-xs leading-relaxed text-ink-500">
           Cash on delivery isn&rsquo;t available for your delivery PIN code. Please choose another way to pay.
         </p>
-      ) : available.has("cod") ? (
+      ) : allowCod && available.has("cod") ? (
         <Panel
           id="cod"
           open={open}
@@ -438,21 +424,15 @@ export function PaymentMethods({
           <p className="text-xs leading-relaxed text-ink-500">
             Nothing is charged now. Please have the exact amount ready for the courier.
           </p>
-          <Button
-            fullWidth
-            disabled={isPaying}
-            onClick={() => pay({ kind: "cod" })}
+          {/* A slide, not a tap: nothing comes after this — it places the order. */}
+          <SlideToConfirm
             className="mt-3"
-          >
-            {isPaying ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden="true" />
-                Placing order…
-              </>
-            ) : (
-              <>Place order · {total}</>
-            )}
-          </Button>
+            label={`Slide to place order · ${total}`}
+            busyLabel="Placing order…"
+            busy={isPaying}
+            disabled={isPaying}
+            onConfirm={() => pay({ kind: "cod" })}
+          />
         </Panel>
       ) : null}
     </div>

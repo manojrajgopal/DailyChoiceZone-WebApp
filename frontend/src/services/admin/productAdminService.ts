@@ -1,5 +1,6 @@
 import { ApiError, apiGet, apiPost } from "@/services/api/client";
 import type { AdminProduct, AdminResult, ProductDraft, ProductStatus } from "@/types/admin";
+import type { AdminProductListParams, AdminProductPage } from "@/types/searchAdmin";
 
 import { discountPercent } from "@/lib/utils/format";
 
@@ -15,6 +16,11 @@ import { adminDataSource } from "./admin-data-source.instance";
 
 export function listProducts(): Promise<AdminProduct[]> {
   return adminDataSource.listProducts();
+}
+
+/** One page of the product list, filtered and counted on the server (search & filters). */
+export function listProductsPage(params: AdminProductListParams = {}): Promise<AdminProductPage> {
+  return adminDataSource.listProductsPage(params);
 }
 
 export function getProduct(id: string): Promise<AdminProduct | null> {

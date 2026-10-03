@@ -2,7 +2,7 @@
 
 import { imagesFor, productHref } from "@/lib/products/colourImages";
 import Link from "next/link";
-import { Heart, Trash2 } from "lucide-react";
+import { Bookmark, Heart, Trash2 } from "lucide-react";
 
 import type { ResolvedCartLine } from "@/types";
 
@@ -24,10 +24,15 @@ export function CartLineRow({
   line,
   onQuantityChange,
   onRemove,
+  onSaveForLater,
+  saving = false,
 }: {
   line: ResolvedCartLine;
   onQuantityChange: (lineId: string, quantity: number, max?: number) => void;
   onRemove: (lineId: string, productName: string) => void;
+  /** "Not now": move the line out of the bag into Saved for later. */
+  onSaveForLater?: (line: ResolvedCartLine) => void;
+  saving?: boolean;
 }) {
   const { product } = line;
   const { isWishlisted, toggle } = useWishlistItem(product.id);
@@ -117,8 +122,22 @@ export function CartLineRow({
                 strokeWidth={1.5}
                 aria-hidden="true"
               />
-              {isWishlisted ? "Saved" : "Save"}
+              {/* "Wishlist", not "Save": saving for later is the button beside it. */}
+              {isWishlisted ? "In wishlist" : "Wishlist"}
             </button>
+
+            {onSaveForLater ? (
+              <button
+                type="button"
+                onClick={() => onSaveForLater(line)}
+                disabled={saving}
+                aria-busy={saving}
+                className="inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs text-ink-500 transition-colors hover:bg-cream-deep hover:text-ink disabled:opacity-50"
+              >
+                <Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
+                {saving ? "Saving…" : "Save for later"}
+              </button>
+            ) : null}
 
             <button
               type="button"

@@ -32,6 +32,7 @@ PREFIXES = {
     "support_ticket": "TKT",
     "supplier": "SUP",
     "purchase_order": "POR",
+    "size_guide": "SZG",
 }
 
 _PATTERN = re.compile(r"^([A-Z]{3})(\d+)$")

@@ -8,7 +8,13 @@ from sqlalchemy.orm import Session
 from app.core import rate_limit
 from app.core.database import get_db
 from app.core.errors import ValidationError
-from app.dependencies.auth import client_ip, get_current_admin, get_current_customer, require_permission
+from app.dependencies.auth import (
+    client_ip,
+    get_current_admin,
+    get_current_customer,
+    require_permission,
+    token_claims,
+)
 from app.models import AdminUser, Customer
 from app.schemas.auth import (
     AddressOut,
@@ -62,19 +68,46 @@ def _throttled(scope: str, email: str, request: Request, attempt):
 
 @router.post("/register", status_code=201, summary="Create a customer account")
 def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)):
-    customer, token = service.register(db, payload, ip=client_ip(request))
-    return ok(
-        {
-            "token": token.model_dump(by_alias=True),
-            "customer": CustomerOut.from_model(customer).model_dump(by_alias=True),
-        },
-        message="Welcome to Daily Choice Zone.",
-    )
+    customer, token = service.register(db, payload, ip=client_ip(request),
+                                       user_agent=request.headers.get("user-agent", ""))
+    data = {
+        "token": token.model_dump(by_alias=True),
+        "customer": CustomerOut.from_model(customer).model_dump(by_alias=True),
+    }
+    data.update(_signup_codes(db, customer, client_ip(request)))
+    return ok(data, message="Welcome to Daily Choice Zone.")
+
+
+def _signup_codes(db: Session, customer: Customer, ip: str) -> dict:
+    """
+    When the store confirms new accounts with a code (Settings, Authentication):
+    a code to the new email address and, when a mobile number was given and
+    SMS codes are on, one to that number. The account exists either way: a
+    code that can't be sent is reported, and can be asked for again.
+    """
+    from app.core.errors import AppError
+    from app.services.identity import accounts as identity_accounts
+    from app.services.identity import methods
+
+    if methods.signup_verification(db) == "link":
+        return {}
+    out: dict = {"verification": None, "phoneVerification": None}
+    try:
+        out["verification"] = identity_accounts.request_email_code(db, customer, ip=ip)
+    except AppError:
+        db.rollback()
+    if customer.phone and methods.enabled(db, "mobileOtp"):
+        try:
+            out["phoneVerification"] = identity_accounts.request_phone_code(db, customer, customer.phone, ip=ip)
+        except AppError:
+            db.rollback()
+    return out
 
 
 @router.post("/login", summary="Sign in as a customer")
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    customer, token = _throttled("login", payload.email, request, lambda: service.login_customer(db, payload))
+    customer, token = _throttled("login", payload.email, request, lambda: service.login_customer(
+        db, payload, ip=client_ip(request), user_agent=request.headers.get("user-agent", "")))
     return ok(
         {
             "token": token.model_dump(by_alias=True),
@@ -85,15 +118,20 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
 
 
 @router.post("/logout", summary="Sign out")
-def logout():
+def logout(db: Session = Depends(get_db), claims: dict = Depends(token_claims)):
     """
-    Sign out.
+    Sign out: the token's session is revoked, so the token stops working now
+    rather than when it would have expired. Answers the same with no token or
+    an expired one: signing out always succeeds.
+    """
+    from app.models import CustomerSession
+    from app.services import sessions
 
-    There is nothing to invalidate: a JWT is valid until it expires, by design.
-    The client discards the token. This endpoint exists so the frontend has one
-    call to make, and so the day a token denylist is added there is already a
-    place to put it.
-    """
+    sid = claims.get("sid") if claims.get("actor") == "customer" else None
+    session = db.get(CustomerSession, str(sid)[:32]) if sid else None
+    if session is not None and session.customer_id == claims.get("sub"):
+        sessions.revoke(db, session, "signed-out")
+        db.commit()
     return ok(message="Signed out.")
 
 
@@ -178,11 +216,16 @@ def resend_verification(
 @account_router.put("/password", summary="Change your password")
 def change_password(
     payload: PasswordChange,
+    request: Request,
     db: Session = Depends(get_db),
     customer: Customer = Depends(get_current_customer),
+    claims: dict = Depends(token_claims),
 ):
-    service.change_password(db, customer, payload)
-    return ok(message="Password changed.")
+    # Other devices are signed out; this one continues with the new token.
+    token = service.change_password(db, customer, payload, claims, ip=client_ip(request),
+                                    user_agent=request.headers.get("user-agent", ""))
+    return ok({"token": token.model_dump(by_alias=True)},
+              message="Password changed. You've been signed out on your other devices.")
 
 
 @account_router.get("/addresses", summary="Your saved addresses")

@@ -32,8 +32,10 @@ export default async function PrivacyPage() {
           viewed. Clearing your browser data removes these and leaves your account untouched.
         </p>
         <p>
-          Payments are processed by Razorpay. Your card, UPI and bank details are entered on
-          Razorpay&rsquo;s own secure systems and never reach us.
+          Payments are processed by Razorpay. You pay on our own payment page; the card details
+          you type there are sent from your browser straight to Razorpay over an encrypted
+          connection, and never reach our servers or get stored by us. UPI PINs and bank log-ins
+          are entered only in your own UPI app or your bank&rsquo;s page.
         </p>
       </section>
 
@@ -49,8 +51,9 @@ export default async function PrivacyPage() {
             plus any addresses you choose to save.
           </li>
           <li>
-            <strong>Payment information</strong> — handled entirely by our payment provider,
-            Razorpay. Card numbers, UPI PINs and bank log-ins never reach us. We keep
+            <strong>Payment information</strong> — processed by our payment provider, Razorpay.
+            Card details go from your browser directly to Razorpay; card numbers, UPI PINs and
+            bank log-ins never reach our servers and are never stored by us. We keep
             only what Razorpay tells us about the result: the payment reference, the amount, the
             method used (for example &ldquo;UPI&rdquo; or &ldquo;card&rdquo;) and whether it
             succeeded or was refunded.

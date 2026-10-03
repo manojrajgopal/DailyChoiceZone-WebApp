@@ -193,9 +193,12 @@ export interface AdminCoupon {
   /** Times each customer may use it; `null` for no limit. */
   perCustomerLimit?: number | null;
   /** Who may use it. */
-  audience?: "everyone" | "selected" | "members" | "first-order";
+  audience?: "everyone" | "selected" | "members" | "first-order" | "segment";
   /** Customers a `selected` coupon is for. */
   customerIds?: string[];
+  /** Customer segmentation: the segment a `segment` coupon is for, and its name (list rows). */
+  segmentId?: number | null;
+  segmentName?: string;
   /** Listed in the store for eligible shoppers. */
   showInStore?: boolean;
   /** How many different customers have used it. */

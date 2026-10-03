@@ -104,6 +104,6 @@ class TestNumbering:
     def test_describe_lists_every_series(self):
         keys = [row["key"] for row in numbering.describe()]
         assert keys == ["order", "invoice", "creditNote", "refund", "ticket", "shipment", "purchaseOrder",
-                        "goodsReceipt", "sku"]
+                        "goodsReceipt", "package", "sku"]
         year = datetime.utcnow().year
         assert numbering.describe()[1]["example"] == f"DCZ-INV-{year}-000001"

@@ -44,6 +44,8 @@ class EventIn(CamelModel):
     product_id: Optional[str] = Field(default=None, max_length=40)
     referrer: str = Field(default="", max_length=500)
     utm_source: str = Field(default="", max_length=60)
+    # Which rail a recommendation or recently-viewed event came from.
+    placement: str = Field(default="", max_length=60)
 
 
 @events_router.post("/events", status_code=202, summary="Record a storefront event")
@@ -53,7 +55,7 @@ def record_event(payload: EventIn, request: Request, db: Session = Depends(get_d
     kept = analytics_events.client_event(
         db, event=payload.event, visitor_id=payload.visitor_id, customer_id=customer.id if customer else None,
         product_id=payload.product_id, user_agent=request.headers.get("user-agent", ""),
-        referrer=payload.referrer, utm_source=payload.utm_source,
+        referrer=payload.referrer, utm_source=payload.utm_source, placement=payload.placement,
     )
     return ok({"recorded": kept})
 

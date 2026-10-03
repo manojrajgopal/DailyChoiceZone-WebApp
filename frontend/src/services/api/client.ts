@@ -138,6 +138,38 @@ export function setToken(token: string | null, audience: Audience = "customer"):
   }
 }
 
+/* ------------------------------------------------------- ended sessions */
+
+/**
+ * The server's way of saying "this device is signed out": the session behind
+ * the token was signed out from another device, or ran out. Any customer
+ * request can answer it, so it is noticed here, once, rather than by every
+ * caller.
+ */
+const SESSION_ENDED_CODES = new Set(["SESSION_REVOKED", "SESSION_EXPIRED"]);
+
+type SessionEndedListener = (message: string) => void;
+const sessionEndedListeners = new Set<SessionEndedListener>();
+
+/** Be told when the customer's session ends on this device. Returns an unsubscribe. */
+export function onCustomerSessionEnded(listener: SessionEndedListener): () => void {
+  sessionEndedListeners.add(listener);
+  return () => {
+    sessionEndedListeners.delete(listener);
+  };
+}
+
+/**
+ * Forget the customer's token and tell whoever is listening (the session
+ * store). Only announced when there was a token to forget, so a burst of
+ * failing requests signs out once.
+ */
+export function endCustomerSession(message = "You've been signed out. Sign in again to continue."): void {
+  if (getToken("customer") === null) return;
+  setToken(null, "customer");
+  for (const listener of [...sessionEndedListeners]) listener(message);
+}
+
 /* ------------------------------------------------------------------ paging */
 
 export interface Page<T> {
@@ -195,10 +227,8 @@ async function request<T>(
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
 
-  if (options.auth) {
-    const token = getToken(options.auth);
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
+  const sentToken = options.auth ? getToken(options.auth) : null;
+  if (sentToken) headers.Authorization = `Bearer ${sentToken}`;
 
   // One controller for both reasons a request can stop: the caller's own
   // signal (a component unmounting) and the clock running out.
@@ -278,12 +308,25 @@ async function request<T>(
   }
 
   if (!response.ok || payload.success === false) {
-    throw new ApiError(
+    const error = new ApiError(
       payload.message ?? "Something went wrong. Please try again.",
       response.status,
       payload.error_code ?? "REQUEST_FAILED",
       payload.details,
     );
+    // Signed out elsewhere, or the session ran out: this device is signed out
+    // too. Only for the token this request carried — a newer one stored while
+    // it was in flight is not the one the server refused.
+    if (
+      options.auth === "customer" &&
+      error.status === 401 &&
+      SESSION_ENDED_CODES.has(error.code) &&
+      sentToken !== null &&
+      getToken("customer") === sentToken
+    ) {
+      endCustomerSession(error.message);
+    }
+    throw error;
   }
 
   return payload;
@@ -306,6 +349,31 @@ export async function apiGetPage<T>(path: string, options?: RequestOptions): Pro
     pageSize: pagination?.page_size ?? (payload.data?.length ?? 0),
     total: pagination?.total ?? (payload.data?.length ?? 0),
     totalPages: pagination?.total_pages ?? 1,
+  };
+}
+
+/**
+ * A page plus the envelope's other top-level keys (search & filters).
+ *
+ * Some lists send more than `data` and `pagination` beside each other — the
+ * admin product list's `counts` and `filters`, say. `meta` is whatever else
+ * the envelope carried, untouched.
+ */
+export async function apiGetPageWithMeta<T, M extends object = Record<string, unknown>>(
+  path: string,
+  options?: RequestOptions,
+): Promise<Page<T> & { meta: Partial<M> }> {
+  const payload = await request<T[]>("GET", path, undefined, options);
+  const { success: _s, data, pagination, message: _m, ...meta } = payload as Envelope<T[]> & Record<string, unknown>;
+  void _s;
+  void _m;
+  return {
+    items: (data ?? []) as T[],
+    page: pagination?.page ?? 1,
+    pageSize: pagination?.page_size ?? (data?.length ?? 0),
+    total: pagination?.total ?? (data?.length ?? 0),
+    totalPages: pagination?.total_pages ?? 1,
+    meta: meta as Partial<M>,
   };
 }
 

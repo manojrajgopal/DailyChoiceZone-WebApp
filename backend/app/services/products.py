@@ -234,6 +234,8 @@ def create_product(db: Session, payload: ProductWrite, actor: Optional[str] = No
     db.add(product)
     db.commit()
     db.refresh(product)
+    _catalogue_changed()
+    _search_index_changed(db, product)
     return product
 
 
@@ -332,6 +334,8 @@ def update_product(
                                         actor=actor or "system") if "price" in provided else None
     db.commit()
     db.refresh(product)
+    _catalogue_changed()
+    _search_index_changed(db, product)
 
     # Whoever was waiting for it — back in stock, or cheaper — hears now.
     if change is not None or {"stock", "reserved_stock", "status"} & set(provided):
@@ -364,6 +368,22 @@ def delete_product(db: Session, product_id: str) -> None:
 
     db.delete(product)
     db.commit()
+    _catalogue_changed()
+
+
+def _catalogue_changed() -> None:
+    """A product changed: cached recommendation rankings may no longer be right."""
+    from app.services import recommendations
+
+    recommendations.invalidate()
+
+
+def _search_index_changed(db: Session, product: Product) -> None:
+    """Search & filters: refresh the product's search text and dictionary words (best effort, logged)."""
+    from app.services.search import index
+
+    if index.refresh_quietly(db, [product.id]):
+        db.refresh(product)
 
 
 def duplicate_product(db: Session, product_id: str, actor: Optional[str] = None) -> Product:
@@ -422,6 +442,7 @@ def duplicate_product(db: Session, product_id: str, actor: Optional[str] = None)
     db.add(copy)
     db.commit()
     db.refresh(copy)
+    _search_index_changed(db, copy)
     return copy
 
 

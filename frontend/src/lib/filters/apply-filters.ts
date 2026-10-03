@@ -75,6 +75,9 @@ export function matchesFilters(product: Product, filters: ProductFilters): boole
     return false;
   }
   if (filters.inStockOnly && product.stock <= 0) return false;
+  if (filters.availability === "in-stock" && product.stock <= 0) return false;
+  if (filters.availability === "out-of-stock" && product.stock > 0) return false;
+  // Attribute filters are the server's job: a `Product` carries no attribute values.
 
   return matchesQuery(product, filters.query);
 }
@@ -111,6 +114,15 @@ const COMPARATORS: Record<SortOption, (a: Product, b: Product) => number> = {
   rating: (a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount,
   popular: (a, b) => b.reviewCount - a.reviewCount || b.rating - a.rating,
   discount: (a, b) => b.discount - a.discount || recommendedScore(b) - recommendedScore(a),
+  // Search & filters. Relevance needs the server's scoring; locally it is the
+  // recommended blend. With no timestamps, "oldest" is the reverse of newest.
+  relevance: (a, b) => recommendedScore(b) - recommendedScore(a),
+  oldest: (a, b) =>
+    Number(a.isNew) - Number(b.isNew) || recommendedScore(b) - recommendedScore(a),
+  "best-selling": (a, b) =>
+    Number(b.isBestSeller) - Number(a.isBestSeller) || b.reviewCount - a.reviewCount,
+  availability: (a, b) =>
+    Number(b.stock > 0) - Number(a.stock > 0) || recommendedScore(b) - recommendedScore(a),
 };
 
 export function sortProducts(products: Product[], sort: SortOption = "recommended"): Product[] {
@@ -232,5 +244,12 @@ export function countActiveFilters(filters: ProductFilters): number {
   if (typeof filters.minRating === "number") count += 1;
   if (typeof filters.minDiscount === "number") count += 1;
   if (filters.inStockOnly) count += 1;
+  if (filters.availability) count += 1;
+  Object.values(filters.attributes ?? {}).forEach((values) => {
+    count += values.length;
+  });
+  Object.values(filters.attributeRanges ?? {}).forEach((range) => {
+    if (typeof range.min === "number" || typeof range.max === "number") count += 1;
+  });
   return count;
 }

@@ -25,6 +25,7 @@ import { getBillingConfig, saveBillingConfig } from "@/services/billing/billingS
 import { useSiteContent } from "@/hooks/useSiteContent";
 import { getTaxConfig, saveTaxConfig } from "@/services/billing/taxService";
 import { toast } from "@/store/toastStore";
+import { RefundSettingsPanel } from "@/components/admin/views/refunds/RefundSettingsPanel";
 
 /**
  * Billing settings.
@@ -443,54 +444,59 @@ export function AdminBillingSettingsView() {
       group: "Checkout",
       dirty: changed(billing.refund, savedBilling.refund),
       content: (
-        <AdminCard title="Refund settings">
-          <FormGrid>
-            <AdminInput
-              label="Refund window (days)"
-              type="number"
-              min={0}
-              value={billing.refund.windowDays}
-              onChange={(event) =>
-                setBilling({
-                  ...billing,
-                  refund: { ...billing.refund, windowDays: Number(event.target.value) || 0 },
-                })
-              }
-            />
-            <div className="flex items-end">
-              <AdminToggle
-                label="Refund shipping on a whole-order refund"
-                description="Include the delivery charge when refunding a whole order."
-                checked={billing.refund.refundShipping}
-                onChange={(checked) =>
+        <>
+          <AdminCard title="Refund settings">
+            <FormGrid>
+              <AdminInput
+                label="Refund window (days)"
+                type="number"
+                min={0}
+                value={billing.refund.windowDays}
+                onChange={(event) =>
                   setBilling({
                     ...billing,
-                    refund: { ...billing.refund, refundShipping: checked },
+                    refund: { ...billing.refund, windowDays: Number(event.target.value) || 0 },
                   })
                 }
               />
-            </div>
-            <AdminTextarea
-              label="Refund reasons"
-              rows={4}
-              value={billing.refund.reasons.join("\n")}
-              onChange={(event) =>
-                setBilling({
-                  ...billing,
-                  refund: {
-                    ...billing.refund,
-                    reasons: event.target.value
-                      .split("\n")
-                      .map((line) => line.trim())
-                      .filter(Boolean),
-                  },
-                })
-              }
-              hint="One per line. These are the options offered when raising a refund."
-              className="sm:col-span-2"
-            />
-          </FormGrid>
-        </AdminCard>
+              <div className="flex items-end">
+                <AdminToggle
+                  label="Refund shipping on a whole-order refund"
+                  description="Include the delivery charge when refunding a whole order."
+                  checked={billing.refund.refundShipping}
+                  onChange={(checked) =>
+                    setBilling({
+                      ...billing,
+                      refund: { ...billing.refund, refundShipping: checked },
+                    })
+                  }
+                />
+              </div>
+              <AdminTextarea
+                label="Refund reasons"
+                rows={4}
+                value={billing.refund.reasons.join("\n")}
+                onChange={(event) =>
+                  setBilling({
+                    ...billing,
+                    refund: {
+                      ...billing.refund,
+                      reasons: event.target.value
+                        .split("\n")
+                        .map((line) => line.trim())
+                        .filter(Boolean),
+                    },
+                  })
+                }
+                hint="One per line. These are the options offered when raising a refund."
+                className="sm:col-span-2"
+              />
+            </FormGrid>
+          </AdminCard>
+          <div className="mt-4">
+            <RefundSettingsPanel />
+          </div>
+        </>
       ),
     },
   ];

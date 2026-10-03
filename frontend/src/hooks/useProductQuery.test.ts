@@ -162,4 +162,53 @@ describe("useProductQuery", () => {
       expect(result.current.activeFilterCount).toBeGreaterThanOrEqual(3);
     });
   });
+
+  describe("search & filters setters", () => {
+    it("sets and clears availability", () => {
+      setLocation("/shop?page=2");
+      const { result, rerender } = renderHook(() => useProductQuery({ basePath: "/shop" }));
+      result.current.setAvailability("in-stock");
+      expect(router.push).toHaveBeenLastCalledWith("/shop?availability=in-stock", { scroll: false });
+
+      setLocation("/shop?availability=in-stock");
+      rerender();
+      result.current.setAvailability("in-stock");
+      expect(router.push).toHaveBeenLastCalledWith("/shop", { scroll: false });
+    });
+
+    it("toggles an attribute value", () => {
+      setLocation("/shop?attr.material=steel");
+      const { result } = renderHook(() => useProductQuery({ basePath: "/shop" }));
+      result.current.toggleAttribute("material", "glass");
+      expect(router.push).toHaveBeenLastCalledWith("/shop?attr.material=steel%2Cglass", { scroll: false });
+    });
+
+    it("sets and clears an attribute range", () => {
+      setLocation("/shop");
+      const { result, rerender } = renderHook(() => useProductQuery({ basePath: "/shop" }));
+      result.current.setAttributeRange("capacity", 250, 1000);
+      expect(router.push).toHaveBeenLastCalledWith("/shop?attr.capacity.min=250&attr.capacity.max=1000", { scroll: false });
+
+      setLocation("/shop?attr.capacity.min=250");
+      rerender();
+      result.current.setAttributeRange("capacity", undefined, undefined);
+      expect(router.push).toHaveBeenLastCalledWith("/shop", { scroll: false });
+    });
+
+    it("applies a whole query with push, or replace while typing", () => {
+      setLocation("/shop");
+      const { result } = renderHook(() => useProductQuery({ basePath: "/shop" }));
+      result.current.apply({ brand: ["Anvi"], page: 1 });
+      expect(router.push).toHaveBeenLastCalledWith("/shop?brand=Anvi", { scroll: false });
+      result.current.apply({ minPrice: 15 }, { replace: true });
+      expect(router.replace).toHaveBeenLastCalledWith("/shop?minPrice=15", { scroll: false });
+      expect(router.push).toHaveBeenCalledTimes(1);
+    });
+
+    it("counts attribute filters and ranges as active", () => {
+      setLocation("/shop?attr.material=steel,glass&attr.capacity.min=1&availability=in-stock");
+      const { result } = renderHook(() => useProductQuery({ basePath: "/shop" }));
+      expect(result.current.activeFilterCount).toBe(4);
+    });
+  });
 });

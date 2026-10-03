@@ -7,6 +7,7 @@ import type {
   Paginated,
   Product,
   ProductFacets,
+  ProductFilters,
   ProductQuery,
   PromoBanner,
   Review,
@@ -53,10 +54,11 @@ export interface DataSource {
   /**
    * Filter options with counts.
    *
-   * `scope` narrows which products the facets are computed over, so a category
-   * page shows only that category's brands and sizes.
+   * `scope` is the listing's current filters (a category page's category, the
+   * search term, everything ticked), so the counts reflect them. The API's
+   * counts are disjunctive: each dimension ignores its own selection.
    */
-  getFacets(scope?: Pick<ProductQuery, "category" | "subcategory" | "query">): Promise<ProductFacets>;
+  getFacets(scope?: ProductFilters): Promise<ProductFacets>;
 
   listCategories(): Promise<Category[]>;
   getCategoryBySlug(slug: string): Promise<Category | null>;

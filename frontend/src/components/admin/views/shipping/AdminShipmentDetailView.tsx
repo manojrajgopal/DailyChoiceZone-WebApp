@@ -26,6 +26,8 @@ import {
 import { toast } from "@/store/toastStore";
 import type { Shipment } from "@/types/shipping";
 
+import { ShipmentLabelPanel } from "@/components/admin/views/packing/ShipmentLabelPanel";
+
 import { ManualEventDialog } from "./ManualEventDialog";
 import { TrackingTimeline } from "./TrackingTimeline";
 import { PackageFields, addressLines, packageForm, validatePackage, ShipmentStatusBadge, type PackageErrors } from "./shared";
@@ -231,7 +233,7 @@ export function AdminShipmentDetailView() {
         {actions.label ? (
           <AdminButton size="sm" loading={busy === "label"} disabled={disabled} onClick={() => void run("label")}>
             {busy === "label" ? null : <Tag className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />}
-            {shipment.label.available ? "Regenerate label" : "Generate label"}
+            {shipment.label.available ? "Ask courier for a new label" : "Get courier label"}
           </AdminButton>
         ) : null}
         {actions.pickup ? (
@@ -279,7 +281,7 @@ export function AdminShipmentDetailView() {
             className="inline-flex h-8 items-center gap-1.5 rounded-[3px] px-3 text-xs font-medium text-copper-700 hover:bg-admin-raised"
           >
             <Download className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-            Download label
+            Courier label
           </a>
         ) : null}
       </div>
@@ -310,7 +312,7 @@ export function AdminShipmentDetailView() {
                     ? "Couldn't be scheduled"
                     : "Not scheduled"}
               </Detail>
-              <Detail label="Label">{shipment.label.available ? "Ready" : "Not generated"}</Detail>
+              <Detail label="Courier label">{shipment.label.available ? "Ready" : "Not generated"}</Detail>
               <Detail label="From">
                 <AddressBlock lines={addressLines(shipment.origin)} />
               </Detail>
@@ -322,6 +324,8 @@ export function AdminShipmentDetailView() {
         </div>
 
         <div className="flex flex-col gap-4">
+          <ShipmentLabelPanel shipmentId={shipment.id} refreshKey={attempt} />
+
           <AdminCard
             title="Order"
             action={

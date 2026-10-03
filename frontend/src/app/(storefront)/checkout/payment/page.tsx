@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { Loader2, Lock, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import {
@@ -21,12 +21,14 @@ import {
 import type { BillingBreakdown, GatewayHandoff, Order, OrderLine, PaymentMethod } from "@/types";
 import type { TenderPreview } from "@/services/walletService";
 import { useCart } from "@/hooks/useCart";
+import { CartAvailabilityNotice, useCartAvailability } from "@/components/checkout/CartAvailabilityNotice";
+import { PaymentProgress } from "@/components/checkout/PaymentProgress";
 import { useGatewayPayment } from "@/hooks/useGatewayPayment";
 import { useCheckoutHydrated } from "@/hooks/useStoreHydrated";
 import { formatPrice } from "@/lib/utils/format";
 import { getMyInvoice } from "@/services/billing/invoiceService";
 import { addToCart } from "@/services/cartService";
-import { getPaymentSession } from "@/services/payments/paymentGatewayService";
+import { getPaymentSession, openOnlinePayment } from "@/services/payments/paymentGatewayService";
 import { preloadCustomCheckout } from "@/services/payments/razorpayCustom";
 import { cancelOrder, getOrder, placeOrder } from "@/services/orderService";
 import { ApiError } from "@/services/api/client";
@@ -34,42 +36,6 @@ import { getDeliveryMethod, getPaymentMethod } from "@/services/orderService";
 import { useCheckoutStore } from "@/store/checkoutStore";
 import { toast } from "@/store/toastStore";
 
-/**
- * Step 4 — payment. The last step, and the only one that takes money.
- *
- * ## Why this is last, and why it places the order
- *
- * It used to sit before the review step, which meant choosing a *method* early
- * and then confirming an order that had already been priced around it. Paying
- * is the last thing anybody wants to do, so it is the last step — and because
- * a gateway needs an order to charge against, this page is where the order is
- * created: picking a method and pressing pay does both, in that order, in one
- * action.
- *
- * The consequence to be careful about is that leaving this page after pressing
- * pay leaves a real, unpaid order. That is handled rather than avoided: the
- * confirmation page and the account order page both offer to finish paying,
- * and both reopen the same gateway order so nobody is charged twice.
- *
- * ## Why the interface is ours
- *
- * Every panel here is this store's own markup. Razorpay's modal is not opened
- * for UPI, net banking or wallets — `useGatewayPayment` drives their Custom
- * Checkout, which renders nothing and only exposes the rails. What the shopper
- * sees is this site until their own bank or their own UPI app asks them to
- * authorise, which is the one step that cannot happen anywhere else.
- *
- * Cards are the exception and say so on the panel: a card number entered into
- * this page would put PANs in this application's JavaScript, and that is a
- * PCI-DSS decision rather than a design one.
- */
-/**
- * The element the processor draws its card field into.
- *
- * A constant because two places need to agree on it: this page renders the
- * container, and the card choice carries the selector down to Checkout.
- */
-const CARD_CONTAINER_ID = "card-field";
 
 export default function CheckoutPaymentPage() {
   return (
@@ -95,6 +61,8 @@ function PaymentStep() {
    */
   const existingPaymentId = searchParams?.get("payment") ?? "";
   const settling = Boolean(existingPaymentId);
+  // A cash-on-delivery order being paid online instead (the store's own link).
+  const payingOnline = searchParams?.get("online") === "1";
   const checkoutHydrated = useCheckoutHydrated();
   const { lines, totals, breakdown, clear, delivery, couponCode, bundles, refresh } = useCart();
   const bagEmpty = lines.length === 0 && bundles.length === 0;
@@ -110,6 +78,9 @@ function PaymentStep() {
 
   const contact = useCheckoutStore((state) => state.contact);
   const address = useCheckoutStore((state) => state.address);
+  // Checked again here, in case something changed since the address step;
+  // the order itself is checked once more on the server.
+  const bagAvailability = useCartAvailability(settling ? null : address?.pincode);
   const billingSame = useCheckoutStore((state) => state.billingSameAsShipping);
   const storedBilling = useCheckoutStore((state) => state.billingAddress);
   const deliveryMethodId = useCheckoutStore((state) => state.deliveryMethodId);
@@ -204,7 +175,7 @@ function PaymentStep() {
     if (!settling) return;
 
     let active = true;
-    void getPaymentSession(existingPaymentId)
+    void (payingOnline ? openOnlinePayment(existingPaymentId) : getPaymentSession(existingPaymentId))
       .then((session) => {
         if (!active) return;
 
@@ -243,7 +214,7 @@ function PaymentStep() {
     return () => {
       active = false;
     };
-  }, [settling, existingPaymentId, router, startClock]);
+  }, [settling, payingOnline, existingPaymentId, router, startClock]);
 
 
   const busy = isPlacing || isPaying;
@@ -573,100 +544,15 @@ function PaymentStep() {
           .
         </p>
       ) : null}
-      {/*
-        The card field is drawn into this element by the processor, which is
-        what keeps that step inside the page. It is always mounted, because
-        Checkout needs the container to exist before it is told to use it —
-        and it is only visible while a card is being entered.
-      */}
-      <div
-        id={CARD_CONTAINER_ID}
-        aria-live="polite"
-        className={stage === "card" ? "max-w-2xl" : "hidden"}
-      />
-
-      {stage === "card" ? (
-        <p className="mt-4 max-w-2xl text-xs leading-relaxed text-ink-500">
-          Your card details are entered securely with our payment partner, Razorpay. We never see or store your card number.
-        </p>
-      ) : null}
-
-      {stage === "card" ? <div className="max-w-2xl">{exits}</div> : null}
-
       {/* ------------------------------------------------------ scan, or wait */}
-      {stage === "qr" || stage === "waiting" || stage === "confirming" ? (
-        <div className="max-w-2xl rounded-card border border-ink-200 bg-shell p-6 text-center">
-          {qr ? (
-            <>
-              <p className="text-sm font-medium text-ink">
-                Scan to pay {formatPrice(amountDue ?? totals.total)}
-              </p>
-              <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-ink-500">
-                Open any UPI app on your phone, scan this code, and approve the payment.
-                This page will update automatically.
-              </p>
-
-              {/*
-                Rendered at its natural size, and never scaled down.
-
-                A QR is a grid of hard edges. Downscaling it — even with
-                `image-rendering: pixelated` — lands module boundaries between
-                device pixels at any non-integer ratio, and a decoder that
-                managed the full-size image can fail on the shrunk one. The
-                served code is around 440px square, which fits this panel, so
-                the honest thing is to show it as it is and let it shrink only
-                when the viewport genuinely cannot hold it.
-
-                eslint-disable-next-line @next/next/no-img-element -- the
-                optimiser must not resample or cache a single-use payment
-                artefact, and this is already a ~2 KB bitonal PNG.
-              */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qr}
-                alt={`QR code to pay ${formatPrice(amountDue ?? totals.total)}`}
-                decoding="sync"
-                className="mx-auto mt-5 block h-auto w-auto max-w-full rounded-card border border-ink-200 bg-white [image-rendering:pixelated]"
-              />
-
-              <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-ink-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} aria-hidden="true" />
-                Waiting for your payment
-              </p>
-            </>
-          ) : (
-            <>
-              <Loader2
-                className="mx-auto h-6 w-6 animate-spin text-copper-600"
-                strokeWidth={1.75}
-                aria-hidden="true"
-              />
-              <p className="mt-4 text-sm font-medium text-ink">
-                {stage === "confirming" ? "Confirming your payment…" : "Waiting for you"}
-              </p>
-            </>
-          )}
-
-          <p className="mt-4 text-xs leading-relaxed text-ink-500" role="status">
-            {message}
-          </p>
-
-          {tapToOpen ? (
-            <Button onClick={tapToOpen.open} className="mt-4" size="lg">
-              Open {tapToOpen.appName}
-            </Button>
-          ) : null}
-
-          {stage === "confirming" ? (
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-400">
-              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-              Do not close this page
-            </p>
-          ) : (
-            exits
-          )}
-        </div>
-      ) : null}
+      <PaymentProgress
+        stage={stage}
+        qr={qr}
+        message={message}
+        tapToOpen={tapToOpen}
+        amount={formatPrice(amountDue ?? totals.total)}
+        exits={exits}
+      />
 
       {/* -------------------------------------------------------- the choices */}
       {stage === "choosing" && settling && !existing && !loadFailed ? (
@@ -713,10 +599,15 @@ function PaymentStep() {
             onPay={onPay}
             isPaying={busy}
             total={formatPrice(amountDue ?? (tenderPreview ? tenderPreview.amountDue / 100 : totals.total))}
-            cardContainer={`#${CARD_CONTAINER_ID}`}
-            codUnavailable={delivery !== null && delivery.serviceable && !delivery.codAvailable}
+            codUnavailable={(delivery !== null && delivery.serviceable && !delivery.codAvailable)
+              || bagAvailability.result?.codAvailable === false}
+            // Finishing a payment that is already underway is paying online;
+            // cash on delivery is chosen only when an order is first placed.
+            allowCod={!settling}
+            serverQr={!payingOnline}
           />
           )}
+          <CartAvailabilityNotice result={bagAvailability.result} className="mt-4" />
 
           <div className="mt-6 flex items-start gap-3 rounded-card border border-sage-200 bg-sage-50 p-4">
             <ShieldCheck

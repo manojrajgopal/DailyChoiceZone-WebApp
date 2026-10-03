@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { Copy, Eye, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { Copy, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import type { AdminProduct, ProductStatus } from "@/types/admin";
+import type { AdminProductFlag, AdminProductSort, AdminStockFilter } from "@/types/searchAdmin";
 
 import {
   AdminButton,
@@ -13,7 +14,8 @@ import {
   AdminPageHeader,
   ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
-import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { DataTable, type Column, type DataTableSort } from "@/components/admin/ui/DataTable";
+import { FilterSelect, LogSearch, PAGE_SIZES, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
@@ -22,101 +24,104 @@ import { currentActorId } from "@/services/admin/adminAuthService";
 import {
   deleteProduct,
   duplicateProduct,
-  listProducts,
+  listProductsPage,
 } from "@/services/admin/productAdminService";
 import { toast } from "@/store/toastStore";
 
-type StockFilter = "all" | "in-stock" | "low-stock" | "out-of-stock";
-type FlagFilter = "all" | "isNew" | "isTrending" | "isBestSeller" | "isFeatured";
+const KEYS = ["search", "status", "category", "brand", "stock", "flag", "sort"] as const;
 
 const STATUSES: (ProductStatus | "all")[] = ["all", "active", "draft", "out-of-stock", "archived"];
+const STOCKS: AdminStockFilter[] = ["in-stock", "low-stock", "out-of-stock"];
+const FLAGS: AdminProductFlag[] = ["isNew", "isTrending", "isBestSeller", "isFeatured"];
+
+const SORTS: { value: AdminProductSort; label: string }[] = [
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "updated", label: "Recently updated" },
+  { value: "name-asc", label: "Name, A–Z" },
+  { value: "name-desc", label: "Name, Z–A" },
+  { value: "price-asc", label: "Price, low to high" },
+  { value: "price-desc", label: "Price, high to low" },
+  { value: "stock-asc", label: "Stock, lowest first" },
+  { value: "stock-desc", label: "Stock, highest first" },
+  { value: "discount", label: "Biggest discount" },
+  { value: "best-selling", label: "Best selling" },
+  { value: "popular", label: "Most popular" },
+  { value: "rating", label: "Highest rated" },
+  { value: "category", label: "Category" },
+  { value: "status", label: "Status" },
+];
+
+/** Column header clicks, as the server's sort keys — and back, for the arrows. */
+const COLUMN_SORTS: Record<string, { asc: AdminProductSort; desc: AdminProductSort }> = {
+  product: { asc: "name-asc", desc: "name-desc" },
+  category: { asc: "category", desc: "category" },
+  price: { asc: "price-asc", desc: "price-desc" },
+  discount: { asc: "discount", desc: "discount" },
+  stock: { asc: "stock-asc", desc: "stock-desc" },
+  status: { asc: "status", desc: "status" },
+  created: { asc: "oldest", desc: "newest" },
+};
+
+function tableSort(sort: string): DataTableSort | null {
+  for (const [columnId, keys] of Object.entries(COLUMN_SORTS)) {
+    if (keys.asc === keys.desc) {
+      // One-way sorts: discount is biggest first, category and status A–Z.
+      if (sort === keys.asc) return { columnId, direction: columnId === "discount" ? "desc" : "asc" };
+    } else if (sort === keys.asc) return { columnId, direction: "asc" };
+    else if (sort === keys.desc) return { columnId, direction: "desc" };
+  }
+  return null;
+}
+
+function oneOf<T extends string>(value: string, allowed: readonly T[]): T | "" {
+  return (allowed as readonly string[]).includes(value) ? (value as T) : "";
+}
 
 /**
  * The product list.
  *
- * Filtering happens here and the result is handed to the shared `DataTable`,
- * which owns sorting, paging and selection. The split is deliberate: filter
- * controls differ on every list page, the table mechanics do not.
+ * Search, filters, sort and paging are the server's (GET /admin/products), so
+ * the portal never downloads the catalogue to filter it; they live in the
+ * address bar, so a filtered list can be bookmarked or shared. The shared
+ * `DataTable` runs in server mode: it shows the arrows and the pager and
+ * reports clicks, and leaves the rows in the order the server sent.
  */
 export function AdminProductsView() {
   const router = useRouter();
-  const { data, isLoading, reload } = useAdminResource(() => listProducts(), []);
+  const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
+  const status = oneOf(filters.status, STATUSES) || "all";
+  const stock = oneOf(filters.stock, STOCKS);
+  const flag = oneOf(filters.flag, FLAGS);
+  const sort = oneOf(filters.sort, SORTS.map((option) => option.value));
 
-  const [term, setTerm] = useState("");
-  const [status, setStatus] = useState<ProductStatus | "all">("all");
-  const [category, setCategory] = useState("all");
-  const [brand, setBrand] = useState("all");
-  const [stock, setStock] = useState<StockFilter>("all");
-  const [flag, setFlag] = useState<FlagFilter>("all");
+  const { data, isLoading, isRefreshing, reload } = useAdminResource(
+    () =>
+      listProductsPage({
+        search: filters.search,
+        status,
+        category: filters.category,
+        brands: filters.brand,
+        stock,
+        flag,
+        sort,
+        page,
+        pageSize,
+      }),
+    [filters.search, status, filters.category, filters.brand, stock, flag, sort, page, pageSize],
+  );
 
   const [pendingDelete, setPendingDelete] = useState<AdminProduct | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const products = data ?? [];
+  const products = data?.items ?? [];
+  const counts = data?.counts;
+  const categories = data?.filters.categories ?? [];
+  const brands = data?.filters.brands ?? [];
 
-  const categories = useMemo(
-    () => [...new Set(products.map((product) => product.category))].sort(),
-    [products],
+  const filtered = Boolean(
+    filters.search || status !== "all" || filters.category || filters.brand || stock || flag,
   );
-  const brands = useMemo(
-    () => [...new Set(products.map((product) => product.brand))].sort(),
-    [products],
-  );
-
-  const filtered = useMemo(() => {
-    const terms = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
-
-    return products.filter((product) => {
-      if (status !== "all" && product.status !== status) return false;
-      if (category !== "all" && product.category !== category) return false;
-      if (brand !== "all" && product.brand !== brand) return false;
-
-      if (stock !== "all") {
-        const available = Math.max(0, product.stock - product.reservedStock);
-        const isOut = available <= 0;
-        const isLow = !isOut && available <= product.lowStockThreshold;
-        if (stock === "out-of-stock" && !isOut) return false;
-        if (stock === "low-stock" && !isLow) return false;
-        if (stock === "in-stock" && (isOut || isLow)) return false;
-      }
-
-      if (flag !== "all" && !product[flag]) return false;
-
-      if (terms.length > 0) {
-        // Search the fields an administrator actually has to hand: a name from
-        // a support call, a SKU from a supplier, a brand or category.
-        const haystack = [
-          product.name,
-          product.sku,
-          product.brand,
-          product.category,
-          product.subcategory,
-          product.barcode,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!terms.every((token) => haystack.includes(token))) return false;
-      }
-
-      return true;
-    });
-  }, [products, term, status, category, brand, stock, flag]);
-
-  const activeFilters =
-    (status !== "all" ? 1 : 0) +
-    (category !== "all" ? 1 : 0) +
-    (brand !== "all" ? 1 : 0) +
-    (stock !== "all" ? 1 : 0) +
-    (flag !== "all" ? 1 : 0);
-
-  const clearFilters = () => {
-    setStatus("all");
-    setCategory("all");
-    setBrand("all");
-    setStock("all");
-    setFlag("all");
-    setTerm("");
-  };
 
   const onDuplicate = async (product: AdminProduct) => {
     setBusy(true);
@@ -146,7 +151,9 @@ export function AdminProductsView() {
     }
 
     toast.success(`${result.data} deleted`);
-    await reload();
+    // The last row of a later page: step back rather than show an empty page.
+    if (products.length === 1 && page > 1) setPage(page - 1);
+    else await reload();
   };
 
   const columns: Column<AdminProduct>[] = [
@@ -338,14 +345,11 @@ export function AdminProductsView() {
     },
   ];
 
-  const selectClass =
-    "h-8 rounded-[3px] border border-admin-border bg-admin-surface px-2 text-xs text-admin-ink hover:border-admin-border-strong focus:border-copper-500";
-
   return (
     <div>
       <AdminPageHeader
         title="Products"
-        description={`${products.length} products in the catalogue.`}
+        description="Every product in the catalogue, drafts included."
         breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Products" }]}
         actions={
           <AdminButtonLink href="/admin/products/new" variant="primary">
@@ -355,116 +359,120 @@ export function AdminProductsView() {
         }
       />
 
+      <StatusTabs
+        label="Filter products by status"
+        value={status}
+        onChange={(next) => setFilters({ status: next === "all" ? "" : next })}
+        tabs={STATUSES.map((value) => ({
+          value,
+          label: value === "all" ? "All" : humanize(value),
+          count: counts?.[value],
+        }))}
+      />
+
       {/* --------------------------------------------------- search + filters */}
-      <div className="mb-4 rounded-[3px] border border-admin-border bg-admin-surface p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:max-w-xs">
-            <label htmlFor="product-search" className="sr-only">
-              Search products by name, SKU, brand or category
-            </label>
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            <input
-              id="product-search"
-              type="search"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder="Name, SKU, brand…"
-              className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
-            />
-          </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <LogSearch
+          label="Search products by name, SKU, brand or category"
+          value={filters.search}
+          onChange={(search) => setFilters({ search })}
+          placeholder="Name, SKU, barcode, brand…"
+        />
 
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value as ProductStatus | "all")}
-            aria-label="Filter by status"
-            className={selectClass}
-          >
-            {STATUSES.map((option) => (
-              <option key={option} value={option}>
-                {option === "all" ? "All statuses" : humanize(option)}
-              </option>
-            ))}
-          </select>
+        <FilterSelect
+          label="Filter by category"
+          value={filters.category}
+          onChange={(category) => setFilters({ category })}
+          options={[
+            { value: "", label: "All categories" },
+            ...categories,
+            // Keep a category from the address bar selectable before the list arrives.
+            ...(filters.category && !categories.some((option) => option.value === filters.category)
+              ? [{ value: filters.category, label: humanize(filters.category) }]
+              : []),
+          ]}
+        />
 
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            aria-label="Filter by category"
-            className={selectClass}
-          >
-            <option value="all">All categories</option>
-            {categories.map((option) => (
-              <option key={option} value={option}>
-                {humanize(option)}
-              </option>
-            ))}
-          </select>
+        <FilterSelect
+          label="Filter by brand"
+          value={filters.brand}
+          onChange={(brand) => setFilters({ brand })}
+          options={[
+            { value: "", label: "All brands" },
+            ...[...new Set([...brands, ...(filters.brand ? [filters.brand] : [])])].map((option) => ({
+              value: option,
+              label: option,
+            })),
+          ]}
+        />
 
-          <select
-            value={brand}
-            onChange={(event) => setBrand(event.target.value)}
-            aria-label="Filter by brand"
-            className={selectClass}
-          >
-            <option value="all">All brands</option>
-            {brands.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+        <FilterSelect
+          label="Filter by stock level"
+          value={stock}
+          onChange={(next) => setFilters({ stock: next })}
+          options={[
+            { value: "", label: "Any stock" },
+            { value: "in-stock", label: "In stock" },
+            { value: "low-stock", label: "Low stock" },
+            { value: "out-of-stock", label: "Out of stock" },
+          ]}
+        />
 
-          <select
-            value={stock}
-            onChange={(event) => setStock(event.target.value as StockFilter)}
-            aria-label="Filter by stock level"
-            className={selectClass}
-          >
-            <option value="all">Any stock</option>
-            <option value="in-stock">In stock</option>
-            <option value="low-stock">Low stock</option>
-            <option value="out-of-stock">Out of stock</option>
-          </select>
+        <FilterSelect
+          label="Filter by merchandising flag"
+          value={flag}
+          onChange={(next) => setFilters({ flag: next })}
+          options={[
+            { value: "", label: "Any flag" },
+            { value: "isNew", label: "New arrival" },
+            { value: "isTrending", label: "Trending" },
+            { value: "isBestSeller", label: "Best seller" },
+            { value: "isFeatured", label: "Featured" },
+          ]}
+        />
 
-          <select
-            value={flag}
-            onChange={(event) => setFlag(event.target.value as FlagFilter)}
-            aria-label="Filter by merchandising flag"
-            className={selectClass}
-          >
-            <option value="all">Any flag</option>
-            <option value="isNew">New arrival</option>
-            <option value="isTrending">Trending</option>
-            <option value="isBestSeller">Best seller</option>
-            <option value="isFeatured">Featured</option>
-          </select>
+        <FilterSelect
+          label="Sort products"
+          value={sort}
+          onChange={(next) => setFilters({ sort: next })}
+          options={[
+            { value: "", label: filters.search ? "Best match" : "Recommended" },
+            ...SORTS,
+          ]}
+        />
 
-          {activeFilters > 0 || term ? (
-            <AdminButton size="sm" variant="ghost" onClick={clearFilters}>
-              <X className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
-              Clear filters
-            </AdminButton>
-          ) : null}
-        </div>
+        <FilterSelect
+          label="Rows per page"
+          value={String(pageSize)}
+          onChange={(next) => setPageSize(Number(next))}
+          options={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size} per page` }))}
+        />
 
-        <p className="mt-2.5 text-[0.6875rem] text-admin-muted tabular-nums">
-          {isLoading ? "Loading…" : `${filtered.length} of ${products.length} products shown`}
-        </p>
+        {filtered || sort ? (
+          <AdminButton size="sm" variant="ghost" onClick={clear}>
+            <X className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
+            Clear filters
+          </AdminButton>
+        ) : null}
       </div>
 
       <DataTable
-        rows={filtered}
+        rows={products}
         columns={columns}
         getRowId={(product) => product.id}
-        isLoading={isLoading}
-        pageSize={12}
-        initialSort={{ columnId: "created", direction: "desc" }}
-        emptyTitle="No products match"
-        emptyDescription="Adjust the search or filters above, or add a new product."
+        isLoading={isLoading && !data}
+        className={cn(isRefreshing && "opacity-60")}
+        sort={tableSort(sort)}
+        onSortChange={(next) => setFilters({ sort: COLUMN_SORTS[next.columnId]?.[next.direction] ?? "" })}
+        pagination={
+          data
+            ? { ...data.pagination, onPageChange: setPage }
+            : { page, pageSize, total: 0, totalPages: 1, onPageChange: setPage }
+        }
+        emptyTitle={filtered ? "No products match" : "No products yet"}
+        emptyDescription={
+          filtered ? "Adjust the search or filters above, or add a new product." : "Add your first product to start selling."
+        }
       />
 
       <ConfirmDialog

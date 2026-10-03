@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle2, Copy, KeyRound, Lock, PlugZap, XCircle } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { FulfilmentSettingsPanel } from "@/components/admin/views/packing/FulfilmentSettingsPanel";
 import { AdminInput, AdminSelect, AdminToggle, FormGrid, TagListInput } from "@/components/admin/ui/AdminForm";
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
 import { problem } from "@/components/admin/views/operations/shared";
@@ -124,6 +125,10 @@ export function AdminCouriersView() {
           ))}
         </div>
       )}
+
+      <div className="mt-6">
+        <FulfilmentSettingsPanel />
+      </div>
     </div>
   );
 }

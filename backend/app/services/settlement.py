@@ -737,7 +737,10 @@ def settle_from_webhook(db: Session, body: dict) -> str:
         from app.services import invoices as invoice_service
 
         outcome = "processed" if event == "refund.processed" else "failed"
-        updated = invoice_service.apply_refund_outcome(db, reference, outcome)
+        # The entity rides along so a refund we haven't matched by its gateway
+        # id yet (the webhook beat our commit) is found by the refund number
+        # we sent in its notes — or, for one of our payments, retried later.
+        updated = invoice_service.apply_refund_outcome(db, reference, outcome, entity=refund)
         db.commit()
         return f"refund {updated.refund_number} {updated.status}" if updated else "ignored: unknown refund"
 
@@ -899,6 +902,11 @@ def gateway_handoff(
     if settings.PAYMENT_PROVIDER != "razorpay":
         return None
 
+    return _handoff_payload(db, order, invoice, payment)
+
+
+def _handoff_payload(db: Session, order: Order, invoice: Invoice, payment: Payment) -> dict:
+    """The handoff itself, for a payment already known to be payable."""
     # The name on the payment sheet. Taken from the billing document, so it
     # reads as the store the shopper is buying from rather than as whatever the
     # gateway account happens to be called.
@@ -1037,3 +1045,127 @@ def settle_payment_link_callback(db: Session, params: dict) -> Optional[Payment]
         return payment
 
     return apply_result(db, payment, fetched)
+
+
+# ------------------------------------------------- paying online, in our UI
+#
+# The replacement for Razorpay Payment Links (which send the customer to a
+# page of Razorpay's). An unpaid cash-on-delivery order can be paid online on
+# our own payment page (`/checkout/payment?payment=<id>&online=1`): the store
+# sends the customer a link to it, or the customer chooses "Pay online now" on
+# the order. See docs/payments-in-our-ui.md.
+
+
+def online_payment_problem(order: Optional[Order], payment: Payment) -> Optional[tuple]:
+    """
+    Why this payment can't be paid online now, as `(error_code, message)`, or
+    None when it can. Checked in the same order the payment-link check used.
+    """
+    if order is None:
+        return ("ORDER_NOT_FOUND", "That payment has no order.")
+    if payment.status in SETTLED or order.payment_status == "paid":
+        return ("ALREADY_PAID", "This order is already paid.")
+    if order.status in ("cancelled", "returned", "delivered"):
+        return ("ORDER_NOT_PAYABLE", f"A {order.status} order can't be paid online.")
+    if payment.method == "cod" and order.stock_state != "consumed":
+        return ("ORDER_IN_CHECKOUT", "This order is still in checkout; it can be paid from the payment page.")
+    if settings.PAYMENT_PROVIDER != "razorpay":
+        return ("PROVIDER_UNSUPPORTED", "Online payment needs a live payment gateway.")
+    return None
+
+
+def open_online_payment(db: Session, payment: Payment) -> dict:
+    """
+    Make an unpaid order payable on our own payment page, and return the handoff.
+
+    A checkout order that is waiting for its payment already has a gateway
+    order: that one is handed back (as `gateway_handoff` does). A cash-on-
+    delivery order has none, so one is opened for exactly what is owed and its
+    reference kept on the payment — the transaction id stays the COD one until
+    the gateway reports a payment. From there it settles like any other
+    payment, through `verify_and_settle` and the webhook, and `_apply_paid`
+    marks the order paid so the courier collects nothing.
+
+    Idempotent: a COD payment whose gateway order was opened already gets that
+    same order back, never a second one (two open gateway orders for one
+    invoice is how a customer gets charged twice).
+    """
+    from app.services.payments.base import PaymentRequest
+
+    payment = _lock_payment(db, payment.id)
+    order = db.get(Order, payment.order_id)
+    invoice = db.get(Invoice, payment.invoice_id)
+    problem = online_payment_problem(order, payment)
+    if problem:
+        raise ConflictError(problem[1], error_code=problem[0])
+    if invoice is None:
+        raise NotFoundError("That payment has no invoice.", error_code="INVOICE_NOT_FOUND")
+
+    if payment.method != "cod":
+        handoff = gateway_handoff(db, order, invoice, payment)
+        if handoff is None:
+            raise ConflictError("This payment can't be reopened.", error_code="ORDER_NOT_PAYABLE")
+        return handoff
+
+    if not (payment.provider_reference or "").startswith("order_"):
+        provider = get_provider()
+        result = provider.create(PaymentRequest(
+            order_id=order.id,
+            invoice_id=invoice.id,
+            customer_id=order.customer_id,
+            customer_name=order.customer_name,
+            customer_email=order.customer_email,
+            amount=payment.amount,
+            currency=invoice.currency or "INR",
+            # Anything but "cod": the gateway opens an order for it.
+            method="online",
+            notes={"orderNumber": order.order_number, "paymentId": payment.id, "source": "cod-online"},
+        ))
+        if not result.ok or not (result.provider_reference or result.transaction_id):
+            raise ConflictError(result.failure_reason or "Online payment couldn't be started. Please try again.",
+                                error_code="GATEWAY_UNAVAILABLE")
+        payment.provider_reference = result.provider_reference or result.transaction_id
+        payment.events.append(PaymentEvent(
+            status="online-opened",
+            note="Opened for online payment on the store's own payment page.",
+            occurred_at=datetime.utcnow(),
+        ))
+        db.commit()
+        db.refresh(payment)
+
+    return _handoff_payload(db, order, invoice, payment)
+
+
+def online_payment_link(payment: Payment) -> str:
+    """Our own page for paying this order online — what the store sends the customer."""
+    return f"{settings.STOREFRONT_URL.rstrip('/')}/checkout/payment?payment={payment.id}&online=1"
+
+
+def request_online_payment(db: Session, payment: Payment) -> dict:
+    """
+    Ask the customer to pay an unpaid order online, on our own page, by our own
+    email (and SMS/WhatsApp where the store has switched those on) — not by a
+    Razorpay Payment Link.
+    """
+    payment = _lock_payment(db, payment.id)
+    order = db.get(Order, payment.order_id)
+    problem = online_payment_problem(order, payment)
+    if problem is None and payment.method != "cod":
+        # A checkout payment is finished on its own payment page, in its window.
+        problem = ("ORDER_IN_CHECKOUT", "This order is still in checkout; it can be paid from the payment page.")
+    if problem:
+        raise ConflictError(problem[1], error_code=problem[0])
+
+    link = online_payment_link(payment)
+    from app.services.email.notifications import notify_payment_request
+
+    sent_before = sum(1 for event in payment.events if event.status == "link-sent")
+    notify_payment_request(db, order, payment, link, attempt=sent_before + 1)
+    payment.events.append(PaymentEvent(
+        status="link-sent",
+        note="Asked the customer to pay online on the store's payment page.",
+        occurred_at=datetime.utcnow(),
+    ))
+    db.commit()
+    return {"url": link, "paymentId": payment.id, "orderNumber": order.order_number}
+

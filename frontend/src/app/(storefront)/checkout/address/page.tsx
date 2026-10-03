@@ -8,6 +8,7 @@ import type { Address, BillingAddress, DeliveryMethodId } from "@/types";
 import { CheckoutShell } from "@/components/checkout/CheckoutShell";
 import { DeliveryEstimate } from "@/components/checkout/DeliveryEstimate";
 import { PincodeStatus, usePincodeCheck } from "@/components/common/PincodeChecker";
+import { CartAvailabilityNotice, useCartAvailability } from "@/components/checkout/CartAvailabilityNotice";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Input, Radio, Select } from "@/components/ui/Field";
 import { useSiteContent } from "@/hooks/useSiteContent";
@@ -90,6 +91,8 @@ export default function CheckoutAddressPage() {
   // as the PIN is typed, and again by the server when the order is placed.
   const delivery = usePincodeCheck(form.pincode);
   const serviceability = delivery.result;
+  // And whether every item in the bag can go there (a product's own delivery rules).
+  const bagAvailability = useCartAvailability(form.pincode);
   const expressBlocked = serviceability !== null && serviceability.serviceable && !serviceability.expressAvailable;
   // The store's own answer wins: no second estimate when it already dates the PIN, or can't deliver there.
   const showCourierEstimate =
@@ -158,6 +161,8 @@ export default function CheckoutAddressPage() {
     if (!/^[1-9]\d{5}$/.test(form.pincode.trim())) next.pincode = "Enter a valid 6-digit PIN code.";
     else if (serviceability && !serviceability.serviceable) {
       next.pincode = serviceability.reason || "Sorry, we don't deliver to this PIN code yet.";
+    } else if (bagAvailability.result && !bagAvailability.result.allAvailable) {
+      next.pincode = "Some items in your bag can't be delivered to this PIN code — see below.";
     }
 
     // A separate billing address is validated to the same standard as the
@@ -293,6 +298,7 @@ export default function CheckoutAddressPage() {
           {serviceability && !errors.pincode ? (
             <PincodeStatus check={serviceability} className="-mt-2 sm:col-span-2" />
           ) : null}
+          <CartAvailabilityNotice result={bagAvailability.result} className="sm:col-span-2" />
 
           {/* The courier's estimate, for a PIN the store's own list doesn't date. Never blocks. */}
           {showCourierEstimate ? <DeliveryEstimate pincode={form.pincode} className="-mt-2 sm:col-span-2" /> : null}

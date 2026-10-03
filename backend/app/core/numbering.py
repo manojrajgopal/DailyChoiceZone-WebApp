@@ -53,6 +53,7 @@ TICKET = Series("DCZ", min_digits=6)  # DCZ-2026-000001
 SHIPMENT = Series("DCZ-SH", min_digits=6)  # DCZ-SH-2026-000001
 PURCHASE_ORDER = Series("DCZ-PO", min_digits=6)  # DCZ-PO-2026-000001
 GOODS_RECEIPT = Series("DCZ-GRN", min_digits=6)  # DCZ-GRN-2026-000001
+PACKAGE = Series("DCZ-PKG", min_digits=6)  # DCZ-PKG-2026-000001 (packing)
 
 
 def highest(db: Session, column, *, prefix: Optional[str] = None, lock: bool = True) -> int:
@@ -141,5 +142,6 @@ def describe() -> list:
         {"key": "shipment", "label": "Shipments", "example": SHIPMENT.yearly(year, 1)},
         {"key": "purchaseOrder", "label": "Purchase orders", "example": PURCHASE_ORDER.yearly(year, 1)},
         {"key": "goodsReceipt", "label": "Goods receipts", "example": GOODS_RECEIPT.yearly(year, 1)},
+        {"key": "package", "label": "Packages", "example": PACKAGE.yearly(year, 1)},
         {"key": "sku", "label": "Generated SKUs", "example": f"{SKU_PREFIX}-AC{1:0{SKU_MIN_DIGITS}d}"},
     ]

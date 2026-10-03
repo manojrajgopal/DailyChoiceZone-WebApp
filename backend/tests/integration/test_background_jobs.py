@@ -90,7 +90,8 @@ class TestTracked:
 
     def test_every_expected_job_has_a_description(self):
         assert all(jobs.EXPECTED.values())
-        assert len(jobs.EXPECTED) == 13
+        # 13 before product discovery's clean-up, then refunds, segments, sign-in (auth) and search.
+        assert len(jobs.EXPECTED) == 18
 
 
 # ------------------------------------------------------------------ loops
@@ -110,6 +111,9 @@ LOOPS = [
     ("app.services.support.sla", "support_sla"),
     ("app.services.payment_expiry", "payment_expiry"),
     ("app.services.shipping.jobs", "shipping"),
+    ("app.services.refunds", "refunds"),  # partial refunds
+    ("app.services.discovery_jobs", "discovery"),
+    ("app.services.search.jobs", "search"),  # search & filters
 ]
 
 

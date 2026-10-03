@@ -5,9 +5,9 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ProductColourGallery, ProductColourScope } from "@/components/products/ProductColourScope";
 import { ProductPurchasePanel } from "@/components/products/ProductPurchasePanel";
 import { ProductQuestions } from "@/components/products/ProductQuestions";
-import { ProductRail } from "@/components/products/ProductRail";
 import { ProductReviews } from "@/components/products/ProductReviews";
 import { RecentlyViewedRail } from "@/components/products/RecentlyViewedRail";
+import { RecommendationRail } from "@/components/products/RecommendationRail";
 import { ProductBundles } from "@/components/growth/Bundles";
 import { ProductViewTracker } from "@/components/growth/Trackers";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -15,6 +15,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { getProduct, getRelatedProducts } from "@/services/productService";
 import { getReviewSummary, getReviews } from "@/services/reviewService";
 import { getSiteConfig } from "@/services/siteService";
+import { getSizeGuide } from "@/services/discoveryService";
 import { formatPrice, humanize } from "@/lib/utils/format";
 
 interface PageProps {
@@ -99,11 +100,13 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
     );
   }
 
-  const [related, reviews, summary, config] = await Promise.all([
+  const [related, reviews, summary, config, sizeGuide] = await Promise.all([
     getRelatedProducts(product.id, 6),
     getReviews(product.id),
     getReviewSummary(product.id),
     getSiteConfig(),
+    // A missing or failing guide just means the general charts are linked instead.
+    product.sizes.length > 0 ? getSizeGuide(product.id).catch(() => null) : Promise.resolve(null),
   ]);
 
   /**
@@ -170,7 +173,7 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
         <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-14">
           <ProductColourScope product={product} requestedColor={requestedColor}>
             <ProductColourGallery product={product} />
-            <ProductPurchasePanel product={product} config={config} />
+            <ProductPurchasePanel product={product} config={config} sizeGuide={sizeGuide} />
           </ProductColourScope>
         </div>
 
@@ -291,18 +294,31 @@ export default async function ProductPage({ params, searchParams }: PageProps) {
 
       {/* ------------------------------------------------ related + history */}
       <div className="mt-16 flex flex-col gap-16">
-        {related.length > 0 ? (
-          <section aria-labelledby="related-heading" className="page-shell">
-            <SectionHeader
-              id="related-heading"
-              title="You may also like"
-              subtitle="Similar pieces"
-              viewAllHref={`/category/${product.category}?subcategory=${product.subcategory}`}
-              className="mb-7"
-            />
-            <ProductRail products={related} layout="rail" />
-          </section>
-        ) : null}
+        {/* Each rail renders nothing when it has nothing honest to show. */}
+        <RecommendationRail
+          productId={product.id}
+          type="related"
+          title="You may also like"
+          subtitle="Chosen to go with it"
+          placement="pdp-related"
+          initialProducts={related}
+          viewAllHref={`/category/${product.category}?subcategory=${product.subcategory}`}
+        />
+        <RecommendationRail
+          productId={product.id}
+          type="frequently-bought-together"
+          title="Frequently bought together"
+          subtitle="Often in the same order"
+          placement="pdp-fbt"
+          limit={4}
+        />
+        <RecommendationRail
+          productId={product.id}
+          type="similar"
+          title="Similar products"
+          subtitle="Alike in kind and price"
+          placement="pdp-similar"
+        />
 
         <RecentlyViewedRail recordId={product.id} excludeId={product.id} />
       </div>

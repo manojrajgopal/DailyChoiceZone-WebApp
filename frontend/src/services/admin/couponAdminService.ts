@@ -35,6 +35,9 @@ export async function saveCoupon(coupon: AdminCoupon): Promise<AdminResult<Admin
   if (coupon.type === "flat" && coupon.value <= 0) {
     return { ok: false, reason: "Enter a discount amount above zero." };
   }
+  if (coupon.audience === "segment" && !coupon.segmentId) {
+    return { ok: false, reason: "Choose the segment this coupon is for." };
+  }
   if (coupon.endsAt && new Date(coupon.endsAt) <= new Date(coupon.startsAt)) {
     return { ok: false, reason: "The end date must be after the start date." };
   }

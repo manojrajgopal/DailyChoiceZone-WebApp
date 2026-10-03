@@ -329,6 +329,13 @@ export function useCart() {
     }
   }, []);
 
+  /** A bag the server returned from another call — saving a line for later, moving one back. */
+  const applyServerCart = useCallback((cart: cartService.ServerCart) => {
+    const next = cartService.cartViewFrom(cart);
+    setView(next);
+    publishItemCount(next.breakdown.itemCount);
+  }, []);
+
   const clear = useCallback(async () => {
     if (isSignedIn) {
       try {
@@ -374,6 +381,8 @@ export function useCart() {
     clear,
     /** Read the bag again from the server — after something outside this hook changed it. */
     refresh,
+    applyServerCart,
+    isSignedIn,
   };
 }
 
@@ -407,7 +416,7 @@ function useAddAction(onView: ((view: cartService.CartView) => void) | null) {
   return useCallback(
     async (
       product: Product,
-      options: { size?: string | null; color?: string | null; quantity?: number } = {},
+      options: { size?: string | null; color?: string | null; quantity?: number; source?: string } = {},
     ) => {
       if (isSignedIn) {
         try {
@@ -416,6 +425,7 @@ function useAddAction(onView: ((view: cartService.CartView) => void) | null) {
             size: options.size ?? null,
             color: options.color ?? null,
             quantity: options.quantity ?? 1,
+            source: options.source,
           });
           onView?.(result);
           publishItemCount(result.breakdown.itemCount);

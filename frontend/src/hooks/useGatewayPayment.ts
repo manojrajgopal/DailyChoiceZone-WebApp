@@ -12,7 +12,6 @@ import {
   pollQr,
   verifyPayment,
 } from "@/services/payments/paymentGatewayService";
-import { openRazorpayCheckout } from "@/services/payments/razorpayCheckout";
 import {
   startCustomPayment,
   type PaymentSelection,
@@ -22,27 +21,39 @@ import { toast } from "@/store/toastStore";
 /**
  * Driving a payment from our own interface.
  *
- * Two routes into the gateway, chosen by what the shopper picked:
+ * Every method — UPI, cards, net banking, wallets — goes through Razorpay's
+ * Custom Checkout, which renders nothing: no modal, no iframe, no Razorpay
+ * page. What the shopper sees is this store until their own UPI app or their
+ * own bank's page (net banking sign-in, a card's 3-D Secure OTP) asks them to
+ * authorise, which no merchant can replace. Cards are typed into our own form
+ * (see `lib/payments/card.ts` and docs/payments-in-our-ui.md).
  *
- * - **UPI, net banking, wallets** go through Custom Checkout, which renders
- *   nothing. The page stays ours; the shopper authorises in their own app or
- *   their own bank's page, which is unavoidable and is also the only place it
- *   should happen.
- * - **Cards** go through Standard Checkout's secure field. A card number
- *   entered into our own markup would put PANs in this application's
- *   JavaScript — a PCI-DSS decision, not a design one — so the card panel says
- *   so and this is the one flow that shows the processor's own field.
- *
- * Either way the outcome is settled the same way: the three references go to
- * our server, which checks the signature with the key secret, reads the
- * payment back from the gateway and compares the amount with the invoice.
+ * The outcome is settled the same way for all of them: the three references
+ * go to our server, which checks the signature with the key secret, reads the
+ * payment back from the gateway and compares the amount with what was owed.
  * Nothing here decides whether money arrived.
+ *
+ * Orders verify through `/payments/{id}/verify`; a membership or a gift card
+ * passes its own `verify`. Only an order payment can use the server's QR codes
+ * (`serverQr`); the others get Custom Checkout's own UPI QR.
  */
 
-export type Stage = "choosing" | "waiting" | "qr" | "card" | "confirming" | "expired";
+export type Stage = "choosing" | "waiting" | "qr" | "confirming" | "expired";
 export type Outcome = "paid" | "abandoned" | "failed";
 
-export function useGatewayPayment() {
+export type GatewayConfirmation = { razorpayPaymentId: string; razorpayOrderId: string; razorpaySignature: string };
+
+export interface GatewayPaymentOptions {
+  /** Settle with our server. Defaults to the order payment's `/payments/{id}/verify`. */
+  verify?: (paymentId: string, response: GatewayConfirmation) => Promise<unknown>;
+  /** Use the server's single-use QR codes (order payments only). Default true. */
+  serverQr?: boolean;
+  /** Said when the payment is confirmed. */
+  successMessage?: string;
+}
+
+export function useGatewayPayment(options: GatewayPaymentOptions = {}) {
+  const { verify = verifyPayment, serverQr = true, successMessage = "Payment received" } = options;
   const [stage, setStage] = useState<Stage>("choosing");
   const [qr, setQr] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -88,17 +99,14 @@ export function useGatewayPayment() {
    * a payment nobody recorded.
    */
   const confirm = useCallback(
-    async (
-      paymentId: string,
-      response: { razorpayPaymentId: string; razorpayOrderId: string; razorpaySignature: string },
-    ): Promise<Outcome> => {
+    async (paymentId: string, response: GatewayConfirmation): Promise<Outcome> => {
       setStage("confirming");
       setQr(null);
       setMessage("Checking the payment with your bank…");
 
       try {
-        await verifyPayment(paymentId, response);
-        toast.success("Payment received");
+        await verify(paymentId, response);
+        toast.success(successMessage);
         return "paid";
       } catch (error) {
         toast.error(
@@ -112,65 +120,10 @@ export function useGatewayPayment() {
         reset();
       }
     },
-    [reset],
+    [reset, verify, successMessage],
   );
 
-  /**
-   * Cards: the processor's secure field, embedded in the page.
-   *
-   * `container` is what keeps it out of a floating window — Razorpay draws
-   * into that element as part of this step. The card fields themselves stay
-   * the processor's, because a card number in our own markup would put PANs in
-   * this application's JavaScript.
-   */
-  const payByCard = useCallback(
-    async (handoff: GatewayHandoff, container?: string): Promise<Outcome> => {
-      setStage("card");
-      setMessage("Enter your card details below.");
-
-      const controller = new AbortController();
-      abandon.current = () => controller.abort();
-
-      try {
-        startClock(handoff);
-        const outcome = await openRazorpayCheckout(handoff, {
-          container,
-          only: "card",
-          signal: controller.signal,
-        });
-        abandon.current = null;
-
-        if (outcome.status === "dismissed") {
-          reset();
-          // Stopped from this page's own buttons: the page says what happens next.
-          if (!controller.signal.aborted) {
-            toast.info("Payment cancelled. Your order is saved — you can pay any time.");
-          }
-          return "abandoned";
-        }
-
-        if (outcome.status === "failed") {
-          reset();
-          toast.error(outcome.reason);
-          return "failed";
-        }
-
-        return confirm(handoff.paymentId, outcome.response);
-      } catch (error) {
-        abandon.current = null;
-        reset();
-        toast.error(
-          error instanceof Error && error.message
-            ? error.message
-            : "We couldn't open the payment window. Please try again.",
-        );
-        return "failed";
-      }
-    },
-    [confirm, reset, startClock],
-  );
-
-  /** UPI, net banking and wallets: our interface throughout. */
+  /** Every method: our interface throughout. */
   const payCustom = useCallback(
     async (handoff: GatewayHandoff, selection: PaymentSelection): Promise<Outcome> => {
       startClock(handoff);
@@ -320,11 +273,12 @@ export function useGatewayPayment() {
     (handoff: GatewayHandoff, choice: Choice): Promise<Outcome> => {
       switch (choice.kind) {
         case "card":
-          return payByCard(handoff, choice.container);
+          return payCustom(handoff, { method: "card", card: choice.card });
         case "upi-qr":
           // Razorpay's QR Codes product, not Checkout's qr flow — see
-          // `createQr`. It works on accounts whose Checkout UPI is off.
-          return payByQr(handoff);
+          // `createQr`. It works on accounts whose Checkout UPI is off, but it
+          // is minted per order payment; anything else uses Checkout's QR.
+          return serverQr ? payByQr(handoff) : payCustom(handoff, { method: "upi", flow: "qr" });
         case "upi-intent":
           return payCustom(handoff, {
             method: "upi",
@@ -343,7 +297,7 @@ export function useGatewayPayment() {
           return Promise.resolve("paid");
       }
     },
-    [payByCard, payByQr, payCustom],
+    [payByQr, payCustom, serverQr],
   );
 
   /**
@@ -363,8 +317,8 @@ export function useGatewayPayment() {
    * Stop whatever payment is under way, and go back to choosing.
    *
    * For the page's "Pay another way" and "Cancel order". Closes a QR code that
-   * was never scanned, stops listening for a UPI approval, and takes the card
-   * frame down; the `pay` call that started it answers "abandoned".
+   * was never scanned and stops listening for an approval; the `pay` call that
+   * started it answers "abandoned".
    *
    * Stopping listening does not stop a payment the customer already approved.
    * That still reaches the server by webhook and is settled — or, on an order

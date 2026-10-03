@@ -1,8 +1,11 @@
 import {
+  ChartPie,
+  Ruler,
   Bell,
   ClipboardList,
   Factory,
   PackageCheck,
+  PackageOpen,
   DatabaseBackup,
   Megaphone,
   Activity,
@@ -41,6 +44,9 @@ import {
   Tags,
   Undo2,
   Users,
+  // search & filters
+  SlidersHorizontal,
+  TextSearch,
 } from "lucide-react";
 
 /**
@@ -97,8 +103,15 @@ const ICONS = {
   notifications: Bell,
   backups: DatabaseBackup,
   shipments: PackageCheck,
+  packing: PackageOpen,
   suppliers: Factory,
   purchaseOrders: ClipboardList,
+  sizeGuides: Ruler,
+  // Customer segmentation
+  segments: ChartPie,
+  // search & filters
+  attributes: SlidersHorizontal,
+  searchAnalytics: TextSearch,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

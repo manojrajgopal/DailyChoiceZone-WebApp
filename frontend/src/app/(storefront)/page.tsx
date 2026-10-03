@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { HomeSectionRenderer } from "@/components/home/HomeSectionRenderer";
 import { HomeSections } from "@/components/home/HomeSections";
 import { FlashSaleStrip } from "@/components/growth/FlashSales";
+import { RecentlyViewedRail } from "@/components/products/RecentlyViewedRail";
 import {
   getHomepageConfig,
   getHomeSectionLayout,
@@ -47,6 +48,8 @@ export default async function HomePage() {
         node: <HomeSectionRenderer section={section} />,
       }))}
     />
+      {/* Only when there is history: a first visit sees no empty heading. */}
+      <RecentlyViewedRail placement="home" className="mt-16 mb-4" />
     </>
   );
 }

@@ -115,11 +115,26 @@ ADDED_NAV_ITEMS = [
                                "icon": "notifications", "badge": "failedNotifications"}),
     ("/admin/health", {"id": "backups", "label": "Backups", "href": "/admin/settings/backups", "icon": "backups"}),
     ("/admin/orders", {"id": "shipments", "label": "Shipments", "href": "/admin/shipments", "icon": "shipments"}),
+    # Picking and packing, between orders and their shipments.
+    ("/admin/orders", {"id": "packing", "label": "Packing", "href": "/admin/packing", "icon": "packing"}),
     ("/admin/inventory", {"id": "suppliers", "label": "Suppliers", "href": "/admin/suppliers", "icon": "suppliers"}),
     ("/admin/suppliers", {"id": "purchase-orders", "label": "Purchase orders", "href": "/admin/purchase-orders",
                           "icon": "purchaseOrders"}),
     ("/admin/settings/backups", {"id": "couriers", "label": "Couriers", "href": "/admin/settings/couriers",
                                  "icon": "delivery"}),
+    ("/admin/collections", {"id": "size-guides", "label": "Size guides", "href": "/admin/size-guides",
+                            "icon": "sizeGuides"}),
+    # Customer segmentation, right after Customers.
+    ("/admin/customers", {"id": "segments", "label": "Segments", "href": "/admin/customers/segments",
+                          "icon": "segments"}),
+    # Customer sign-in methods (social login, codes), with the store setup.
+    ("/admin/settings/couriers", {"id": "authentication", "label": "Authentication",
+                                  "href": "/admin/settings/authentication", "icon": "settings"}),
+    # Search & filters: attributes beside categories and collections; search analytics beside analytics.
+    ("/admin/collections", {"id": "attributes", "label": "Attributes", "href": "/admin/attributes",
+                            "icon": "attributes"}),
+    ("/admin/analytics", {"id": "search-analytics", "label": "Search analytics", "href": "/admin/search",
+                          "icon": "searchAnalytics"}),
 ]
 
 
@@ -130,22 +145,22 @@ ADDED_NAV_ITEMS = [
 # shows. A link this layout doesn't name stays at the end of the group it was
 # saved in, so nothing an administrator adds ever disappears.
 NAV_LAYOUT = [
-    ("nav_overview", "Overview", ["/admin/dashboard", "/admin/reports", "/admin/analytics"]),
+    ("nav_overview", "Overview", ["/admin/dashboard", "/admin/reports", "/admin/analytics", "/admin/search"]),
     ("nav_catalogue", "Catalogue", [
-        "/admin/products", "/admin/categories", "/admin/collections",
+        "/admin/products", "/admin/categories", "/admin/collections", "/admin/attributes", "/admin/size-guides",
         ("stock-folder", "Stock", "inventory", ["/admin/inventory", "/admin/alerts"]),
         ("purchasing-folder", "Purchasing", "suppliers", ["/admin/suppliers", "/admin/purchase-orders"]),
     ]),
     ("nav_sales", "Sales", [
         "/admin/orders",
         ("fulfilment-folder", "Fulfilment", "shipments",
-         ["/admin/shipments", "/admin/returns", "/admin/delivery"]),
+         ["/admin/packing", "/admin/shipments", "/admin/returns", "/admin/delivery"]),
         ("payments-folder", "Payments", "billing",
          ["/admin/billing", "/admin/payments/reconciliation", "/admin/payments/webhooks"]),
         "/admin/carts",
     ]),
     ("nav_customers", "Customers", [
-        "/admin/customers", "/admin/membership",
+        "/admin/customers", "/admin/customers/segments", "/admin/membership",
         ("engagement-folder", "Feedback & support", "support",
          ["/admin/support", "/admin/reviews", "/admin/questions"]),
         ("rewards-folder", "Rewards", "loyalty",
@@ -158,7 +173,7 @@ NAV_LAYOUT = [
     ("nav_admin", "Administration", [
         ("store-setup-folder", "Store setup", "settings",
          ["/admin/settings", "/admin/settings/site", "/admin/settings/content", "/admin/settings/navigation",
-          "/admin/settings/billing", "/admin/settings/couriers"]),
+          "/admin/settings/billing", "/admin/settings/couriers", "/admin/settings/authentication"]),
         ("messaging-folder", "Messaging", "notifications",
          ["/admin/settings/email", "/admin/notifications", "/admin/support/settings"]),
         ("system-folder", "System", "health",

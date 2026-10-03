@@ -71,6 +71,22 @@ RESOURCES = (
     # goods received against them (which adds stock).
     "suppliers",
     "purchasing",
+    # Packing: picking, packing and the packing queue (labels use `shipments`).
+    "packing",
+    # Customer segmentation: building and recalculating segments; exporting
+    # them (and seeing members' contact details unmasked) is kept apart.
+    "segments",
+    "segments-export",
+    # Customer sign-in methods (social login, codes): the super admin's unless granted.
+    "auth-settings",
+    # Partial refunds: raising, sending and retrying refunds; and approving
+    # ones above the approval threshold (and the refund settings) — the super
+    # admin's unless granted.
+    "refunds",
+    "refunds-large",
+    # Search & filters: search analytics, search settings (popular searches,
+    # synonyms) and rebuilding the search index.
+    "search",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -82,11 +98,17 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
     # Money-moving actions (resolving reconciliation, replaying webhooks) are
     # the super admin's; an admin can see both.
     "admin": [r for r in RESOURCES if r not in ("admins", "support-config", "payments-manage", "audit-logs", "backups",
-                                                   "shipping-config")],
+                                                   "shipping-config", "auth-settings",
+                                                   "refunds-large")],
     "manager": ["products", "orders", "customers", "reviews", "reports", "support", "carts", "alerts", "questions",
-                "flash-sales", "bundles", "analytics", "campaigns", "shipments", "suppliers", "purchasing"],
-    "editor": ["products", "content", "questions", "bundles"],
-    "staff": ["products", "orders", "reviews", "support", "questions", "shipments"],
+                "flash-sales", "bundles", "analytics", "campaigns", "shipments", "suppliers", "purchasing",
+                "packing", "segments",
+                "refunds",
+                "search"],
+    "editor": ["products", "content", "questions", "bundles",
+               "search"],
+    "staff": ["products", "orders", "reviews", "support", "questions", "shipments",
+              "packing"],
 }
 
 

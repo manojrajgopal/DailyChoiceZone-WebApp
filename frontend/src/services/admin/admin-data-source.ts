@@ -20,6 +20,7 @@ import type {
   StockAdjustment,
   StoreSettings,
 } from "@/types/admin";
+import type { AdminProductListParams, AdminProductPage } from "@/types/searchAdmin";
 
 /**
  * The admin data-source contract — the single seam between the admin portal and
@@ -89,6 +90,8 @@ export interface NavCounts {
 export interface AdminDataSource {
   /* -------------------------------------------------------------- products */
   listProducts(): Promise<AdminProduct[]>;
+  /** One page of the list, filtered, sorted and counted on the server (search & filters). */
+  listProductsPage(params: AdminProductListParams): Promise<AdminProductPage>;
   getProduct(id: string): Promise<AdminProduct | null>;
   createProduct(product: AdminProduct): Promise<AdminProduct>;
   updateProduct(product: AdminProduct): Promise<AdminProduct>;
@@ -122,7 +125,7 @@ export interface AdminDataSource {
     confirm?: boolean,
   ): Promise<AdminOrder>;
   updatePaymentStatus(id: string, status: PaymentStatus): Promise<AdminOrder>;
-  /** Raise a Razorpay Payment Link for a confirmed, unpaid cash-on-delivery order. */
+  /** Ask the customer to pay a confirmed, unpaid cash-on-delivery order online, on our own payment page. */
   sendPaymentLink(id: string): Promise<PaymentLinkSent>;
 
   /* ------------------------------------------------------------- customers */
@@ -186,11 +189,11 @@ export interface AdminDataSource {
   getNavCounts(): Promise<NavCounts>;
 }
 
-/** A payment link Razorpay has sent to the customer. */
+/** A request to pay online, sent to the customer: our own payment page's address. */
 export interface PaymentLinkSent {
-  id: string;
+  url: string;
+  /** The same address (kept for older callers). */
   shortUrl: string;
-  status: string;
-  /** Epoch seconds. */
-  expireBy?: number | null;
+  paymentId: string;
+  orderNumber: string;
 }

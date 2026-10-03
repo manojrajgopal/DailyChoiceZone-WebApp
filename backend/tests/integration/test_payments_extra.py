@@ -961,6 +961,15 @@ class TestPaymentLinks:
         gateway.responses["/payment_links"] = {"id": link_id, "short_url": "https://rzp.io/i/x", "status": "created"}
         return client.post(f"/api/admin/orders/{placed['order']['id']}/payment-link", headers=admin_auth)
 
+    def _legacy_link(self, db, gateway, placed, link_id="plink_x0001"):
+        """A Razorpay Payment Link raised before the store switched to its own payment page.
+
+        No new ones are raised (see `test_the_request_is_our_own_page_not_a_razorpay_link`), but
+        links already in customers' inboxes must still settle when paid.
+        """
+        gateway.responses["/payment_links"] = {"id": link_id, "short_url": "https://rzp.io/i/x", "status": "created"}
+        settlement.open_payment_link(db, db.get(Payment, placed["paymentId"]))
+
     def _callback(self, client, link_id, reference, status, pay_id, secret=KEY_SECRET):
         fields = (link_id, reference, status, pay_id)
         return client.get("/api/payments/link-callback", params={
@@ -968,10 +977,22 @@ class TestPaymentLinks:
             "razorpay_payment_link_status": status, "razorpay_payment_id": pay_id,
             "razorpay_signature": sign("|".join(fields), secret)})
 
-    def test_one_link_per_payment(self, client, admin_auth, gateway, cod):
+    def test_the_request_is_our_own_page_not_a_razorpay_link(self, client, db, admin_auth, gateway, cod):
+        response = self._raise(client, admin_auth, gateway, cod)
+        assert response.status_code == 201, response.text
+        url = response.json()["data"]["url"]
+        assert url.endswith(f"/checkout/payment?payment={cod['paymentId']}&online=1")
+        assert "rzp.io" not in url
+        # Nothing was asked of Razorpay's Payment Links.
+        assert not [c for c in gateway.calls if c["path"].startswith("/payment_links")]
+
+    def test_a_request_can_be_sent_again(self, client, db, admin_auth, gateway, cod):
+        from app.models import PaymentEvent
+
         assert self._raise(client, admin_auth, gateway, cod).status_code == 201
-        again = self._raise(client, admin_auth, gateway, cod, "plink_x0002")
-        assert again.status_code == 409 and again.json()["error_code"] == "LINK_EXISTS"
+        assert self._raise(client, admin_auth, gateway, cod).status_code == 201
+        sent = db.query(PaymentEvent).filter_by(payment_id=cod["paymentId"], status="link-sent").count()
+        assert sent == 2
 
     def test_a_paid_order_gets_no_link(self, client, admin_auth, gateway, cod):
         captured_now = client.post(f"/api/admin/billing/payments/{cod['paymentId']}/capture", headers=admin_auth)
@@ -993,26 +1014,26 @@ class TestPaymentLinks:
         response = client.get("/api/payments/link-callback", params={"razorpay_payment_link_id": "plink_1"})
         assert response.status_code == 404 and response.json()["error_code"] == "LINK_NOT_FOUND"
 
-    def test_a_signed_callback_for_an_unknown_link(self, client, admin_auth, gateway, cod):
-        self._raise(client, admin_auth, gateway, cod)
+    def test_a_signed_callback_for_an_unknown_link(self, client, db, admin_auth, gateway, cod):
+        self._legacy_link(db, gateway, cod)
         response = self._callback(client, "plink_other", cod["paymentId"], "paid", "pay_l0")
         assert response.status_code == 404 and response.json()["error_code"] == "LINK_NOT_FOUND"
 
     def test_a_link_not_yet_paid_settles_nothing(self, client, db, admin_auth, gateway, cod):
-        self._raise(client, admin_auth, gateway, cod)
+        self._legacy_link(db, gateway, cod)
         response = self._callback(client, "plink_x0001", cod["paymentId"], "cancelled", "pay_l1")
         assert response.status_code == 200 and response.json()["data"]["paid"] is False
         assert not [c for c in gateway.calls if c["path"] == "/payments/pay_l1"]
 
     def test_a_gateway_that_cannot_confirm_settles_nothing(self, client, db, admin_auth, gateway, cod):
-        self._raise(client, admin_auth, gateway, cod)
+        self._legacy_link(db, gateway, cod)
         gateway.responses["/payments/pay_l2"] = raising()
         response = self._callback(client, "plink_x0001", cod["paymentId"], "paid", "pay_l2")
         assert response.status_code == 200 and response.json()["data"]["paid"] is False
         assert fresh(db, Payment, cod["paymentId"]).status == "pending"
 
     def test_the_webhook_settles_a_paid_link(self, client, db, admin_auth, gateway, cod):
-        self._raise(client, admin_auth, gateway, cod)
+        self._legacy_link(db, gateway, cod)
         body = {"event": "payment_link.paid", "payload": {
             "payment_link": {"entity": {"id": "plink_x0001", "reference_id": cod["paymentId"]}},
             "payment": {"entity": {"id": "pay_lhook1", "status": "captured", "amount": cod["amount"],
@@ -1027,7 +1048,7 @@ class TestPaymentLinks:
         assert order.payment_status == "paid" and order.status == "confirmed"
 
     def test_the_webhook_refuses_a_link_that_is_not_the_payments_own(self, client, db, admin_auth, gateway, cod):
-        self._raise(client, admin_auth, gateway, cod)
+        self._legacy_link(db, gateway, cod)
         body = {"event": "payment_link.paid", "payload": {
             "payment_link": {"entity": {"id": "plink_forged", "reference_id": cod["paymentId"]}},
             "payment": {"entity": {"id": "pay_lhook2", "status": "captured", "amount": cod["amount"]}}}}
