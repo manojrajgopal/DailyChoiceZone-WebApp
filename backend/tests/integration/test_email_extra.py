@@ -537,7 +537,7 @@ class TestStoreNotifications:
                                         resolution_note="<b>Size swap</b>", customer_id="CUS001", id="RET001")
         notify_return(db, request, "shopper@example.com")
         [mail] = self.sent_after(db, email_account)
-        assert mail["subject"].startswith("Update on your replacement")
+        assert mail["subject"].startswith("Your replacement is approved")
         assert "&lt;b&gt;Size swap&lt;/b&gt;" in mail["html"] and "<b>Size swap</b>" not in mail["html"]
         assert db.query(NotificationDelivery).filter_by(event="replacement_initiated", channel="email").count() == 1
 

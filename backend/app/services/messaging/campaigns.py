@@ -498,8 +498,11 @@ def render(campaign: MarketingCampaign, channel: str, customer: Optional[Custome
         unsubscribe = f"{store}/unsubscribe?token={messaging.unsubscribe_token(customer.id, 'email', campaign.id)}" if customer else f"{store}/unsubscribe"
         pixel = f"{tracking_base()}{settings.API_PREFIX}/c/o/{token}.gif" if tracking_base() else ""
         heading = email_templates.render(email.get("heading") or campaign.name, values, allowed=VARIABLES)
+        if values.get("coupon_code"):
+            body += email_templates.code_box(str(values["coupon_code"]), label="Your code",
+                                             caption="Enter it at checkout", tone="celebrate")
         html = email_templates.master(
-            title=heading, body_html=body, cta=cta,
+            title=heading, body_html=body, cta=cta, tone="celebrate", icon="sparkles", eyebrow="Just for you",
             preheader=email_templates.render(email.get("preview", ""), values, allowed=VARIABLES),
             marketing=True, unsubscribe_url=unsubscribe, preferences_url=f"{store}/account/settings", tracking_pixel=pixel,
         )

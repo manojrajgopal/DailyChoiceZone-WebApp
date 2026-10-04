@@ -242,28 +242,38 @@ def _send_reminder(db: Session, row: CartRecovery, customer: Customer, stage: in
     raw = _token(row)
     row.token_hash = _hash(raw)
     link = f"{app_settings.STOREFRONT_URL.rstrip('/')}/cart?recover={raw}"
+    from app.services.email import templates
+
     esc = html_lib.escape
-    rows = "".join(
-        f'<tr><td style="padding:8px 0;border-bottom:1px solid #ede7df;font-size:14px">{esc(line["name"])}'
-        f'{(" · " + esc(line["size"])) if line.get("size") else ""}{(" · " + esc(line["color"])) if line.get("color") else ""}'
-        f' <span style="color:#8a817a">× {int(line["quantity"])}</span></td>'
-        f'<td align="right" style="padding:8px 0;border-bottom:1px solid #ede7df;font-size:14px">'
-        f'₹{billing.to_major(line["unitPrice"] * line["quantity"]):,.2f}</td></tr>'
-        for line in (row.items or [])[:8]
-    )
-    table = (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px">{rows}'
-             f'<tr><td style="padding:12px 0 0;font-size:14px;font-weight:bold">Bag total</td>'
-             f'<td align="right" style="padding:12px 0 0;font-size:14px;font-weight:bold">'
-             f'₹{billing.to_major(row.cart_value):,.2f}</td></tr></table>'
-             '<p style="margin:14px 0 0;font-size:12px;color:#8a817a">Prices and availability are confirmed in your '
-             'bag and at checkout, and may have changed since.</p>')
+    lines = row.items or []
+    shown = [
+        {"name": line.get("name", ""),
+         "detail": " · ".join(p for p in (f"Size {line['size']}" if line.get("size") else "", line.get("color") or "") if p),
+         "quantity": int(line.get("quantity") or 1),
+         "amount": f"₹{billing.to_major(line.get('unitPrice', 0) * int(line.get('quantity') or 1)):,.2f}",
+         "image": line.get("image") or "",
+         "url": email_service.product_link(line.get("productId"))}
+        for line in lines[:6]
+    ]
+    table = (templates.items(shown, total=f"₹{billing.to_major(row.cart_value):,.2f}", title="Waiting in your bag",
+                             more=max(0, len(lines) - 6), more_url=link)
+             + templates.note("Prices and availability are confirmed in your bag and at checkout, and may have "
+                              "changed since. Popular sizes sell out fast.", tone="info"))
     name = esc(customer.first_name or "there")
     title = "You left something in your bag" if stage == 0 else "Your bag is still waiting"
     footnote = ("You're receiving this because you left items in your Daily Choice Zone bag. "
                 "You can turn off bag reminders in your account settings.")
-    html = email_service.layout(title, f"Hello {name}, the items you picked are still in your bag.", table,
-                                ("Return to your bag", link), footnote=footnote)
-    text = f"{title}. Return to your bag: {link}\nTurn off bag reminders in your account settings."
+    count = int(row.item_count or len(lines))
+    intro = (f"Hello {name}, the {'item' if count == 1 else f'{count} items'} you picked "
+             f"{'is' if count == 1 else 'are'} still in your bag — ready when you are.")
+    html = email_service.layout(title, intro, table, ("Return to your bag", link), footnote=footnote,
+                                tone="celebrate", icon="bag", eyebrow="Still thinking it over?",
+                                secondary=[("Your wishlist", email_service.link("/account/wishlist")),
+                                           ("Shipping info", email_service.link("/shipping")),
+                                           ("Easy returns", email_service.link("/returns"))],
+                                preferences_url=email_service.link("/account/settings"))
+    text = (f"{title}.\n\n" + "\n".join(f"- {line['name']} × {line['quantity']}: {line['amount']}" for line in shown)
+            + f"\n\nReturn to your bag: {link}\nTurn off bag reminders in your account settings.")
     return email_service.notify(db, "cart_reminders", to=customer.email, customer_id=customer.id,
                                 subject=f"{title} — Daily Choice Zone", html=html, text=text,
                                 reference=f"cart-{row.id}", event="abandoned_cart",

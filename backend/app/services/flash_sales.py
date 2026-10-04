@@ -585,16 +585,31 @@ def _email_started(db: Session, customer: Customer, sale: FlashSale, products: L
     esc = html_lib.escape
     base = app_settings.STOREFRONT_URL.rstrip("/")
     names = ", ".join(p.name for p in products[:3]) + (f" and {len(products) - 3} more" if len(products) > 3 else "")
-    rows = [(p.name, f"₹{prices[p.id]:,.2f} (was ₹{float(p.price):,.2f})") for p in products[:10]]
+    from app.services.email import templates
+
+    cards = []
+    for p in products[:6]:
+        regular, now = float(p.price), float(prices[p.id])
+        off = round((1 - now / regular) * 100) if regular > now > 0 else 0
+        cards.append({"name": p.name, "url": email_service.product_link(p.id), "image": email_service.product_image(p),
+                      "price": f"₹{now:,.2f}", "was": f"₹{regular:,.2f}" if regular > now else "",
+                      "badge": f"{off}% off" if off else "Flash sale", "cta": "Shop now"})
     title = f"Flash sale on your wishlist: {sale.name}"
     intro = (f"Hello {esc(customer.first_name or 'there')}, {esc(names)} from your wishlist "
              f"{'is' if len(products) == 1 else 'are'} in our <strong>{esc(sale.name)}</strong> flash sale until "
              f"{esc(_ist(sale.ends_at))} IST, while sale stock lasts.")
     link = f"{base}/flash-sales"
-    html = email_service.layout(title, intro, rows=rows, cta=("Shop the sale", link),
+    body = (templates.stats([("Sale ends", f"{_ist(sale.ends_at)} IST", "While sale stock lasts")], tone="warning")
+            + templates.products(cards, title="From your wishlist")
+            + (templates.paragraph(f"+ {len(products) - 6} more from your wishlist are in the sale.")
+               if len(products) > 6 else ""))
+    html = email_service.layout(title, intro, body, cta=("Shop the sale", link), tone="warning", icon="fire",
+                                eyebrow="Flash sale · limited time",
+                                secondary=[("Your wishlist", f"{base}/account/wishlist")],
                                 footnote="You're getting this because these items are in your wishlist.")
     email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id, subject=title, html=html,
-                         text=f"{title}. {names}. Until {_ist(sale.ends_at)} IST. {link}",
+                         text=f"{title}. {names}.\n" + "\n".join(f"- {c['name']}: {c['price']}" for c in cards)
+                         + f"\nUntil {_ist(sale.ends_at)} IST. {link}",
                          reference=f"flash-sale-{sale.id}", inbox={"title": title, "href": "/flash-sales"})
 
 

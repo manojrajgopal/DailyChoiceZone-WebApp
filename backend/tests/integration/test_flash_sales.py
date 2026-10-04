@@ -249,6 +249,10 @@ class TestPortal:
         assert flash_sales.announce_started(db) == 1
         assert flash_sales.announce_started(db) == 0
         assert any(m["key"] == "flash_sales" and m["to"] == "shopper@example.com" for m in mailbox)
+        # The products are laid out as cards, never printed as a Python list of tuples.
+        html = next(m["html"] for m in mailbox if m["key"] == "flash_sales")
+        assert "[(" not in html and "('" not in html
+        assert "FROM YOUR WISHLIST".lower() in html.lower() and "line-through" in html
 
 
 class TestPortalListFindsById:

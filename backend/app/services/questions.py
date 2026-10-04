@@ -188,32 +188,39 @@ def _email(db: Session, question: ProductQuestion, product: Product, customer: O
         return False
     esc = html_lib.escape
     link = f"{app_settings.STOREFRONT_URL.rstrip('/')}/product/{product.slug}#questions"
-    quote = (f'<p style="margin:18px 0 0;padding:12px 14px;background:#faf7f2;border-left:3px solid #c08457;'
-             f'font-size:14px;line-height:1.6;color:#1e1b18">{esc(question.body)}</p>')
+    from app.services.email import templates
+
+    quote = templates.quote(question.body, who="Your question")
+    card = templates.products([{"name": product.name, "image": email_service.product_image(product), "url": link,
+                                "price": f"₹{float(product.price):,.2f}", "cta": "View product"}])
     hello = f"Hello {esc(customer.first_name or 'there')},"
+    style = {"received": ("brand", "chat", "Question received"), "approved": ("success", "check", "Question published"),
+             "rejected": ("danger", "cross", "Question not published"), "answered": ("success", "chat", "New answer")}
     if what == "received":
         subject, title = f"We've got your question about {product.name}", "Thanks for your question"
         intro = (f"{hello} we've received your question about <strong>{esc(product.name)}</strong>. Our team "
                  "reviews every question before it appears on the product page, and we'll email you when it's answered.")
-        rows = quote
+        rows = quote + card
     elif what == "approved":
         subject, title = f"Your question about {product.name} is live", "Your question is published"
         intro = (f"{hello} your question about <strong>{esc(product.name)}</strong> is now on the product page. "
                  "We'll email you when it's answered.")
-        rows = quote
+        rows = quote + card
     elif what == "rejected":
         subject, title = f"About your question on {product.name}", "We couldn't publish your question"
-        reason = f" Reason: {esc(question.rejection_reason)}." if question.rejection_reason else ""
-        intro = (f"{hello} we weren't able to publish your question about <strong>{esc(product.name)}</strong>."
-                 f"{reason} If you need help with an order, our support team can help.")
-        rows = quote
+        intro = (f"{hello} we weren't able to publish your question about <strong>{esc(product.name)}</strong>. "
+                 "If you need help with an order, our support team can help.")
+        rows = quote + (templates.note(question.rejection_reason, tone="danger", title="Reason")
+                        if question.rejection_reason else "") + card
     else:
         answer = question.answer
+        what = "answered"
         subject, title = f"Your question about {product.name} has been answered", "Your question has an answer"
         intro = f"{hello} we've answered your question about <strong>{esc(product.name)}</strong>."
-        rows = quote + (f'<p style="margin:14px 0 0;font-size:14px;line-height:1.6;color:#1e1b18">'
-                        f'<strong>Answer:</strong> {esc(answer.body if answer else "")}</p>')
-    html = email_service.layout(title, intro, rows, cta=("View on the product page", link))
+        rows = quote + templates.quote(answer.body if answer else "", who="Our answer") + card
+    tone, icon, eyebrow = style.get(what, style["received"])
+    html = email_service.layout(title, intro, rows, cta=("View on the product page", link), tone=tone, icon=icon,
+                                eyebrow=eyebrow, secondary=[("Help", email_service.link("/faq"))])
     text = f"{title}. {product.name}: {question.body}\n{link}"
     return email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id, subject=subject,
                                 html=html, text=text, reference=f"question-{question.id}")

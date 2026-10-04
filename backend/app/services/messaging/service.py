@@ -423,6 +423,38 @@ def base_variables(customer: Optional[Customer] = None) -> dict:
             "customer_name": (customer.first_name if customer and customer.first_name else "there")}
 
 
+# An event's look in the email banner: (tone, icon, eyebrow). Unlisted events use the brand's.
+EVENT_STYLE = {
+    "order_confirmed": ("success", "check", "Order confirmed"), "order_processing": ("brand", "bag", "Order update"),
+    "order_packed": ("brand", "box", "Order update"), "order_shipped": ("brand", "truck", "On its way"),
+    "order_in_transit": ("brand", "truck", "On its way"), "order_out_for_delivery": ("success", "pin", "Arriving today"),
+    "order_delivered": ("success", "home", "Delivered"), "order_cancelled": ("danger", "cross", "Order cancelled"),
+    "order_returned": ("info", "return", "Order returned"), "payment_received": ("success", "card", "Payment successful"),
+    "payment_failed": ("danger", "warning", "Payment unsuccessful"), "payment_request": ("brand", "card", "Payment link"),
+    "refund_initiated": ("brand", "refund", "Refund initiated"), "refund_completed": ("success", "refund", "Refund issued"),
+    "shipment_created": ("brand", "box", "Ready to ship"), "delivery_attempted": ("warning", "clock", "Delivery attempted"),
+    "delivery_failed": ("danger", "warning", "Delivery unsuccessful"), "shipment_returned": ("info", "return", "Returning to us"),
+    "membership_activated": ("celebrate", "crown", "Membership active"),
+    "membership_expiring": ("warning", "clock", "Membership ending soon"),
+    "membership_expired": ("info", "crown", "Membership ended"), "invoice_issued": ("brand", "receipt", "Tax invoice"),
+    "abandoned_cart": ("celebrate", "bag", "Still thinking it over?"), "welcome": ("celebrate", "wave", "Welcome"),
+    "email_verification": ("brand", "mail", "Verify your email"), "password_reset": ("brand", "key", "Password reset"),
+    "password_changed": ("warning", "shield", "Security alert"), "login_alert": ("warning", "lock", "Security alert"),
+    "phone_verified": ("success", "phone", "Account security"), "identity_linked": ("success", "link", "Account security"),
+    "identity_unlinked": ("warning", "shield", "Account security"),
+}
+
+
+def event_style(key: str) -> tuple:
+    if key in EVENT_STYLE:
+        return EVENT_STYLE[key]
+    if key.startswith(("return_", "replacement_")):
+        return ("brand", "return", "Return update")
+    if key.startswith("support_"):
+        return ("brand", "chat", "Support request")
+    return ("brand", "bell", "")
+
+
 def render_email(db: Session, key: str, values: dict, *, extra_html: str = "", template: Optional[dict] = None,
                  marketing_unsubscribe: str = "", preferences_url: str = "", pixel: str = "") -> tuple:
     """(subject, html, text) for an event, from its template."""
@@ -434,7 +466,13 @@ def render_email(db: Session, key: str, values: dict, *, extra_html: str = "", t
     body = email_templates.render(template["body"], values, allowed=allowed, html=True)
     cta_url = values.get(spec["default"]["ctaVariable"]) if spec["default"]["ctaVariable"] else None
     cta = (template["cta"], str(cta_url)) if template["cta"] and cta_url else None
+    tone, icon, eyebrow = event_style(key)
+    if key in ("membership_expiring", "membership_expired") and not extra_html:
+        extra_html = email_templates.details([("Plan", values.get("membership_plan", "")),
+                                              ("Ends" if key == "membership_expiring" else "Ended",
+                                               values.get("membership_expiry", ""))], title="Your membership")
     html = email_templates.master(title=heading, body_html=body + (extra_html or ""), cta=cta,
+                                  tone=tone, icon=icon, eyebrow=eyebrow,
                                   preheader=email_templates.text_from_html(body)[:140],
                                   marketing=spec["category"] == "marketing",
                                   unsubscribe_url=marketing_unsubscribe, preferences_url=preferences_url,

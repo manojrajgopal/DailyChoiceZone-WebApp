@@ -220,7 +220,11 @@ def _login_alert(db: Session, customer: Customer, method: str = "password") -> N
         html=email_service.layout("A new sign-in to your account",
                                   f"Your account was just signed in to{detail}. If this was you, there's nothing to "
                                   "do. If not, reset your password now and sign out other devices from your security "
-                                  "settings.", cta=("Go to your account", f"{base}/account")),
+                                  "settings.",
+                                  email_service.security_body(customer.email, detail=how or "Password", warn=True),
+                                  cta=("Review your security settings", f"{base}/account/settings"),
+                                  tone="warning", icon="lock", eyebrow="Security alert",
+                                  secondary=[("Reset password", f"{base}/forgot-password")]),
         text="Your Daily Choice Zone account was just signed in to. Not you? Reset your password.",
         reference="login", event="login_alert", variables={"account_url": f"{base}/account"}, inbox=False,
     )
@@ -297,7 +301,9 @@ def notify_password_changed(db: Session, customer: Customer) -> None:
             "Your password was changed",
             f"Hello {name}, the password for your account was just changed from your account settings. If this "
             "wasn't you, reset your password straight away and contact our support team.",
-            cta=("Go to your account", f"{base}/account")),
+            email_service.security_body(customer.email, detail="From your account settings", warn=True),
+            cta=("Go to your account", f"{base}/account/settings"), tone="warning", icon="shield",
+            eyebrow="Security alert", secondary=[("Reset password", f"{base}/forgot-password")]),
         text="The password for your Daily Choice Zone account was just changed. If this wasn't you, reset it and "
              "contact support.",
         reference="password-changed", event="password_changed", variables={"account_url": f"{base}/account"},

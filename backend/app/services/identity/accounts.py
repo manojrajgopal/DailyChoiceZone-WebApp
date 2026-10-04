@@ -139,7 +139,12 @@ def notify(db: Session, customer: Customer, event: str, *, subject: str, title: 
     email_service.notify(
         db, "account_security", to=customer.email, customer_id=customer.id, subject=subject,
         html=email_service.layout(title, f"Hello {name}, {html_lib.escape(body)}",
-                                  cta=("Review your security settings", f"{base}/account/settings")),
+                                  email_service.security_body(customer.email, detail=provider,
+                                                              warn=event != "phone_verified"),
+                                  cta=("Review your security settings", f"{base}/account/settings"),
+                                  tone="success" if event in ("phone_verified", "identity_linked") else "warning",
+                                  icon={"phone_verified": "phone", "identity_linked": "link"}.get(event, "shield"),
+                                  eyebrow="Account security"),
         text=f"{title}. {body} Review: {base}/account/settings", reference=event, event=event,
         variables={"account_url": f"{base}/account/settings", "provider_name": provider},
     )

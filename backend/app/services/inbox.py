@@ -98,7 +98,8 @@ def _email_staff(db: Session, title: str, body: str, href: str, permission: Opti
             addresses.setdefault(account.sender_email.lower(), account.sender_email)
     link = f"{app_settings.STOREFRONT_URL.rstrip('/')}{href}" if href else ""
     html = email_service.layout(title, html_lib.escape(body or ""), cta=("Open in the portal", link) if link else None,
-                                footnote="Sent to the Daily Choice Zone store team.")
+                                footnote="Sent to the Daily Choice Zone store team.", tone="info", icon="bell",
+                                eyebrow="Store team alert")
     for address in addresses.values():
         email_service.notify(db, "store_team", to=address, customer_id=None, subject=title, html=html,
                              text=f"{title}. {body} {link}".strip(), reference="store-team")

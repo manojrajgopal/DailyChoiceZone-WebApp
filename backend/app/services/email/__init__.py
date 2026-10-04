@@ -456,28 +456,38 @@ def _brand() -> dict:
     return {"name": "Daily Choice Zone", "url": settings.STOREFRONT_URL.rstrip("/")}
 
 
-def layout(title: str, intro: str, rows: str = "", cta: Optional[tuple] = None, footnote: str = "", *,
+def layout(title: str, intro: str, rows="", cta: Optional[tuple] = None, footnote: str = "", *,
            preheader: str = "", marketing: bool = False, unsubscribe_url: str = "", preferences_url: str = "",
-           tracking_pixel: str = "") -> str:
+           tracking_pixel: str = "", tone: str = "brand", icon: str = "", eyebrow: str = "", banner: str = "",
+           secondary=()) -> str:
     """
     Every email's frame — the branded master layout in `templates.master`.
 
-    `intro` and `rows` are HTML the caller built (with customer values
-    escaped); `title`, `cta` and `footnote` are plain text. The unsubscribe
-    link is shown only when `marketing` is set.
+    `intro`, `rows` and `banner` are HTML the caller built (with customer
+    values escaped); `title`, `cta`, `eyebrow` and `footnote` are plain text.
+    `tone` colours the banner (brand, success, warning, danger, info,
+    celebrate) and `icon` names its picture (`templates.ICONS`). `secondary`
+    is a row of (label, url) links under the button. The unsubscribe link is
+    shown only when `marketing` is set.
     """
     from app.services.email import templates
 
     return templates.master(
         title=title, intro_html=intro, body_html=rows or "", cta=cta, footnote=footnote,
-        preheader=preheader or re.sub(r"<[^>]+>", "", intro or "")[:140],
+        preheader=preheader or html_lib.unescape(re.sub(r"<[^>]+>", "", intro or ""))[:140],
         marketing=marketing, unsubscribe_url=unsubscribe_url, preferences_url=preferences_url,
-        tracking_pixel=tracking_pixel,
+        tracking_pixel=tracking_pixel, tone=tone, icon=icon, eyebrow=eyebrow, banner_html=banner,
+        secondary=secondary,
     )
 
 
 def _money(value) -> str:
-    return f"₹{float(value):,.2f}"
+    return f"₹{float(value or 0):,.2f}"
+
+
+def link(path: str) -> str:
+    """An absolute storefront link for a path such as `/account/orders`."""
+    return f"{_brand()['url']}{path}"
 
 
 def render_test(sender_name: str) -> tuple:
@@ -486,30 +496,216 @@ def render_test(sender_name: str) -> tuple:
         "Your email is set up",
         "This is a test message from your store. If you can read it, emails to customers will be delivered from this account.",
         footnote="Sent from your store's admin portal while setting up email.",
+        tone="success", icon="mail", eyebrow="Email settings",
     )
     return subject, html, "Your email is set up. This is a test message from your store."
 
 
-def _order_rows(order) -> str:
+def security_body(email: str, *, link_url: str = "", detail: str = "", warn: bool = False) -> str:
+    """
+    What every account-security email carries: which account and when, the
+    link written out (for when a button won't click) and what to do if it
+    wasn't you.
+    """
+    from datetime import timedelta
+
     from app.services.email import templates
 
-    lines = [
-        {
-            "name": item.name,
-            "detail": " · ".join(p for p in (
-                f"Size {item.size}" if item.size else "", item.color or "",
-                f"Part of {item.bundle_name}" if getattr(item, "bundle_name", "") else "") if p),
-            "quantity": item.quantity,
-            "amount": _money(item.line_total),
-            "image": item.image,
-        }
-        for item in order.items
-    ]
-    return templates.items(lines, total=_money(order.total))
+    now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    body = templates.details([("Account", email), ("When", f"{now.day} {now:%b %Y, %I:%M %p} IST"),
+                              ("How", detail)], title="Details")
+    if link_url:
+        esc = html_lib.escape
+        body += templates.note(
+            f'Button not working? Copy this link into your browser:<br>'
+            f'<a href="{esc(link_url, quote=True)}" style="color:#9c5d3d;word-break:break-all">{esc(link_url)}</a>',
+            raw=True, tone="info")
+    body += templates.note(
+        "Wasn't you? Reset your password straight away and contact us — we'll help secure your account. "
+        "We'll never ask for your password or a one-time code." if warn else
+        "We'll never ask for your password or a one-time code by email, phone or chat.",
+        tone="danger" if warn else "info", title="Keep your account safe")
+    return body
+
+
+# ------------------------------------------------------------ order pieces
 
 
 def _order_link(order) -> str:
     return f"{_brand()['url']}/account/order?number={order.order_number}"
+
+
+def product_link(product_id) -> str:
+    return f"{_brand()['url']}/product/{product_id}" if product_id else ""
+
+
+def product_image(product, color: str = "") -> str:
+    """A product's first photo (for a colour, when one is given), for an email."""
+    images = sorted(getattr(product, "images", None) or [], key=lambda i: getattr(i, "position", 0) or 0)
+    if color:
+        for image in images:
+            if (getattr(image, "color", "") or "").lower() == color.lower():
+                return image.url
+    return images[0].url if images else ""
+
+
+def order_lines(order) -> List[dict]:
+    """An order's items as `templates.items` lines: photo, link, size and colour, price."""
+    lines = []
+    for item in order.items:
+        quantity = int(item.quantity or 1)
+        regular = float(item.regular_unit_price or 0)
+        unit = float(item.unit_price or 0)
+        lines.append({
+            "name": item.name,
+            "detail": " · ".join(p for p in (
+                f"Size {item.size}" if item.size else "", item.color or "",
+                f"Part of {item.bundle_name}" if getattr(item, "bundle_name", "") else "") if p),
+            "quantity": quantity,
+            "unit": _money(unit) if quantity > 1 else "",
+            "amount": _money(item.line_total),
+            "was": _money(regular * quantity) if regular > unit else "",
+            "image": item.image,
+            "url": product_link(item.product_id),
+        })
+    return lines
+
+
+def _order_summary(order) -> List[tuple]:
+    """Subtotal, discounts, delivery and tax — the lines between the items and the total."""
+    rows: List[tuple] = [("Subtotal", _money(order.subtotal))]
+    if float(order.coupon_discount or 0):
+        rows.append((f"Coupon{f' ({order.coupon_code})' if order.coupon_code else ''}",
+                     f"−{_money(order.coupon_discount)}", "saving"))
+    if float(order.member_discount or 0):
+        rows.append(("Member discount", f"−{_money(order.member_discount)}", "saving"))
+    fee = float(order.delivery_fee or 0)
+    rows.append(("Delivery", _money(fee) if fee else "Free", "" if fee else "saving"))
+    tax = float(order.tax_amount or 0)
+    if tax:
+        goods = float(order.subtotal or 0) - float(order.coupon_discount or 0) - float(order.member_discount or 0)
+        included = abs(goods + fee - float(order.total or 0)) < 0.02
+        rows.append(("GST (included)" if included else "GST", _money(tax)))
+    return rows
+
+
+def _order_rows(order, *, title: str = "Order summary") -> str:
+    """The items, the money and what was saved — every email about an order carries this."""
+    from app.services.email import templates
+
+    saved = sum(float(getattr(order, f, 0) or 0) for f in ("catalogue_savings", "coupon_discount", "member_discount"))
+    html = templates.items(order_lines(order), total=_money(order.total), summary=_order_summary(order),
+                           title=title)
+    if saved >= 1:
+        html += (f'<p style="margin:12px 0 0;text-align:right">'
+                 f'{templates.badge(f"You saved {_money(saved)}", tone="success")}</p>')
+    return html
+
+
+PAYMENT_LABELS = {"cod": "Cash on delivery", "card": "Card", "upi": "UPI", "wallet": "Wallet",
+                  "netbanking": "Net banking", "tender": "Gift card / store credit"}
+
+
+def payment_label(order) -> str:
+    method = (order.payment_method or "").strip()
+    return PAYMENT_LABELS.get(method.lower(), method) or "Online payment"
+
+
+def _payment_card(order) -> str:
+    from app.services.email import templates
+
+    esc = html_lib.escape
+    status = (order.payment_status or "").replace("-", " ").strip()
+    tone = {"paid": "success", "failed": "danger", "refunded": "info", "partially refunded": "info"}.get(status.lower(), "warning")
+    parts = [f'<strong style="color:#1e1b18">{esc(payment_label(order))}</strong>']
+    if status:
+        parts.append(templates.badge(status.title(), tone=tone))
+    paid_with = [(label, getattr(order, field, 0)) for label, field in (
+        ("Gift card", "gift_card_amount"), ("Store credit", "store_credit_amount"), ("Reward points", "points_amount"))]
+    for label, amount in paid_with:
+        if float(amount or 0):
+            parts.append(f"{label}: {_money(amount)}")
+    return "<br>".join(parts)
+
+
+def _delivery_card(order, *, tracking: str = "", courier: str = "") -> str:
+    esc = html_lib.escape
+    parts = [f'<strong style="color:#1e1b18">{esc((order.delivery_method or "standard").replace("-", " ").title())} delivery</strong>']
+    if order.expected_delivery and order.status not in ("delivered", "cancelled", "returned"):
+        parts.append(f"Expected by <strong style=\"color:#4a7a52\">{esc(order.expected_delivery)}</strong>")
+    if courier:
+        parts.append(f"Courier: {esc(courier)}")
+    number = tracking or getattr(order, "tracking_number", "") or ""
+    if number:
+        parts.append(f"Tracking no: <strong style=\"color:#1e1b18\">{esc(number)}</strong>")
+    return "<br>".join(parts)
+
+
+def order_cards(order, *, payment: bool = True, delivery: bool = True, tracking: str = "", courier: str = "") -> str:
+    """Delivering to, delivery and payment — side by side, stacked on a phone."""
+    from app.services.email import templates
+
+    address = templates.address(
+        order.shipping_name or order.customer_name,
+        [order.shipping_line1, order.shipping_line2,
+         ", ".join(p for p in (order.shipping_city, order.shipping_state) if p)
+         + (f" {order.shipping_pincode}" if order.shipping_pincode else "")],
+        order.shipping_phone,
+    )
+    entries = [("Delivering to", address)]
+    if delivery:
+        entries.append(("Delivery", _delivery_card(order, tracking=tracking, courier=courier)))
+    if payment:
+        entries.append(("Payment", _payment_card(order)))
+    return templates.cards(entries)
+
+
+_SENTENCE_STARTS = ("Your ", "The ", "We", "Thank ", "Thanks ", "There", "It ", "Our ", "Each ", "Any ")
+
+
+def after_greeting(sentence: str) -> str:
+    """A sentence carried on after "Hello Asha, " — lower-cased only where its first word is an ordinary one."""
+    if sentence.startswith(_SENTENCE_STARTS):
+        return sentence[0].lower() + sentence[1:]
+    return sentence
+
+
+def order_banner(order) -> str:
+    """The line under an order email's title: the order number and when it was placed."""
+    esc = html_lib.escape
+    placed = f"{order.placed_at.day} {order.placed_at:%b %Y}" if getattr(order, "placed_at", None) else ""
+    return (f'<p style="margin:16px 0 0;font-family:Helvetica, Arial, sans-serif;font-size:13px;color:#524b45">'
+            f'<span style="display:inline-block;padding:6px 14px;border-radius:999px;background:#ffffff;'
+            f'border:1px solid #ede7df;white-space:nowrap">Order <strong style="color:#1e1b18">{esc(order.order_number)}</strong>'
+            + (f' &nbsp;&middot;&nbsp; {esc(placed)}' if placed else "") + "</span></p>")
+
+
+ORDER_STEPS = ["Confirmed", "Packed", "Shipped", "Out for delivery", "Delivered"]
+STAGE_STEP = {"confirmed": 0, "processing": 0, "packed": 1, "shipped": 2, "in-transit": 2,
+              "out-for-delivery": 3, "delivered": 4}
+
+
+def order_progress(stage: str) -> str:
+    from app.services.email import templates
+
+    if stage not in STAGE_STEP:
+        return ""
+    return templates.progress(ORDER_STEPS, STAGE_STEP[stage], tone="success" if stage == "delivered" else "brand")
+
+
+def order_secondary(order) -> list:
+    return [("All orders", link("/account/orders")), ("Invoices", link("/account/invoices")),
+            ("Returns policy", link("/returns")), ("Help", link("/faq"))]
+
+
+def order_text(order, title: str, intro: str) -> str:
+    """The plain-text part: what happened, the items and the total, and the link."""
+    lines = [title, "", intro, "", f"Order {order.order_number}"]
+    for item in order.items:
+        extra = ", ".join(p for p in (f"size {item.size}" if item.size else "", item.color or "") if p)
+        lines.append(f"- {item.name}{f' ({extra})' if extra else ''} × {item.quantity}: {_money(item.line_total)}")
+    lines += [f"Total: {_money(order.total)}", "", f"View your order: {_order_link(order)}"]
+    return "\n".join(lines)
 
 
 STAGE_COPY = {
@@ -524,6 +720,32 @@ STAGE_COPY = {
     "returned": ("Your order has been returned", "Your order has been returned to us. Any refund due will follow shortly."),
 }
 
+# Each stage's look — (tone, icon, eyebrow, button, what happens next).
+STAGE_STYLE = {
+    "confirmed": ("success", "check", "Order confirmed", "View your order", [
+        ("We pack your items", "Each piece is checked before it is packed."),
+        ("We ship it", "You'll get the courier and tracking number by email."),
+        ("It reaches you", "Pay on delivery if you chose cash on delivery.")]),
+    "processing": ("brand", "bag", "Order update", "View your order", [
+        "We'll email you as soon as your order is packed and handed to the courier."]),
+    "packed": ("brand", "box", "Order update", "Track your order", [
+        "The courier picks it up shortly — we'll email you the tracking number."]),
+    "shipped": ("brand", "truck", "On its way", "Track your order", [
+        "Keep your phone handy — the courier may call before delivering.",
+        "For cash on delivery, please keep the exact amount ready."]),
+    "in-transit": ("brand", "truck", "On its way", "Track your order", []),
+    "out-for-delivery": ("success", "pin", "Arriving today", "Track your order", [
+        "Keep your phone handy — the courier may call before delivering.",
+        "For cash on delivery, please keep the exact amount ready."]),
+    "delivered": ("success", "home", "Delivered", "View your order", [
+        ("Love it?", "Leave a review on the product page — it helps other shoppers."),
+        ("Not quite right?", "Request a return or replacement from your order page.")]),
+    "cancelled": ("danger", "cross", "Order cancelled", "View your order", [
+        "If you paid online, the refund goes back to your original payment method in 5–7 working days."]),
+    "returned": ("info", "return", "Order returned", "View your order", [
+        "Any refund due will be issued to you shortly — we'll email you when it is."]),
+}
+
 # An unpaid online order that ran out of time: nothing was charged, so the
 # usual "your refund is on its way" would be wrong and worrying.
 PAYMENT_EXPIRED_COPY = (
@@ -534,11 +756,24 @@ PAYMENT_EXPIRED_COPY = (
 
 
 def render_order(order, stage: str, copy: Optional[tuple] = None) -> tuple:
+    from app.services.email import templates
+
     title, intro = copy or STAGE_COPY.get(stage, ("Update on your order", "There's an update on your order."))
+    tone, icon, eyebrow, button, upcoming = STAGE_STYLE.get(stage, ("brand", "bell", "Order update", "View your order", []))
+    if copy is PAYMENT_EXPIRED_COPY:
+        upcoming = []
     esc = html_lib.escape
-    intro_full = f"{esc(intro)} Order <strong>{esc(order.order_number)}</strong>."
-    html = layout(title, intro_full, _order_rows(order), ("View your order", _order_link(order)))
-    return f"{title} — {order.order_number}", html, f"{title}. Order {order.order_number}. {_order_link(order)}"
+    first = (order.customer_name or "").split(" ")[0]
+    greeting = f"Hello {esc(first)}, " if first else ""
+    intro_html = greeting + esc(after_greeting(intro) if greeting else intro)
+    body = (order_progress(stage)
+            + _order_rows(order)
+            + order_cards(order, delivery=stage not in ("cancelled", "returned"))
+            + templates.steps(upcoming))
+    html = layout(title, intro_html, body, (button, _order_link(order)), tone=tone, icon=icon, eyebrow=eyebrow,
+                  banner=order_banner(order), secondary=order_secondary(order),
+                  preheader=f"{intro} Order {order.order_number} · {_money(order.total)}")
+    return f"{title} — {order.order_number}", html, order_text(order, title, intro)
 
 
 # ------------------------------------------------------------------ sending
@@ -669,7 +904,8 @@ def notify_order(db: Session, order, stage: str, *, copy: Optional[tuple] = None
 
     notify(db, key, to=order.customer_email, customer_id=order.customer_id,
            subject=subject, html=html, text=text, reference=order.order_number,
-           event=ORDER_STAGE_EVENTS.get(stage), variables=order_variables(order, stage), extra_html=_order_rows(order),
+           event=ORDER_STAGE_EVENTS.get(stage), variables=order_variables(order, stage),
+           extra_html=order_progress(stage) + _order_rows(order) + order_cards(order, delivery=stage not in ("cancelled", "returned")),
            idempotency_key=f"order:{order.order_number}:{stage}")
 
 

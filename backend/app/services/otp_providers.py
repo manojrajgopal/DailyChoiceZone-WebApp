@@ -52,6 +52,8 @@ PURPOSE_WORDS = {
 
 
 def sms_text(code: str, purpose: str, minutes: int) -> str:
+    from app.services.email import templates as email_templates
+
     action = PURPOSE_WORDS.get(purpose, "continue")
     return (f"{code} is your Daily Choice Zone code to {action}. It expires in {minutes} minutes. "
             "Never share it with anyone, including our staff.")
@@ -173,12 +175,16 @@ def send_email(db, to: str, code: str, purpose: str, minutes: int) -> str:
         logger.info("Development email code for %s (no email account: console)", mask(to))
         logger.debug("Development email code for %s: %s", mask(to), code)
         return "console"
+    from app.services.email import templates as email_templates
+
     action = PURPOSE_WORDS.get(purpose, "continue")
     html = email_service.layout(
         "Your one-time code",
         f"Use this code to {html_lib.escape(action)}. It works once, for the next {minutes} minutes.",
-        rows=(f'<p style="font-size:28px;letter-spacing:6px;font-weight:600;margin:16px 0">'
-              f"{html_lib.escape(code)}</p>"),
+        rows=(email_templates.code_box(code, label="Your code", caption=f"Expires in {minutes} minutes · works once")
+              + email_templates.note("Never share this code with anyone, including our staff.", tone="danger",
+                                     title="Keep it private")),
+        tone="brand", icon="key", eyebrow="Verification code",
         footnote="Never share this code with anyone, including our staff. If you didn't ask for it, ignore "
                  "this email; nothing changes without the code.",
     )

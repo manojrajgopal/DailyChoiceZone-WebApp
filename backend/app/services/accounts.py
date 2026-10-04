@@ -189,8 +189,12 @@ def _send(db: Session, customer: Customer, *, subject: str, title: str, intro: s
 
     footnote = ("You're receiving this because of a request on your Daily Choice Zone account. "
                 "If it wasn't you, you can ignore this email — nothing changes until the link is used.")
-    html = email_service.layout(title, intro, cta=cta, footnote=footnote)
+    style = {"verify-email": ("brand", "mail", "Verify your email"), "password-reset": ("brand", "key", "Password reset"),
+             "password-changed": ("warning", "shield", "Security alert")}.get(reference, ("brand", "lock", "Account"))
     base = app_settings.STOREFRONT_URL.rstrip("/")
+    body = email_service.security_body(customer.email, link_url=link, warn=reference == "password-changed")
+    html = email_service.layout(title, intro, body, cta=cta or ("Go to your account", f"{base}/account/settings"),
+                                footnote=footnote, tone=style[0], icon=style[1], eyebrow=style[2])
     email_service.notify(db, "account_security", to=customer.email, customer_id=customer.id,
                          subject=subject, html=html, text=text, reference=reference, event=event,
                          variables={"action_url": link, "account_url": f"{base}/account"})
@@ -202,11 +206,21 @@ def send_welcome(db: Session, customer: Customer) -> None:
 
     base = app_settings.STOREFRONT_URL.rstrip("/")
     name = html_lib.escape(customer.first_name or "there")
+    from app.services.email import templates
+
+    body = (templates.steps([("Wishlist & alerts", "Save favourites and hear when they're back or cheaper."),
+                             ("Track every order", "Follow each parcel from packing to your door."),
+                             ("Easy returns", "Arrange a return or replacement from your order page."),
+                             ("Rewards", "Earn points on every order and spend them at checkout.")],
+                            title="Your account at a glance", tone="celebrate")
+            + templates.links([("New arrivals", f"{base}/shop"), ("Flash sales", f"{base}/flash-sales"),
+                               ("Gift cards", f"{base}/gift-cards"), ("Membership", f"{base}/membership")]))
     html = email_service.layout(
         f"Welcome, {customer.first_name or 'there'}",
         f"Hello {name}, your email is confirmed and your account is ready. Save favourites to your wishlist, "
         "track your orders and arrange returns, all from your account.",
-        cta=("Start shopping", base),
+        body, cta=("Start shopping", base), tone="celebrate", icon="wave", eyebrow="Welcome to the family",
+        secondary=[("Your account", f"{base}/account")],
     )
     email_service.notify(db, "account_security", to=customer.email, customer_id=customer.id,
                          subject="Welcome to Daily Choice Zone", html=html,

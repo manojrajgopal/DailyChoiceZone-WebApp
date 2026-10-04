@@ -613,9 +613,37 @@ def warn_expiring(db: Session, now: Optional[datetime] = None) -> int:
 # ------------------------------------------------------------------- emails
 
 
+def _balance(db: Session, customer_id: str) -> list:
+    """The points balance for an email's numbers — or nothing, if it can't be read."""
+    try:
+        info = summary(db, customer_id)
+    except Exception:  # noqa: BLE001 — a balance is a nicety; the email still goes
+        return []
+    rows = [("Ready to spend", f"{info['available']:,} pts", f"worth ₹{info['availableValue']:,.2f}")]
+    if isinstance(info.get("pending"), int) and info["pending"]:
+        rows.append(("On the way", f"{info['pending']:,} pts", "after return windows close"))
+    return rows
+
+
+def _how_points_work(db: Session) -> str:
+    from app.services.email import templates
+
+    try:
+        conf = settings(db)
+        worth = f"₹{int(conf['redeemValue']):,}" if conf.get("redeemValue") else ""
+        return templates.steps([
+            ("Earn", f"{conf['pointsPer100']} points for every ₹100 you spend."),
+            ("Spend", f"Every {conf['redeemPoints']} points take {worth} off at checkout." if worth else
+             "Use your points at checkout for money off."),
+        ], title="How your points work", tone="celebrate")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _notify(db: Session, customer_id: str, title: str, message: str, *, reference: str) -> None:
     """A short points update, by email and in the customer's account."""
     from app.services import email as email_service
+    from app.services.email import templates
 
     customer = db.get(Customer, customer_id)
     if customer is None or customer.status != "active":
@@ -623,13 +651,16 @@ def _notify(db: Session, customer_id: str, title: str, message: str, *, referenc
     esc = html_lib.escape
     link = f"{app_settings.STOREFRONT_URL.rstrip('/')}/account/rewards"
     html = email_service.layout(title, f"Hello {esc(customer.first_name or 'there')}, {esc(message)}",
-                                cta=("See your points", link))
+                                templates.stats(_balance(db, customer.id), tone="celebrate") + _how_points_work(db),
+                                cta=("See your points", link), tone="celebrate", icon="star", eyebrow="Reward points",
+                                secondary=[("Shop now", email_service.link("/shop"))])
     email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id, subject=title, html=html,
                          text=f"{title}. {message} {link}", reference=reference[:40])
 
 
 def _email_earned(db: Session, order: Order, points: int, available_at: datetime) -> None:
     from app.services import email as email_service
+    from app.services.email import templates
 
     customer = db.get(Customer, order.customer_id)
     if customer is None:
@@ -639,7 +670,14 @@ def _email_earned(db: Session, order: Order, points: int, available_at: datetime
     intro = (f"Hello {esc(customer.first_name or 'there')}, your order {esc(order.order_number)} earned "
              f"<strong>{points:,} reward points</strong>. They'll be ready to spend from "
              f"{available_at:%d %b %Y}, once the return window has closed.")
-    html = email_service.layout("You've earned reward points", intro, cta=("See your points", link))
+    body = (templates.stats([("Points earned", f"+{points:,}", f"on order {order.order_number}"),
+                             ("Ready from", f"{available_at:%d %b %Y}", "after the return window")], tone="celebrate")
+            + templates.stats(_balance(db, customer.id), tone="info")
+            + _how_points_work(db))
+    html = email_service.layout("You've earned reward points", intro, body, cta=("See your points", link),
+                                tone="celebrate", icon="star", eyebrow="Points earned",
+                                secondary=[("View order", email_service._order_link(order)),
+                                           ("Shop now", email_service.link("/shop"))])
     email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id,
                          subject=f"You earned {points:,} points on order {order.order_number}", html=html,
                          text=f"You earned {points:,} points on order {order.order_number}. {link}",
@@ -648,6 +686,7 @@ def _email_earned(db: Session, order: Order, points: int, available_at: datetime
 
 def _email_expiring(db: Session, customer: Customer, points: int, at: datetime) -> None:
     from app.services import email as email_service
+    from app.services.email import templates
 
     esc = html_lib.escape
     conf = settings(db)
@@ -655,7 +694,14 @@ def _email_expiring(db: Session, customer: Customer, points: int, at: datetime) 
     worth = value_of(conf, points) / 100
     intro = (f"Hello {esc(customer.first_name or 'there')}, <strong>{points:,} of your reward points</strong> "
              f"(worth ₹{worth:,.2f}) expire on {at:%d %b %Y}. Use them at checkout before then.")
-    html = email_service.layout("Your points are about to expire", intro, cta=("Shop now", link))
+    body = (templates.stats([("Expiring", f"{points:,} pts", f"worth ₹{worth:,.2f}"),
+                             ("Expires on", f"{at:%d %b %Y}")], tone="warning")
+            + templates.steps(["Add anything you like to your bag.", "At checkout, choose to use your reward points."],
+                              title="Use them before they go", tone="warning"))
+    html = email_service.layout("Your points are about to expire", intro, body,
+                                cta=("Shop now", email_service.link("/shop")),
+                                tone="warning", icon="clock", eyebrow="Points expiring soon",
+                                secondary=[("See your points", link)])
     email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id,
                          subject=f"{points:,} reward points expire on {at:%d %b}", html=html,
                          text=f"{points:,} points expire on {at:%d %b %Y}. {link}", reference=f"loyalty-expiry-{customer.id}")

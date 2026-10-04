@@ -524,12 +524,20 @@ def _deliver(db: Session, card: GiftCard, code: str, *, reissued: bool = False) 
     expiry = f" It can be used until {card.expires_at:%d %b %Y}." if card.expires_at else ""
     shop = app_settings.STOREFRONT_URL.rstrip("/")
     sender = esc(card.sender_name or "Someone")
-    note = (f'<p style="margin:18px 0 0;padding:12px 14px;background:#faf7f2;border-left:3px solid #c08457;'
-            f'font-size:14px;line-height:1.6;font-style:italic">{esc(card.message)}</p>') if card.message else ""
-    code_box = (f'<p style="margin:22px 0 0;padding:16px;border:1px dashed #c08457;border-radius:6px;text-align:center;'
-                f'font-family:Menlo,Consolas,monospace;font-size:20px;letter-spacing:.08em">{esc(code)}</p>'
-                f'<p style="margin:8px 0 0;font-size:12px;color:#8a817a;text-align:center">Balance {balance}.'
-                f' Enter this code at checkout.{esc(expiry)}</p>')
+    from app.services.email import templates
+
+    expires_on = f"{card.expires_at:%d %b %Y}" if card.expires_at else ""
+    body = templates.stats([("Gift card value", amount), ("Balance", balance), ("Valid until", expires_on)],
+                           tone="celebrate")
+    if card.message:
+        body += templates.quote(card.message, who=card.sender_name or "")
+    body += templates.code_box(code, label="Your gift card code",
+                               caption=f"Balance {balance}" + (f" · valid until {expires_on}" if expires_on else ""),
+                               tone="celebrate")
+    body += templates.steps(["Pick what you love and add it to your bag.",
+                             "At checkout, choose “Gift card” and enter the code above.",
+                             "Any balance left stays on the card for your next order."],
+                            title="How to use it", tone="celebrate")
     if reissued:
         title, intro = "Your gift card's new code", (
             f"Hello {esc(card.recipient_name)}, here is a new code for your Daily Choice Zone gift card. "
@@ -538,7 +546,9 @@ def _deliver(db: Session, card: GiftCard, code: str, *, reissued: bool = False) 
         title, intro = f"{amount} gift card for you", (
             f"Hello {esc(card.recipient_name)}, {sender} sent you a Daily Choice Zone gift card worth "
             f"<strong>{amount}</strong>.")
-    html = email_service.layout(title, intro, note + code_box, cta=("Start shopping", shop),
+    html = email_service.layout(title, intro, body, cta=("Start shopping", shop), tone="celebrate", icon="gift",
+                                eyebrow="A gift for you" if not reissued else "Gift card",
+                                secondary=[("New arrivals", f"{shop}/shop"), ("Gift card FAQ", f"{shop}/faq")],
                                 footnote="Keep this code safe — anyone with it can spend the card. We'll never ask you for it.")
     sent = email_service.notify(db, EMAIL_TYPE, to=card.recipient_email, customer_id=None,
                                 subject=f"{title} — Daily Choice Zone", html=html,
@@ -567,8 +577,13 @@ def _deliver(db: Session, card: GiftCard, code: str, *, reissued: bool = False) 
     confirm = email_service.layout(
         "Your gift card is on its way",
         f"Hello {esc(purchaser.first_name or 'there')}, your {amount} gift card for {esc(card.recipient_name)} "
-        f"({esc(card.recipient_email)}) has been sent. Its code ends in {esc(card.code_last4)}.",
-        cta=("Your gift cards", f"{shop}/account/wallet"),
+        f"has been sent. We've emailed them the code.",
+        templates.details([("Gift card", f"GC-{card.id:06d}"), ("Value", amount), ("Sent to", card.recipient_name),
+                           ("Email", card.recipient_email), ("Code ends in", card.code_last4),
+                           ("Valid until", expires_on)], title="Gift card details")
+        + (templates.quote(card.message, who="Your message") if card.message else ""),
+        cta=("Your gift cards", f"{shop}/account/wallet"), tone="celebrate", icon="gift", eyebrow="Gift sent",
+        secondary=[("Send another", f"{shop}/gift-cards")],
     )
     email_service.notify(db, EMAIL_TYPE, to=purchaser.email, customer_id=purchaser.id,
                          subject=f"Your {amount} gift card was sent", html=confirm,
@@ -669,6 +684,7 @@ def admin_refund_unused(db: Session, admin: AdminUser, card_id: int, *, reason: 
     purchaser = db.get(Customer, card.purchaser_id) if card.purchaser_id else None
     if purchaser is not None:
         from app.services import email as email_service
+        from app.services.email import templates as email_templates
 
         amount = f"₹{billing.to_major(card.initial_amount):,.2f}"
         title = f"Your {amount} gift card was refunded"
@@ -676,7 +692,12 @@ def admin_refund_unused(db: Session, admin: AdminUser, card_id: int, *, reason: 
                    "paid. Refunds usually reach your account within 5–7 working days.")
         link = f"{app_settings.STOREFRONT_URL.rstrip('/')}/account/wallet"
         email_service.notify(db, EMAIL_TYPE, to=purchaser.email, customer_id=purchaser.id, subject=title,
-                             html=email_service.layout(title, html_lib.escape(message), cta=("Your gift cards", link)),
+                             html=email_service.layout(
+                                 title, html_lib.escape(message),
+                                 email_templates.details(
+                                     [("Gift card", f"GC-{card.id:06d}"), ("Refund", amount),
+                                      ("Refunded to", "Original payment method")], title="Refund details"),
+                                 cta=("Your gift cards", link), tone="info", icon="refund", eyebrow="Gift card refund"),
                              text=f"{message} {link}", reference=f"gift-card-{card.id}")
     db.commit()
     db.refresh(card)

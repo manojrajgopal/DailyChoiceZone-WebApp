@@ -666,10 +666,30 @@ def _tell(db: Session, customer: Customer, title: str, message: str, *, referenc
 
     if customer.status != "active":
         return
+    from app.services.email import templates
+
     esc = html_lib.escape
-    link = f"{app_settings.STOREFRONT_URL.rstrip('/')}{href}"
-    html = email_service.layout(title, f"Hello {esc(customer.first_name or 'there')}, {esc(message)}",
-                                cta=("See your referrals" if href == "/account/referrals" else "Open your account", link))
+    base = app_settings.STOREFRONT_URL.rstrip('/')
+    link = f"{base}{href}"
+    # Their own code to pass on — only one that already exists (looking never makes one).
+    try:
+        own = db.execute(select(ReferralCode).where(ReferralCode.customer_id == customer.id)).scalar_one_or_none()
+    except Exception:  # noqa: BLE001 — the code is a nicety; the message still goes
+        own = None
+    body = ""
+    if own is not None and not own.disabled:
+        body += templates.code_box(own.code, label="Your referral code",
+                                   caption=f"Share it, or send friends to {base}/account?ref={own.code}", tone="celebrate")
+        body += templates.steps(["Share your code with friends and family.",
+                                 "They sign up with it and enjoy a welcome reward.",
+                                 "You're rewarded when their first order qualifies."],
+                                title="Invite more friends", tone="celebrate")
+    joined = "joined" in title.lower()
+    html = email_service.layout(title, f"Hello {esc(customer.first_name or 'there')}, {esc(email_service.after_greeting(message))}", body,
+                                cta=("See your referrals" if href == "/account/referrals" else "Open your account", link),
+                                tone="celebrate", icon="people" if joined else "gift",
+                                eyebrow="Referrals" if href == "/account/referrals" else "Welcome reward",
+                                secondary=[("Shop now", f"{base}/shop")])
     email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id, subject=title, html=html,
                          text=f"{title}. {message} {link}", reference=reference[:40],
                          inbox={"title": title, "body": message, "href": href})

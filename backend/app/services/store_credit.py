@@ -132,11 +132,21 @@ def _email(db: Session, customer: Customer, entry: StoreCreditTransaction) -> No
     title = "Store credit added" if added else "Store credit updated"
     intro = (f"Hello {esc(customer.first_name or 'there')}, <strong>{amount}</strong> of store credit has been "
              f"{'added to' if added else 'taken from'} your account. Your balance is now <strong>{left}</strong>.")
-    if entry.reason:
-        intro += f" Note from our team: {esc(entry.reason)}"
+    from app.services.email import templates
+
     link = f"{app_settings.STOREFRONT_URL.rstrip('/')}/account/wallet"
-    html = email_service.layout(title, intro, cta=("See your balance", link),
-                                footnote="Store credit is used at checkout and has no cash value.")
+    body = templates.stats([("Added" if added else "Deducted", f"{'+' if added else '−'}{amount}"),
+                            ("New balance", left, "ready to spend")], tone="success" if added else "info")
+    if entry.reason:
+        body += templates.note(entry.reason, title="Note from our team")
+    if added:
+        body += templates.steps(["Add what you love to your bag.",
+                                 "At checkout, your store credit is offered as a way to pay."],
+                                title="How to use it", tone="success")
+    html = email_service.layout(title, intro, body, cta=("See your balance", link),
+                                footnote="Store credit is used at checkout and has no cash value.",
+                                tone="success" if added else "info", icon="wallet", eyebrow="Store credit",
+                                secondary=[("Shop now", email_service.link("/shop"))])
     email_service.notify(db, "store_credit", to=customer.email, customer_id=customer.id,
                          subject=f"{title}: {amount}", html=html,
                          text=f"{title}: {amount}. Balance {left}. {link}", reference=f"store-credit-{entry.id}")

@@ -116,11 +116,24 @@ def _template(db: Session, key: str) -> Optional[SupportEmailTemplate]:
 
 
 def _body_html(body: str, values: dict) -> str:
+    from app.services.email import templates
+
     paragraphs = [p for p in render(body, values, html=True).split("\n\n") if p.strip()]
-    return "".join(
-        f'<p style="margin:0 0 14px;font-size:14px;line-height:1.6">{p.replace(chr(10), "<br>")}</p>'
-        for p in paragraphs
-    )
+    return "".join(templates.paragraph(p.replace(chr(10), "<br>"), raw=True) for p in paragraphs)
+
+
+def _ticket_details(values: dict, *, internal: bool) -> str:
+    """The request at a glance, under the message."""
+    from app.services.email import templates
+
+    rows = [("Request number", values.get("ticket_number", "")), ("Subject", values.get("subject", "")),
+            ("Topic", values.get("category", "")), ("Status", values.get("status", ""))]
+    if internal:
+        rows += [("Priority", values.get("priority", "")), ("Assigned to", values.get("assigned_agent", "")),
+                 ("Reply due", values.get("response_due", "")), ("Resolve by", values.get("resolve_due", ""))]
+    else:
+        rows.append(("Handled by", values.get("assigned_team", "") and f"{values['assigned_team']} team"))
+    return templates.details(rows, title="Your request" if not internal else "Request")
 
 
 def preview(db: Session, subject: str, body: str) -> dict:
@@ -138,7 +151,8 @@ def preview(db: Session, subject: str, body: str) -> dict:
     rendered_subject = render(subject, sample, html=False)
     return {
         "subject": rendered_subject,
-        "html": layout(rendered_subject, _body_html(body, sample), cta=("View request", sample["ticket_url"])),
+        "html": layout(rendered_subject, "", _body_html(body, sample) + _ticket_details(sample, internal=False),
+                       cta=("View request", sample["ticket_url"]), icon="chat", eyebrow="Support request"),
     }
 
 
@@ -149,9 +163,22 @@ def _send(db: Session, key: str, ticket: SupportTicket, to: str, values: dict, *
     if template is None or not to:
         return
     subject = render(template.subject, values, html=False)[:200]
+    from app.services.email import templates
+
+    message = values.get("message") or ""
+    body = _ticket_details(values, internal=internal)
+    if message and message not in template.body and "{{message}}" not in template.body.replace(" ", ""):
+        body = templates.quote(message, who="Latest message") + body
+    if not internal:
+        body += templates.note(f"Reply to this email or add to your request from your account — we usually reply "
+                               f"within one working day.", tone="info")
     html = email_service.layout(
-        subject, _body_html(template.body, values),
+        subject, "", _body_html(template.body, values) + body,
         cta=("Open the request" if internal else "View your request", values["ticket_url"]),
+        tone="info" if internal else "brand", icon="chat",
+        eyebrow=f"Support · {values.get('ticket_number', '')}" if not internal else "Support team alert",
+        secondary=[] if internal else [("All your requests", email_service.link("/account/support")),
+                                       ("Help centre", email_service.link("/faq"))],
     )
     email_service.notify(
         db, "support_team" if internal else "support_updates", to=to,

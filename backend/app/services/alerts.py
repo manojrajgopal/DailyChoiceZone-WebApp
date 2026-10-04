@@ -297,8 +297,17 @@ def _send_stock(db: Session, alert: StockAlert, product: Product, customer: Cust
              f"at {_money(_price(product))}. Popular pieces go quickly, so don't wait too long.")
     footnote = ("You asked us to tell you when this was back. This alert has now been used — you can set "
                 "another on the product page, and turn these emails off in your account settings.")
-    html = email_service.layout(f"{product.name} is back", intro, cta=("Shop it now", _link(product, alert.size, alert.color)),
-                                footnote=footnote)
+    from app.services.email import templates
+
+    card = templates.products([{"name": product.name, "url": _link(product, alert.size, alert.color),
+                                "image": email_service.product_image(product, alert.color or ""),
+                                "price": _money(_price(product)), "detail": variant, "badge": "Back in stock",
+                                "tone": "success", "cta": "Shop it now"}])
+    html = email_service.layout(f"{product.name} is back", intro, card,
+                                cta=("Shop it now", _link(product, alert.size, alert.color)), footnote=footnote,
+                                tone="success", icon="bell", eyebrow="Back in stock",
+                                secondary=[("Your alerts", email_service.link("/account/alerts")),
+                                           ("Your wishlist", email_service.link("/account/wishlist"))])
     text = f"{product.name}{f' ({variant})' if variant else ''} is back in stock: {_link(product, alert.size, alert.color)}"
     return email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id,
                                 subject=f"Back in stock: {product.name}", html=html, text=text,
@@ -316,8 +325,18 @@ def _send_price(db: Session, alert: PriceAlert, product: Product, customer: Cust
         intro += f" That's at or below the {_money(alert.target_price)} you were waiting for."
     footnote = ("You asked us to tell you when this got cheaper. Prices can change again, and this alert has now "
                 "been used — set another on the product page any time.")
-    html = email_service.layout("A price you've been waiting for", intro, cta=("See it now", _link(product)),
-                                footnote=footnote)
+    from app.services.email import templates
+
+    percent = round(saving / was * 100) if was else 0
+    body = (templates.stats([("Now", _money(now_price)), ("Was", _money(was)),
+                             ("You save", _money(saving), f"{percent}% off" if percent else "")], tone="success")
+            + templates.products([{"name": product.name, "url": _link(product),
+                                   "image": email_service.product_image(product), "price": _money(now_price),
+                                   "was": _money(was), "badge": f"{percent}% off" if percent else "Price drop",
+                                   "tone": "success", "cta": "See it now"}]))
+    html = email_service.layout("A price you've been waiting for", intro, body, cta=("See it now", _link(product)),
+                                footnote=footnote, tone="success", icon="tag", eyebrow="Price drop",
+                                secondary=[("Your alerts", email_service.link("/account/alerts"))])
     text = f"{product.name} is now {_money(now_price)} (was {_money(was)}): {_link(product)}"
     return email_service.notify(db, EMAIL_TYPE, to=customer.email, customer_id=customer.id,
                                 subject=f"Price drop: {product.name} is now {_money(now_price)}", html=html, text=text,

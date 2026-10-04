@@ -599,3 +599,51 @@ class TestCheckDomain:
         assert senders.check_domain("x@slow2.test") == ""
         answers[("slow3.test", "AAAA")] = d.exception.Timeout()
         assert senders.check_domain("x@slow3.test") == ""
+
+
+class TestRichComponents:
+    def test_body_from_never_prints_a_python_list(self, plain_brand):
+        """A list of (label, value) pairs becomes a details box — not `[('Kurta', '₹499')]` in the email."""
+        html = templates.master(title="t", body_html=[("Cotton <Kurta>", "₹499.00 (was ₹999.00)")])
+        assert "[(" not in html and "('" not in html
+        assert "Cotton &lt;Kurta&gt;" in html and "₹499.00 (was ₹999.00)" in html
+
+    def test_body_from_dicts_are_item_lines(self):
+        out = templates.body_from([{"name": "Kurta", "quantity": 2, "amount": "₹10"}])
+        assert "Kurta" in out and "Qty 2" in out and "{" not in out
+
+    def test_items_summary_saving_and_more(self):
+        out = templates.items([{"name": "A", "amount": "₹1", "was": "₹2", "url": "https://shop.test/p/1"}],
+                              total="₹1", summary=[("Subtotal", "₹1"), ("Coupon", "−₹1", "saving")],
+                              more=3, more_url="https://shop.test/cart")
+        assert "Subtotal" in out and "−₹1" in out and "line-through" in out
+        assert "+ 3 more items" in out and 'href="https://shop.test/p/1"' in out
+
+    def test_progress_marks_steps_done(self):
+        out = templates.progress(["One", "Two", "Three"], 1)
+        assert out.count("&#10003;") == 1 and "One" in out and "Three" in out
+        assert templates.progress([], 0) == ""
+
+    def test_cards_skip_empty_and_escape_titles(self):
+        out = templates.cards([("Deliver <to>", "x"), ("Empty", "")])
+        assert "Deliver &lt;to&gt;" in out and "Empty" not in out
+        assert templates.cards([]) == ""
+
+    def test_code_box_stats_products_steps_quote_links(self):
+        assert "AB&lt;CD" in templates.code_box("AB<CD", label="Code")
+        assert "₹5" in templates.stats([("Balance", "₹5"), ("Empty", "")]) and "Empty" not in templates.stats([("Balance", "₹5"), ("Empty", "")])
+        cards = templates.products([{"name": "Kurta", "url": "https://shop.test/p", "image": "https://cdn.test/k.jpg",
+                                     "price": "₹1", "was": "₹2", "badge": "50% off"}])
+        assert "https://cdn.test/k.jpg" in cards and "50% off" in cards
+        assert "&lt;b&gt;" in templates.steps(["<b>"]) and templates.steps([]) == ""
+        assert "Asha" in templates.quote("hi", who="Asha")
+        assert templates.links([("A", "")]) == "" and "https://x.test" in templates.links([("A", "https://x.test")])
+
+    def test_banner_tone_icon_eyebrow_and_secondary_links(self, plain_brand):
+        html = templates.master(title="t", tone="success", icon="check", eyebrow="Order <confirmed>",
+                                secondary=[("Invoices", "https://shop.test/i")])
+        assert templates.TONES["success"][0] in html and templates.ICONS["check"] in html
+        assert "Order &lt;confirmed&gt;" in html and "https://shop.test/i" in html
+
+    def test_light_only(self, plain_brand):
+        assert 'content="light only"' in templates.master(title="t")
