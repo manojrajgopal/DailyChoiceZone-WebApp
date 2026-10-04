@@ -53,10 +53,18 @@ export function cancelReturn(requestId: string): Promise<ReturnRequest> {
 
 /* ------------------------------------------------------------------- admin */
 
-export function listReturns(filters: { status?: string; kind?: string } = {}): Promise<ReturnRequest[]> {
+/**
+ * `q` is a Return ID or an Order ID/number and `customer` a Customer ID; the
+ * server matches each exactly (docs/id-lookup.md).
+ */
+export function listReturns(
+  filters: { status?: string; kind?: string; q?: string; customer?: string } = {},
+): Promise<ReturnRequest[]> {
   const params = new URLSearchParams();
   if (filters.status) params.set("status", filters.status);
   if (filters.kind) params.set("kind", filters.kind);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.customer) params.set("customer", filters.customer);
   const query = params.toString();
   return apiGet(`/admin/returns${query ? `?${query}` : ""}`, ADMIN);
 }

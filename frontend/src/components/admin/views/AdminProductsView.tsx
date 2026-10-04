@@ -15,7 +15,8 @@ import {
   ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
 import { DataTable, type Column, type DataTableSort } from "@/components/admin/ui/DataTable";
-import { FilterSelect, LogSearch, PAGE_SIZES, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { FilterSelect, PAGE_SIZES, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
@@ -28,7 +29,7 @@ import {
 } from "@/services/admin/productAdminService";
 import { toast } from "@/store/toastStore";
 
-const KEYS = ["search", "status", "category", "brand", "stock", "flag", "sort"] as const;
+const KEYS = ["q", "status", "category", "brand", "stock", "flag", "sort"] as const;
 
 const STATUSES: (ProductStatus | "all")[] = ["all", "active", "draft", "out-of-stock", "archived"];
 const STOCKS: AdminStockFilter[] = ["in-stock", "low-stock", "out-of-stock"];
@@ -98,7 +99,7 @@ export function AdminProductsView() {
   const { data, isLoading, isRefreshing, reload } = useAdminResource(
     () =>
       listProductsPage({
-        search: filters.search,
+        q: filters.q,
         status,
         category: filters.category,
         brands: filters.brand,
@@ -108,7 +109,7 @@ export function AdminProductsView() {
         page,
         pageSize,
       }),
-    [filters.search, status, filters.category, filters.brand, stock, flag, sort, page, pageSize],
+    [filters.q, status, filters.category, filters.brand, stock, flag, sort, page, pageSize],
   );
 
   const [pendingDelete, setPendingDelete] = useState<AdminProduct | null>(null);
@@ -120,7 +121,7 @@ export function AdminProductsView() {
   const brands = data?.filters.brands ?? [];
 
   const filtered = Boolean(
-    filters.search || status !== "all" || filters.category || filters.brand || stock || flag,
+    filters.q || status !== "all" || filters.category || filters.brand || stock || flag,
   );
 
   const onDuplicate = async (product: AdminProduct) => {
@@ -372,11 +373,12 @@ export function AdminProductsView() {
 
       {/* --------------------------------------------------- search + filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <LogSearch
-          label="Search products by name, SKU, brand or category"
-          value={filters.search}
-          onChange={(search) => setFilters({ search })}
-          placeholder="Name, SKU, barcode, brand…"
+        <IdFilter
+          entity="product"
+          label="Product ID or SKU"
+          value={filters.q}
+          onChange={(q) => setFilters({ q })}
+          className="w-60"
         />
 
         <FilterSelect
@@ -436,7 +438,7 @@ export function AdminProductsView() {
           value={sort}
           onChange={(next) => setFilters({ sort: next })}
           options={[
-            { value: "", label: filters.search ? "Best match" : "Recommended" },
+            { value: "", label: "Recommended" },
             ...SORTS,
           ]}
         />
@@ -471,7 +473,7 @@ export function AdminProductsView() {
         }
         emptyTitle={filtered ? "No products match" : "No products yet"}
         emptyDescription={
-          filtered ? "Adjust the search or filters above, or add a new product." : "Add your first product to start selling."
+          filtered ? "Adjust the Product ID or filters above, or add a new product." : "Add your first product to start selling."
         }
       />
 

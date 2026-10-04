@@ -10,12 +10,13 @@ import { adminDataSource } from "./admin-data-source.instance";
  * counts the dashboard and sidebar need.
  */
 
-export function listInventory(): Promise<InventoryItem[]> {
-  return adminDataSource.listInventory();
+/** Every product's stock, or — given a Product ID or SKU — just that product's. */
+export function listInventory(productId?: string): Promise<InventoryItem[]> {
+  return adminDataSource.listInventory(productId);
 }
 
-export function listStockLog(): Promise<StockAdjustment[]> {
-  return adminDataSource.listStockLog();
+export function listStockLog(productId?: string): Promise<StockAdjustment[]> {
+  return adminDataSource.listStockLog(productId);
 }
 
 export async function adjustStock(

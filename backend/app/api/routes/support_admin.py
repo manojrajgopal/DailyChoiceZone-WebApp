@@ -111,7 +111,8 @@ def list_tickets(
     status: str = "", view: str = "", category: str = "", subcategory: str = "", issue: str = "",
     priority: str = "", team: str = "", agent: str = "", contactType: str = "", channel: str = "",
     featureStage: str = "", customer: str = "", order: str = "", product: str = "", membership: str = "",
-    sla: str = "", q: str = Query("", max_length=120), sort: str = "updated",
+    sla: str = "", q: str = Query("", max_length=120), subject: str = Query("", max_length=120),
+    sort: str = "updated",
     date_from: str = Query("", alias="from"), date_to: str = Query("", alias="to"), hideMerged: str = "1",
     page: int = Query(1, ge=1), pageSize: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db), admin: AdminUser = Depends(get_current_admin),
@@ -121,7 +122,7 @@ def list_tickets(
         "status": status, "view": view, "category": category, "subcategory": subcategory, "issue": issue,
         "priority": priority, "team": team, "agent": agent, "contactType": contactType, "channel": channel,
         "featureStage": featureStage, "customer": customer, "order": order, "product": product,
-        "membership": membership, "sla": sla, "q": q, "sort": sort, "from": date_from, "to": date_to,
+        "membership": membership, "sla": sla, "q": q, "subject": subject, "sort": sort, "from": date_from, "to": date_to,
         "hideMerged": hideMerged,
     }
     rows, total = queries.staff_tickets(db, filters, me=me_agent, scope_team_ids=team_ids, scope_agent_id=agent_id,

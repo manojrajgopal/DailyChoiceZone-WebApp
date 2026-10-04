@@ -53,6 +53,7 @@ from app.models import (
     Product,
     SettingDocument,
 )
+from app.services.lookup.filters import any_id_condition, id_condition
 
 logger = logging.getLogger(__name__)
 EMAIL_TYPE = "loyalty"
@@ -796,11 +797,10 @@ def admin_balances(db: Session, *, q: str = "", page: int = 1, page_size: int = 
     query = (select(Customer, LoyaltyAccount, live.c.live, held.c.held)
              .join(LoyaltyAccount, LoyaltyAccount.customer_id == Customer.id)
              .outerjoin(live, live.c.customer_id == Customer.id).outerjoin(held, held.c.customer_id == Customer.id))
-    text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        query = query.where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                Customer.last_name.ilike(like), Customer.id == text))
+    # A Customer ID, exactly (docs/id-lookup.md): names and emails match nothing.
+    condition = id_condition("customer", q)
+    if condition is not None:
+        query = query.where(condition)
     total = db.execute(select(func.count()).select_from(query.subquery())).scalar_one()
     rows = db.execute(query.order_by(func.coalesce(live.c.live, 0).desc(), Customer.id)
                       .offset((max(1, page) - 1) * page_size).limit(page_size)).all()
@@ -812,21 +812,21 @@ def admin_balances(db: Session, *, q: str = "", page: int = 1, page_size: int = 
     } for c, a, lv, hd in rows], total
 
 
-def admin_ledger(db: Session, *, kind: str = "", q: str = "", customer_id: str = "", page: int = 1,
-                 page_size: int = 25) -> tuple:
+def admin_ledger(db: Session, *, kind: str = "", q: str = "", customer_id: str = "", order_id: str = "",
+                 page: int = 1, page_size: int = 25) -> tuple:
     conditions = []
     if kind:
         conditions.append(LoyaltyTransaction.kind == kind)
-    if customer_id:
-        conditions.append(LoyaltyTransaction.customer_id == customer_id)
-    text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        people = select(Customer.id).where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                               Customer.last_name.ilike(like)))
-        orders = select(Order.id).where(Order.order_number == text)
-        conditions.append(or_(LoyaltyTransaction.customer_id.in_(people), LoyaltyTransaction.order_id.in_(orders),
-                              LoyaltyTransaction.reason.ilike(like)))
+    # A Customer ID or an Order ID, exactly (docs/id-lookup.md) — never a name,
+    # an email or words from the reason. `q` takes either kind.
+    for condition in (
+        id_condition("customer", customer_id, column=LoyaltyTransaction.customer_id),
+        id_condition("order", order_id, column=LoyaltyTransaction.order_id, via=Order.id),
+        any_id_condition(q, ("customer", LoyaltyTransaction.customer_id, None),
+                         ("order", LoyaltyTransaction.order_id, Order.id)),
+    ):
+        if condition is not None:
+            conditions.append(condition)
     total = db.execute(select(func.count()).select_from(LoyaltyTransaction).where(*conditions)).scalar_one()
     rows = db.execute(select(LoyaltyTransaction, Customer).join(Customer, Customer.id == LoyaltyTransaction.customer_id)
                       .where(*conditions).order_by(LoyaltyTransaction.id.desc())

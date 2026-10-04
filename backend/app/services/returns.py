@@ -256,8 +256,27 @@ def list_for_customer(db: Session, customer: Customer) -> List[ReturnRequest]:
     return list(db.execute(_query().where(ReturnRequest.customer_id == customer.id)).scalars())
 
 
-def list_all(db: Session, *, status: Optional[str] = None, kind: Optional[str] = None) -> List[ReturnRequest]:
+def list_all(
+    db: Session,
+    *,
+    status: Optional[str] = None,
+    kind: Optional[str] = None,
+    q: Optional[str] = None,
+    customer: Optional[str] = None,
+) -> List[ReturnRequest]:
+    """
+    `q` is a Return ID or the order's number/ID and `customer` a Customer ID,
+    each matched exactly (docs/id-lookup.md) — never a name or an email.
+    """
+    from app.services.lookup.filters import any_id_condition, id_condition
+
     query = _query()
+    by_id = any_id_condition(q, ("return", None, None), ("order", ReturnRequest.order_id, Order.id))
+    if by_id is not None:
+        query = query.where(by_id)
+    by_customer = id_condition("customer", customer, column=ReturnRequest.customer_id, via=Customer.id)
+    if by_customer is not None:
+        query = query.where(by_customer)
     if status:
         query = query.where(ReturnRequest.status == status)
     if kind:

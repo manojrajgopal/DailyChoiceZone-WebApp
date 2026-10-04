@@ -95,15 +95,16 @@ def unsubscribe(alert_id: int, kind: str = KIND, db: Session = Depends(get_db),
 def list_alerts(
     kind: str = KIND,
     status: str = Query("", max_length=20),
-    q: str = Query("", max_length=80),
-    product_id: str = Query("", max_length=20, alias="productId"),
+    q: str = Query("", max_length=80, description="A Customer ID or Product ID/SKU, matched exactly."),
+    product_id: str = Query("", max_length=64, alias="productId", description="A Product ID or SKU, exact."),
+    customer_id: str = Query("", max_length=64, alias="customerId", description="A Customer ID, exact."),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_access("alerts")),
 ):
-    items, total, counts = service.admin_search(db, kind, status=status, q=q, product_id=product_id, page=page,
-                                                page_size=page_size)
+    items, total, counts = service.admin_search(db, kind, status=status, q=q, product_id=product_id,
+                                                customer_id=customer_id, page=page, page_size=page_size)
     return ok({"items": items, "pagination": Pagination.build(page, page_size, total).model_dump(), "counts": counts})
 
 

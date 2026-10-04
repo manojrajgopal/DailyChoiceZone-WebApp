@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { OrderShipping, RateOption } from "@/types/shipping";
 import { api, fail, networkError } from "@/test/api";
+import { idPreview, lookupBackend } from "@/test/lookup-fixtures";
 import { renderUI, screen, signIn, waitFor, within } from "@/test/render";
 import { orderShipping, shipment } from "@/test/shipping-fixtures";
 import { useToastStore } from "@/store/toastStore";
@@ -17,7 +18,16 @@ const RATES: RateOption[] = [
 
 const PACKAGE = { weightGrams: 800, lengthCm: 30, widthCm: 20, heightCm: 5, count: 1, type: "box" };
 
+function couriers() {
+  lookupBackend("courier", [
+    idPreview("courier", "shiprocket", { title: "Shiprocket", volatile: false }),
+    idPreview("courier", "manual", { title: "Manual", volatile: false }),
+    idPreview("courier", "delhivery", { title: "Delhivery", volatile: false }),
+  ]);
+}
+
 function setup(shipping: OrderShipping = orderShipping({ defaultPackage: PACKAGE })) {
+  couriers();
   const onClose = vi.fn();
   const onCreated = vi.fn();
   const view = renderUI(<CreateShipmentDialog orderId="ORD042" shipping={shipping} onClose={onClose} onCreated={onCreated} />);
@@ -27,21 +37,47 @@ function setup(shipping: OrderShipping = orderShipping({ defaultPackage: PACKAGE
 
 const field = (dialog: HTMLElement, label: RegExp) => within(dialog).getByLabelText(label);
 
+/** The provider is picked by its courier code, from the ID autocomplete. */
+async function pickProvider(user: ReturnType<typeof renderUI>["user"], dialog: HTMLElement, code: string) {
+  const change = within(dialog).queryByRole("button", { name: /^Change Courier provider/ });
+  if (change) await user.click(change);
+  await user.type(within(dialog).getByRole("combobox", { name: /^Courier provider/ }), code);
+  await user.click(await within(dialog).findByRole("option", { name: code }));
+}
+
 describe("CreateShipmentDialog", () => {
   describe("the form", () => {
     it("preselects the default provider and prefills the saved default package", () => {
       const { dialog } = setup();
-      expect(field(dialog, /^Courier provider/)).toHaveValue("shiprocket");
-      expect(within(field(dialog, /^Courier provider/)).getAllByRole("option").map((option) => option.textContent)).toEqual([
-        "Shiprocket (default)",
-        "Manual",
-      ]);
+      // The default courier is preselected, by its code; its name is shown after.
+      expect(within(dialog).getByText("shiprocket")).toBeInTheDocument();
+      expect(within(dialog).getByText("Shiprocket (default)")).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: /^Change Courier provider/ })).toBeInTheDocument();
       // Two services: nothing is chosen for you.
       expect(field(dialog, /^Service/)).toHaveValue("");
       expect(field(dialog, /^Weight/)).toHaveValue("800");
       expect(field(dialog, /^Package type/)).toHaveValue("box");
       expect(dialog).toHaveTextContent("Prefilled from the courier's saved default package.");
       expect(within(dialog).queryByLabelText(/^AWB/)).not.toBeInTheDocument();
+    });
+
+    it("suggests couriers by code, never by name", async () => {
+      const { user, dialog } = setup();
+      await user.click(within(dialog).getByRole("button", { name: /^Change Courier provider/ }));
+      const input = within(dialog).getByRole("combobox", { name: /^Courier provider/ });
+      await user.type(input, "Ship rocket courier");
+      expect((await within(dialog).findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      await user.clear(input);
+      await user.type(input, "ma");
+      expect(await within(dialog).findByRole("option", { name: "manual" })).toBeInTheDocument();
+      expect(api.last("GET", "/admin/lookup/courier")!.query.get("q")).toBe("ma");
+    });
+
+    it("refuses a courier that isn't switched on for shipments", async () => {
+      const { user, dialog } = setup();
+      await pickProvider(user, dialog, "delhivery");
+      expect(within(dialog).getByRole("alert")).toHaveTextContent("Courier delhivery isn’t switched on for shipments.");
+      expect(within(dialog).getByRole("button", { name: "Create shipment" })).toBeDisabled();
     });
 
     it("starts blank without a default package", () => {
@@ -196,7 +232,7 @@ describe("CreateShipmentDialog", () => {
     it("asks for the courier name and AWB, needs only the weight, and offers no rates", async () => {
       api.post("/admin/shipments", shipment({ provider: { code: "manual", name: "Manual" } }));
       const { user, dialog, onCreated } = setup(orderShipping());
-      await user.selectOptions(field(dialog, /^Courier provider/), "manual");
+      await pickProvider(user, dialog, "manual");
 
       // One service: chosen for you.
       expect(field(dialog, /^Service/)).toHaveValue("Standard");
@@ -240,8 +276,8 @@ describe("CreateShipmentDialog", () => {
       await user.click(within(dialog).getByRole("button", { name: "Get rates" }));
       await within(dialog).findByRole("radiogroup");
 
-      await user.selectOptions(field(dialog, /^Courier provider/), "manual");
-      await user.selectOptions(field(dialog, /^Courier provider/), "shiprocket");
+      await pickProvider(user, dialog, "manual");
+      await pickProvider(user, dialog, "shiprocket");
       expect(within(dialog).queryByRole("radiogroup")).not.toBeInTheDocument();
       expect(within(dialog).queryByText("Choose a service.")).not.toBeInTheDocument();
     });

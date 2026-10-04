@@ -147,7 +147,9 @@ class TestModeration:
         data = client.get("/api/admin/questions?status=pending", headers=admin_auth).json()["data"]
         assert data["pagination"]["total"] == 1 and data["counts"]["pending"] == 1
         assert client.get("/api/admin/questions?answered=yes", headers=admin_auth).json()["data"]["pagination"]["total"] == 1
-        assert client.get("/api/admin/questions?q=length", headers=admin_auth).json()["data"]["pagination"]["total"] == 1
+        assert client.get("/api/admin/questions?text=length", headers=admin_auth).json()["data"]["pagination"]["total"] == 1
+        assert [i["id"] for i in client.get(f"/api/admin/questions?q={first}", headers=admin_auth)
+                .json()["data"]["items"]] == [first]
 
     def test_preferences_are_respected(self, client, auth, admin_auth, catalogue, mailbox):
         client.put("/api/account/email-preferences", headers=auth, json={"product_questions": False})

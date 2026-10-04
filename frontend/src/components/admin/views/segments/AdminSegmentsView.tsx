@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Archive, Eye, Pencil, Plus, RefreshCw, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
-import { LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDateTime } from "@/lib/support/format";
@@ -137,8 +138,8 @@ export function AdminSegmentsView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search segments" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Segment name" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="segment" value={filters.q} onChange={(q) => setFilters({ q })} className="min-w-[13rem]" />
         {filtered ? (
           <AdminButton size="sm" variant="ghost" onClick={clear}>
             <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
@@ -170,7 +171,7 @@ export function AdminSegmentsView() {
                 empty={Boolean(data && data.items.length === 0)}
                 onRetry={() => void segments.reload()}
                 title={filtered ? "No segments match" : "No segments yet"}
-                hint={filtered ? "Try a different search or status." : "Create one to group customers by what they do."}
+                hint={filtered ? "Try a different Segment ID or status." : "Create one to group customers by what they do."}
               />
               {data?.items.map((row) => (
                 <tr key={row.id} className="align-top hover:bg-admin-raised">

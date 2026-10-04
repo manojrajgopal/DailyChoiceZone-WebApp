@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Search, Trash2 } from "lucide-react";
-
-import type { AdminProduct } from "@/types/admin";
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 
 import { AdminButton } from "@/components/admin/ui/AdminChrome";
+import { IdAutocomplete } from "@/components/common/IdAutocomplete";
 import { AdminCheckbox, AdminToggle, FormSection } from "@/components/admin/ui/AdminForm";
 import { DomainStatus, StatusBadge } from "@/components/admin/ui/StatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -19,7 +18,6 @@ import {
   listRelationships,
   previewRecommendations,
   reorderRelationships,
-  searchProducts,
   updateRelationship,
   type PreviewEntry,
   type Relationship,
@@ -187,6 +185,7 @@ export function ProductRelationshipsPanel({ productId }: { productId: string }) 
   );
 }
 
+/** Related products are added by Product ID or SKU — never by name (docs/id-lookup.md). */
 function ProductPicker({
   productId,
   exclude,
@@ -198,48 +197,18 @@ function ProductPicker({
   busy: boolean;
   onAdd: (ids: string[], reciprocal: boolean) => Promise<void>;
 }) {
-  const [term, setTerm] = useState("");
-  const [results, setResults] = useState<AdminProduct[]>([]);
-  const [searching, setSearching] = useState(false);
   const [reciprocal, setReciprocal] = useState(false);
-
-  useEffect(() => {
-    const text = term.trim();
-    if (text.length < 2) {
-      setResults([]);
-      return;
-    }
-    let live = true;
-    const timer = setTimeout(() => {
-      setSearching(true);
-      searchProducts(text)
-        .then((items) => live && setResults(items))
-        .catch(() => live && setResults([]))
-        .finally(() => live && setSearching(false));
-    }, 250);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [term]);
-
-  const candidates = results.filter((product) => !exclude.has(product.id) && product.id !== productId);
 
   return (
     <div className="mt-5">
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-admin-ink">Add products</span>
-        <span className="relative block">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-muted" aria-hidden="true" />
-          <input
-            type="search"
-            value={term}
-            onChange={(event) => setTerm(event.target.value)}
-            placeholder="Search by name, SKU or brand"
-            className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface pl-8 pr-3 text-[0.8125rem] text-admin-ink focus:border-admin-ink"
-          />
-        </span>
-      </label>
+      <IdAutocomplete
+        entity="product"
+        label="Add products — Product ID or SKU"
+        placeholder="Search Product ID or SKU…"
+        exclude={[productId, ...exclude]}
+        disabled={busy}
+        onSelect={(id) => void onAdd([id], reciprocal)}
+      />
       <AdminCheckbox
         label="Also show this product on theirs"
         description="Adds the reverse relationship where it is missing."
@@ -247,28 +216,6 @@ function ProductPicker({
         onChange={(event) => setReciprocal(event.target.checked)}
         className="mt-2"
       />
-      <div aria-live="polite" className="mt-2">
-        {searching ? <p className="text-xs text-admin-muted">Searching…</p> : null}
-        {!searching && term.trim().length >= 2 && candidates.length === 0 ? (
-          <p className="text-xs text-admin-muted">No other products match.</p>
-        ) : null}
-      </div>
-      {candidates.length > 0 ? (
-        <ul className="mt-1 divide-y divide-admin-border rounded-[3px] border border-admin-border">
-          {candidates.map((product) => (
-            <li key={product.id} className="flex items-center gap-3 px-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-admin-ink">{product.name}</p>
-                <p className="text-[0.6875rem] text-admin-muted">{product.sku} · {formatPrice(product.price)}</p>
-              </div>
-              <DomainStatus domain="product" status={product.status} />
-              <AdminButton size="sm" disabled={busy} onClick={() => void onAdd([product.id], reciprocal)}>
-                Add
-              </AdminButton>
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </div>
   );
 }

@@ -13,6 +13,14 @@ describe("listReviews", () => {
   it("GETs /admin/reviews", async () => {
     await reviews.listReviews();
     expect(api.last("GET", "/admin/reviews")!.headers.authorization).toBe("Bearer test-token");
+    expect([...api.last("GET", "/admin/reviews")!.query.keys()]).toEqual([]);
+  });
+
+  it("sends the Product ID and Customer ID filters", async () => {
+    await reviews.listReviews({ productId: "PRD001", customerId: "CUS002" });
+    const request = api.last("GET", "/admin/reviews")!;
+    expect(request.query.get("productId")).toBe("PRD001");
+    expect(request.query.get("customerId")).toBe("CUS002");
   });
 });
 

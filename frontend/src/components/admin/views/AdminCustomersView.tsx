@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import type { AdminCustomer } from "@/types/admin";
 
 import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { useUrlFilters } from "@/components/admin/ui/LogPage";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate, formatPrice } from "@/lib/utils/format";
@@ -21,11 +23,18 @@ type Segment = "all" | "repeat" | "new" | "lapsed" | "blocked";
  * Segments rather than a pile of raw filters, because "who is buying
  * repeatedly" and "who has gone quiet" are the questions actually asked of
  * this page.
+ *
+ * One customer is found by Customer ID (docs/id-lookup.md), picked from the
+ * autocomplete and matched exactly by the server; names, emails and phone
+ * numbers are shown, never searched.
  */
-export function AdminCustomersView() {
-  const { data, isLoading } = useAdminResource(() => listCustomers(), []);
+const KEYS = ["q"] as const;
 
-  const [term, setTerm] = useState("");
+export function AdminCustomersView() {
+  const { filters, setFilters, clear } = useUrlFilters(KEYS);
+  const customerId = filters.q;
+  const { data, isLoading } = useAdminResource(() => listCustomers(customerId), [customerId]);
+
   const [segment, setSegment] = useState<Segment>("all");
 
   const customers = data ?? [];
@@ -40,7 +49,6 @@ export function AdminCustomersView() {
   const [now] = useState(() => Date.now());
 
   const filtered = useMemo(() => {
-    const terms = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const ninetyDaysAgo = now - 90 * 86400000;
 
     return customers.filter((customer) => {
@@ -52,21 +60,9 @@ export function AdminCustomersView() {
         if (customer.orderCount === 0 || last >= ninetyDaysAgo) return false;
       }
 
-      if (terms.length > 0) {
-        const haystack = [
-          customer.firstName,
-          customer.lastName,
-          customer.email,
-          customer.phone,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!terms.every((token) => haystack.includes(token))) return false;
-      }
-
       return true;
     });
-  }, [customers, term, segment, now]);
+  }, [customers, segment, now]);
 
   const totalSpent = filtered.reduce((sum, customer) => sum + customer.totalSpent, 0);
 
@@ -165,30 +161,18 @@ export function AdminCustomersView() {
     <div>
       <AdminPageHeader
         title="Customers"
-        description={`${customers.length} registered customers.`}
+        description={customerId ? `Customer ${customerId}.` : `${customers.length} registered customers.`}
         breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Customers" }]}
       />
 
       <div className="mb-4 rounded-[3px] border border-admin-border bg-admin-surface p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:max-w-xs">
-            <label htmlFor="customer-search" className="sr-only">
-              Search customers by name, email or phone
-            </label>
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            <input
-              id="customer-search"
-              type="search"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder="Name, email or phone…"
-              className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
-            />
-          </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <IdFilter
+            entity="customer"
+            value={customerId}
+            onChange={(q) => setFilters({ q })}
+            className="min-w-0 flex-1 sm:max-w-xs"
+          />
 
           <select
             value={segment}
@@ -203,13 +187,13 @@ export function AdminCustomersView() {
             ))}
           </select>
 
-          {segment !== "all" || term ? (
+          {segment !== "all" || customerId ? (
             <AdminButton
               size="sm"
               variant="ghost"
               onClick={() => {
                 setSegment("all");
-                setTerm("");
+                clear();
               }}
             >
               <X className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
@@ -233,7 +217,7 @@ export function AdminCustomersView() {
         pageSize={15}
         initialSort={{ columnId: "spent", direction: "desc" }}
         emptyTitle="No customers match"
-        emptyDescription="Adjust the search or segment above."
+        emptyDescription="Adjust the Customer ID or segment above."
       />
     </div>
   );

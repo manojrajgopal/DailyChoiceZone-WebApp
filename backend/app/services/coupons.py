@@ -240,7 +240,7 @@ def save_coupon(db: Session, payload: dict, coupon_id: Optional[str] = None) -> 
     if coupon_id:
         coupon = get_coupon(db, coupon_id)
     else:
-        coupon = Coupon(id=next_id(db, Coupon, "coupon"), code="", starts_at=datetime.utcnow())
+        coupon = Coupon(id=next_id(db, Coupon, "coupon"), code="", starts_at=datetime.utcnow().replace(microsecond=0))
         db.add(coupon)
 
     code = (payload.get("code") or coupon.code or "").strip().upper()

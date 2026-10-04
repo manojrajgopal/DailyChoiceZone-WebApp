@@ -242,8 +242,23 @@ class TestAdmin:
         assert data["pagination"]["total"] == 1
         row = data["items"][0]
         assert row["customer"]["email"] == "shopper@example.com" and row["notifiedAt"]
-        assert client.get("/api/admin/alerts/stock?q=Earbuds", headers=admin_auth).json()["data"]["pagination"]["total"] == 1
         assert client.get("/api/admin/alerts/stock?status=active", headers=admin_auth).json()["data"]["items"] == []
+
+    def test_found_by_product_and_customer_id_never_by_name(self, client, auth, admin_auth, catalogue, mailbox):
+        subscribe_stock(client, auth)
+        total = lambda query: client.get(f"/api/admin/alerts/stock?{query}",  # noqa: E731
+                                         headers=admin_auth).json()["data"]["pagination"]["total"]
+        customer_id = client.get("/api/admin/alerts/stock", headers=admin_auth).json()["data"]["items"][0]["customer"]["id"]
+        assert total("productId=PRD003") == 1
+        assert total("productId=DCZ-EL0003") == 1  # the SKU is an identifier too
+        assert total("productId=PRD001") == 0
+        assert total(f"customerId={customer_id}") == 1
+        assert total(f"customerId={customer_id}&productId=PRD001") == 0
+        assert total("q=PRD003") == 1 and total(f"q={customer_id}") == 1
+        # Names, emails and fragments of an ID are not IDs.
+        for text in ("Earbuds", "Wireless", "shopper@example.com", "shopper", "PRD00"):
+            assert total(f"q={text}") == 0
+        assert total("customerId=shopper") == 0 and total("productId=Earbuds") == 0
 
     def test_a_failed_send_is_visible_and_can_be_retried(self, client, db, auth, admin_auth, catalogue, mailbox,
                                                          monkeypatch):

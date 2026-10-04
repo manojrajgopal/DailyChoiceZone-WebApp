@@ -422,19 +422,17 @@ def view(row: CartRecovery, customer: Optional[Customer]) -> dict:
 
 def search(db: Session, *, status: str = "", q: str = "", since: Optional[datetime] = None,
            page: int = 1, page_size: int = 25) -> tuple:
-    from sqlalchemy import or_
+    from app.services.lookup.filters import id_condition
 
     conditions = [CartRecovery.abandoned_at.is_not(None)] if status != "active" else []
     if status:
         conditions.append(CartRecovery.status == status)
     if since:
         conditions.append(CartRecovery.abandoned_at >= since)
-    text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        people = select(Customer.id).where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                               Customer.last_name.ilike(like)))
-        conditions.append(CartRecovery.customer_id.in_(people))
+    # A Customer ID, exactly (docs/id-lookup.md): names and emails match nothing.
+    condition = id_condition("customer", q, column=CartRecovery.customer_id)
+    if condition is not None:
+        conditions.append(condition)
     total = db.execute(select(func.count()).select_from(CartRecovery).where(*conditions)).scalar_one()
     rows = db.execute(
         select(CartRecovery).where(*conditions).order_by(CartRecovery.abandoned_at.desc(), CartRecovery.id.desc())

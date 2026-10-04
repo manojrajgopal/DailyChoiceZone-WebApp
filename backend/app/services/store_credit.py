@@ -21,6 +21,7 @@ from app.core.config import settings as app_settings
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import AdminUser, Customer, StoreCreditAccount, StoreCreditTransaction
 from app.services import billing
+from app.services.lookup.filters import id_condition
 
 CREDIT_KINDS = ("grant", "goodwill", "promotion", "refund", "gift-card-refund", "restore", "adjust", "referral")
 DEBIT_KINDS = ("redeem", "revoke", "adjust", "referral-reversed")
@@ -194,10 +195,11 @@ def admin_search(db: Session, *, q: str = "", only_with_balance: bool = False, p
                  page_size: int = 25) -> tuple:
     conditions = []
     text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        conditions.append(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                              Customer.last_name.ilike(like), Customer.id == text))
+    # A Customer ID, exactly (docs/id-lookup.md) — found even without an
+    # account yet, so credit can be added to anyone. Names and emails match nothing.
+    condition = id_condition("customer", text)
+    if condition is not None:
+        conditions.append(condition)
     if only_with_balance:
         conditions.append(StoreCreditAccount.balance > 0)
     base = select(Customer, StoreCreditAccount).outerjoin(StoreCreditAccount,

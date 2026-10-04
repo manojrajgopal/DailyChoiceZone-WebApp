@@ -398,6 +398,7 @@ export function startChat(
   return apiPost("/support/chat", ticketForm(payload, files), CUSTOMER);
 }
 
+/** The customer's own requests; `q` is a request number or an order number, matched exactly. */
 export function listMyTickets(status = "", q = ""): Promise<TicketRow[]> {
   return apiGet(`/support/tickets${query({ status, q })}`, CUSTOMER);
 }
@@ -508,12 +509,19 @@ export interface DeskFilters {
   subcategory?: string;
   priority?: string;
   team?: string;
+  /** "me", "unassigned" or a support agent's ID (5), exactly. */
   agent?: string;
   contactType?: string;
   channel?: string;
+  /** Customer ID (CUS001), exactly. */
   customer?: string;
+  /** Order ID or order number, exactly. */
+  order?: string;
   sla?: string;
+  /** A ticket's ID: its number (DCZ-2026-000123) or TKT id, exactly. */
   q?: string;
+  /** Words in the subject: content, never a name or an email. */
+  subject?: string;
   sort?: string;
   from?: string;
   to?: string;

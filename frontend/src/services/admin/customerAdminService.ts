@@ -4,8 +4,9 @@ import { adminDataSource } from "./admin-data-source.instance";
 
 /** Customer management. Read-mostly — the only mutation is blocking someone. */
 
-export function listCustomers(): Promise<AdminCustomer[]> {
-  return adminDataSource.listCustomers();
+/** Every customer, or — given a Customer ID — exactly that one. Names and emails are not IDs. */
+export function listCustomers(customerId?: string): Promise<AdminCustomer[]> {
+  return adminDataSource.listCustomers(customerId || undefined);
 }
 
 export function getCustomer(id: string): Promise<AdminCustomer | null> {

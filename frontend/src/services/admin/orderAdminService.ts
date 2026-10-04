@@ -20,8 +20,12 @@ import { adminDataSource } from "./admin-data-source.instance";
  * reads.
  */
 
-export function listOrders(): Promise<AdminOrder[]> {
-  return adminDataSource.listOrders();
+/**
+ * Every order, or those an ID names: `q` is an Order ID (`DCZ10241`),
+ * `customerId` a Customer ID. Both are matched exactly by the server.
+ */
+export function listOrders(filters: { q?: string; customerId?: string } = {}): Promise<AdminOrder[]> {
+  return adminDataSource.listOrders(filters.customerId || undefined, filters.q || undefined);
 }
 
 export function getOrder(id: string): Promise<AdminOrder | null> {

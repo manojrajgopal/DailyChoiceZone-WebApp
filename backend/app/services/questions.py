@@ -29,7 +29,7 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings as app_settings
@@ -258,7 +258,15 @@ def admin_view(db: Session, question: ProductQuestion, *, detail: bool = False) 
 
 
 def search(db: Session, *, status: str = "", answered: str = "", q: str = "", product_id: str = "",
-           customer_id: str = "", page: int = 1, page_size: int = 25) -> tuple:
+           customer_id: str = "", text: str = "", page: int = 1, page_size: int = 25) -> tuple:
+    """
+    The portal's question list. Records are found by ID only (docs/id-lookup.md):
+    `q` is a Question ID, `product_id` a Product ID or SKU, `customer_id` a
+    Customer ID — each exact. `text` is a content search of the question's own
+    wording, and never matches a product's or a customer's name.
+    """
+    from app.services.lookup.filters import id_condition
+
     conditions = []
     if status in ("pending", "approved", "rejected"):
         conditions.append(ProductQuestion.status == status)
@@ -267,18 +275,16 @@ def search(db: Session, *, status: str = "", answered: str = "", q: str = "", pr
         conditions.append(ProductQuestion.id.in_(published))
     elif answered == "no":
         conditions.append(ProductQuestion.id.notin_(published))
-    if product_id:
-        conditions.append(ProductQuestion.product_id == product_id)
-    if customer_id:
-        conditions.append(ProductQuestion.customer_id == customer_id)
-    text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        goods = select(Product.id).where(or_(Product.name.ilike(like), Product.sku.ilike(like)))
-        people = select(Customer.id).where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                               Customer.last_name.ilike(like)))
-        conditions.append(or_(ProductQuestion.body.ilike(like), ProductQuestion.product_id.in_(goods),
-                              ProductQuestion.customer_id.in_(people)))
+    for condition in (
+        id_condition("question", q),
+        id_condition("product", product_id, column=ProductQuestion.product_id, via=Product.id),
+        id_condition("customer", customer_id, column=ProductQuestion.customer_id, via=Customer.id),
+    ):
+        if condition is not None:
+            conditions.append(condition)
+    words = (text or "").strip()
+    if words:
+        conditions.append(ProductQuestion.body.ilike(f"%{words}%"))
     total = db.execute(select(func.count()).select_from(ProductQuestion).where(*conditions)).scalar_one()
     rows = db.execute(select(ProductQuestion).options(selectinload(ProductQuestion.answer)).where(*conditions)
                       .order_by(ProductQuestion.created_at.desc(), ProductQuestion.id.desc())

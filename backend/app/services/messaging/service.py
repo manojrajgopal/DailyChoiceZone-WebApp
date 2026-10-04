@@ -921,19 +921,21 @@ def view(row: NotificationDelivery, *, customer: Optional[Customer] = None, full
 def search(db: Session, *, channel: str = "", status: str = "", event: str = "", customer: str = "", q: str = "",
            date_from: Optional[datetime] = None, date_to: Optional[datetime] = None, page: int = 1,
            page_size: int = 25) -> tuple:
+    from app.services.lookup.filters import id_condition
+
     conditions = []
     if channel in CHANNELS:
         conditions.append(NotificationDelivery.channel == channel)
     if event:
         conditions.append(NotificationDelivery.event == event)
-    if customer:
-        conditions.append(NotificationDelivery.customer_id == customer)
-    if q:
-        like = f"%{q.strip()}%"
-        matching = select(Customer.id).where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                                 Customer.last_name.ilike(like)))
-        conditions.append(or_(NotificationDelivery.reference.ilike(like), NotificationDelivery.recipient == q.strip(),
-                              NotificationDelivery.customer_id.in_(matching),
+    by_customer = id_condition("customer", customer, column=NotificationDelivery.customer_id)
+    if by_customer is not None:
+        conditions.append(by_customer)
+    if q and q.strip():
+        # An identifier, exactly (docs/id-lookup.md): the delivery's reference or
+        # the provider's message id. The customer is the `customer` filter (a
+        # Customer ID); names, emails and phone numbers are not searched.
+        conditions.append(or_(NotificationDelivery.reference == q.strip(),
                               NotificationDelivery.provider_message_id == q.strip()))
     if date_from:
         conditions.append(NotificationDelivery.created_at >= date_from)

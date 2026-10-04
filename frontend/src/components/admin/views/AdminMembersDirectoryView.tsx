@@ -5,10 +5,9 @@ import { useState } from "react";
 import { ArrowLeft, Download, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import {
-  FilterSelect,
   LogFooter,
-  LogSearch,
   StatusTabs,
   collectPages,
   downloadCsv,
@@ -23,12 +22,16 @@ import { toast } from "@/store/toastStore";
 
 import { Badge, MEMBER_STATUS } from "./AdminMembershipView";
 
-const KEYS = ["status", "plan", "q"] as const;
+const KEYS = ["status", "plan", "q", "customer"] as const;
 
 /**
  * Every member — the full list behind "Members" on the membership page.
  * Filtered, searched and paged on the server, with the filters in the
  * address bar so a view can be shared.
+ *
+ * A member is found by Membership ID or Customer ID, and a plan by Membership
+ * plan ID (docs/id-lookup.md) — each matched exactly by the server. Names,
+ * emails and plan names are shown, never searched.
  */
 export function AdminMembersDirectoryView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
@@ -36,14 +39,15 @@ export function AdminMembersDirectoryView() {
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  const idFilters = { status: filters.status, plan: filters.plan, q: filters.q, customer: filters.customer };
   const members = useAdminResource(
-    () => searchMembers({ status: filters.status, plan: filters.plan, q: filters.q, page, pageSize }),
+    () => searchMembers({ ...idFilters, page, pageSize }),
     [filters, page, pageSize],
   );
   const data = members.data;
   const counts = data?.counts;
   const all = counts ? counts.active + counts.expired + counts.cancelled : undefined;
-  const filtered = Boolean(filters.plan || filters.q);
+  const filtered = Boolean(filters.plan || filters.q || filters.customer);
   const who = (row: MemberRow) => row.customerName || row.customerEmail || row.customerId;
 
   const end = async () => {
@@ -65,7 +69,7 @@ export function AdminMembersDirectoryView() {
     setExporting(true);
     try {
       const { rows, truncated } = await collectPages((p) =>
-        searchMembers({ status: filters.status, plan: filters.plan, q: filters.q, page: p, pageSize: 100 }),
+        searchMembers({ ...idFilters, page: p, pageSize: 100 }),
       );
       downloadCsv(
         `members-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -133,14 +137,10 @@ export function AdminMembersDirectoryView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search members" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Search name, email, plan or membership ID" />
-        <FilterSelect
-          label="Plan"
-          value={filters.plan}
-          onChange={(plan) => setFilters({ plan })}
-          options={[{ value: "", label: "All plans" }, ...(data?.plans ?? []).map((plan) => ({ value: plan.id, label: plan.name }))]}
-        />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="membership" value={filters.q} onChange={(q) => setFilters({ q })} className="w-52" />
+        <IdFilter entity="customer" value={filters.customer} onChange={(customer) => setFilters({ customer })} className="w-52" />
+        <IdFilter entity="membership_plan" value={filters.plan} onChange={(plan) => setFilters({ plan })} className="w-52" />
         {filtered || filters.status ? (
           <AdminButton size="sm" variant="ghost" onClick={clear}>
             <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
@@ -190,7 +190,7 @@ export function AdminMembersDirectoryView() {
                     <td colSpan={8} className="px-4 py-14 text-center">
                       <p className="text-sm font-medium text-admin-ink">{filtered || filters.status ? "No members match" : "No members yet"}</p>
                       <p className="mt-1 text-xs text-admin-muted">
-                        {filtered || filters.status ? "Try a different filter or search." : "Members appear here as soon as someone buys a plan."}
+                        {filtered || filters.status ? "Try a different ID or filter." : "Members appear here as soon as someone buys a plan."}
                       </p>
                     </td>
                   </tr>

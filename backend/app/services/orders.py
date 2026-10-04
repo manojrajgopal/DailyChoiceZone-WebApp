@@ -30,6 +30,7 @@ from app.models import (
 )
 from app.models.catalogue import images_for
 from app.services import billing, coupons as coupon_service, products as product_service
+from app.services.lookup.filters import id_condition
 from app.services.payments import PaymentRequest, get_provider
 from app.utils.ids import next_id
 
@@ -275,10 +276,20 @@ def _with_relations(statement):
     return statement.options(selectinload(Order.items), selectinload(Order.events))
 
 
-def list_orders(db: Session, *, customer_id: Optional[str] = None) -> List[Order]:
+def list_orders(db: Session, *, customer_id: Optional[str] = None, q: Optional[str] = None) -> List[Order]:
+    """
+    Every order, one customer's, or the one an Order ID names.
+
+    `q` is an Order ID — the order number (`DCZ10241`) or `ORD001` — matched
+    exactly (docs/id-lookup.md). A customer's name or email is not an ID and
+    matches nothing; the customer filter is `customer_id`.
+    """
     statement = _with_relations(select(Order)).order_by(Order.placed_at.desc())
     if customer_id:
         statement = statement.where(Order.customer_id == customer_id)
+    by_id = id_condition("order", q)
+    if by_id is not None:
+        statement = statement.where(by_id)
     return list(db.execute(statement).unique().scalars().all())
 
 

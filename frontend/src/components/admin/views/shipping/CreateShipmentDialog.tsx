@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react";
 import { AdminButton } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect } from "@/components/admin/ui/AdminForm";
 import { problem } from "@/components/admin/views/operations/shared";
+import { IdSelector } from "@/components/common/IdSelector";
 import { Modal } from "@/components/ui/Dialog";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -173,14 +174,27 @@ export function CreateShipmentDialog({
           <p className="text-xs text-admin-muted">No courier is switched on. Set one up in Courier settings first.</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            <AdminSelect
-              label="Courier provider"
-              required
-              value={providerCode}
-              disabled={submitting}
-              onChange={(event) => switchProvider(event.target.value)}
-              options={providers.map((entry) => ({ value: entry.code, label: entry.isDefault ? `${entry.name} (default)` : entry.name }))}
-            />
+            {/* The provider is chosen by its courier code (docs/id-lookup.md); the default is preselected. */}
+            <div className="flex flex-col gap-1.5">
+              <IdSelector
+                entity="courier"
+                label="Courier provider — Courier code"
+                required
+                compact
+                disabled={submitting}
+                value={providerCode || null}
+                onChange={(code) => switchProvider(code ?? "")}
+              />
+              {provider ? (
+                <p className="text-[0.6875rem] text-admin-muted">
+                  {provider.name}{provider.isDefault ? " (default)" : ""}
+                </p>
+              ) : providerCode ? (
+                <p role="alert" className="text-[0.6875rem] text-[#c23434]">
+                  Courier {providerCode} isn&rsquo;t switched on for shipments. Choose another, or enable it in Courier settings.
+                </p>
+              ) : null}
+            </div>
             {provider && provider.services.length > 0 ? (
               <AdminSelect
                 label="Service"

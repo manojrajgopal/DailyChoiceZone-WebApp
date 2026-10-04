@@ -4,12 +4,13 @@ import Link from "next/link";
 import { AlertTriangle, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
-import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { FilterSelect, LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState, Tile } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice } from "@/lib/utils/format";
-import { getPackingSummary, listPackingQueue, listPackingStaff } from "@/services/admin/packingAdminService";
+import { getPackingSummary, listPackingQueue } from "@/services/admin/packingAdminService";
 import { PACKING_STATUSES, PACKING_STATUS_LABELS } from "@/types/packing";
 
 import { PackingStatusBadge, PriorityBadge, agingLabel } from "./shared";
@@ -22,8 +23,10 @@ const DATE_INPUT =
 
 /**
  * The packing queue: every order waiting to be picked and packed, most urgent
- * first, then oldest. Filters live in the address bar, so a view ("my urgent
- * orders, overdue") can be bookmarked or shared.
+ * first, then oldest. An order is found by its Order ID and a courier by its
+ * code — never by a name or email (docs/id-lookup.md). Filters live in the
+ * address bar, so a view ("my urgent orders, overdue") can be bookmarked or
+ * shared.
  */
 export function AdminPackingQueueView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
@@ -37,7 +40,8 @@ export function AdminPackingQueueView() {
     [status, q, scope, from, to, paymentStatus, courier, priority, assignedTo, shippingType, overdue, page, pageSize],
   );
   const summary = useAdminResource(() => getPackingSummary(), []);
-  const staff = useAdminResource(() => listPackingStaff(), []);
+  // "me" and "unassigned" are choices; anything else is the Admin user ID of whoever it's assigned to.
+  const assignedPerson = assignedTo && assignedTo !== "me" && assignedTo !== "unassigned" ? assignedTo : "";
 
   const data = queue.data;
   const counts = data?.counts ?? {};
@@ -82,12 +86,16 @@ export function AdminPackingQueueView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search the queue" value={q} onChange={(next) => setFilters({ q: next })}
-          placeholder="Order number, customer name or email" />
-        <FilterSelect label="Assigned to" value={assignedTo} onChange={(next) => setFilters({ assignedTo: next })}
-          options={[{ value: "", label: "Anyone" }, { value: "me", label: "Me" }, { value: "unassigned", label: "Unassigned" },
-            ...(staff.data ?? []).map((person) => ({ value: person.id, label: person.name }))]} />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="order" value={q} onChange={(next) => setFilters({ q: next })} className="w-52" />
+        <IdFilter entity="courier" label="Courier code" value={courier} onChange={(next) => setFilters({ courier: next })}
+          className="w-48" />
+        <FilterSelect label="Assignment" value={assignedTo === "me" || assignedTo === "unassigned" ? assignedTo : ""}
+          onChange={(next) => setFilters({ assignedTo: next })}
+          options={[{ value: "", label: assignedPerson ? "By Admin user ID" : "Anyone" }, { value: "me", label: "Me" },
+            { value: "unassigned", label: "Unassigned" }]} />
+        <IdFilter entity="admin_user" label="Assigned to (Admin user ID)" value={assignedPerson}
+          onChange={(next) => setFilters({ assignedTo: next })} className="w-52" />
         <FilterSelect label="Priority" value={priority} onChange={(next) => setFilters({ priority: next })}
           options={[{ value: "", label: "Any priority" }, { value: "urgent", label: "Urgent" },
             { value: "high", label: "High" }, { value: "normal", label: "Normal" }]} />
@@ -97,8 +105,6 @@ export function AdminPackingQueueView() {
         <FilterSelect label="Shipping" value={shippingType} onChange={(next) => setFilters({ shippingType: next })}
           options={[{ value: "", label: "Any shipping" }, { value: "standard", label: "Standard" },
             { value: "express", label: "Express" }]} />
-        <LogSearch label="Courier" value={courier} onChange={(next) => setFilters({ courier: next })}
-          placeholder="Courier" />
         <label className="flex items-center gap-1.5 text-xs text-admin-muted">
           From
           <input type="date" aria-label="Placed from" value={from} max={to || undefined}

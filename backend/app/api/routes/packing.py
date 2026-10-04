@@ -57,13 +57,13 @@ def _detail(db: Session, job, message: Optional[str] = None):
 
 @packing_router.get("", summary="The packing queue")
 def packing_queue(
-    q: str = Query("", max_length=80),
+    q: str = Query("", max_length=80, description="Order ID, exact"),
     status: str = Query("", max_length=20),
     scope: str = Query("open", max_length=10),
     date_from: str = Query("", alias="from", max_length=10),
     date_to: str = Query("", alias="to", max_length=10),
     payment_status: str = Query("", alias="paymentStatus", max_length=20),
-    courier: str = Query("", max_length=60),
+    courier: str = Query("", max_length=60, description="Courier code, exact"),
     priority: str = Query("", max_length=10),
     assigned: str = Query("", alias="assignedTo", max_length=20),
     shipping_type: str = Query("", alias="shippingType", max_length=30),

@@ -153,8 +153,8 @@ export const httpBillingAdapter: BillingDataSource = {
     );
   },
 
-  listCreditNotes(orderId?: string): Promise<CreditNote[]> {
-    return apiGet<CreditNote[]>(`/admin/billing/credit-notes${query({ orderId })}`, AUTH);
+  listCreditNotes(orderId?: string, q?: string): Promise<CreditNote[]> {
+    return apiGet<CreditNote[]>(`/admin/billing/credit-notes${query({ orderId, q })}`, AUTH);
   },
 
   async getCreditNote(id: string): Promise<CreditNote | null> {

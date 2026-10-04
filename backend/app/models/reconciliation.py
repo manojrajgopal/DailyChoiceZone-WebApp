@@ -37,7 +37,7 @@ class PaymentReconciliation(Base):
     order_id: Mapped[Optional[str]] = mapped_column(
         BusinessId, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
     )
-    order_number: Mapped[str] = mapped_column(String(30), nullable=False, default="")
+    order_number: Mapped[str] = mapped_column(String(30), nullable=False, default="", index=True)
     # matched | mismatch | missing-locally | missing-externally | requires-review
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     # Machine codes, e.g. ["amount-mismatch", "refund-mismatch"].

@@ -1,7 +1,6 @@
 import type { Product } from "@/types";
-import type { AdminProduct } from "@/types/admin";
 
-import { apiDelete, apiGet, apiGetPage, apiPost, apiPut, query } from "@/services/api/client";
+import { apiDelete, apiGet, apiPost, apiPut, query } from "@/services/api/client";
 import type { RecommendationType, SizeGuide, SizeGuideColumn } from "@/services/discoveryService";
 
 /**
@@ -76,12 +75,6 @@ export function previewRecommendations(productId: string, type: RecommendationTy
   items: PreviewEntry[];
 }> {
   return apiGet(`/admin/products/${encodeURIComponent(productId)}/recommendations${query({ type, limit })}`, ADMIN);
-}
-
-/** Products matching a search, for the pickers — every status, as the portal sees them. */
-export async function searchProducts(search: string, pageSize = 10): Promise<AdminProduct[]> {
-  const page = await apiGetPage<AdminProduct>(`/admin/products${query({ search, pageSize })}`, ADMIN);
-  return page.items;
 }
 
 /* -------------------------------------------------------------- size guides */

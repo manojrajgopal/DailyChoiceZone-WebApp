@@ -426,7 +426,16 @@ class TestQueue:
             [first["id"]]
         assert [i["orderId"] for i in call(client, admin_auth, "GET", "?assignedTo=unassigned")["data"]["items"]] \
             == [second["id"]]
-        assert len(call(client, admin_auth, "GET", f"?q={first['orderNumber']}")["data"]["items"]) == 1
+        # The search box takes an Order ID, exactly — never part of one, a name or an email.
+        assert [i["orderId"] for i in call(client, admin_auth, "GET", f"?q={first['orderNumber']}")["data"]["items"]]             == [first["id"]]
+        assert [i["orderId"] for i in call(client, admin_auth, "GET", f"?q={first['id']}")["data"]["items"]]             == [first["id"]]
+        assert call(client, admin_auth, "GET", f"?q={first['orderNumber'][:-1]}")["data"]["items"] == []
+        from urllib.parse import urlencode
+
+        placed = db.get(Order, first["id"])
+        for text in (placed.customer_name, placed.customer_email):
+            assert call(client, admin_auth, "GET", f"?{urlencode({'q': text})}")["data"]["items"] == []
+        assert call(client, admin_auth, "GET", "?courier=Local")["data"]["items"] == []
         assert len(call(client, admin_auth, "GET", "?paymentStatus=paid")["data"]["items"]) == 0
         assert len(call(client, admin_auth, "GET", "?shippingType=standard")["data"]["items"]) == 2
         page = call(client, admin_auth, "GET", "?pageSize=1&page=2")["data"]
@@ -446,8 +455,17 @@ class TestQueue:
         assert {s["id"] for s in staff} >= {"ADM001", "ADM050"} and "ADM002" not in {s["id"] for s in staff}
         data = call(client, admin_auth, "POST", f"/{job['id']}/assign", {"adminId": "ADM050"})["data"]
         assert data["assignedTo"] == {"id": "ADM050", "name": "Staff User"}
-        bad = client.post(f"{BASE}/{job['id']}/assign", headers=admin_auth, json={"adminId": "ADM002"})
-        assert bad.status_code == 422
+        # "Assigned to" filters by Admin user ID, exactly; never by a name or an email.
+        queue = lambda params: [i["orderId"] for i in call(client, admin_auth, "GET", params)["data"]["items"]]  # noqa: E731
+        assert queue("?assignedTo=ADM050") == [packing_order["id"]]
+        assert queue("?assignedTo=adm-050") == [packing_order["id"]]
+        for other in ("ADM05", "ADM0500", "Staff%20User", "Staff", "staff%40example.com",
+                      "%27%3B%20DROP"):
+            assert queue(f"?assignedTo={other}") == [], other
+        # Assigning checks the chosen admin can pack: an ID, a name or an email of anyone else is refused.
+        for target in ("ADM002", "Staff User", "ADM05", 50):
+            bad = client.post(f"{BASE}/{job['id']}/assign", headers=admin_auth, json={"adminId": target})
+            assert bad.status_code == 422 and bad.json()["error_code"] == "INVALID_ASSIGNEE", target
         data = call(client, admin_auth, "POST", f"/{job['id']}/assign", {"adminId": None})["data"]
         assert data["assignedTo"] is None
         bad = client.post(f"{BASE}/{job['id']}/priority", headers=admin_auth, json={"priority": "now"})

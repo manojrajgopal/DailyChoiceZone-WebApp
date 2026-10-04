@@ -160,6 +160,7 @@ def log_search(
     status: str = Query("", max_length=12),
     type: str = Query("", max_length=40),
     q: str = Query("", max_length=120),
+    subject: str = Query("", max_length=120),
     date_from: str = Query("", alias="from", max_length=30),
     date_to: str = Query("", alias="to", max_length=30),
     page: int = Query(1, ge=1),
@@ -170,7 +171,7 @@ def log_search(
     from app.utils.dates import parse_dt
 
     rows, total, counts = service.search_log(
-        db, status=status, email_type=type, query=q,
+        db, status=status, email_type=type, query=q, subject=subject,
         date_from=parse_dt(date_from) if date_from else None,
         date_to=parse_dt(date_to) if date_to else None,
         page=page, page_size=page_size,

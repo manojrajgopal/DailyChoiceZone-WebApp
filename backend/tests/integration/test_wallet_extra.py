@@ -330,9 +330,13 @@ class TestTheGiftCardPortal:
         assert ids(status="expired") == {two.id}
         assert ids(status="active") == {one.id, two.id}
         assert ids(q=f"GC-{one.id:06d}") == {one.id}
-        assert ids(q=second[-4:]) == {two.id}
-        assert ids(q=first) == {one.id}
-        assert ids(q="second@example") == {two.id}
+        assert ids(q=f"GC{two.id}") == {two.id}
+        # A whole code is an identifier (matched by its hash); its last four
+        # characters and the purchaser's email are not.
+        assert ids(code=first) == {one.id}
+        assert ids(q=second[-4:]) == set()
+        assert ids(q="second@example") == set()
+        assert ids(code=second[-4:]) == set()
         body = client.get("/api/admin/gift-cards", headers=admin_auth).json()["data"]
         assert body["outstanding"] == 200 + 700 and body["counts"] == {"active": 2}
 
@@ -511,12 +515,18 @@ class TestStoreCredit:
         everyone = client.get("/api/admin/store-credit", headers=admin_auth).json()["data"]
         assert [i["customer"]["id"] for i in everyone["items"]] == ["CUS001"] and everyone["outstanding"] == 300
 
-        # A search reaches customers who have never had credit too.
-        ravi = client.get("/api/admin/store-credit", headers=admin_auth, params={"q": "Ravi"}).json()["data"]
+        # A Customer ID reaches customers who have never had credit too.
+        ravi = client.get("/api/admin/store-credit", headers=admin_auth, params={"q": "CUS002"}).json()["data"]
         assert [i["customer"]["id"] for i in ravi["items"]] == ["CUS002"] and ravi["items"][0]["balance"] == 0
         with_balance = client.get("/api/admin/store-credit", headers=admin_auth,
-                                  params={"q": "Asha", "withBalance": True}).json()["data"]
+                                  params={"q": "CUS001", "withBalance": True}).json()["data"]
         assert [i["customer"]["id"] for i in with_balance["items"]] == ["CUS001"]
+        assert client.get("/api/admin/store-credit", headers=admin_auth,
+                          params={"q": "CUS002", "withBalance": True}).json()["data"]["items"] == []
+        # Names and emails are not IDs.
+        for text in ("Ravi", "Asha", "shopper@example.com", "CUS00"):
+            assert client.get("/api/admin/store-credit", headers=admin_auth,
+                              params={"q": text}).json()["data"]["items"] == []
 
     def test_one_customers_ledger(self, client, admin_auth, customer):
         grant_credit(client, admin_auth, 300)
@@ -844,17 +854,20 @@ class TestPointsAdjustments:
         give_points(client, admin_auth, 500)
         make_lot(db, 30, released=False, available_at=datetime.utcnow() + timedelta(days=3))
 
-        balances = client.get("/api/admin/loyalty/balances", headers=admin_auth, params={"q": "Asha"}).json()["data"]
+        balances = client.get("/api/admin/loyalty/balances", headers=admin_auth, params={"q": "CUS001"}).json()["data"]
         assert balances["items"][0]["available"] == 500 and balances["items"][0]["pending"] == 30
-        assert client.get("/api/admin/loyalty/balances", headers=admin_auth,
-                          params={"q": "Ravi"}).json()["data"]["items"] == []
+        # CUS002 has no points account; names and emails are not IDs.
+        for text in ("CUS002", "Asha", "shopper@example.com"):
+            assert client.get("/api/admin/loyalty/balances", headers=admin_auth,
+                              params={"q": text}).json()["data"]["items"] == []
 
         def kinds(**params):
             data = client.get("/api/admin/loyalty/ledger", headers=admin_auth, params=params).json()["data"]
             return [item["kind"] for item in data["items"]]
 
-        assert kinds(kind="manual_credit", customerId="CUS001", q="Asha") == ["manual_credit", "manual_credit"]
-        assert kinds(q="Welcome bonus") == ["manual_credit"]
+        assert kinds(kind="manual_credit", customerId="CUS001", q="CUS001") == ["manual_credit", "manual_credit"]
+        # Names and words from the reason are not IDs.
+        assert kinds(q="Asha") == [] and kinds(q="Welcome bonus") == []
         assert kinds(customerId="CUS002") == []
 
         one = client.get("/api/admin/loyalty/customers/CUS001", headers=admin_auth).json()["data"]

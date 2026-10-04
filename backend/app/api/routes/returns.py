@@ -161,10 +161,14 @@ def cancel_return(
 def list_returns(
     status: Optional[str] = Query(default=None, max_length=24),
     kind: Optional[str] = Query(default=None, max_length=12),
+    q: Optional[str] = Query(default=None, max_length=64,
+                             description="A Return ID, or the order's number or Order ID, matched exactly."),
+    customer: Optional[str] = Query(default=None, max_length=64, description="A Customer ID, matched exactly."),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_permission("orders")),
 ):
-    return ok([serialise(r, for_admin=True) for r in service.list_all(db, status=status, kind=kind)])
+    rows = service.list_all(db, status=status, kind=kind, q=q, customer=customer)
+    return ok([serialise(r, for_admin=True) for r in rows])
 
 
 @admin_router.get("/{request_id}", summary="One return or replacement")

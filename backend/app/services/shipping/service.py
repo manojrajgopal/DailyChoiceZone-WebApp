@@ -446,18 +446,28 @@ def _parse_day(value: str) -> Optional[datetime]:
         return None
 
 
-def search(db: Session, *, q: str = "", status: str = "", courier: str = "", provider: str = "", date_from: str = "",
-           date_to: str = "", page: int = 1, page_size: int = 25) -> Tuple[List[dict], int, Dict[str, int]]:
+def search(db: Session, *, q: str = "", order: str = "", status: str = "", courier: str = "", provider: str = "",
+           date_from: str = "", date_to: str = "", page: int = 1,
+           page_size: int = 25) -> Tuple[List[dict], int, Dict[str, int]]:
+    """
+    Shipments, newest first. `q` is an ID (docs/id-lookup.md): a shipment
+    number, an AWB or the order's number, matched exactly — never a name or an
+    email. `order` narrows to one order's shipments; `courier` is a courier's
+    code, matched exactly.
+    """
+    from app.services.lookup.filters import any_id_condition, id_condition
+
     conditions = []
-    text = (q or "").strip()[:80]
-    if text:
-        like = f"%{text}%"
-        conditions.append(or_(Shipment.shipment_number.like(like), Order.order_number.like(like),
-                              Shipment.awb.like(like), Order.customer_name.ilike(like),
-                              Order.customer_email.ilike(like)))
-    if courier:
-        conditions.append(or_(Shipment.courier_name.ilike(f"%{courier.strip()[:60]}%"),
-                              Shipment.courier_code == courier.strip()[:40]))
+    by_id = any_id_condition(q, ("shipment", None, None), ("order", Shipment.order_id, Order.id))
+    if by_id is not None:
+        conditions.append(by_id)
+    by_order = id_condition("order", order, column=Shipment.order_id, via=Order.id)
+    if by_order is not None:
+        conditions.append(by_order)
+    if (courier or "").strip():
+        # A courier's code, exactly: the integration's (`shiprocket`) or the courier's own.
+        code = courier.strip()[:40]
+        conditions.append(or_(Shipment.provider_code == code, Shipment.courier_code == code))
     if provider:
         conditions.append(Shipment.provider_code == provider.strip()[:30])
     start, end = _parse_day(date_from), _parse_day(date_to)

@@ -7,7 +7,8 @@ import { Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea, FormGrid } from "@/components/admin/ui/AdminForm";
-import { LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { ProductPicker, fromLocalInput, rupees, toLocalInput } from "@/components/admin/views/growth/shared";
 import { Badge, TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -56,7 +57,7 @@ export function AdminBundlesView() {
       />
       <StatusTabs label="Which bundles" value={filters.status} onChange={(status) => setFilters({ status })}
         tabs={[{ value: "", label: "All" }, ...Object.entries(STATUS).map(([value, s]) => ({ value, label: s.label, count: data?.counts[value] }))]} />
-      <div className="mb-3"><LogSearch label="Find a bundle" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Bundle name" /></div>
+      <div className="mb-3 max-w-sm"><IdFilter entity="bundle" value={filters.q} onChange={(q) => setFilters({ q })} /></div>
 
       <AdminCard padded={false}>
         <div className="overflow-x-auto">

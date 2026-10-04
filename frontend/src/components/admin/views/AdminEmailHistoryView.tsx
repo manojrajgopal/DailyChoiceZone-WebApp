@@ -5,6 +5,7 @@ import { Fragment, useState } from "react";
 import { ArrowLeft, ChevronDown, Download, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
+import { IdKindFilter } from "@/components/admin/ui/IdKindFilter";
 import {
   FilterSelect,
   LogFooter,
@@ -23,7 +24,10 @@ import { toast } from "@/store/toastStore";
 
 import { LogStatusBadge } from "./AdminEmailSettingsView";
 
-const KEYS = ["status", "type", "q", "from", "to"] as const;
+const KEYS = ["status", "type", "q", "refKind", "subject", "from", "to"] as const;
+
+/** What an email can be about, found by its ID (docs/id-lookup.md). */
+const REFERENCE_KINDS = ["order", "ticket"] as const;
 
 /** A support request number, e.g. DCZ-2026-000123 — linked to the desk. */
 const TICKET = /^[A-Z0-9]{2,6}-\d{4}-\d{6}$/;
@@ -32,6 +36,11 @@ const TICKET = /^[A-Z0-9]{2,6}-\d{4}-\d{6}$/;
  * Every email the store has sent — the full log behind "Recent emails" on the
  * email settings page. Filtered, searched and paged on the server; the
  * filters live in the address bar so a view can be shared.
+ *
+ * The record an email was about is chosen by its ID — an order number or a
+ * request number — and matched exactly. The log keeps no Customer ID, and an
+ * email address never identifies a customer, so there is no recipient search;
+ * words in the subject are content and have a box of their own.
  */
 export function AdminEmailHistoryView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
@@ -42,6 +51,7 @@ export function AdminEmailHistoryView() {
     status: filters.status,
     type: filters.type,
     q: filters.q,
+    subject: filters.subject,
     from: filters.from ? `${filters.from}T00:00:00+05:30` : "",
     to: filters.to ? `${filters.to}T23:59:59+05:30` : "",
   };
@@ -53,7 +63,8 @@ export function AdminEmailHistoryView() {
   const typeLabel = (key: string) =>
     key === "test" ? "Test email" : (labels.get(key) ?? key.replace(/[_-]+/g, " ").replace(/^./, (c) => c.toUpperCase()));
   const all = data ? data.counts.sent + data.counts.failed : 0;
-  const filtered = Boolean(filters.type || filters.q || filters.from || filters.to);
+  const filtered = Boolean(filters.type || filters.q || filters.subject || filters.from || filters.to);
+  const refKind = (REFERENCE_KINDS as readonly string[]).includes(filters.refKind) ? (filters.refKind as "order" | "ticket") : "order";
 
   const exportCsv = async () => {
     setExporting(true);
@@ -119,13 +130,16 @@ export function AdminEmailHistoryView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch
-          label="Search emails"
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdKindFilter
+          kinds={REFERENCE_KINDS}
+          entity={refKind}
           value={filters.q}
-          onChange={(q) => setFilters({ q })}
-          placeholder="Search recipient, subject or reference (order or request number)"
+          onChange={({ entity, id }) => setFilters({ refKind: entity === "order" ? "" : entity, q: id })}
+          className="min-w-[20rem]"
         />
+        <LogSearch label="Words in the subject" value={filters.subject} onChange={(subject) => setFilters({ subject })}
+          placeholder="Words in the subject" />
         <FilterSelect
           label="Email type"
           value={filters.type}

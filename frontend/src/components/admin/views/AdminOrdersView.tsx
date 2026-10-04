@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import type { AdminOrder, AdminOrderStatus, PaymentStatus } from "@/types/admin";
 
 import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { IdLink } from "@/components/common/IdLink";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate, formatPrice, humanize } from "@/lib/utils/format";
@@ -22,11 +24,21 @@ const PAYMENT_STATUSES: PaymentStatus[] = [
 
 type DateWindow = "all" | "7d" | "30d" | "3m";
 
-/** All orders, with the filters an administrator actually works through. */
+/**
+ * All orders, with the filters an administrator actually works through.
+ *
+ * An order is found by its ID, never by a name (docs/id-lookup.md): the Order
+ * ID and Customer ID filters go to the server, which matches them exactly.
+ * Status, payment, date and amount narrow what came back.
+ */
 export function AdminOrdersView() {
-  const { data, isLoading } = useAdminResource(() => listOrders(), []);
+  const [orderId, setOrderId] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const { data, isLoading } = useAdminResource(
+    () => listOrders({ q: orderId, customerId }),
+    [orderId, customerId],
+  );
 
-  const [term, setTerm] = useState("");
   const [status, setStatus] = useState<AdminOrderStatus | "all">("all");
   const [payment, setPayment] = useState<PaymentStatus | "all">("all");
   const [window, setWindow] = useState<DateWindow>("all");
@@ -41,7 +53,6 @@ export function AdminOrdersView() {
   const [now] = useState(() => Date.now());
 
   const filtered = useMemo(() => {
-    const terms = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const floor = Number(minAmount);
     const days = window === "7d" ? 7 : window === "30d" ? 30 : window === "3m" ? 90 : null;
     const cutoff = days ? now - days * 86400000 : null;
@@ -51,42 +62,30 @@ export function AdminOrdersView() {
       if (payment !== "all" && order.paymentStatus !== payment) return false;
       if (cutoff && new Date(order.placedAt).getTime() < cutoff) return false;
       if (Number.isFinite(floor) && minAmount !== "" && order.totals.total < floor) return false;
-
-      if (terms.length > 0) {
-        const haystack = [
-          order.orderNumber,
-          order.customerName,
-          order.customerEmail,
-          order.trackingNumber ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!terms.every((token) => haystack.includes(token))) return false;
-      }
-
       return true;
     });
-  }, [orders, term, status, payment, window, minAmount, now]);
+  }, [orders, status, payment, window, minAmount, now]);
 
   const revenue = filtered
     .filter((order) => order.status !== "cancelled")
     .reduce((sum, order) => sum + order.totals.total, 0);
 
   const hasFilters =
-    status !== "all" || payment !== "all" || window !== "all" || minAmount !== "" || term !== "";
+    status !== "all" || payment !== "all" || window !== "all" || minAmount !== "" || orderId !== "" || customerId !== "";
 
   const clear = () => {
     setStatus("all");
     setPayment("all");
     setWindow("all");
     setMinAmount("");
-    setTerm("");
+    setOrderId("");
+    setCustomerId("");
   };
 
   const columns: Column<AdminOrder>[] = [
     {
       id: "orderNumber",
-      header: "Order",
+      header: "Order ID",
       sortValue: (order) => order.orderNumber,
       cell: (order) => (
         <Link
@@ -109,9 +108,8 @@ export function AdminOrdersView() {
           >
             {order.customerName}
           </Link>
-          <span className="block max-w-[11rem] truncate text-[0.625rem] text-admin-faint">
-            {order.customerEmail}
-          </span>
+          <IdLink entity="customer" id={order.customerId} href={`/admin/customers/detail?id=${order.customerId}`}
+            className="block text-[0.625rem]" />
         </span>
       ),
     },
@@ -185,30 +183,16 @@ export function AdminOrdersView() {
     <div>
       <AdminPageHeader
         title="Orders"
-        description={`${orders.length} orders all told.`}
+        description={orderId || customerId ? `${orders.length} orders for the ID chosen.` : `${orders.length} orders all told.`}
         breadcrumbs={[{ label: "Admin", href: "/admin/dashboard" }, { label: "Orders" }]}
       />
 
       <div className="mb-4 rounded-[3px] border border-admin-border bg-admin-surface p-3">
+        <div className="mb-2 grid gap-2 sm:grid-cols-2 lg:max-w-2xl">
+          <IdFilter entity="order" value={orderId} onChange={setOrderId} />
+          <IdFilter entity="customer" value={customerId} onChange={setCustomerId} />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:max-w-xs">
-            <label htmlFor="order-search" className="sr-only">
-              Search orders by number, customer or tracking reference
-            </label>
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            <input
-              id="order-search"
-              type="search"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder="DCZ10241, customer, tracking…"
-              className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
-            />
-          </div>
 
           <select
             value={status}
@@ -285,7 +269,7 @@ export function AdminOrdersView() {
         pageSize={15}
         initialSort={{ columnId: "date", direction: "desc" }}
         emptyTitle="No orders match"
-        emptyDescription="Adjust the search or filters above."
+        emptyDescription="Check the Order ID or Customer ID, or adjust the filters above."
       />
     </div>
   );

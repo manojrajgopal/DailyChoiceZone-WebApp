@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { api, fail } from "@/test/api";
+import { idPreview, lookupBackend } from "@/test/lookup-fixtures";
 import { router, setLocation } from "@/test/navigation";
 import { renderUI, screen, signIn, waitFor, within } from "@/test/render";
 import { paged, segment, segmentDetail } from "@/test/segments-fixtures";
@@ -45,7 +46,7 @@ describe("AdminSegmentsView", () => {
       expect(await screen.findByText("No segments yet")).toBeInTheDocument();
       unmount();
 
-      setLocation("/admin/customers/segments?q=zzz");
+      setLocation("/admin/customers/segments?q=99");
       renderUI(<AdminSegmentsView />);
       expect(await screen.findByText("No segments match")).toBeInTheDocument();
     });
@@ -87,18 +88,20 @@ describe("AdminSegmentsView", () => {
   });
 
   describe("filters", () => {
-    it("reads the search, status and page from the URL", async () => {
-      setLocation("/admin/customers/segments?q=vip&status=archived&page=2");
+    it("reads the Segment ID, status and page from the URL", async () => {
+      setLocation("/admin/customers/segments?q=3&status=archived&page=2");
       api.get("/admin/segments", page([segment({ status: "archived" })], { page: 2, total: 30, totalPages: 2 }));
       renderUI(<AdminSegmentsView />);
       await screen.findByRole("link", { name: "VIP" });
-      expect(Object.fromEntries(lastQuery().entries())).toEqual({ q: "vip", status: "archived", page: "2", pageSize: "25" });
+      expect(Object.fromEntries(lastQuery().entries())).toEqual({ q: "3", status: "archived", page: "2", pageSize: "25" });
+      expect(screen.getByRole("group", { name: "Filtered by Segment ID 3" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "Archived 2" })).toHaveAttribute("aria-selected", "true");
     });
 
-    it("switches the status tab and searches through the address bar", async () => {
+    it("switches the status tab and finds a segment by its ID through the address bar", async () => {
       setLocation("/admin/customers/segments");
       api.get("/admin/segments", page([segment()]));
+      lookupBackend("segment", [idPreview("segment", "3", { title: "VIP" }), idPreview("segment", "31", { title: "Lapsed" })]);
       const { user } = renderUI(<AdminSegmentsView />);
       await screen.findByRole("link", { name: "VIP" });
 
@@ -108,8 +111,17 @@ describe("AdminSegmentsView", () => {
       await user.click(screen.getByRole("tab", { name: /^Active/ }));
       expect(router.replace).toHaveBeenLastCalledWith("/admin/customers/segments", { scroll: false });
 
-      await user.type(screen.getByLabelText("Search segments"), "vip");
-      await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/admin/customers/segments?q=vip", { scroll: false }));
+      // A name is not an ID: the lookup offers nothing, and the list is not filtered.
+      const field = screen.getByRole("combobox", { name: "Segment ID" });
+      await user.type(field, "vip");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      expect(router.replace).not.toHaveBeenCalledWith(expect.stringContaining("q="), expect.anything());
+
+      await user.clear(field);
+      await user.type(field, "3");
+      expect(await screen.findByRole("option", { name: "31" })).toBeInTheDocument();
+      await user.click(await screen.findByRole("option", { name: "3" }));
+      await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/admin/customers/segments?q=3", { scroll: false }));
     });
 
     it("falls back to active for an unknown status", async () => {

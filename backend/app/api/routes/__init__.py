@@ -19,6 +19,7 @@ from app.api.routes import (
     email,
     growth,
     identity,
+    lookup,
     membership,
     messaging,
     monitoring,
@@ -103,8 +104,12 @@ all_routers = [
     billing.router,
     payments.router,
     site.router,
+    # Find your own orders, invoices, returns… by ID (docs/id-lookup.md).
+    lookup.account_router,
     # --- portal ----------------------------------------------------------
     auth.admin_auth_router,
+    # Any record by its ID, with a short preview (docs/id-lookup.md).
+    lookup.admin_router,
     identity.admin_router,
     products.admin_router,
     admin_catalogue.router,

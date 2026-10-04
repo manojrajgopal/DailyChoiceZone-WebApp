@@ -374,3 +374,35 @@ class TestMasterLayout:
                                         '<img src="https://img.test/a.png" onerror="x">')
         assert "script" not in clean and "onclick" not in clean and "javascript" not in clean and "onerror" not in clean
         assert "<p" in clean and 'src="https://img.test/a.png"' in clean
+
+
+class TestDeliveryLog:
+    """The portal's message log is found by ID: a Customer ID, or a delivery's own reference or provider id."""
+
+    def test_the_log_is_filtered_by_ids_only(self, shop, db, admin_auth, other_customer):
+        db.add_all([
+            NotificationDelivery(idempotency_key="log-1", event="order_shipped", channel="email", customer_id="CUS001",
+                                 recipient="shopper@example.com", reference="order-DCZ10241",
+                                 provider_message_id="msg-abc-1", status="sent", created_at=datetime.utcnow(),
+                                 updated_at=datetime.utcnow()),
+            NotificationDelivery(idempotency_key="log-2", event="order_shipped", channel="sms", customer_id="CUS002",
+                                 recipient="+919876500002", reference="order-DCZ10242",
+                                 provider_message_id="SM-xyz-2", status="sent", created_at=datetime.utcnow(),
+                                 updated_at=datetime.utcnow()),
+        ])
+        db.flush()
+
+        def keys(**params):
+            response = shop.get("/api/admin/messaging", headers=admin_auth, params=params)
+            assert response.status_code == 200, response.text
+            return {row["reference"] for row in response.json()["data"]["items"]}
+
+        assert keys(customer="CUS001") == {"order-DCZ10241"}
+        assert keys(customer="CUS002") == {"order-DCZ10242"}
+        assert keys(q="order-DCZ10242") == {"order-DCZ10242"}
+        assert keys(q="msg-abc-1") == {"order-DCZ10241"}
+        # Names, emails, phone numbers and fragments are not identifiers.
+        assert keys(q="Asha") == set()
+        assert keys(q="shopper@example.com") == set()
+        assert keys(q="+919876500002") == set()
+        assert keys(q="DCZ1024") == set()

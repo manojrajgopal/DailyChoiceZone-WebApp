@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from app.core import rate_limit
-from app.models import FlashSaleClaim, Order, OrderItem, Product
+from app.models import FlashSale, FlashSaleClaim, Order, OrderItem, Product
 from tests.integration.wallet_helpers import fill_bag, mailbox, place  # noqa: F401
 
 pytestmark = pytest.mark.integration
@@ -249,3 +249,26 @@ class TestPortal:
         assert flash_sales.announce_started(db) == 1
         assert flash_sales.announce_started(db) == 0
         assert any(m["key"] == "flash_sales" and m["to"] == "shopper@example.com" for m in mailbox)
+
+
+class TestPortalListFindsById:
+    """docs/id-lookup.md: the list box takes a Flash sale ID, exactly; names, prefixes and junk find nothing."""
+
+    def test_the_list_box_takes_a_flash_sale_id_exactly(self, shop, admin_auth, db):
+        first = make_sale(shop, admin_auth, publish=False)
+        longer_id = int(f"{first['id']}1")
+        now = datetime.utcnow()
+        db.add(FlashSale(id=longer_id, name="Weekend Flash Longer", status="draft", starts_at=now,
+                         ends_at=now + timedelta(hours=1), created_at=now, updated_at=now))
+        db.flush()
+
+        def ids(q):
+            response = shop.get("/api/admin/flash-sales", headers=admin_auth, params={"q": q})
+            assert response.status_code == 200, response.text
+            return [row["id"] for row in response.json()["data"]["items"]]
+
+        assert sorted(ids("")) == sorted([first["id"], longer_id])
+        assert ids(str(first["id"])) == [first["id"]]  # never the longer ID it is a prefix of
+        assert ids(str(longer_id)) == [longer_id]
+        for text in ("Weekend", "Weekend Flash", "'; DROP TABLE flash_sales; --", "a@b.com", "99999"):
+            assert ids(text) == []

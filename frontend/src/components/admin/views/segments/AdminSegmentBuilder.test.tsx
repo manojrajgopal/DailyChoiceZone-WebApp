@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { api, fail } from "@/test/api";
+import { idPreview, lookupBackend, productPreview } from "@/test/lookup-fixtures";
 import { router, setLocation } from "@/test/navigation";
 import { renderUI, screen, waitFor, within } from "@/test/render";
 import { member, registry, segmentDetail } from "@/test/segments-fixtures";
@@ -101,21 +102,63 @@ describe("AdminSegmentBuilder", () => {
       const checklist = screen.getByRole("group", { name: "Condition 1 values" });
       expect(within(checklist).getAllByRole("checkbox")).toHaveLength(3);
 
-      // list with options: a checklist of them
+      // records (categories, products): chosen by ID from the lookup, never by name
       await user.selectOptions(fieldSelect, "purchasedCategories");
       await user.selectOptions(operator(), "in");
-      expect(within(screen.getByRole("group", { name: "Condition 1 values" })).getByLabelText("Kurtas")).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Condition 1 Category ID" })).toBeInTheDocument();
+      expect(screen.queryByLabelText("Kurtas")).not.toBeInTheDocument();
+      await user.selectOptions(operator(), "contains");
+      expect(screen.getByRole("combobox", { name: "Condition 1 Category ID" })).toBeInTheDocument();
 
-      // list without options: ids, comma separated, shown as tags
       await user.selectOptions(fieldSelect, "purchasedProducts");
       await user.selectOptions(operator(), "in");
-      await user.type(screen.getByRole("textbox", { name: "Condition 1 values" }), "PRD001, PRD002,");
-      expect(within(screen.getByRole("list", { name: "Condition 1 values chosen" })).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["PRD001", "PRD002"]);
+      expect(screen.getByRole("combobox", { name: "Condition 1 Product ID" })).toBeInTheDocument();
+      expect(screen.queryByRole("textbox", { name: "Condition 1 values" })).not.toBeInTheDocument();
 
       // string "is any of": comma separated too
       await user.selectOptions(fieldSelect, "city");
       await user.selectOptions(operator(), "in");
       expect(screen.getByRole("textbox", { name: "Condition 1 values" })).toHaveValue("");
+    });
+
+    it("takes the products of a 'bought' rule by Product ID and sends the IDs", async () => {
+      lookupBackend("product", [productPreview(), productPreview({ id: "PRD0010", name: "Linen Shirt", sku: "DCZ-ME0010" }), productPreview({ id: "PRD002", name: "Silk Saree", sku: "DCZ-WO0002" })]);
+      const { user } = await renderBuilder();
+      await waitFor(() => expect(previews()).toHaveLength(1));
+      await user.click(screen.getByRole("button", { name: "Add condition" }));
+      await user.selectOptions(screen.getByRole("combobox", { name: "Condition 1 field" }), "purchasedProducts");
+      await user.selectOptions(screen.getByRole("combobox", { name: "Condition 1 operator" }), "in");
+      const field = screen.getByRole("combobox", { name: "Condition 1 Product ID" });
+
+      // A product's name is not an ID.
+      await user.type(field, "Linen");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      await user.clear(field);
+
+      await user.type(field, "PRD001");
+      expect(await screen.findByRole("option", { name: "PRD0010" })).toBeInTheDocument();
+      await user.click(await screen.findByRole("option", { name: "PRD001" }));
+      await user.type(field, "DCZ-WO");
+      await user.click(await screen.findByRole("option", { name: /PRD002/ }));
+      expect(within(screen.getByRole("list", { name: "Chosen Condition 1 Product IDs" })).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["PRD001", "PRD002"]);
+
+      await waitFor(() => expect(previews().at(-1)!.body.rules).toEqual([{ field: "purchasedProducts", operator: "in", value: ["PRD001", "PRD002"] }]), { timeout: 2000 });
+    });
+
+    it("takes a category rule's categories by Category ID", async () => {
+      lookupBackend("category", [idPreview("category", "CAT001", { title: "Kurtas" }), idPreview("category", "CAT002", { title: "Sarees" })]);
+      const { user } = await renderBuilder();
+      await waitFor(() => expect(previews()).toHaveLength(1));
+      await user.click(screen.getByRole("button", { name: "Add condition" }));
+      await user.selectOptions(screen.getByRole("combobox", { name: "Condition 1 field" }), "purchasedCategories");
+      await user.selectOptions(screen.getByRole("combobox", { name: "Condition 1 operator" }), "contains");
+      const field = screen.getByRole("combobox", { name: "Condition 1 Category ID" });
+      await user.type(field, "Sarees");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      await user.clear(field);
+      await user.type(field, "CAT");
+      await user.click(await screen.findByRole("option", { name: "CAT002" }));
+      await waitFor(() => expect(previews().at(-1)!.body.rules).toEqual([{ field: "purchasedCategories", operator: "contains", value: "CAT002" }]), { timeout: 2000 });
     });
 
     it("adds and removes conditions and groups", async () => {

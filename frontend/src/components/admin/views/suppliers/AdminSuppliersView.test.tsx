@@ -42,7 +42,7 @@ describe("AdminSuppliersView", () => {
     });
 
     it("says nothing matches a search, without the first-supplier prompt", async () => {
-      setLocation("/admin/suppliers?q=zzz");
+      setLocation("/admin/suppliers?q=SUP999");
       api.get("/admin/suppliers", page([]));
       renderUI(<AdminSuppliersView />);
       expect(await screen.findByText("No suppliers match")).toBeInTheDocument();
@@ -91,11 +91,12 @@ describe("AdminSuppliersView", () => {
 
   describe("filters", () => {
     it("reads the search, status, sort and page from the URL", async () => {
-      setLocation("/admin/suppliers?q=anvi&status=archived&sort=createdAt&page=2&pageSize=100");
+      setLocation("/admin/suppliers?q=SUP001&status=archived&sort=createdAt&page=2&pageSize=100");
       api.get("/admin/suppliers", page([supplier()], { page: 2, total: 120, totalPages: 2 }));
       renderUI(<AdminSuppliersView />);
       await screen.findByRole("link", { name: "Anvi Textiles" });
-      expect(Object.fromEntries(lastQuery().entries())).toEqual({ q: "anvi", status: "archived", sort: "createdAt", page: "2", pageSize: "100" });
+      expect(Object.fromEntries(lastQuery().entries())).toEqual({ q: "SUP001", status: "archived", sort: "createdAt", page: "2", pageSize: "100" });
+      expect(screen.getByRole("group", { name: "Filtered by Supplier ID SUP001" })).toBeInTheDocument();
       expect(screen.getByRole("combobox", { name: "Sort suppliers" })).toHaveValue("createdAt");
       expect(screen.getByText("Showing 101–120 of 120")).toBeInTheDocument();
     });
@@ -128,12 +129,19 @@ describe("AdminSuppliersView", () => {
       expect(router.replace).toHaveBeenLastCalledWith("/admin/suppliers?status=archived", { scroll: false });
       rerender(<AdminSuppliersView />);
 
-      await user.type(screen.getByLabelText("Search suppliers"), "29ABCDE");
-      await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/admin/suppliers?q=29ABCDE&status=archived", { scroll: false }));
+      // One supplier is chosen by its ID, from the ID suggestions — not by name, GSTIN or email.
+      api.get("/admin/lookup/supplier", { items: [{ id: "SUP001" }], hasMore: false });
+      const box = screen.getByRole("combobox", { name: "Supplier ID" });
+      expect(box).toHaveAttribute("placeholder", "Search Supplier ID…");
+      expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+      await user.type(box, "SUP0");
+      await user.click(await screen.findByRole("option", { name: "SUP001" }));
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/suppliers?q=SUP001&status=archived", { scroll: false });
+      expect(api.last("GET", "/admin/lookup/supplier")!.query.get("q")).toBe("SUP0");
     });
 
     it("clears the filters", async () => {
-      setLocation("/admin/suppliers?q=anvi&status=inactive");
+      setLocation("/admin/suppliers?q=SUP001&status=inactive");
       api.get("/admin/suppliers", page([supplier()]));
       const { user } = renderUI(<AdminSuppliersView />);
       await screen.findByRole("link", { name: "Anvi Textiles" });

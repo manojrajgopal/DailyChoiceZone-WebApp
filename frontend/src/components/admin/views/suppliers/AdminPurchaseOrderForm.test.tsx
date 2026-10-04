@@ -1,23 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { api, fail } from "@/test/api";
+import { api, fail, hang } from "@/test/api";
+import { lookupBackend, productPreview, supplierPreview } from "@/test/lookup-fixtures";
 import { router, setLocation } from "@/test/navigation";
 import { renderUI, screen, signIn, waitFor, within } from "@/test/render";
-import { page, pickable, poItem, purchaseOrder, supplier, supplierProduct } from "@/test/suppliers-fixtures";
+import { poItem, purchaseOrder, supplier, supplierProduct } from "@/test/suppliers-fixtures";
 import { useToastStore } from "@/store/toastStore";
 
 import { AdminNewPurchaseOrderView, PoWarnings, PurchaseOrderForm, warningText } from "./AdminPurchaseOrderForm";
 
 const toasts = () => useToastStore.getState().toasts.map((toast) => `${toast.tone}:${toast.message}`);
 
+// Suppliers and products are chosen by ID (docs/id-lookup.md): the lookup
+// answers IDs and previews; the form reads only the one supplier chosen.
 function backend({ links = [supplierProduct()] } = {}) {
-  api.get("/admin/suppliers", page([supplier(), supplier({ id: "SUP002", code: "BLUE", name: "Blue Looms", status: "inactive" })]));
+  api.get("/admin/suppliers/SUP001", supplier());
+  api.get("/admin/suppliers/SUP002", supplier({ id: "SUP002", code: "BLUE", name: "Blue Looms", status: "inactive" }));
   api.get("/admin/suppliers/SUP001/products", links);
   api.get("/admin/suppliers/SUP002/products", []);
-  api.get("/admin/products", [pickable()]);
+  lookupBackend("supplier", [supplierPreview(), supplierPreview({ id: "SUP002", code: "BLUE", name: "Blue Looms", status: "inactive" })]);
+  lookupBackend("product", [
+    productPreview(),
+    productPreview({ id: "PRD002", name: "Linen Shirt", sku: "DCZ-ME0002", price: 1299, stock: 10 }),
+    productPreview({ id: "PRD003", name: "Old Scarf", sku: "DCZ-AC0003", status: "archived" }),
+  ]);
 }
 
-const supplierSelect = () => screen.getByLabelText(/^Supplier\b/, { selector: "select" });
+const supplierField = () => screen.getByRole("combobox", { name: "Supplier ID" });
+const chosenSupplier = (id: string) => screen.findByRole("region", { name: `Selected Supplier: ${id}` });
+const alerts = () => screen.queryAllByRole("alert").map((node) => node.textContent);
 const lines = () => within(screen.getByRole("list", { name: "Order lines" })).getAllByRole("listitem");
 const save = () => screen.getByRole("button", { name: /^(Save as draft|Save changes)$/ });
 function errorOf(field: HTMLElement): string | null {
@@ -28,7 +39,7 @@ function errorOf(field: HTMLElement): string | null {
 async function openNew(href = "/admin/purchase-orders/new?supplier=SUP001") {
   setLocation(href);
   const view = renderUI(<AdminNewPurchaseOrderView />);
-  await waitFor(() => expect(supplierSelect()).toBeEnabled());
+  await screen.findByRole("combobox", { name: /Product ID/ });
   return view;
 }
 
@@ -37,46 +48,57 @@ async function addLinked(user: ReturnType<typeof renderUI>["user"], productId = 
   await user.selectOptions(select, productId);
 }
 
-async function addAny(user: ReturnType<typeof renderUI>["user"], name = "Linen Shirt") {
-  await user.type(screen.getByPlaceholderText(/Add any product: search by name or SKU/), "lin");
-  const row = (await screen.findByText(name, { selector: "span" })).closest("li")!;
-  await user.click(within(row).getByRole("button", { name: /Add/ }));
+async function addAny(user: ReturnType<typeof renderUI>["user"], productId = "PRD002", name = "Linen Shirt") {
+  await user.type(screen.getByRole("combobox", { name: /^Add any product — Product ID or SKU/ }), productId);
+  await user.click(await screen.findByRole("option", { name: productId }));
+  await screen.findByLabelText(`Quantity of ${name}`);
 }
 
 describe("AdminNewPurchaseOrderView", () => {
   describe("choosing the supplier", () => {
-    it("preselects the supplier from the URL and offers its linked products", async () => {
+    it("preselects the supplier from the URL by its ID and offers its linked products", async () => {
       signIn("admin", "adm");
       backend();
       await openNew();
       expect(screen.getByRole("heading", { name: "New purchase order" })).toBeInTheDocument();
-      expect(supplierSelect()).toHaveValue("SUP001");
-      expect(within(supplierSelect()).getAllByRole("option").map((option) => option.textContent)).toEqual([
-        "Choose a supplier",
-        "Anvi Textiles (ANVI-TEX)",
-        "Blue Looms (BLUE) — inactive",
-      ]);
-      expect(screen.getByText("Billing state: Karnataka")).toBeInTheDocument();
+      const chosen = await chosenSupplier("SUP001");
+      expect(await within(chosen).findByText("Anvi Textiles")).toBeInTheDocument();
+      expect(await screen.findByText("Billing state: Karnataka")).toBeInTheDocument();
       const linked = await screen.findByLabelText(/^Add from Anvi Textiles's products/);
-      expect(within(linked).getByRole("option", { name: "Cotton Kurta · DCZ-WO0001 · ₹450" })).toBeInTheDocument();
+      expect(within(linked).getByRole("option", { name: "PRD001 · Cotton Kurta · DCZ-WO0001 · ₹450" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "View supplier" })).toHaveAttribute("href", "/admin/suppliers/detail?id=SUP001");
       expect(api.last("GET", "/admin/suppliers/SUP001/products")!.headers.authorization).toBe("Bearer adm");
+      // One supplier was read, exactly — never the supplier list.
+      expect(api.requests("GET", "/admin/suppliers")).toHaveLength(0);
     });
 
-    it("starts without a supplier and loads no links until one is chosen", async () => {
+    it("starts without a supplier, then takes one picked by Supplier ID", async () => {
       backend();
       const { user } = await openNew("/admin/purchase-orders/new");
-      expect(supplierSelect()).toHaveValue("");
+      expect(supplierField()).toHaveValue("");
       expect(screen.getByText(/Choose a supplier, then add products./)).toBeInTheDocument();
       expect(api.requests("GET", /\/products$/)).toHaveLength(0);
-      await user.selectOptions(supplierSelect(), "SUP001");
+
+      await user.type(supplierField(), "SUP0");
+      expect(await screen.findByRole("option", { name: "SUP001" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "SUP002" })).toBeInTheDocument();
+      await user.click(screen.getByRole("option", { name: "SUP001" }));
+      expect(await chosenSupplier("SUP001")).toBeInTheDocument();
       expect(await screen.findByLabelText(/^Add from Anvi Textiles's products/)).toBeInTheDocument();
+    });
+
+    it("matches suppliers by ID, not by name", async () => {
+      backend();
+      const { user } = await openNew("/admin/purchase-orders/new");
+      await user.type(supplierField(), "Textiles");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      expect(screen.queryByRole("option")).not.toBeInTheDocument();
     });
 
     it("won't raise an order with an inactive supplier", async () => {
       backend();
       const { user } = await openNew("/admin/purchase-orders/new?supplier=SUP002");
-      expect(errorOf(supplierSelect())).toBe("This supplier isn't active. Activate it before raising a purchase order.");
+      await waitFor(() => expect(alerts()).toContain("This supplier isn't active. Activate it before raising a purchase order."));
       await addAny(user);
       await user.type(screen.getByLabelText("Unit cost of Linen Shirt"), "100");
       await user.click(save());
@@ -84,20 +106,21 @@ describe("AdminNewPurchaseOrderView", () => {
     });
 
     it("explains a missing suppliers permission", async () => {
-      api.get("/admin/suppliers", fail(403, "Forbidden", "FORBIDDEN"));
-      setLocation("/admin/purchase-orders/new");
+      backend();
+      api.get("/admin/suppliers/SUP001", fail(403, "Forbidden", "FORBIDDEN"));
+      setLocation("/admin/purchase-orders/new?supplier=SUP001");
       renderUI(<AdminNewPurchaseOrderView />);
       expect(await screen.findByText("Your role doesn't include suppliers")).toBeInTheDocument();
     });
 
-    it("offers a retry when the supplier list doesn't load", async () => {
+    it("offers a retry when the supplier's details don't load", async () => {
       backend();
-      api.once("GET", "/admin/suppliers", fail(500));
-      setLocation("/admin/purchase-orders/new");
+      api.once("GET", "/admin/suppliers/SUP001", fail(500));
+      setLocation("/admin/purchase-orders/new?supplier=SUP001");
       const { user } = renderUI(<AdminNewPurchaseOrderView />);
-      expect(await screen.findByText(/The supplier list didn’t load./)).toBeInTheDocument();
+      expect(await screen.findByText(/The supplier’s details didn’t load./)).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "Try again" }));
-      await waitFor(() => expect(within(supplierSelect()).getAllByRole("option")).toHaveLength(3));
+      expect(await screen.findByText("Billing state: Karnataka")).toBeInTheDocument();
     });
   });
 
@@ -106,7 +129,7 @@ describe("AdminNewPurchaseOrderView", () => {
       backend();
       const { user } = await openNew("/admin/purchase-orders/new");
       await user.click(save());
-      expect(errorOf(supplierSelect())).toBe("Choose a supplier.");
+      expect(alerts()).toContain("Choose a supplier.");
       expect(screen.getByText("Add at least one product.")).toBeInTheDocument();
       expect(api.requests("POST", "/admin/purchase-orders")).toHaveLength(0);
     });
@@ -149,6 +172,30 @@ describe("AdminNewPurchaseOrderView", () => {
       expect(errorOf(within(line!).getByLabelText("Unit cost of Linen Shirt"))).toBe(
         "Enter the unit cost — this product isn't linked to the supplier.",
       );
+    });
+
+    it("adds any product by its Product ID or SKU, never by name", async () => {
+      backend();
+      const { user } = await openNew();
+      const field = screen.getByRole("combobox", { name: /^Add any product — Product ID or SKU/ });
+      await user.type(field, "Linen");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+
+      await user.clear(field);
+      await user.type(field, "DCZ-ME");
+      const option = await screen.findByRole("option", { name: /PRD002/ });
+      expect(option).toHaveTextContent("matched DCZ-ME0002");
+      await user.click(option);
+      expect(await screen.findByLabelText("Quantity of Linen Shirt")).toBeInTheDocument();
+    });
+
+    it("refuses a product that isn't on sale, with its ID", async () => {
+      backend();
+      const { user } = await openNew();
+      await user.type(screen.getByRole("combobox", { name: /^Add any product — Product ID or SKU/ }), "PRD003");
+      await user.click(await screen.findByRole("option", { name: "PRD003" }));
+      expect(await screen.findByText("PRD003 (Old Scarf) is archived and can't be added.")).toBeInTheDocument();
+      expect(screen.queryByRole("list", { name: "Order lines" })).not.toBeInTheDocument();
     });
 
     it("explains a bad quantity, cost and tax rate on their line, and clears them as you fix them", async () => {
@@ -251,7 +298,7 @@ describe("AdminNewPurchaseOrderView", () => {
       const { user } = await openNew();
       await addLinked(user);
       await user.click(save());
-      await waitFor(() => expect(errorOf(supplierSelect())).toBe("Anvi Textiles was archived a moment ago."));
+      await waitFor(() => expect(alerts()).toContain("Anvi Textiles was archived a moment ago."));
       expect(toasts()).toContain("error:Anvi Textiles was archived a moment ago.");
     });
 
@@ -290,7 +337,7 @@ describe("PurchaseOrderForm — editing a draft", () => {
     expect(screen.getByLabelText("Quantity of Cotton Kurta")).toHaveValue("50");
     expect(screen.getByLabelText("Tax rate of Cotton Kurta")).toHaveValue("5");
     expect(screen.getByLabelText(/^Expected delivery/)).toHaveValue("2026-10-15");
-    await waitFor(() => expect(supplierSelect()).toHaveValue("SUP001"));
+    expect(await chosenSupplier("SUP001")).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Quantity of Cotton Kurta"));
     await user.type(screen.getByLabelText("Quantity of Cotton Kurta"), "60");
@@ -304,12 +351,13 @@ describe("PurchaseOrderForm — editing a draft", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
-  it("keeps a supplier that is no longer in the list", async () => {
-    api.get("/admin/suppliers", page([]));
+  it("shows the draft's supplier by its ID while the details load", async () => {
+    api.get("/admin/suppliers/SUP001", hang());
+    api.get("/admin/lookup/supplier/SUP001", hang());
     api.get("/admin/suppliers/SUP001/products", []);
     renderUI(<PurchaseOrderForm po={purchaseOrder()} onSaved={() => undefined} />);
-    await waitFor(() => expect(within(supplierSelect()).getByRole("option", { name: "Anvi Textiles" })).toBeInTheDocument());
-    expect(supplierSelect()).toHaveValue("SUP001");
+    const chosen = await chosenSupplier("SUP001");
+    expect(within(chosen).getByText("Loading details…")).toBeInTheDocument();
   });
 });
 

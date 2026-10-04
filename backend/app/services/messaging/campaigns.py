@@ -72,6 +72,7 @@ from app.models import (
     Product,
 )
 from app.services import audit
+from app.services.lookup.filters import id_condition
 from app.services.email import templates as email_templates
 from app.services.messaging import providers, service as messaging
 
@@ -925,8 +926,10 @@ def admin_list(db: Session, *, status: str = "", q: str = "", page: int = 1, pag
     conditions = []
     if status:
         conditions.append(MarketingCampaign.status == status)
-    if q:
-        conditions.append(MarketingCampaign.name.ilike(f"%{q.strip()}%"))
+    # A Campaign ID, exactly (docs/id-lookup.md): names match nothing.
+    condition = id_condition("campaign", q)
+    if condition is not None:
+        conditions.append(condition)
     counts = dict(db.execute(select(MarketingCampaign.status, func.count()).group_by(MarketingCampaign.status)).all())
     total = db.execute(select(func.count()).select_from(MarketingCampaign).where(*conditions)).scalar_one()
     rows = db.execute(select(MarketingCampaign).where(*conditions).order_by(MarketingCampaign.updated_at.desc(),

@@ -1,11 +1,14 @@
 import type { AdminResult, AdminReview, ReviewStatus } from "@/types/admin";
 
+import type { ReviewFilters } from "./admin-data-source";
+
 import { adminDataSource } from "./admin-data-source.instance";
 
 /** Review moderation. */
 
-export function listReviews(): Promise<AdminReview[]> {
-  return adminDataSource.listReviews();
+/** Every review, or those of one Product ID / Customer ID (matched exactly on the server). */
+export function listReviews(filters: ReviewFilters = {}): Promise<AdminReview[]> {
+  return adminDataSource.listReviews(filters);
 }
 
 export async function setReviewStatus(

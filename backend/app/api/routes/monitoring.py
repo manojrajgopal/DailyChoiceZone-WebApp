@@ -102,20 +102,33 @@ def _audit_view(row: AuditLog, *, full: bool = False) -> dict:
 
 def _audit_filters(q: str, action: str, resource_type: str, resource_id: str, actor: str, outcome: str,
                    date_from: Optional[str], date_to: Optional[str]) -> list:
+    """
+    `q` is a record's ID, matched exactly, or an action code (`products.update`):
+    never a name or an email. Summaries are not searched, because they carry
+    names ("Asha signed in", "Changed product Silk Saree") and a name never
+    identifies anyone (docs/id-lookup.md). Who did it is `actor`, an Admin
+    user ID.
+    """
+    from app.services.lookup.filters import id_condition, normalised_id
+    from app.services.search.base import LIKE_ESCAPE, escape_like
+
     conditions = []
-    if q:
-        like = f"%{q.strip()}%"
-        conditions.append(or_(AuditLog.summary.ilike(like), AuditLog.actor_name.ilike(like),
-                              AuditLog.actor_email.ilike(like), AuditLog.resource_id == q.strip(),
-                              AuditLog.action.ilike(like)))
+    text = (q or "").strip()
+    if text:
+        options = [AuditLog.action.ilike(f"%{escape_like(text)}%", escape=LIKE_ESCAPE)]
+        record = normalised_id(text)
+        if record:
+            options.append(AuditLog.resource_id.in_(sorted({text, record})))
+        conditions.append(or_(*options))
     if action:
-        conditions.append(AuditLog.action.like(f"{action}%"))
+        conditions.append(AuditLog.action.like(f"{escape_like(action.strip())}%", escape=LIKE_ESCAPE))
     if resource_type:
         conditions.append(AuditLog.resource_type == resource_type)
     if resource_id:
-        conditions.append(AuditLog.resource_id == resource_id)
-    if actor:
-        conditions.append(AuditLog.actor_id == actor)
+        conditions.append(AuditLog.resource_id == resource_id.strip())
+    by_actor = id_condition("admin_user", actor, column=AuditLog.actor_id, via=AdminUser.id)
+    if by_actor is not None:
+        conditions.append(by_actor)
     if outcome in ("success", "failure", "denied"):
         conditions.append(AuditLog.outcome == outcome)
     start, end = parse_dt(date_from), parse_dt(date_to)

@@ -159,6 +159,9 @@ class AdminProductOut(ProductOut):
     created_at: datetime
     updated_at: datetime
     updated_by: Optional[str] = None
+    # The Category ID the product belongs to. `category` is the slug the
+    # storefront's URLs use; the portal identifies the category by this.
+    category_id: str = ""
     seo: SeoOut
     # Only the images shared by every colour. `images` falls back to the first
     # colour's photographs when there are none, which is right for a shop
@@ -178,6 +181,7 @@ class AdminProductOut(ProductOut):
             created_at=product.created_at,
             updated_at=product.updated_at,
             updated_by=product.updated_by,
+            category_id=product.category_id or "",
             shared_images=[image.url for image in product.images if not image.color],
             seo=SeoOut(
                 meta_title=product.meta_title,
@@ -231,6 +235,10 @@ class ProductWrite(CamelModel):
     slug: Optional[str] = None
     sku: Optional[str] = None
     brand: Optional[str] = None
+    # The product's category, by Category ID (`CAT001`), matched exactly.
+    # `category` (a slug) is still accepted from older clients; when both are
+    # sent, `category_id` wins.
+    category_id: Optional[str] = Field(default=None, max_length=64)
     category: Optional[str] = None
     subcategory: Optional[str] = None
     price: Optional[float] = Field(default=None, ge=0)

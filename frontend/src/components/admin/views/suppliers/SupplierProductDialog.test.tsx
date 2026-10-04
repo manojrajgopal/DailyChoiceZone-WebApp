@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupplierProduct } from "@/types/suppliers";
 import { api, fail } from "@/test/api";
 import { renderUI, screen, waitFor, within } from "@/test/render";
-import { pickable, supplierProduct } from "@/test/suppliers-fixtures";
+import { lookupBackend, productPreview } from "@/test/lookup-fixtures";
+import { supplierProduct } from "@/test/suppliers-fixtures";
 import { useToastStore } from "@/store/toastStore";
 
 import { SupplierProductDialog } from "./SupplierProductDialog";
@@ -21,10 +22,20 @@ function setup(link?: SupplierProduct, linkedProductIds: string[] = ["PRD001"]) 
 
 const field = (dialog: HTMLElement, label: RegExp) => within(dialog).getByLabelText(label);
 
-async function pick(user: ReturnType<typeof setup>["user"], dialog: HTMLElement, name = "Linen Shirt") {
-  await user.type(within(dialog).getByPlaceholderText(/Find a product: search by name or SKU/), "lin");
-  const row = (await within(dialog).findByText(name)).closest("li")!;
-  await user.click(within(row).getByRole("button", { name: /Add/ }));
+// Products are found by Product ID or SKU (docs/id-lookup.md), never by name.
+function products() {
+  lookupBackend("product", [
+    productPreview({ id: "PRD001", name: "Cotton Kurta Linen" }),
+    productPreview({ id: "PRD002", name: "Linen Shirt", sku: "DCZ-ME0002", price: 1299, stock: 10 }),
+  ]);
+}
+
+const productField = (dialog: HTMLElement) => within(dialog).getByRole("combobox", { name: /^Find a product — Product ID or SKU/ });
+
+async function pick(user: ReturnType<typeof setup>["user"], dialog: HTMLElement, productId = "PRD002") {
+  await user.type(productField(dialog), productId);
+  await user.click(await within(dialog).findByRole("option", { name: productId }));
+  await within(dialog).findByRole("button", { name: /Choose a different product/ });
 }
 
 describe("SupplierProductDialog", () => {
@@ -52,18 +63,18 @@ describe("SupplierProductDialog", () => {
     });
 
     it("finds a product, won't offer one that's already linked, and links it", async () => {
-      api.get("/admin/products", [pickable({ id: "PRD001", name: "Cotton Kurta Linen" }), pickable()]);
+      products();
       api.post("/admin/suppliers/SUP001/products", (req) => supplierProduct({ id: 9, productId: req.body.productId, productName: "Linen Shirt" }));
       const { user, dialog, onSaved } = setup();
 
-      await user.type(within(dialog).getByPlaceholderText(/Find a product/), "lin");
-      const taken = (await within(dialog).findByText("Cotton Kurta Linen")).closest("li")!;
-      expect(within(taken).getByRole("button", { name: /Added/ })).toBeDisabled();
-      expect(api.last("GET", "/admin/products")!.query.get("search")).toBe("lin");
+      await user.type(productField(dialog), "PRD00");
+      const taken = await within(dialog).findByRole("option", { name: /PRD001/ });
+      expect(taken).toHaveAttribute("aria-disabled", "true");
+      expect(taken).toHaveTextContent("Already chosen");
+      expect(api.last("GET", "/admin/lookup/product")!.query.get("q")).toBe("PRD00");
 
-      const row = within(dialog).getByText("Linen Shirt").closest("li")!;
-      await user.click(within(row).getByRole("button", { name: /Add/ }));
-      expect(within(dialog).getByText("DCZ-ME0002")).toBeInTheDocument();
+      await user.click(within(dialog).getByRole("option", { name: "PRD002" }));
+      expect(await within(dialog).findByText(/DCZ-ME0002/)).toBeInTheDocument();
       expect(within(dialog).getByRole("button", { name: "Choose a different product than Linen Shirt" })).toBeInTheDocument();
 
       await user.type(field(dialog, /^Supplier's SKU/), " LS-1 ");
@@ -88,16 +99,24 @@ describe("SupplierProductDialog", () => {
       expect(toasts()).toContain("success:Linen Shirt linked to Anvi Textiles");
     });
 
+    it("doesn't match products by name", async () => {
+      products();
+      const { user, dialog } = setup();
+      await user.type(productField(dialog), "Linen");
+      expect((await within(dialog).findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      expect(within(dialog).queryByRole("option", { name: /^PRD/ })).not.toBeInTheDocument();
+    });
+
     it("lets you change the chosen product", async () => {
-      api.get("/admin/products", [pickable()]);
+      products();
       const { user, dialog } = setup();
       await pick(user, dialog);
       await user.click(within(dialog).getByRole("button", { name: /Choose a different product/ }));
-      expect(within(dialog).getByPlaceholderText(/Find a product/)).toBeInTheDocument();
+      expect(productField(dialog)).toBeInTheDocument();
     });
 
     it("puts an already-linked product error on the product", async () => {
-      api.get("/admin/products", [pickable()]);
+      products();
       api.post("/admin/suppliers/SUP001/products", fail(409, "Linen Shirt is already supplied by Anvi Textiles.", "SUPPLIER_PRODUCT_EXISTS"));
       const { user, dialog, onSaved } = setup();
       await pick(user, dialog);
@@ -108,7 +127,7 @@ describe("SupplierProductDialog", () => {
     });
 
     it("shows a banner for an error that isn't about a field", async () => {
-      api.get("/admin/products", [pickable()]);
+      products();
       api.post("/admin/suppliers/SUP001/products", fail(500, "Something broke.", "INTERNAL"));
       const { user, dialog } = setup();
       await pick(user, dialog);
@@ -123,7 +142,7 @@ describe("SupplierProductDialog", () => {
       api.put("/admin/supplier-products/3", supplierProduct({ purchaseCost: 480 }));
       const { user, dialog, onSaved } = setup(supplierProduct());
       expect(dialog).toHaveAccessibleName("Edit Cotton Kurta");
-      expect(within(dialog).queryByPlaceholderText(/Find a product/)).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole("combobox", { name: /Find a product/ })).not.toBeInTheDocument();
       expect(field(dialog, /^Purchase cost/)).toHaveValue("450");
       expect(field(dialog, /^Minimum order quantity/)).toHaveValue("10");
       expect(field(dialog, /^Lead time/)).toHaveValue("7");

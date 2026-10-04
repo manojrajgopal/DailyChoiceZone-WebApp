@@ -45,6 +45,7 @@ from app.models import (
     WishlistItem,
 )
 from app.services import audit, billing, pricing
+from app.services.lookup.filters import id_condition
 from app.utils.dates import parse_dt
 
 logger = logging.getLogger(__name__)
@@ -180,8 +181,10 @@ def _load(db: Session, sale_id: int, *, lock: bool = False) -> FlashSale:
 def admin_list(db: Session, *, phase_filter: str = "", q: str = "", page: int = 1, page_size: int = 25) -> tuple:
     now = datetime.utcnow()
     conditions = []
-    if q:
-        conditions.append(FlashSale.name.ilike(f"%{q.strip()}%"))
+    # A Flash sale ID, exactly (docs/id-lookup.md): names match nothing.
+    condition = id_condition("flash_sale", q)
+    if condition is not None:
+        conditions.append(condition)
     phases = {
         "draft": [FlashSale.status == "draft"],
         "cancelled": [FlashSale.status == "cancelled"],

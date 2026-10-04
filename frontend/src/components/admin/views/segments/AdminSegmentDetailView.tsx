@@ -6,7 +6,7 @@ import { Archive, BadgePercent, Download, Megaphone, Pencil, RefreshCw, RotateCc
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminPagination } from "@/components/admin/ui/AdminPagination";
-import { LogSearch } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { BarList } from "@/components/admin/charts/BarList";
 import { Tile } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -236,14 +236,14 @@ function SegmentDetailBody({
             padded={false}
           >
             <div className="px-4 py-3">
-              <LogSearch
-                label="Search members"
+              <IdFilter
+                entity="customer"
                 value={q}
                 onChange={(next) => {
                   setQ(next);
                   setPage(1);
                 }}
-                placeholder="Customer id, name, email or phone"
+                className="max-w-sm"
               />
             </div>
             <MemberTable
@@ -253,8 +253,8 @@ function SegmentDetailBody({
               failed={Boolean(members.error && !members.data)}
               refreshing={members.isRefreshing}
               onRetry={() => void members.reload()}
-              emptyTitle={q ? "No members match" : "No members yet"}
-              emptyHint={q ? "Try a different search." : "Nobody matches the rules right now. Recalculate after metrics refresh."}
+              emptyTitle={q ? `${q} is not in this segment` : "No members yet"}
+              emptyHint={q ? "Remove the Customer ID filter to see every member." : "Nobody matches the rules right now. Recalculate after metrics refresh."}
             />
             {members.data && members.data.pagination.total > 0 ? (
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-admin-border px-4 py-2.5">

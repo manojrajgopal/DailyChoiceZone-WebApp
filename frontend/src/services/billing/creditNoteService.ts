@@ -22,8 +22,9 @@ import { billingDataSource } from "./billing-data-source.instance";
  *   PUT  /admin/billing/credit-notes/:id
  */
 
-export function getCreditNotes(): Promise<CreditNote[]> {
-  return billingDataSource.listCreditNotes();
+/** Every credit note, or those an ID names: `q` is a Credit note, Invoice or Order ID, matched exactly. */
+export function getCreditNotes(filters: { q?: string } = {}): Promise<CreditNote[]> {
+  return billingDataSource.listCreditNotes(undefined, filters.q || undefined);
 }
 
 export function getCreditNoteById(id: string): Promise<CreditNote | null> {

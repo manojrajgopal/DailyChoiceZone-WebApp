@@ -22,6 +22,7 @@ from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import AdminUser, Bundle, BundleItem, CartBundle, Customer, OrderItem, Order, Product
 from app.repositories.products import _with_relations
 from app.services import audit, billing, pricing
+from app.services.lookup.filters import id_condition
 from app.utils.dates import parse_dt
 from app.utils.ids import slugify
 
@@ -131,8 +132,10 @@ def admin_list(db: Session, *, status: str = "", q: str = "", page: int = 1, pag
     conditions = []
     if status in STATUSES:
         conditions.append(Bundle.status == status)
-    if q:
-        conditions.append(Bundle.name.ilike(f"%{q.strip()}%"))
+    # A Bundle ID, exactly (docs/id-lookup.md): names match nothing.
+    condition = id_condition("bundle", q)
+    if condition is not None:
+        conditions.append(condition)
     counts = dict(db.execute(select(Bundle.status, func.count()).group_by(Bundle.status)).all())
     total = db.execute(select(func.count()).select_from(Bundle).where(*conditions)).scalar_one()
     bundles = db.execute(select(Bundle).options(selectinload(Bundle.items)).where(*conditions)

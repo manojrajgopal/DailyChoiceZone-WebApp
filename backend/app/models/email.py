@@ -59,7 +59,7 @@ class EmailLog(Base):
     # sent | failed
     status: Mapped[str] = mapped_column(String(12), nullable=False, index=True)
     error: Mapped[str] = mapped_column(String(500), nullable=False, default="")
-    reference: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    reference: Mapped[str] = mapped_column(String(40), nullable=False, default="", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     # The provider's id for the sent message (Gmail's), used to match a bounce
     # notice to it; and when a bounce turned a "sent" into "failed".

@@ -174,7 +174,8 @@ export function AdminReconciliationView() {
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search findings" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Payment ID, Razorpay payment ID or order number" />
+        <LogSearch label="Payment ID, gateway payment ID or Order ID" value={filters.q} onChange={(q) => setFilters({ q })}
+          placeholder="Search Payment ID, gateway payment ID (pay_…) or Order ID…" />
         <FilterSelect
           label="Resolution"
           value={filters.resolution}

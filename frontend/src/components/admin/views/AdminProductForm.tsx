@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
-import type { Category } from "@/types";
 import type { ProductDraft, ProductStatus } from "@/types/admin";
 
 import {
@@ -23,6 +22,7 @@ import {
   TagListInput,
 } from "@/components/admin/ui/AdminForm";
 import { SettingsLayout, useSettingsSection, type SettingsSection } from "@/components/admin/ui/SettingsLayout";
+import { IdSelector } from "@/components/common/IdSelector";
 import { ProductSuppliersPanel } from "@/components/admin/views/suppliers/ProductSuppliersPanel";
 import { ProductDeliveryRulesPanel } from "@/components/admin/views/discovery/ProductDeliveryRulesPanel";
 import { ProductRelationshipsPanel } from "@/components/admin/views/discovery/ProductRelationshipsPanel";
@@ -97,7 +97,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
     const product = existing.data;
     setDraft({
       id: product.id, slug: product.slug, name: product.name, brand: product.brand,
-      category: product.category, subcategory: product.subcategory,
+      category: product.category, categoryId: product.categoryId ?? "", subcategory: product.subcategory,
       price: product.price, originalPrice: product.originalPrice, currency: product.currency,
       rating: product.rating, reviewCount: product.reviewCount,
       images: product.sharedImages ?? product.images,
@@ -117,7 +117,11 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
   }
 
   const categories = categoriesResource.data ?? [];
-  const selectedCategory = categories.find((entry) => entry.slug === draft.category);
+  // The category is identified by its ID; the list only supplies its product
+  // types (and the slug the storefront's URLs still use).
+  const selectedCategory = draft.categoryId
+    ? categories.find((entry) => entry.id === draft.categoryId)
+    : undefined;
 
   const subcategories = useMemo(
     () => (selectedCategory?.groups ?? []).flatMap((group) => group.items),
@@ -130,6 +134,24 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
       if (!current[key as string]) return current;
       const next = { ...current };
       delete next[key as string];
+      return next;
+    });
+  };
+
+  const chooseCategory = (categoryId: string | null) => {
+    const chosen = categoryId ? categories.find((entry) => entry.id === categoryId) : undefined;
+    setDraft((current) => ({
+      ...current,
+      categoryId: categoryId ?? "",
+      category: chosen?.slug ?? "",
+      // The old product type almost certainly does not exist in the new
+      // category, so clear it rather than leave it invalid.
+      subcategory: categoryId === current.categoryId ? current.subcategory : "",
+    }));
+    setErrors((current) => {
+      if (!current.category) return current;
+      const next = { ...current };
+      delete next.category;
       return next;
     });
   };
@@ -247,23 +269,24 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
               placeholder="DCZ-WO0140"
             />
 
-            <AdminSelect
-              label="Category"
-              value={draft.category}
-              onChange={(event) => {
-                set("category", event.target.value);
-                // The old subcategory almost certainly does not exist in the
-                // new category, so clear it rather than leave it invalid.
-                set("subcategory", "");
-              }}
-              error={errors.category}
-              required
-              placeholder="Choose a category"
-              options={categories.map((entry: Category) => ({
-                value: entry.slug,
-                label: entry.name,
-              }))}
-            />
+            <div className="flex flex-col gap-1.5">
+              <IdSelector
+                entity="category"
+                label="Category ID"
+                required
+                compact
+                value={draft.categoryId}
+                onChange={chooseCategory}
+              />
+              {selectedCategory ? (
+                <p className="text-[0.6875rem] text-admin-muted">{selectedCategory.name}</p>
+              ) : null}
+              {errors.category ? (
+                <p role="alert" className="text-[0.6875rem] text-[#c23434]">
+                  {errors.category}
+                </p>
+              ) : null}
+            </div>
 
             <AdminSelect
               label="Product type"
@@ -271,8 +294,8 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
               onChange={(event) => set("subcategory", event.target.value)}
               error={errors.subcategory}
               required
-              disabled={!draft.category}
-              placeholder={draft.category ? "Choose a type" : "Pick a category first"}
+              disabled={!draft.categoryId}
+              placeholder={draft.categoryId ? "Choose a type" : "Pick a category first"}
               options={subcategories.map((entry) => ({
                 value: entry.slug,
                 label: entry.name,

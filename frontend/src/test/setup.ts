@@ -13,6 +13,8 @@ import { cleanup } from "@testing-library/react";
 import { createElement, type ImgHTMLAttributes } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 
+import { clearIdCache } from "@/services/lookupService";
+
 import { installFakeApi } from "./api";
 import { navigationMock, resetNavigation } from "./navigation";
 import { resetStores } from "./stores";
@@ -91,6 +93,8 @@ afterEach(() => {
   vi.restoreAllMocks();
   resetNavigation();
   resetStores();
+  // ID previews are cached for a minute; one test's records must not answer the next's.
+  clearIdCache();
   try {
     window.localStorage.clear();
     window.sessionStorage.clear();

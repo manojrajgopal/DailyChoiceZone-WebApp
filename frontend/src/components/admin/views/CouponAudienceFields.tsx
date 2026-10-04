@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
-
-import type { AdminCoupon, AdminCustomer } from "@/types/admin";
+import type { AdminCoupon } from "@/types/admin";
 
 import { AdminCheckbox, AdminInput, AdminSelect } from "@/components/admin/ui/AdminForm";
-import { listCustomers } from "@/services/admin/customerAdminService";
-import { listSegments } from "@/services/segmentsService";
-import type { SegmentSummary } from "@/types/segments";
+import { IdMultiSelect } from "@/components/common/IdMultiSelect";
+import { IdSelector } from "@/components/common/IdSelector";
 
 const AUDIENCES = [
   { value: "everyone", label: "Everyone" },
@@ -24,6 +20,9 @@ const AUDIENCES = [
  * - **Limit per customer** — each person may redeem it this many times.
  * - **Total limit** (in the main form) — all customers together.
  * Both may be set: "each customer once, 1,000 in all".
+ *
+ * Customers and the segment are chosen by ID (docs/id-lookup.md); their names
+ * show in the preview once picked.
  */
 export function CouponAudienceFields({
   coupon,
@@ -33,51 +32,7 @@ export function CouponAudienceFields({
   onChange: (next: AdminCoupon) => void;
 }) {
   const audience = coupon.audience ?? "everyone";
-  const chosen = useMemo(() => coupon.customerIds ?? [], [coupon.customerIds]);
-
-  const [customers, setCustomers] = useState<AdminCustomer[] | null>(null);
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (audience !== "selected" || customers) return;
-    let active = true;
-    void listCustomers()
-      .then((rows) => active && setCustomers(rows))
-      .catch(() => active && setCustomers([]));
-    return () => {
-      active = false;
-    };
-  }, [audience, customers]);
-
-  // Customer segmentation: the active segments, fetched once "segment" is chosen.
-  const [segments, setSegments] = useState<SegmentSummary[] | null>(null);
-  const [segmentsFailed, setSegmentsFailed] = useState(false);
-  useEffect(() => {
-    if (audience !== "segment" || segments) return;
-    let active = true;
-    void listSegments({ status: "active", pageSize: 100 })
-      .then((page) => active && setSegments(page.items))
-      .catch(() => {
-        if (!active) return;
-        setSegments([]);
-        setSegmentsFailed(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [audience, segments]);
-
-  const byId = useMemo(() => new Map((customers ?? []).map((c) => [c.id, c])), [customers]);
-  const matches = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term || !customers) return [];
-    return customers
-      .filter((c) => !chosen.includes(c.id))
-      .filter((c) =>
-        `${c.firstName} ${c.lastName} ${c.email} ${c.phone}`.toLowerCase().includes(term),
-      )
-      .slice(0, 8);
-  }, [search, customers, chosen]);
+  const chosen = coupon.customerIds ?? [];
 
   return (
     <>
@@ -118,88 +73,35 @@ export function CouponAudienceFields({
       />
 
       {audience === "segment" ? (
-        <AdminSelect
-          label="Segment"
-          value={coupon.segmentId ? String(coupon.segmentId) : ""}
-          onChange={(event) =>
-            onChange({ ...coupon, segmentId: event.target.value ? Number(event.target.value) : null })
-          }
-          disabled={!segments}
-          placeholder={segments ? "Choose a segment" : "Loading segments…"}
-          options={[
-            ...(segments ?? []).map((segment) => ({
-              value: String(segment.id),
-              label: `${segment.name} (${segment.memberCount.toLocaleString("en-IN")})`,
-            })),
-            // Keep a chosen segment visible even if it isn't in the active list (archived since).
-            ...(coupon.segmentId && segments && !segments.some((segment) => segment.id === coupon.segmentId)
-              ? [{ value: String(coupon.segmentId), label: coupon.segmentName || `Segment #${coupon.segmentId}` }]
-              : []),
-          ]}
-          error={
-            segmentsFailed
-              ? "Segments didn't load. Your role may not include segments."
-              : segments && !coupon.segmentId
-                ? "Choose a segment."
-                : undefined
-          }
-          hint="Segments are managed under Customers → Segments."
-        />
+        <div>
+          <IdSelector
+            entity="segment"
+            label="Segment"
+            value={coupon.segmentId ? String(coupon.segmentId) : null}
+            onChange={(id, preview) =>
+              onChange({
+                ...coupon,
+                segmentId: id ? Number(id) : null,
+                ...(preview?.title ? { segmentName: preview.title } : {}),
+              })
+            }
+            hint="Segments are managed under Customers → Segments."
+          />
+          {!coupon.segmentId ? (
+            <p className="mt-1.5 text-[0.6875rem] text-[#9c4a24]">Choose a segment.</p>
+          ) : null}
+        </div>
       ) : null}
 
       {audience === "selected" ? (
         <div className="sm:col-span-2">
-          <AdminInput
-            label="Add customers"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={customers ? "Search by name, email or phone" : "Loading customers…"}
-            disabled={!customers}
+          <IdMultiSelect
+            entity="customer"
+            label="Customer ID"
+            hint="Add each customer who may use it."
+            values={chosen}
+            onChange={(customerIds) => onChange({ ...coupon, customerIds })}
           />
-          {matches.length ? (
-            <ul className="mt-1 max-h-48 overflow-y-auto rounded-[3px] border border-admin-border bg-admin-surface">
-              {matches.map((customer) => (
-                <li key={customer.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange({ ...coupon, customerIds: [...chosen, customer.id] });
-                      setSearch("");
-                    }}
-                    className="flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left text-xs hover:bg-admin-raised"
-                  >
-                    <span className="text-admin-ink">
-                      {customer.firstName} {customer.lastName}
-                    </span>
-                    <span className="truncate text-admin-muted">{customer.email}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Selected customers">
-            {chosen.map((id) => {
-              const customer = byId.get(id);
-              return (
-                <li key={id}>
-                  <span className="inline-flex items-center gap-1.5 rounded-[3px] bg-admin-raised px-2 py-1 text-[0.6875rem] text-admin-ink ring-1 ring-inset ring-admin-border">
-                    {customer ? `${customer.firstName} ${customer.lastName}` : id}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onChange({ ...coupon, customerIds: chosen.filter((entry) => entry !== id) })
-                      }
-                      aria-label={`Remove ${customer?.firstName ?? id}`}
-                      className="text-admin-faint hover:text-[#c23434]"
-                    >
-                      <X className="h-3 w-3" strokeWidth={2} />
-                    </button>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
           {!chosen.length ? (
             <p className="mt-1.5 text-[0.6875rem] text-[#9c4a24]">Pick at least one customer.</p>
           ) : null}

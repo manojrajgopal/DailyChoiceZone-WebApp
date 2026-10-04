@@ -36,7 +36,7 @@ python -m venv .venv
 .venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 copy .env.example .env          # macOS/Linux: cp .env.example .env
-python -m uvicorn app.main:app --reload
+pythone.exe -m uvicorn app.main:app --reload
 ```
 
 ```bash

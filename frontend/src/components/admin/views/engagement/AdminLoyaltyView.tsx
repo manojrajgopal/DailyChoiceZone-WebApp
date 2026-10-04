@@ -6,7 +6,8 @@ import { Download, Play, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea, AdminToggle } from "@/components/admin/ui/AdminForm";
-import { FilterSelect, LogFooter, LogSearch, collectPages, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { FilterSelect, LogFooter, collectPages, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -24,7 +25,7 @@ import {
 } from "@/services/admin/engagementAdminService";
 import { toast } from "@/store/toastStore";
 
-const KEYS = ["tab", "q", "kind"] as const;
+const KEYS = ["tab", "customer", "order", "kind"] as const;
 const pts = (value: number) => value.toLocaleString("en-IN");
 
 const KIND_OPTIONS = [
@@ -41,6 +42,10 @@ const KIND_OPTIONS = [
 /**
  * Reward points: what customers hold, every movement, manual adjustments
  * (with a reason, kept with who made them), and the programme's rules.
+ *
+ * Both lists are narrowed by ID (docs/id-lookup.md): a Customer ID, and on
+ * the ledger an Order ID too — each matched exactly by the server. Names,
+ * emails and reasons are shown, never searched.
  */
 export function AdminLoyaltyView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize } = useUrlFilters(KEYS);
@@ -50,8 +55,9 @@ export function AdminLoyaltyView() {
   const [exporting, setExporting] = useState(false);
 
   const metrics = useAdminResource(() => getLoyaltyMetrics(30), []);
-  const balances = useAdminResource(() => listLoyaltyBalances({ q: filters.q, page, pageSize }), [filters.q, page, pageSize], { enabled: tab === "balances" });
-  const ledger = useAdminResource(() => listLoyaltyLedger({ q: filters.q, kind: filters.kind, page, pageSize }), [filters.q, filters.kind, page, pageSize], { enabled: tab === "ledger" });
+  const ledgerFilters = { customerId: filters.customer, orderId: filters.order, kind: filters.kind };
+  const balances = useAdminResource(() => listLoyaltyBalances({ q: filters.customer, page, pageSize }), [filters.customer, page, pageSize], { enabled: tab === "balances" });
+  const ledger = useAdminResource(() => listLoyaltyLedger({ ...ledgerFilters, page, pageSize }), [filters.customer, filters.order, filters.kind, page, pageSize], { enabled: tab === "ledger" });
   const m = metrics.data;
 
   const housekeeping = async () => {
@@ -70,7 +76,7 @@ export function AdminLoyaltyView() {
   const exportLedger = async () => {
     setExporting(true);
     try {
-      const { rows, truncated } = await collectPages((p) => listLoyaltyLedger({ q: filters.q, kind: filters.kind, page: p, pageSize: 100 }));
+      const { rows, truncated } = await collectPages((p) => listLoyaltyLedger({ ...ledgerFilters, page: p, pageSize: 100 }));
       downloadCsv(`reward-points-${new Date().toISOString().slice(0, 10)}.csv`,
         ["When", "Customer", "Email", "What", "Points", "Balance after", "Order", "Reason", "By"],
         rows.map((r) => [formatDateTime(r.createdAt), r.customer.name, r.customer.email, r.label, r.points, r.balanceAfter, r.orderId ?? "", r.reason, r.by ?? ""]));
@@ -121,7 +127,7 @@ export function AdminLoyaltyView() {
       <div className="mb-4 inline-flex rounded-[3px] border border-admin-border bg-admin-surface p-0.5" role="tablist" aria-label="View">
         {(["balances", "ledger", "settings"] as const).map((value) => (
           <button key={value} type="button" role="tab" aria-selected={tab === value}
-            onClick={() => setFilters({ tab: value === "balances" ? "" : value, kind: "" })}
+            onClick={() => setFilters({ tab: value === "balances" ? "" : value, kind: "", order: "" })}
             className={cn("rounded-[2px] px-3.5 py-1.5 text-xs font-medium", tab === value ? "bg-admin-ink text-white" : "text-admin-muted hover:text-admin-ink")}>
             {value === "balances" ? "Customers" : value === "ledger" ? "Ledger" : "Rules"}
           </button>
@@ -132,14 +138,16 @@ export function AdminLoyaltyView() {
         <LoyaltySettingsCard />
       ) : (
         <>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <LogSearch label="Search" value={filters.q} onChange={(q) => setFilters({ q })}
-              placeholder={tab === "ledger" ? "Customer, order number or reason" : "Customer name, email or ID"} />
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <IdFilter entity="customer" value={filters.customer} onChange={(customer) => setFilters({ customer })} className="w-56" />
             {tab === "ledger" ? (
-              <FilterSelect label="Kind" value={filters.kind} onChange={(kind) => setFilters({ kind })} options={KIND_OPTIONS} />
+              <>
+                <IdFilter entity="order" value={filters.order} onChange={(order) => setFilters({ order })} className="w-56" />
+                <FilterSelect label="Kind" value={filters.kind} onChange={(kind) => setFilters({ kind })} options={KIND_OPTIONS} />
+              </>
             ) : null}
-            {filters.q || filters.kind ? (
-              <AdminButton size="sm" variant="ghost" onClick={() => setFilters({ q: "", kind: "" })}>
+            {filters.customer || filters.order || filters.kind ? (
+              <AdminButton size="sm" variant="ghost" onClick={() => setFilters({ customer: "", order: "", kind: "" })}>
                 <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> Clear filters
               </AdminButton>
             ) : null}
@@ -164,7 +172,7 @@ export function AdminLoyaltyView() {
                   <tbody className="divide-y divide-admin-border">
                     <TableState columns={8} loading={balances.isLoading && !balances.data} failed={Boolean(balances.error && !balances.data)}
                       empty={Boolean(balances.data && balances.data.items.length === 0)} onRetry={() => void balances.reload()}
-                      title={filters.q ? "No customers match" : "No points yet"} hint="Customers appear once they earn or are given points." />
+                      title={filters.customer ? "That customer has no points account" : "No points yet"} hint="Customers appear once they earn or are given points." />
                     {balances.data?.items.map((row) => (
                       <tr key={row.customer.id} className="hover:bg-admin-raised">
                         <td className={TD}>
@@ -178,7 +186,7 @@ export function AdminLoyaltyView() {
                         <td className={cn(TD, "text-right tabular-nums text-admin-muted")}>{pts(row.lifetimeExpired)}</td>
                         <td className={cn(TD, "text-right tabular-nums text-admin-muted")}>{pts(row.lifetimeReversed)}</td>
                         <td className={cn(TD, "whitespace-nowrap text-right")}>
-                          <AdminButton size="sm" variant="ghost" onClick={() => setFilters({ tab: "ledger", q: row.customer.email })}>Ledger</AdminButton>
+                          <AdminButton size="sm" variant="ghost" onClick={() => setFilters({ tab: "ledger", customer: row.customer.id })}>Ledger</AdminButton>
                           <AdminButton size="sm" variant="ghost" onClick={() => setAdjusting({ id: row.customer.id, name: row.customer.name })}>Adjust</AdminButton>
                         </td>
                       </tr>

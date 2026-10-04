@@ -38,6 +38,7 @@ import {
 import { AdminButton, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
+import { IdSelector } from "@/components/common/IdSelector";
 import { Composer, ConversationThread } from "@/components/support/Conversation";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -416,12 +417,14 @@ export function AdminTicketDetailView() {
                 {ticket.customer.since ? ` · customer since ${formatDate(ticket.customer.since)}` : ""}
               </p>
             ) : null}
-            <Link
-              href={`/admin/support?view=all&q=${encodeURIComponent(ticket.customer.email)}`}
-              className="mt-2 inline-block text-xs text-copper-700 hover:underline"
-            >
-              Other requests from this customer
-            </Link>
+            {ticket.customer.id ? (
+              <Link
+                href={`/admin/support?view=all&customer=${encodeURIComponent(ticket.customer.id)}`}
+                className="mt-2 inline-block text-xs text-copper-700 hover:underline"
+              >
+                Other requests from this customer
+              </Link>
+            ) : null}
           </AdminCard>
 
           {ticket.order ? (
@@ -589,7 +592,13 @@ function PropertiesCard({
   const [teamId, setTeamId] = useState(ticket.teamId ? String(ticket.teamId) : "");
   const [agentId, setAgentId] = useState(ticket.agentId ? String(ticket.agentId) : "");
 
-  const agents = (lookups?.agents ?? []).filter((agent) => agent.active && (!teamId || agent.teamId === Number(teamId)));
+  // The agent is chosen by their support agent ID (docs/id-lookup.md); the server
+  // checks they are active. Their team comes with them, as it does on the server.
+  const chooseAgent = (id: string | null) => {
+    setAgentId(id ?? "");
+    const team = id ? (lookups?.agents ?? []).find((agent) => String(agent.id) === id)?.teamId : null;
+    if (team) setTeamId(String(team));
+  };
   const assignmentChanged = teamId !== (ticket.teamId ? String(ticket.teamId) : "") || agentId !== (ticket.agentId ? String(ticket.agentId) : "");
 
   return (
@@ -666,14 +675,19 @@ function PropertiesCard({
             placeholder="No team"
             options={(lookups?.teams ?? []).filter((team) => team.active || String(team.id) === teamId).map((team) => ({ value: String(team.id), label: team.name }))}
           />
-          <AdminSelect
-            label="Agent"
-            value={agentId}
-            disabled={merged}
-            onChange={(event) => setAgentId(event.target.value)}
-            placeholder="Unassigned"
-            options={agents.map((agent) => ({ value: String(agent.id), label: `${agent.name}${agent.available ? "" : " (away)"}` }))}
-          />
+          {merged ? (
+            <p className="text-xs text-admin-muted">
+              Support agent ID: <span className="font-mono text-admin-ink">{agentId || "Unassigned"}</span>
+            </p>
+          ) : (
+            <IdSelector
+              entity="support_agent"
+              label="Support agent ID"
+              value={agentId || null}
+              onChange={(id) => chooseAgent(id)}
+              compact
+            />
+          )}
           <div className="flex flex-wrap gap-2">
             {assignmentChanged ? (
               <AdminButton

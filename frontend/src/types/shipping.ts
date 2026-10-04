@@ -225,8 +225,12 @@ export interface ShipmentList {
 }
 
 export interface ShipmentFilters {
+  /** A Shipment ID (number or AWB) or an Order ID, matched exactly. */
   q?: string;
+  /** An Order ID, matched exactly. */
+  order?: string;
   status?: string;
+  /** A courier's code, matched exactly. */
   courier?: string;
   provider?: string;
   from?: string;

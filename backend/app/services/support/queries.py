@@ -8,7 +8,9 @@ from typing import List, Optional, Tuple
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Customer, Order, SupportAgent, SupportTicket
+from app.models import Customer, Order, Product, SupportAgent, SupportTicket
+from app.services.lookup.filters import any_id_condition, id_condition
+from app.services.search.base import LIKE_ESCAPE, escape_like
 from app.services.support import config
 from app.services.support import tickets as ticket_service
 from app.utils.dates import parse_dt
@@ -18,12 +20,11 @@ def customer_tickets(db: Session, customer: Customer, *, group: str = "", query:
     statement = select(SupportTicket).where(SupportTicket.customer_id == customer.id)
     if group in ticket_service.CUSTOMER_GROUPS:
         statement = statement.where(SupportTicket.status.in_(ticket_service.CUSTOMER_GROUPS[group]))
-    text = (query or "").strip()
-    if text:
-        like = f"%{text}%"
-        statement = statement.outerjoin(Order, Order.id == SupportTicket.order_id).where(or_(
-            SupportTicket.number.ilike(like), SupportTicket.subject.ilike(like), Order.order_number.ilike(like),
-        ))
+    # The box takes a request number or an order number (docs/id-lookup.md), matched
+    # exactly; it is inside `customer_id == customer.id`, so it never widens the list.
+    by_id = any_id_condition(query, ("ticket", None, None), ("order", SupportTicket.order_id, Order.id))
+    if by_id is not None:
+        statement = statement.where(by_id)
     return list(db.execute(statement.order_by(SupportTicket.updated_at.desc()).limit(200)).scalars().all())
 
 
@@ -81,22 +82,23 @@ def staff_tickets(
         if values:
             statement = statement.where(column.in_(values))
 
-    agent = filters.get("agent") or ""
+    # Records are named by their ID, exactly (docs/id-lookup.md): a support agent's
+    # number, a Customer ID, an Order ID, a Product ID. A name or an email keeps nothing.
+    agent = (filters.get("agent") or "").strip()
     if agent == "me":
         statement = statement.where(SupportTicket.agent_id == (me.id if me else -1))
     elif agent == "unassigned":
         statement = statement.where(SupportTicket.agent_id.is_(None))
-    elif agent.isdigit():
-        statement = statement.where(SupportTicket.agent_id == int(agent))
-
-    if filters.get("customer"):
-        statement = statement.where(SupportTicket.customer_id == filters["customer"])
-    if filters.get("order"):
-        order_text = str(filters["order"]).strip()
-        statement = statement.outerjoin(Order, Order.id == SupportTicket.order_id).where(
-            or_(SupportTicket.order_id == order_text, Order.order_number == order_text))
-    if filters.get("product"):
-        statement = statement.where(SupportTicket.product_id == filters["product"])
+    else:
+        by_agent = id_condition("support_agent", agent, column=SupportTicket.agent_id, via=SupportAgent.id)
+        if by_agent is not None:
+            statement = statement.where(by_agent)
+    for key, entity, column, via in (("customer", "customer", SupportTicket.customer_id, Customer.id),
+                                     ("order", "order", SupportTicket.order_id, Order.id),
+                                     ("product", "product", SupportTicket.product_id, Product.id)):
+        condition = id_condition(entity, filters.get(key), column=column, via=via)
+        if condition is not None:
+            statement = statement.where(condition)
     if filters.get("membership") == "1":
         statement = statement.where(SupportTicket.membership_id.is_not(None))
 
@@ -118,16 +120,15 @@ def staff_tickets(
         statement = statement.where(SupportTicket.status.in_(ticket_service.OPEN), SupportTicket.sla_breached.is_(False),
                                     SupportTicket.resolve_due_at > now + timedelta(hours=2))
 
-    text = (filters.get("q") or "").strip()
-    if text:
-        like = f"%{text}%"
-        agent_ids = select(SupportAgent.id).where(SupportAgent.name.ilike(like))
-        statement = statement.where(or_(
-            SupportTicket.number.ilike(like), SupportTicket.subject.ilike(like), SupportTicket.email.ilike(like),
-            SupportTicket.name.ilike(like), SupportTicket.order_id == text, SupportTicket.product_id == text,
-            SupportTicket.agent_id.in_(agent_ids),
-            SupportTicket.order_id.in_(select(Order.id).where(Order.order_number.ilike(like))),
-        ))
+    # `q` is a ticket's ID — its number (DCZ-2026-000123) or TKT id — matched exactly.
+    by_ticket = id_condition("ticket", filters.get("q"))
+    if by_ticket is not None:
+        statement = statement.where(by_ticket)
+    # `subject` is content, not identity: words in what the customer wrote as the
+    # subject. It never matches a name, an email or an agent.
+    words = (filters.get("subject") or "").strip()[:120]
+    if words:
+        statement = statement.where(SupportTicket.subject.ilike(f"%{escape_like(words)}%", escape=LIKE_ESCAPE))
 
     total = db.execute(select(func.count()).select_from(statement.order_by(None).subquery())).scalar_one()
 

@@ -182,6 +182,100 @@ class TestCreatingAProduct:
         assert explicit["isReturnable"] is False and explicit["isReplaceable"] is False
 
 
+class TestSavingTheSameChildrenAgain:
+    """The portal sends every list on each save; keeping what is already there must not collide with itself."""
+
+    CHILDREN = {
+        "tags": ["accessories", "summer"],
+        "colors": [{"name": "Terracotta", "hex": "#a0522d", "images": ["https://example.com/t.jpg"]}],
+        "sizes": ["S", "M"],
+        "specifications": [{"label": "Material", "value": "Acetate"}],
+        "images": ["https://example.com/a.jpg", "https://example.com/b.jpg"],
+    }
+
+    def test_saving_twice_with_the_same_tags_colours_sizes_and_images(self, client, admin_auth, catalogue):
+        first = update(client, admin_auth, **self.CHILDREN)
+        assert first.status_code == 200, first.text
+        # The edit that used to fail: change only the stock, resending the lists unchanged.
+        again = update(client, admin_auth, stock=2, **self.CHILDREN)
+        assert again.status_code == 200, again.text
+        data = again.json()["data"]
+        assert data["stock"] == 2 and data["tags"] == ["accessories", "summer"]
+        assert [c["name"] for c in data["colors"]] == ["Terracotta"] and data["sizes"] == ["S", "M"]
+
+    def test_keeping_some_tags_and_adding_others(self, client, admin_auth, catalogue):
+        assert update(client, admin_auth, tags=["a", "b"]).status_code == 200
+        response = update(client, admin_auth, tags=["b", "c", "a"])
+        assert response.status_code == 200, response.text
+        assert sorted(response.json()["data"]["tags"]) == ["a", "b", "c"]
+
+
+class TestCategoryById:
+    """The portal names a product's category by Category ID (`categoryId`); the slug still works."""
+
+    def _without_slug(self, **extra):
+        return {**{k: v for k, v in NEW_PRODUCT.items() if k != "category"}, **extra}
+
+    def test_create_with_a_category_id(self, client, admin_auth, catalogue):
+        response = client.post("/api/products", headers=admin_auth, json=self._without_slug(categoryId="CAT002"))
+        assert response.status_code == 201, response.text
+        data = response.json()["data"]
+        assert data["categoryId"] == "CAT002"
+        assert data["category"] == "electronics"
+        assert data["sku"].startswith("DCZ-EL")
+
+    def test_the_id_is_normalised_but_matched_exactly(self, client, admin_auth, catalogue):
+        response = client.post("/api/products", headers=admin_auth, json=self._without_slug(categoryId=" cat-002 "))
+        assert response.status_code == 201, response.text
+        assert response.json()["data"]["categoryId"] == "CAT002"
+
+    @pytest.mark.parametrize("bad", ["CAT999", "CAT00", "electronics", "Electronics", "'; DROP TABLE categories; --"])
+    def test_an_unknown_category_id_is_refused(self, client, db, admin_auth, catalogue, bad):
+        response = client.post("/api/products", headers=admin_auth, json=self._without_slug(categoryId=bad))
+        assert response.status_code == 422, response.text
+        body = response.json()
+        assert body["error_code"] == "CATEGORY_NOT_FOUND"
+        assert "Category ID" in body["message"]
+        assert db.query(Product).count() == 4
+
+    def test_the_category_id_wins_over_the_slug(self, client, admin_auth, catalogue):
+        response = create(client, admin_auth, category="women", categoryId="CAT002")
+        assert response.status_code == 201, response.text
+        assert response.json()["data"]["categoryId"] == "CAT002"
+
+    def test_the_legacy_slug_still_works(self, client, admin_auth, catalogue):
+        data = create(client, admin_auth).json()["data"]
+        assert data["category"] == "women" and data["categoryId"] == "CAT001"
+
+    def test_a_blank_category_id_falls_back_to_the_slug_or_is_missing(self, client, admin_auth, catalogue):
+        assert create(client, admin_auth, categoryId="").status_code == 201
+        response = client.post("/api/products", headers=admin_auth, json=self._without_slug(categoryId="  "))
+        assert response.status_code == 422 and response.json()["error_code"] == "PRODUCT_INCOMPLETE"
+
+    def test_update_moves_the_product_by_category_id(self, client, db, admin_auth, catalogue):
+        response = update(client, admin_auth, categoryId="CAT002", subcategory="audio")
+        assert response.status_code == 200, response.text
+        assert response.json()["data"]["categoryId"] == "CAT002"
+        db.expire_all()
+        assert db.get(Product, "PRD001").category_id == "CAT002"
+
+    def test_update_refuses_an_unknown_category_id_and_changes_nothing(self, client, db, admin_auth, catalogue):
+        response = update(client, admin_auth, categoryId="CAT404", price=1)
+        assert response.status_code == 422 and response.json()["error_code"] == "CATEGORY_NOT_FOUND"
+        db.expire_all()
+        product = db.get(Product, "PRD001")
+        assert product.category_id == "CAT001" and float(product.price) != 1
+
+    def test_update_with_the_legacy_slug_still_works(self, client, db, admin_auth, catalogue):
+        assert update(client, admin_auth, category="electronics").status_code == 200
+        db.expire_all()
+        assert db.get(Product, "PRD001").category_id == "CAT002"
+
+    def test_the_portal_reads_the_category_id(self, client, admin_auth, catalogue):
+        data = client.get("/api/admin/products/PRD003", headers=admin_auth).json()["data"]
+        assert data["categoryId"] == "CAT002" and data["category"] == "electronics"
+
+
 class TestWhoMayWrite:
     def test_anonymous_writes_are_refused(self, client, db, catalogue):
         assert client.post("/api/products", json=NEW_PRODUCT).status_code == 401
@@ -516,8 +610,10 @@ class TestThePortalList:
         assert set(ids(client.get(f"/api/admin/products?status={status}", headers=admin_auth))) == expected
 
     def test_the_portal_list_takes_the_same_filters(self, client, admin_auth, catalogue):
-        response = client.get("/api/admin/products?search=jacket&sort=price-desc", headers=admin_auth)
+        response = client.get("/api/admin/products?q=PRD004&sort=price-desc", headers=admin_auth)
         assert ids(response) == ["PRD004"]
+        assert ids(client.get("/api/admin/products?q=DCZ-WO0004&status=draft", headers=admin_auth)) == ["PRD004"]
+        assert ids(client.get("/api/admin/products?q=jacket", headers=admin_auth)) == []
 
     def test_the_portal_reads_one_product_including_a_draft(self, client, admin_auth, catalogue):
         data = client.get("/api/admin/products/PRD004", headers=admin_auth).json()["data"]

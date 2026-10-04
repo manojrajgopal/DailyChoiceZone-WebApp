@@ -5,84 +5,46 @@ import { setUpAdmin } from "@/test/sliceB-admin";
 
 import { EMPTY_SEARCH_RESULTS, listNotifications, markAllNotificationsRead, markNotificationRead, search } from "./adminSearchService";
 
-const PRODUCT = { id: "P1", name: "Cotton Kurta", sku: "SKU1", brand: "Daily Choice", category: "women", subcategory: "kurtas" };
-const ORDER = { id: "O1", orderNumber: "DCZ100", customerName: "Asha Menon", customerEmail: "asha@x.com", status: "pending" };
-const CUSTOMER = { id: "C1", firstName: "Asha", lastName: "Menon", email: "asha@x.com", phone: "9999999999" };
-const INVOICE = { id: "I1", invoiceNumber: "INV-1", customerName: "Asha", breakdown: { grandTotal: 10000 } };
-const PAYMENT = { id: "PAY1", transactionId: "TXN1", customerName: "Asha", amount: 10000 };
-const REFUND = { id: "R1", refundNumber: "RFD-1", customerName: "Asha", amount: 500 };
+const FOUND = {
+  query: "DCZ1",
+  total: 3,
+  groups: [
+    { entity: "order", label: "Order", idLabel: "Order ID", query: "DCZ1", hasMore: true, items: [{ id: "DCZ10001" }, { id: "DCZ10002" }] },
+    { entity: "product", label: "Product", idLabel: "Product ID", query: "DCZ1", hasMore: false, items: [{ id: "PRD007", match: "DCZ-AC0140" }] },
+  ],
+};
 
 beforeEach(() => {
   setUpAdmin();
-  api.get(/^\/admin\/products/, [PRODUCT]);
-  api.get(/^\/admin\/orders/, [ORDER]);
-  api.get("/admin/customers", [CUSTOMER]);
-  api.get(/^\/admin\/billing\/invoices/, [INVOICE]);
-  api.get(/^\/admin\/billing\/payments/, [PAYMENT]);
-  api.get(/^\/admin\/billing\/refunds/, [REFUND]);
 });
 
 describe("search", () => {
   it("is empty for a term shorter than two characters, without calling anything", async () => {
-    const result = await search("a");
-    expect(result).toEqual(EMPTY_SEARCH_RESULTS);
-    expect(api.calls).toHaveLength(0);
+    expect(await search("D")).toEqual(EMPTY_SEARCH_RESULTS);
+    expect(api.requests()).toHaveLength(0);
   });
 
-  it("asks the server for matching products, one page of perGroup, instead of loading the catalogue", async () => {
-    const result = await search(" kurta ");
-    expect(result.products).toHaveLength(1);
-    expect(result.products[0]).toMatchObject({ kind: "product", id: "P1", title: "Cotton Kurta", subtitle: "SKU1 · Daily Choice", href: "/admin/products/edit?id=P1" });
-    const requests = api.requests("GET", "/admin/products");
-    expect(requests).toHaveLength(1);
-    expect(requests[0]!.query.get("search")).toBe("kurta");
-    expect(requests[0]!.query.get("pageSize")).toBe("5");
+  it("asks the ID lookup once — never a list download", async () => {
+    api.get("/admin/lookup", FOUND);
+    await search(" DCZ1 ", 4);
+    expect(api.requests()).toHaveLength(1);
+    const request = api.last("GET", "/admin/lookup")!;
+    expect(request.query.get("q")).toBe("DCZ1");
+    expect(request.query.get("perEntity")).toBe("4");
+    expect(api.requests("GET", /^\/admin\/(orders|customers|products|billing)/)).toHaveLength(0);
   });
 
-  it("shows the server's product hits as they come, capped at perGroup", async () => {
-    api.get(/^\/admin\/products/, [PRODUCT, { ...PRODUCT, id: "P2" }, { ...PRODUCT, id: "P3" }]);
-    const result = await search("anything", 2);
-    expect(result.products.map((hit) => hit.id)).toEqual(["P1", "P2"]);
-    expect(api.last("GET", "/admin/products")!.query.get("pageSize")).toBe("2");
+  it("groups the IDs by entity and totals them", async () => {
+    api.get("/admin/lookup", FOUND);
+    const results = await search("DCZ1");
+    expect(results.total).toBe(3);
+    expect(results.groups.map((g) => g.entity)).toEqual(["order", "product"]);
+    expect(results.groups[1]!.items[0]).toEqual({ entity: "product", label: "Product", id: "PRD007", match: "DCZ-AC0140" });
   });
 
-  it("requires every word to match orders and customers (an AND search)", async () => {
-    const result = await search("asha skirt");
-    expect(result.customers).toHaveLength(0);
-    expect(result.orders).toHaveLength(0);
-  });
-
-  it("matches orders, customers and shapes billing hits straight through", async () => {
-    const result = await search("asha");
-    expect(result.customers[0]).toMatchObject({ kind: "customer", title: "Asha Menon", subtitle: "asha@x.com" });
-    expect(result.orders[0]).toMatchObject({ kind: "order", title: "DCZ100" });
-    expect(result.invoices[0]).toMatchObject({ kind: "invoice", href: "/admin/billing/invoices/detail?id=I1" });
-    expect(result.payments[0]).toMatchObject({ kind: "payment", href: "/admin/billing/payments/detail?id=PAY1" });
-    expect(result.refunds[0]).toMatchObject({ kind: "refund", href: "/admin/billing/refunds" });
-  });
-
-  it("totals every group's hits", async () => {
-    const result = await search("asha");
-    expect(result.total).toBe(result.products.length + result.orders.length + result.customers.length + result.invoices.length + result.payments.length + result.refunds.length);
-  });
-
-  it("caps each group at perGroup", async () => {
-    api.get("/admin/customers", [CUSTOMER, { ...CUSTOMER, id: "C2" }, { ...CUSTOMER, id: "C3" }]);
-    const result = await search("asha", 2);
-    expect(result.customers).toHaveLength(2);
-  });
-
-  it("still searches everything else when the role can't list customers (403)", async () => {
-    api.get("/admin/customers", fail(403, "Forbidden", "FORBIDDEN"));
-    const result = await search("asha");
-    expect(result.customers).toEqual([]);
-    expect(result.orders[0]).toMatchObject({ kind: "order", title: "DCZ100" });
-    expect(result.invoices).toHaveLength(1);
-  });
-
-  it("is case-insensitive", async () => {
-    const result = await search("ASHA");
-    expect(result.customers).toHaveLength(1);
+  it("lets a failure reach the caller", async () => {
+    api.get("/admin/lookup", fail(500, "boom"));
+    await expect(search("DCZ1")).rejects.toThrow();
   });
 });
 

@@ -7,6 +7,7 @@ import { AlertTriangle, CheckCircle2, Download, Eye, PackageCheck, Pencil, Plus,
 
 import { AdminButton, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/ui/AdminForm";
+import { IdSelector } from "@/components/common/IdSelector";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate, formatPrice } from "@/lib/utils/format";
@@ -43,7 +44,6 @@ export function AdminPackingJobView() {
   const params = useSearchParams();
   const id = Number(params?.get("id") ?? "");
   const loaded = useAdminResource(() => packing.getPackingJob(id), [id], { enabled: Number.isInteger(id) && id > 0 });
-  const staff = useAdminResource(() => packing.listPackingStaff(), []);
   // What an action returned, until the job is loaded again (or another one is opened).
   const [latest, setLatest] = useState<PackingJob | null>(null);
   const job = latest?.id === id ? latest : (loaded.data ?? null);
@@ -142,15 +142,31 @@ export function AdminPackingJobView() {
       {/* ------------------------------------------------------- next steps */}
       <AdminCard className="mb-5">
         <div className="flex flex-wrap items-end gap-3">
-          <AdminSelect
-            label="Assigned to"
-            value={job.assignedTo?.id ?? ""}
-            disabled={!a.assign || busy !== null}
-            onChange={(event) => void run("assign", () => packing.assignPacking(job.id, event.target.value || null),
-              event.target.value ? "Assigned." : "Unassigned.")}
-            options={[{ value: "", label: "Unassigned" }, ...(staff.data ?? []).map((p) => ({ value: p.id, label: p.name }))]}
-            className="min-w-[12rem]"
-          />
+          {/* Who packs it: an Admin user ID (docs/id-lookup.md); the server accepts only staff who can pack. */}
+          {a.assign && busy === null ? (
+            <IdSelector
+              entity="admin_user"
+              label="Assigned to (Admin user ID)"
+              value={job.assignedTo?.id ?? null}
+              onChange={(id) => void run("assign", () => packing.assignPacking(job.id, id), id ? "Assigned." : "Unassigned.")}
+              hint="Someone who can pack."
+              compact
+              className="min-w-[14rem]"
+            />
+          ) : (
+            <div className="flex min-w-[12rem] flex-col gap-1.5">
+              <span className="text-xs font-medium text-admin-ink">Assigned to</span>
+              <span className="text-[0.8125rem] text-admin-ink">
+                {job.assignedTo ? (
+                  <>
+                    {job.assignedTo.name} <span className="font-mono text-admin-muted">{job.assignedTo.id}</span>
+                  </>
+                ) : (
+                  <span className="text-admin-muted">Unassigned</span>
+                )}
+              </span>
+            </div>
+          )}
           <AdminSelect
             label="Priority"
             value={job.priority}

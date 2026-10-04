@@ -603,8 +603,27 @@ class TestAnalyticsAndLists:
         only_sent = shop.get("/api/admin/campaigns", headers=admin_auth, params={"status": "sent"}).json()["data"]
         assert [i["id"] for i in only_sent["items"]] == [sent["id"]] and only_sent["items"][0]["sent"] == 1  # the bell counts as delivered
         assert only_sent["counts"] == {"sent": 1, "draft": 1}  # tabs ignore the filter
-        named = shop.get("/api/admin/campaigns", headers=admin_auth, params={"q": "winter"}).json()["data"]
-        assert [i["name"] for i in named["items"]] == ["Winter draft"] and "sent" not in named["items"][0]
+        winter = [i for i in everything["items"] if i["name"] == "Winter draft"][0]
+        by_id = shop.get("/api/admin/campaigns", headers=admin_auth, params={"q": str(winter["id"])}).json()["data"]
+        assert [i["name"] for i in by_id["items"]] == ["Winter draft"] and "sent" not in by_id["items"][0]
+
+    def test_the_list_box_takes_a_campaign_id_exactly(self, shop, db, admin_auth):
+        """docs/id-lookup.md: the ID, exactly; a name, a prefix or junk finds nothing (and never a 500)."""
+        first = draft(shop, admin_auth, name="Winter draft")
+        longer_id = int(f"{first['id']}1")
+        now = datetime.utcnow()
+        db.add(MarketingCampaign(id=longer_id, name="Winter longer", channels=["in_app"], audience={}, content={},
+                                 created_at=now, updated_at=now))
+        db.flush()
+        def ids(q):
+            response = shop.get("/api/admin/campaigns", headers=admin_auth, params={"q": q})
+            assert response.status_code == 200, response.text
+            return [i["id"] for i in response.json()["data"]["items"]]
+        assert ids(str(first["id"])) == [first["id"]]  # never the longer ID it is a prefix of
+        assert ids(f"#{first['id']}") == [first["id"]]
+        assert ids(str(longer_id)) == [longer_id]
+        for text in ("Winter", "winter draft", "'; DROP TABLE marketing_campaigns; --", "a@b.com", "999999"):
+            assert ids(text) == []
 
     def test_recipients_filter_by_channel_and_status(self, shop, db, admin_auth, email_account):  # noqa: F811
         opt_in(db, "CUS001", "email", "in_app")

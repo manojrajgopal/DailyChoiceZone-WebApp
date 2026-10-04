@@ -40,13 +40,14 @@ import secrets
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import false, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings as app_settings
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import AdminUser, Customer, GiftCard, GiftCardTransaction, SettingDocument
 from app.services import billing
+from app.services.lookup.filters import id_condition
 
 logger = logging.getLogger(__name__)
 
@@ -682,7 +683,15 @@ def admin_refund_unused(db: Session, admin: AdminUser, card_id: int, *, reason: 
     return card
 
 
-def admin_search(db: Session, *, status: str = "", q: str = "", page: int = 1, page_size: int = 25) -> tuple:
+def admin_search(db: Session, *, status: str = "", q: str = "", customer: str = "", code: str = "",
+                 page: int = 1, page_size: int = 25) -> tuple:
+    """
+    The portal's list. Cards are found by ID only (docs/id-lookup.md): `q` is a
+    Gift card ID (`GC12`, or the `GC-000012` reference), `customer` the
+    purchaser's Customer ID, and `code` a whole gift card code — itself an
+    identifier, compared by its hash. Names, emails and the last four
+    characters are not identifiers and are not searched.
+    """
     now = datetime.utcnow()
     conditions = []
     if status == "partially-used":
@@ -692,21 +701,15 @@ def admin_search(db: Session, *, status: str = "", q: str = "", page: int = 1, p
                               (GiftCard.status == "active") & (GiftCard.expires_at <= now)))
     elif status:
         conditions.append(GiftCard.status == status)
-    text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        people = select(Customer.id).where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                               Customer.last_name.ilike(like)))
-        options = [GiftCard.recipient_email.ilike(like), GiftCard.recipient_name.ilike(like),
-                   GiftCard.purchaser_id.in_(people)]
-        digits = re.sub(r"\D", "", text.upper().replace("GC", ""))
-        if digits and text.upper().startswith("GC"):
-            options.append(GiftCard.id == int(digits))
-        if len(normalise(text)) == 4:
-            options.append(GiftCard.code_last4 == normalise(text))
-        if len(normalise(text)) == CODE_LENGTH:
-            options.append(GiftCard.code_hash == hash_code(text))
-        conditions.append(or_(*options))
+    # `GC-000123` (the reference the portal shows) is `GC123`.
+    by_id = id_condition("gift_card", (q or "").replace("-", ""))
+    if by_id is not None:
+        conditions.append(by_id)
+    by_customer = id_condition("customer", customer, column=GiftCard.purchaser_id)
+    if by_customer is not None:
+        conditions.append(by_customer)
+    if (code or "").strip():
+        conditions.append(GiftCard.code_hash == hash_code(code) if len(normalise(code)) == CODE_LENGTH else false())
     total = db.execute(select(func.count()).select_from(GiftCard).where(*conditions)).scalar_one()
     rows = db.execute(select(GiftCard).where(*conditions).order_by(GiftCard.id.desc())
                       .offset((max(1, page) - 1) * page_size).limit(page_size)).scalars().all()

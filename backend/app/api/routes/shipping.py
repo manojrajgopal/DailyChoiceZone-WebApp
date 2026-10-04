@@ -81,9 +81,10 @@ async def courier_webhook(code: str, request: Request, db: Session = Depends(get
 
 @admin_router.get("", summary="Shipments")
 def list_shipments(
-    q: str = Query("", max_length=80),
+    q: str = Query("", max_length=80, description="Shipment ID (number or AWB) or Order ID, exact"),
+    order: str = Query("", max_length=80, description="Order ID, exact"),
     status: str = Query("", max_length=30),
-    courier: str = Query("", max_length=60),
+    courier: str = Query("", max_length=60, description="Courier code, exact"),
     provider: str = Query("", max_length=30),
     date_from: str = Query("", alias="from", max_length=10),
     date_to: str = Query("", alias="to", max_length=10),
@@ -92,7 +93,7 @@ def list_shipments(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(shipments_access),
 ):
-    items, total, counts = service.search(db, q=q, status=status, courier=courier, provider=provider,
+    items, total, counts = service.search(db, q=q, order=order, status=status, courier=courier, provider=provider,
                                           date_from=date_from, date_to=date_to, page=page, page_size=page_size)
     return ok({"items": items, "pagination": Pagination.build(page, page_size, total).model_dump(),
                "counts": counts})

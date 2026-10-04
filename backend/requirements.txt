@@ -36,6 +36,9 @@ python-multipart==0.0.20
 # by a camera — see `app/services/payments/qr_image.py`.
 pillow==12.3.0
 
+# PDFs: packing slips and shipping labels — see app/services/fulfilment/pdf.py
+fpdf2==2.8.9
+
 # Time zones for `zoneinfo`. Windows has no system tz database, so without
 # this the support desk's business hours (a configurable zone) can't be read.
 tzdata==2026.4

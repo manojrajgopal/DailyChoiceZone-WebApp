@@ -55,6 +55,7 @@ from app.core.config import settings as app_settings
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import Address, AdminUser, Customer, Order, Referral, ReferralCode, SettingDocument
 from app.services import audit, billing
+from app.services.lookup.filters import any_id_condition
 
 logger = logging.getLogger(__name__)
 
@@ -561,12 +562,12 @@ def admin_list(db: Session, *, status: str = "", q: str = "", page: int = 1, pag
     conditions = []
     if status in STATUSES:
         conditions.append(Referral.status == status)
-    if q:
-        like = f"%{q.strip()}%"
-        matching = select(Customer.id).where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                                 Customer.last_name.ilike(like), Customer.id == q.strip()))
-        conditions.append(or_(Referral.code == q.strip().upper(), Referral.referrer_id.in_(matching),
-                              Referral.referee_id.in_(matching)))
+    if q and q.strip():
+        # Identifiers only (docs/id-lookup.md): the referral code exactly, or a
+        # Customer ID on either side. Names and emails match nothing.
+        conditions.append(or_(Referral.code == q.strip().upper(),
+                              any_id_condition(q, ("customer", Referral.referrer_id, None),
+                                               ("customer", Referral.referee_id, None))))
     counts = dict(db.execute(select(Referral.status, func.count()).group_by(Referral.status)).all())
     total = db.execute(select(func.count()).select_from(Referral).where(*conditions)).scalar_one()
     rows = db.execute(select(Referral).where(*conditions).order_by(Referral.created_at.desc(), Referral.id.desc())

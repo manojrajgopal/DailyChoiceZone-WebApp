@@ -52,10 +52,37 @@ class TestEmailLog:
         assert failed["counts"]["sent"] == 27
         typed = client.get("/api/admin/email/log/search?type=support_updates", headers=admin_auth).json()["data"]
         assert typed["pagination"]["total"] == 10
-        found = client.get("/api/admin/email/log/search?q=person7@", headers=admin_auth).json()["data"]
-        assert [r["recipient"] for r in found["items"]] == ["person7@example.com"]
         by_ref = client.get("/api/admin/email/log/search?q=DCZ10012", headers=admin_auth).json()["data"]
-        assert by_ref["pagination"]["total"] == 1
+        assert [r["reference"] for r in by_ref["items"]] == ["DCZ10012"]
+        # Typed with a leading # and in lower case: the same ID.
+        assert client.get("/api/admin/email/log/search?q=%23dcz10012",
+                          headers=admin_auth).json()["data"]["pagination"]["total"] == 1
+
+    def test_reference_is_exact_and_recipient_never_identifies(self, client, admin_auth, emails):
+        def total(params: str) -> int:
+            response = client.get(f"/api/admin/email/log/search?{params}", headers=admin_auth)
+            assert response.status_code == 200
+            return response.json()["data"]["pagination"]["total"]
+
+        # A partial or a longer reference is a different ID.
+        assert total("q=DCZ1001") == 0
+        assert total("q=DCZ100123") == 0
+        # The recipient's address (or part of it) identifies a customer: never matched.
+        assert total("q=person7@example.com") == 0
+        assert total("q=person7") == 0
+        # Junk is an empty list, not an error.
+        assert total("q=%27%3B%20DROP%20TABLE%20email_log%3B--") == 0
+        assert total("q=%25") == 0
+
+    def test_subject_words_are_content(self, client, admin_auth, emails):
+        data = client.get("/api/admin/email/log/search?subject=number%2017", headers=admin_auth).json()["data"]
+        assert [r["subject"] for r in data["items"]] == ["Message number 17"]
+        # % is the character itself, not a wildcard.
+        assert client.get("/api/admin/email/log/search?subject=%25",
+                          headers=admin_auth).json()["data"]["pagination"]["total"] == 0
+        # A recipient's address is not in the subject, so it finds nothing here either.
+        assert client.get("/api/admin/email/log/search?subject=person7",
+                          headers=admin_auth).json()["data"]["pagination"]["total"] == 0
 
     def test_date_range(self, client, admin_auth, emails):
         since = (datetime.utcnow() - timedelta(hours=5, minutes=30)).isoformat()
@@ -107,8 +134,10 @@ class TestMembers:
         assert [r["id"] for r in legacy] == ["MEM903"]
 
     def test_search_by_customer_and_plan(self, client, admin_auth, members, other_customer):
+        by_id = client.get(f"/api/admin/memberships/search?q={other_customer.id}", headers=admin_auth).json()["data"]
+        assert by_id["items"] and all(r["customerEmail"] == other_customer.email for r in by_id["items"])
         by_email = client.get(f"/api/admin/memberships/search?q={other_customer.email}", headers=admin_auth).json()["data"]
-        assert by_email["items"] and all(r["customerEmail"] == other_customer.email for r in by_email["items"])
+        assert by_email["items"] == []
         by_plan = client.get("/api/admin/memberships/search?plan=MBP902", headers=admin_auth).json()["data"]
         assert all(r["planName"] == "VIP" for r in by_plan["items"])
 

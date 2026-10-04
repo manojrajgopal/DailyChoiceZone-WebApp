@@ -5,7 +5,8 @@ import { Download, Gift, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminTextarea, AdminToggle } from "@/components/admin/ui/AdminForm";
-import { LogFooter, LogSearch, StatusTabs, collectPages, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, collectPages, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { Badge, Detail, TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -22,7 +23,7 @@ import {
 } from "@/services/admin/engagementAdminService";
 import { toast } from "@/store/toastStore";
 
-const KEYS = ["status", "q"] as const;
+const KEYS = ["status", "q", "customer"] as const;
 
 const rupees = (value: number) =>
   `₹${value.toLocaleString("en-IN", { minimumFractionDigits: value % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
@@ -42,6 +43,10 @@ const STATUS: Record<string, { label: string; tone: "green" | "amber" | "red" | 
  * Gift cards: who bought or was sent them, what's left on each, and their
  * history. Codes are never shown here — only the last four characters; a
  * card whose email went astray gets a new code instead.
+ *
+ * A card is found by ID (docs/id-lookup.md): its Gift card ID, its
+ * purchaser's Customer ID, or a whole code someone reads out. The code is kept
+ * out of the address bar — it is what spends the card.
  */
 export function AdminGiftCardsView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
@@ -49,15 +54,19 @@ export function AdminGiftCardsView() {
   const [issuing, setIssuing] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const list = useAdminResource(() => listGiftCards({ status: filters.status, q: filters.q, page, pageSize }), [filters, page, pageSize]);
+  const [codeText, setCodeText] = useState("");
+  const [code, setCode] = useState("");
+  const search = { status: filters.status, q: filters.q, customer: filters.customer, code };
+
+  const list = useAdminResource(() => listGiftCards({ ...search, page, pageSize }), [filters, code, page, pageSize]);
   const data = list.data;
   const counts = data?.counts ?? {};
-  const filtered = Boolean(filters.status || filters.q);
+  const filtered = Boolean(filters.status || filters.q || filters.customer || code);
 
   const exportCsv = async () => {
     setExporting(true);
     try {
-      const { rows, truncated } = await collectPages((p) => listGiftCards({ status: filters.status, q: filters.q, page: p, pageSize: 100 }));
+      const { rows, truncated } = await collectPages((p) => listGiftCards({ ...search, page: p, pageSize: 100 }));
       downloadCsv(
         `gift-cards-${new Date().toISOString().slice(0, 10)}.csv`,
         ["Reference", "Ends in", "Status", "Value (INR)", "Balance (INR)", "Source", "Purchaser", "Recipient", "Recipient email", "Created", "Expires"],
@@ -121,11 +130,37 @@ export function AdminGiftCardsView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search gift cards" value={filters.q} onChange={(q) => setFilters({ q })}
-          placeholder="Recipient, purchaser, GC-000123, last 4 or a full code" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="gift_card" value={filters.q} onChange={(q) => setFilters({ q })} className="min-w-[13rem]" />
+        <IdFilter entity="customer" value={filters.customer} onChange={(customer) => setFilters({ customer })}
+          label="Purchaser Customer ID" className="min-w-[13rem]" />
+        <form
+          className="flex min-w-[13rem] flex-col gap-1.5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setCode(codeText.trim());
+          }}
+        >
+          <label htmlFor="gift-card-code" className="text-xs font-medium text-admin-ink">Full gift card code</label>
+          <input
+            id="gift-card-code"
+            value={codeText}
+            onChange={(event) => {
+              setCodeText(event.target.value);
+              if (!event.target.value.trim()) setCode("");
+            }}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="DCZG-XXXX-XXXX-XXXX-XXXX, then Enter"
+            className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface px-2.5 font-mono text-[0.8125rem] text-admin-ink placeholder:text-admin-faint hover:border-admin-border-strong focus:border-copper-500"
+          />
+        </form>
         {filtered ? (
-          <AdminButton size="sm" variant="ghost" onClick={clear}>
+          <AdminButton size="sm" variant="ghost" onClick={() => {
+            setCodeText("");
+            setCode("");
+            clear();
+          }}>
             <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
             Clear filters
           </AdminButton>
@@ -151,7 +186,7 @@ export function AdminGiftCardsView() {
               <TableState columns={8} loading={list.isLoading && !data} failed={Boolean(list.error && !data)}
                 empty={Boolean(data && data.items.length === 0)} onRetry={() => void list.reload()}
                 title={filtered ? "No gift cards match" : "No gift cards yet"}
-                hint={filtered ? "Try a different filter or search." : "Cards appear when customers buy them or you issue one."} />
+                hint={filtered ? "Check the ID or code, or try a different filter." : "Cards appear when customers buy them or you issue one."} />
               {data?.items.map((row) => {
                 const status = STATUS[row.status] ?? STATUS.active!;
                 return (

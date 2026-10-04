@@ -6,7 +6,8 @@ import { RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect } from "@/components/admin/ui/AdminForm";
-import { LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -31,6 +32,9 @@ const KINDS = [
  * Store credit: customers' balances, each one's ledger, and adding or
  * removing credit. Every change needs a reason and is kept, with who made it;
  * a balance never changes without an entry.
+ *
+ * A customer is found by Customer ID (docs/id-lookup.md) — even one with no
+ * credit yet, so credit can be added to anyone. Names and emails are not IDs.
  */
 export function AdminStoreCreditView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
@@ -68,8 +72,8 @@ export function AdminStoreCreditView() {
         onChange={(view) => setFilters({ view })}
         tabs={[{ value: "", label: "With a balance" }, { value: "all", label: "Every credit account" }]}
       />
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Find a customer" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Name, email or customer ID — to add credit to anyone" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="customer" value={filters.q} onChange={(q) => setFilters({ q })} className="w-64" />
         {filters.q || filters.view ? (
           <AdminButton size="sm" variant="ghost" onClick={clear}>
             <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> Clear
@@ -93,8 +97,8 @@ export function AdminStoreCreditView() {
             <tbody className="divide-y divide-admin-border">
               <TableState columns={6} loading={list.isLoading && !data} failed={Boolean(list.error && !data)}
                 empty={Boolean(data && data.items.length === 0)} onRetry={() => void list.reload()}
-                title={searching ? "No customers match" : "No customer has store credit"}
-                hint={searching ? "Check the spelling, or search by email." : "Search for a customer to add credit to their account."} />
+                title={searching ? "No customer has that ID" : "No customer has store credit"}
+                hint={searching ? "Pick a Customer ID from the suggestions." : "Find a customer by Customer ID to add credit to their account."} />
               {data?.items.map((row) => (
                 <tr key={row.customer.id} className="hover:bg-admin-raised">
                   <td className={TD}>

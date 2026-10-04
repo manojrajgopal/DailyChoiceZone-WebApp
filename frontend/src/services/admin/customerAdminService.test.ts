@@ -14,6 +14,12 @@ describe("listCustomers / getCustomer / getCustomerOrders", () => {
     await customers.listCustomers();
     const request = api.last("GET", "/admin/customers")!;
     expect(request.headers.authorization).toBe("Bearer test-token");
+    expect(request.query.has("q")).toBe(false);
+  });
+
+  it("listCustomers sends a Customer ID as the exact-match q", async () => {
+    await customers.listCustomers("CUS002");
+    expect(api.last("GET", "/admin/customers")!.query.get("q")).toBe("CUS002");
   });
 
   it("getCustomer resolves null on a 404", async () => {

@@ -321,6 +321,7 @@ def list_all_products(
     status: Optional[Literal["all", "active", "draft", "out-of-stock", "archived"]] = None,
     stock: Optional[Literal["in-stock", "low-stock", "out-of-stock"]] = None,
     sort: Optional[AdminSort] = None,
+    q: Optional[str] = Query(None, max_length=64, description="A Product ID or SKU, matched exactly."),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
@@ -329,16 +330,24 @@ def list_all_products(
     filter, sort and page worked out here — the portal never downloads the
     catalogue to filter it. `counts` are per status with every other filter
     applied; `filters` are the categories and brands for the dropdowns.
+
+    A product is found by its ID or SKU (`q`, exact — docs/id-lookup.md), never
+    by name: the storefront's free-text `search` does not apply here.
     """
     from app.repositories import products as repo
+    from app.services.lookup.filters import id_condition
     from app.services.search import listing
 
     query.include_unpublished = True
+    query.search = None
     query.status = status
     query.stock_level = stock
     query.page_size = min(query.page_size, 100)
 
     prepared, _corrected = listing.prepare(db, query)
+    by_id = id_condition("product", q)
+    if by_id is not None:
+        prepared.conditions.append(("id", by_id))
     chosen = sort or ("relevance" if not prepared.terms.empty else "recommended")
     items, total = repo.query_products(db, query, prepared=prepared, sort=chosen)
     body = ok_list(

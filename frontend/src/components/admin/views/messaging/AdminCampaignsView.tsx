@@ -7,9 +7,12 @@ import { AlertCircle, CheckCircle2, Copy, Plus, RefreshCw, Send } from "lucide-r
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminCheckbox, AdminInput, AdminSelect, AdminTextarea, FormGrid } from "@/components/admin/ui/AdminForm";
-import { LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { ProductPicker, fromLocalInput, rupees, toLocalInput } from "@/components/admin/views/growth/shared";
 import { Badge, TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
+import { IdMultiSelect } from "@/components/common/IdMultiSelect";
+import { IdSelector } from "@/components/common/IdSelector";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDateTime } from "@/lib/support/format";
 import { cn } from "@/lib/utils/cn";
@@ -79,7 +82,7 @@ export function AdminCampaignsView() {
       />
       <StatusTabs label="Which campaigns" value={filters.status} onChange={(status) => setFilters({ status })}
         tabs={[{ value: "", label: "All" }, ...(Object.keys(STATUS) as CampaignStatus[]).map((s) => ({ value: s, label: STATUS[s].label, count: data?.counts[s] }))]} />
-      <div className="mb-3"><LogSearch label="Find a campaign" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Campaign name" /></div>
+      <div className="mb-3 max-w-sm"><IdFilter entity="campaign" value={filters.q} onChange={(q) => setFilters({ q })} /></div>
       <AdminCard padded={false}>
         <div className="overflow-x-auto">
           <table className={cn("w-full min-w-[52rem] text-left text-xs", list.isRefreshing && "opacity-60")}>
@@ -406,11 +409,9 @@ export function AdminCampaignDetailView() {
               <FormGrid>
                 <AdminSelect label="Customers" value={form.audience.segment} onChange={(e) => setAudience({ segment: e.target.value as Audience["segment"] })}
                   options={(opts?.segments ?? Object.keys(SEGMENT_LABELS)).map((s) => ({ value: s, label: SEGMENT_LABELS[s] ?? s }))} />
-                <AdminSelect label="Saved segment" value={form.audience.segmentId ? String(form.audience.segmentId) : ""}
-                  onChange={(e) => setAudience({ segmentId: e.target.value ? Number(e.target.value) : null })}
-                  hint="Only this segment's members; the filters here still apply on top."
-                  options={[{ value: "", label: "No segment" }, ...savedSegments.map((s) => ({ value: String(s.id), label: `${s.name} (${s.memberCount.toLocaleString("en-IN")})` })),
-                    ...(form.audience.segmentId && !savedSegments.some((s) => s.id === form.audience.segmentId) ? [{ value: String(form.audience.segmentId), label: `Segment #${form.audience.segmentId}` }] : [])]} />
+<IdSelector entity="segment" label="Saved segment — Segment ID" value={form.audience.segmentId ? String(form.audience.segmentId) : null}
+                  onChange={(id) => setAudience({ segmentId: id ? Number(id) : null })}
+                  hint="Only this segment's members; the filters here still apply on top." />
                 <AdminInput label="Joined in the last (days)" type="number" min={1} value={form.audience.joinedWithinDays ?? ""} onChange={(e) => setAudience({ joinedWithinDays: e.target.value ? Number(e.target.value) : null })} />
                 <AdminInput label="Ordered from" type="date" value={form.audience.orderedFrom ?? ""} onChange={(e) => setAudience({ orderedFrom: e.target.value || null })} />
                 <AdminInput label="Ordered until" name="orderedTo" error={errors.orderedTo} type="date" value={form.audience.orderedTo ?? ""} onChange={(e) => setAudience({ orderedTo: e.target.value || null })} />
@@ -421,19 +422,11 @@ export function AdminCampaignDetailView() {
                 <AdminInput label="At most this many orders" name="maxOrders" error={errors.maxOrders} type="number" min={0} value={form.audience.maxOrders ?? ""} onChange={(e) => setAudience({ maxOrders: e.target.value ? Number(e.target.value) : null })} />
               </FormGrid>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <IdMultiSelect entity="category" label="Bought from these categories — Category ID" values={form.audience.categoryIds ?? []}
+                  onChange={(categoryIds) => setAudience({ categoryIds })} emptyText="Any category." />
                 <div>
-                  <p className="mb-1 text-xs font-medium text-admin-ink">Bought from these categories</p>
-                  {(opts?.categories ?? []).map((c) => (
-                    <AdminCheckbox key={c.id} label={c.name} checked={(form.audience.categoryIds ?? []).includes(c.id)}
-                      onChange={(e) => setAudience({ categoryIds: (e.target as HTMLInputElement).checked ? [...(form.audience.categoryIds ?? []), c.id] : (form.audience.categoryIds ?? []).filter((x) => x !== c.id) })} />
-                  ))}
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium text-admin-ink">Membership plan</p>
-                  {(opts?.plans ?? []).length === 0 ? <p className="text-xs text-admin-muted">No plans.</p> : (opts?.plans ?? []).map((p) => (
-                    <AdminCheckbox key={p.id} label={p.name} checked={(form.audience.membershipPlanIds ?? []).includes(p.id)}
-                      onChange={(e) => setAudience({ membershipPlanIds: (e.target as HTMLInputElement).checked ? [...(form.audience.membershipPlanIds ?? []), p.id] : (form.audience.membershipPlanIds ?? []).filter((x) => x !== p.id) })} />
-                  ))}
+                  <IdMultiSelect entity="membership_plan" label="Membership plan — Plan ID" values={form.audience.membershipPlanIds ?? []}
+                    onChange={(membershipPlanIds) => setAudience({ membershipPlanIds })} emptyText="Any plan, or none." />
                   <div className="mt-2"><AdminCheckbox label="Has an abandoned bag" checked={Boolean(form.audience.abandonedCart)} onChange={(e) => setAudience({ abandonedCart: (e.target as HTMLInputElement).checked })} /></div>
                 </div>
               </div>

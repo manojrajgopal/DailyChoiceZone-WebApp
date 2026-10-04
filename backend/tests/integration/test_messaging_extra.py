@@ -746,13 +746,17 @@ class TestHistoryAndOverview:
         assert {i["id"] for i in self.listing(client, admin_auth, customer="CUS002")["items"]} == \
             {history["other_dead"].id}
 
-    def test_search_by_reference_name_number_or_provider_id(self, client, admin_auth, history):
-        assert [i["id"] for i in self.listing(client, admin_auth, q="DCZ2")["items"]] == [history["email_failed"].id]
-        by_name = {i["id"] for i in self.listing(client, admin_auth, q="Ravi")["items"]}
-        assert by_name == {history["other_dead"].id}
-        assert [i["id"] for i in self.listing(client, admin_auth, q="+919876500002")["items"]] == \
-            [history["other_dead"].id]
-        assert [i["id"] for i in self.listing(client, admin_auth, q="SMabc")["items"]] == [history["sms_sent"].id]
+    def test_search_by_reference_or_provider_id_exactly(self, client, admin_auth, history):
+        def ids(**params):
+            return [i["id"] for i in self.listing(client, admin_auth, **params)["items"]]
+
+        assert ids(q="DCZ200") == [history["email_failed"].id]
+        assert ids(q="SMabc") == [history["sms_sent"].id]
+        assert ids(customer="cus-002") == [history["other_dead"].id]
+        # Identifiers only (docs/id-lookup.md): part of one, a name, a phone number or an email finds nothing.
+        for q in ("DCZ2", "Ravi", "+919876500002", "shopper@example.com", "SMab"):
+            assert ids(q=q) == [], q
+        assert ids(customer="Ravi") == []
 
     def test_a_date_only_end_includes_that_whole_day(self, client, admin_auth, history):
         today = datetime.utcnow().strftime("%Y-%m-%d")

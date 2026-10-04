@@ -191,7 +191,7 @@ export const createBundle = (input: BundleInput) => apiPost<AdminBundle>("/admin
 export const updateBundle = (id: number, input: BundleInput) => apiPut<AdminBundle>(`/admin/bundles/${id}`, input, ADMIN);
 export const deleteBundle = (id: number) => apiDelete<void>(`/admin/bundles/${id}`, ADMIN);
 
-/** A product for the pickers: the portal's own product search. */
+/** A product for the pickers, built from its Product ID's lookup preview. */
 export interface PickableProduct {
   id: string;
   name: string;
@@ -201,10 +201,6 @@ export interface PickableProduct {
   reservedStock: number;
   status: string;
   images: string[];
-}
-
-export function searchProducts(q: string) {
-  return apiGet<PickableProduct[]>(`/admin/products${query({ search: q, pageSize: 20 })}`, ADMIN);
 }
 
 /* --------------------------------------------------------------- analytics */
@@ -347,9 +343,11 @@ export interface AuditEntry {
 }
 
 export interface AuditFilters {
+  /** A record's exact ID (PRD001, DCZ10241) or an action code (products.update) — never a name or email. */
   q?: string;
   action?: string;
   resourceType?: string;
+  /** Who did it: their Admin user ID (ADM001), exactly. */
   actor?: string;
   outcome?: string;
   from?: string;

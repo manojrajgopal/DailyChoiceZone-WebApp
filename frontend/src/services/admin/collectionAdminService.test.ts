@@ -56,11 +56,11 @@ describe("saveCollection", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("drops product ids that no longer exist in the catalogue", async () => {
-    api.get("/admin/products", [{ id: "P1" }]);
+  it("sends the chosen Product IDs without downloading the catalogue", async () => {
     api.post("/admin/collections", (req) => ({ id: "COL9", ...req.body }));
     const result = await collections.saveCollection({ ...base, productIds: ["P1", "P2"] });
-    expect(result).toMatchObject({ ok: true, data: { productIds: ["P1"] } });
+    expect(result).toMatchObject({ ok: true, data: { productIds: ["P1", "P2"] } });
+    expect(api.requests("GET", "/admin/products")).toHaveLength(0);
   });
 });
 

@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
@@ -87,6 +87,35 @@ def _resolve_category(db: Session, identifier: str) -> Category:
     return category
 
 
+def _resolve_category_id(db: Session, raw: str) -> Category:
+    """The category that Category ID names, exactly (`CAT001`, never a slug or `CAT0010`)."""
+    from app.services.lookup.filters import id_condition
+
+    condition = id_condition("category", raw)
+    category = (
+        db.execute(select(Category).where(condition)).scalar_one_or_none() if condition is not None else None
+    )
+    if category is None:
+        raise ValidationError(
+            f"Category ID {(raw or '').strip()} was not found.",
+            error_code="CATEGORY_NOT_FOUND",
+            details={"field": "categoryId"},
+        )
+    return category
+
+
+def _category_for(db: Session, payload: ProductWrite) -> Optional[Category]:
+    """
+    The category a write names: `category_id` (exact Category ID) first, then
+    the legacy `category` slug/id. None when the payload names neither.
+    """
+    if payload.category_id is not None and payload.category_id.strip():
+        return _resolve_category_id(db, payload.category_id)
+    if payload.category:
+        return _resolve_category(db, payload.category)
+    return None
+
+
 # ---------------------------------------------------------------- reading
 
 
@@ -121,6 +150,21 @@ def get_product_by_identifier(
 # ---------------------------------------------------------------- writing
 
 
+def _replace(db: Session, product: Product, attribute: str, rows: list) -> None:
+    """
+    Make `rows` the whole of one child collection.
+
+    On a saved product the old rows are deleted (flushed) before the new ones
+    are added. In a single flush SQLAlchemy inserts before it deletes orphans,
+    so keeping a tag the product already had would collide with its own old
+    row on `uq_product_tag`.
+    """
+    if inspect(product).persistent and getattr(product, attribute):
+        setattr(product, attribute, [])
+        db.flush()
+    setattr(product, attribute, rows)
+
+
 def _apply_children(db: Session, product: Product, payload: ProductWrite) -> None:
     """
     Replace the child collections the payload mentions.
@@ -141,10 +185,10 @@ def _apply_children(db: Session, product: Product, payload: ProductWrite) -> Non
         if payload.colors is not None:
             colours = list({color.name.strip(): color for color in payload.colors}.values())
             coloured = [(color.name.strip(), url) for color in colours for url in color.images]
-            product.colors = [
+            _replace(db, product, "colors", [
                 ProductColor(name=color.name.strip(), hex=color.hex, position=index)
                 for index, color in enumerate(colours)
-            ]
+            ])
         else:
             names = {color.name for color in product.colors}
             coloured = [
@@ -153,27 +197,27 @@ def _apply_children(db: Session, product: Product, payload: ProductWrite) -> Non
                 if image.color and image.color in names
             ]
 
-        product.images = [
+        _replace(db, product, "images", [
             ProductImage(url=url, color="", position=index)
             for index, url in enumerate(dict.fromkeys(shared))
         ] + [
             ProductImage(url=url, color=name, position=index)
             for index, (name, url) in enumerate(coloured)
-        ]
+        ])
 
     if payload.sizes is not None:
-        product.sizes = [
+        _replace(db, product, "sizes", [
             ProductSize(label=label, position=index) for index, label in enumerate(payload.sizes)
-        ]
+        ])
 
     if payload.specifications is not None:
-        product.specifications = [
+        _replace(db, product, "specifications", [
             ProductSpecification(label=spec.label, value=spec.value, position=index)
             for index, spec in enumerate(payload.specifications)
-        ]
+        ])
 
     if payload.tags is not None:
-        product.tags = [ProductTag(tag=tag) for tag in dict.fromkeys(payload.tags)]
+        _replace(db, product, "tags", [ProductTag(tag=tag) for tag in dict.fromkeys(payload.tags)])
 
 
 def create_product(db: Session, payload: ProductWrite, actor: Optional[str] = None) -> Product:
@@ -182,7 +226,7 @@ def create_product(db: Session, payload: ProductWrite, actor: Optional[str] = No
         name
         for name, value in (
             ("name", payload.name),
-            ("category", payload.category),
+            ("category", (payload.category_id or "").strip() or payload.category),
             ("price", payload.price),
         )
         if not value
@@ -193,7 +237,7 @@ def create_product(db: Session, payload: ProductWrite, actor: Optional[str] = No
             error_code="PRODUCT_INCOMPLETE",
         )
 
-    category = _resolve_category(db, payload.category)
+    category = _category_for(db, payload)
     price = float(payload.price)
     original_price = float(payload.original_price or price)
 
@@ -273,8 +317,9 @@ def update_product(
             details={"fields": nulled},
         )
 
-    if "category" in provided and payload.category:
-        product.category_id = _resolve_category(db, payload.category).id
+    category = _category_for(db, payload)
+    if category is not None:
+        product.category_id = category.id
 
     if "slug" in provided and payload.slug:
         product.slug = unique_slug(db, payload.slug, ignore_id=product.id)

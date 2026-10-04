@@ -128,3 +128,39 @@ class TestOrdersMoveStock:
         assert sale[0]["quantityBefore"] == 10
         assert sale[0]["quantityAfter"] == 8
         assert sale[0]["delta"] == -2
+
+
+class TestLogByProductId:
+    """`productId` keeps one product's movements, matched exactly by Product ID or SKU."""
+
+    @pytest.fixture
+    def movements(self, client, admin_auth, catalogue):
+        for product_id, quantity in (("PRD001", 25), ("PRD002", 7), ("PRD001", 30)):
+            assert client.put(f"/api/admin/inventory/{product_id}", headers=admin_auth,
+                              json={"quantity": quantity, "reason": "Stock count"}).status_code == 200
+
+    def _log(self, client, admin_auth, **params):
+        response = client.get("/api/admin/inventory/log", headers=admin_auth, params=params)
+        assert response.status_code == 200, response.text
+        return response.json()["data"]
+
+    def test_unfiltered_shows_every_movement(self, client, admin_auth, movements):
+        assert len(self._log(client, admin_auth)) == 3
+
+    def test_product_id_keeps_only_that_product(self, client, admin_auth, movements):
+        entries = self._log(client, admin_auth, productId="PRD001")
+        assert [e["productId"] for e in entries] == ["PRD001", "PRD001"]
+        assert [e["quantityAfter"] for e in entries] == [30, 25]
+
+    def test_sku_and_spacing_normalise_to_the_same_product(self, client, admin_auth, movements):
+        assert len(self._log(client, admin_auth, productId=" prd-002 ")) == 1
+        assert len(self._log(client, admin_auth, productId="DCZ-WO0002")) == 1
+
+    def test_a_prefix_is_not_a_match(self, client, admin_auth, movements):
+        assert self._log(client, admin_auth, productId="PRD00") == []
+
+    def test_a_name_matches_nothing(self, client, admin_auth, movements):
+        assert self._log(client, admin_auth, productId="Cotton Kurta") == []
+
+    def test_junk_is_an_empty_list_not_an_error(self, client, admin_auth, movements):
+        assert self._log(client, admin_auth, productId="'; DROP TABLE stock_adjustments; --") == []

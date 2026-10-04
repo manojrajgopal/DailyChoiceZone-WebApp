@@ -432,12 +432,15 @@ class TestAbandonedCartEdges:
         response = client.post("/api/cart/recover", headers=auth, json={"token": "x" * 40})
         assert response.status_code == 404 and response.json()["error_code"] == "RECOVERY_NOT_FOUND"
 
-    def test_the_admin_list_filters_by_name_and_date_and_shows_active(self, client, db, auth, admin_auth, catalogue):
+    def test_the_admin_list_filters_by_customer_id_and_date_and_shows_active(self, client, db, auth, admin_auth,
+                                                                              catalogue):
         add(client, auth)
         cart_recovery.sweep(db, now=later(61))
-        found = client.get("/api/admin/carts/abandoned?q=Asha&days=30", headers=admin_auth).json()["data"]
+        found = client.get("/api/admin/carts/abandoned?q=CUS001&days=30", headers=admin_auth).json()["data"]
         assert found["pagination"]["total"] == 1
-        assert client.get("/api/admin/carts/abandoned?q=Nobody", headers=admin_auth).json()["data"]["items"] == []
+        # The box takes a Customer ID (docs/id-lookup.md): a name, or another ID, finds nothing.
+        for q in ("Asha", "CUS002", "CUS00"):
+            assert client.get(f"/api/admin/carts/abandoned?q={q}", headers=admin_auth).json()["data"]["items"] == [], q
         # "active" lists bags that were never abandoned too.
         db.query(CartRecovery).update({"status": "active", "abandoned_at": None})
         db.flush()

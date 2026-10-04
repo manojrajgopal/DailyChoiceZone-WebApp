@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download, Search, X } from "lucide-react";
+import { Download, X } from "lucide-react";
 
 import type { BillingPaymentStatus, Payment, PaymentMethodKey } from "@/types";
 
 import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { IdKindFilter } from "@/components/admin/ui/IdKindFilter";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import { datedFilename, downloadCsv, toCsv } from "@/lib/billing/csv";
 import { formatMoney } from "@/lib/money";
+import type { LookupEntity } from "@/lib/lookup/entities";
 import { formatDate } from "@/lib/utils/format";
 import { getPayments, paymentMethodLabel } from "@/services/billing/paymentService";
 import { toast } from "@/store/toastStore";
@@ -25,11 +27,15 @@ const STATUSES: BillingPaymentStatus[] = [
 
 type DateWindow = "all" | "7d" | "30d" | "3m";
 
+/** A payment is found by its own ID (or gateway transaction id), its order's or its invoice's — exactly, on the server. */
+const ID_KINDS: readonly LookupEntity[] = ["payment", "order", "invoice"];
+
 export function AdminPaymentsView() {
   const methods = useSiteContent()?.paymentMethods ?? [];
-  const { data, isLoading } = useAdminResource(() => getPayments(), []);
+  const [idKind, setIdKind] = useState<LookupEntity>("payment");
+  const [searchId, setSearchId] = useState("");
+  const { data, isLoading } = useAdminResource(() => getPayments({ search: searchId || undefined }), [searchId]);
 
-  const [term, setTerm] = useState("");
   const [status, setStatus] = useState<BillingPaymentStatus | "all">("all");
   const [method, setMethod] = useState<PaymentMethodKey | "all">("all");
   const [dateWindow, setDateWindow] = useState<DateWindow>("all");
@@ -38,7 +44,6 @@ export function AdminPaymentsView() {
   const [now] = useState(() => Date.now());
 
   const filtered = useMemo(() => {
-    const terms = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const days = dateWindow === "7d" ? 7 : dateWindow === "30d" ? 30 : dateWindow === "3m" ? 90 : null;
     const cutoff = days ? now - days * 86400000 : null;
 
@@ -46,37 +51,22 @@ export function AdminPaymentsView() {
       if (status !== "all" && payment.status !== status) return false;
       if (method !== "all" && payment.method !== method) return false;
       if (cutoff && new Date(payment.createdAt).getTime() < cutoff) return false;
-
-      if (terms.length > 0) {
-        const haystack = [
-          payment.transactionId,
-          payment.orderNumber,
-          payment.invoiceNumber,
-          payment.customerName,
-          payment.customerEmail,
-          payment.id,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!terms.every((token) => haystack.includes(token))) return false;
-      }
-
       return true;
     });
-  }, [payments, term, status, method, dateWindow, now]);
+  }, [payments, status, method, dateWindow, now]);
 
   // Failed payments were never collected, so they do not count as taken.
   const collected = filtered
     .filter((payment) => payment.status !== "failed" && payment.status !== "pending")
     .reduce((sum, payment) => sum + payment.amount - payment.refundedAmount, 0);
 
-  const hasFilters = status !== "all" || method !== "all" || dateWindow !== "all" || term !== "";
+  const hasFilters = status !== "all" || method !== "all" || dateWindow !== "all" || searchId !== "";
 
   const clear = () => {
     setStatus("all");
     setMethod("all");
     setDateWindow("all");
-    setTerm("");
+    setSearchId("");
   };
 
   const exportCsv = () => {
@@ -230,25 +220,17 @@ export function AdminPaymentsView() {
       />
 
       <div className="mb-4 rounded-[3px] border border-admin-border bg-admin-surface p-3">
+        <IdKindFilter
+          kinds={ID_KINDS}
+          entity={idKind}
+          value={searchId}
+          onChange={({ entity, id }) => {
+            setIdKind(entity);
+            setSearchId(id);
+          }}
+          className="mb-2 lg:max-w-2xl"
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:max-w-xs">
-            <label htmlFor="payment-search" className="sr-only">
-              Search payments by transaction, order, invoice or customer
-            </label>
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            <input
-              id="payment-search"
-              type="search"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder="TXN…, order, invoice, customer"
-              className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
-            />
-          </div>
 
           <select
             value={status}
@@ -313,7 +295,7 @@ export function AdminPaymentsView() {
         pageSize={15}
         initialSort={{ columnId: "date", direction: "desc" }}
         emptyTitle="No payments match"
-        emptyDescription="Adjust the search or filters above."
+        emptyDescription="Check the ID, or adjust the filters above."
       />
     </div>
   );

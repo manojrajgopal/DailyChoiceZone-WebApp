@@ -7,7 +7,8 @@ import { Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminTextarea, AdminToggle, FormGrid } from "@/components/admin/ui/AdminForm";
-import { LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { ProductPicker, fromLocalInput, rupees, toLocalInput } from "@/components/admin/views/growth/shared";
 import { Badge, TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -73,7 +74,7 @@ export function AdminFlashSalesView() {
         tabs={[{ value: "", label: "All" }, ...(["live", "scheduled", "draft", "ended", "cancelled"] as FlashPhase[]).map((p) => ({
           value: p, label: PHASE[p].label, count: counts?.[p],
         }))]} />
-      <div className="mb-3"><LogSearch label="Find a sale" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Sale name" /></div>
+      <div className="mb-3 max-w-sm"><IdFilter entity="flash_sale" value={filters.q} onChange={(q) => setFilters({ q })} /></div>
 
       <AdminCard padded={false}>
         <div className="overflow-x-auto">

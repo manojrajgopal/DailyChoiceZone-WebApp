@@ -223,6 +223,8 @@ export function AuthPanel() {
             finishWith(session, created ? "Account created" : `Welcome back, ${session.user.firstName}`);
           }}
           onUnavailable={() => setMethods((current) => ({ ...current, emailOtp: false, mobileOtp: false }))}
+          email={email}
+          onEmailChange={setEmail}
         />
       ) : null}
 

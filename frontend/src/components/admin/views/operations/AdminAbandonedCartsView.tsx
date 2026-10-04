@@ -6,7 +6,8 @@ import { Plus, RefreshCw, Trash2, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminToggle } from "@/components/admin/ui/AdminForm";
-import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { FilterSelect, LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDateTime } from "@/lib/support/format";
 import { cn } from "@/lib/utils/cn";
@@ -44,6 +45,9 @@ function duration(minutes: number): string {
  * Bags signed-in customers left behind, the reminders sent about them, and
  * what came back as orders. Guest bags live only in the shopper's browser, so
  * they can't be tracked here.
+ *
+ * One customer's carts are found by Customer ID (docs/id-lookup.md), matched
+ * exactly; names and emails are shown, never searched.
  */
 export function AdminAbandonedCartsView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
@@ -98,8 +102,8 @@ export function AdminAbandonedCartsView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search carts" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Customer name or email" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="customer" value={filters.q} onChange={(q) => setFilters({ q })} className="w-56" />
         <FilterSelect
           label="Abandoned"
           value={filters.days}
@@ -141,7 +145,7 @@ export function AdminAbandonedCartsView() {
                 empty={Boolean(data && data.items.length === 0)}
                 onRetry={() => void carts.reload()}
                 title={filtered ? "No carts match" : "No abandoned carts"}
-                hint={filtered ? "Try a different filter or search." : "Bags appear here once they've been left untouched for the time set below."}
+                hint={filtered ? "Try a different filter or Customer ID." : "Bags appear here once they've been left untouched for the time set below."}
               />
               {data?.items.map((row) => {
                 const status = STATUS[row.status] ?? STATUS.active;

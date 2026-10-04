@@ -137,6 +137,7 @@ export interface AbandonedCartSettings {
   expireAfterDays: number;
 }
 
+/** `q`: a Customer ID, matched exactly — names and emails match nothing. */
 export function listAbandonedCarts(filters: {
   status?: string;
   q?: string;

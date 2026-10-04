@@ -6,7 +6,8 @@ import { RefreshCw, Settings2 } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminToggle, FormGrid } from "@/components/admin/ui/AdminForm";
-import { LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdKindFilter } from "@/components/admin/ui/IdKindFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { rupees } from "@/components/admin/views/growth/shared";
 import { Badge, TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { Modal } from "@/components/ui/Dialog";
@@ -34,7 +35,11 @@ const STATUS: Record<ReferralStatus, { label: string; tone: "green" | "amber" | 
   expired: { label: "Expired", tone: "grey" },
 };
 
-const KEYS = ["status", "q"] as const;
+const KEYS = ["status", "q", "by"] as const;
+
+/** The list box takes a referral code or a Customer ID (referrer or friend), exactly — never a name or email. */
+const FIND_BY = ["referral_code", "customer"] as const;
+type FindBy = (typeof FIND_BY)[number];
 
 /** The referral programme: who referred whom, rewards paid, and referrals held for a person to check. */
 export function AdminReferralsView() {
@@ -45,6 +50,7 @@ export function AdminReferralsView() {
   const [deciding, setDeciding] = useState<{ row: AdminReferral; action: "approve" | "reject" } | null>(null);
   const data = list.data;
   const m = metrics.data;
+  const findBy: FindBy = filters.by === "customer" ? "customer" : "referral_code";
   const reward = (row: AdminReferral, value: number) => (row.rewardType === "points" ? `${value.toLocaleString("en-IN")} pts` : rupees(value));
 
   return (
@@ -75,7 +81,10 @@ export function AdminReferralsView() {
 
       <StatusTabs label="Which referrals" value={filters.status} onChange={(status) => setFilters({ status })}
         tabs={[{ value: "", label: "All" }, ...(Object.keys(STATUS) as ReferralStatus[]).map((s) => ({ value: s, label: STATUS[s].label, count: data?.counts[s] }))]} />
-      <div className="mb-3"><LogSearch label="Find a referral" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Name, email, customer ID or code" /></div>
+      <div className="mb-3">
+        <IdKindFilter kinds={FIND_BY} entity={findBy} value={filters.q}
+          onChange={({ entity, id }) => setFilters({ by: entity === "referral_code" ? "" : entity, q: id })} />
+      </div>
 
       <AdminCard padded={false}>
         <div className="overflow-x-auto">

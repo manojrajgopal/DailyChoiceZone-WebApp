@@ -113,6 +113,49 @@ describe("AuthPanel — signing in with a code", () => {
     expect(await toastMessages()).toContain("success: Welcome back, Asha");
   });
 
+  it("carries the email already typed on the password form over to the code form, and back", async () => {
+    api.get("/auth/methods", ALL_METHODS);
+    api.post("/auth/otp/request", issued({ channel: "email" }));
+    const { user } = renderUI(<AuthPanel />);
+
+    await user.type(await screen.findByLabelText(/^Email address/), "asha@example.com");
+    await user.click(screen.getByRole("button", { name: "Use a one-time code instead" }));
+    // An email is already there, so the code goes by email, to that address.
+    expect(screen.getByRole("radio", { name: "Email" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText(/^Email address/)).toHaveValue("asha@example.com");
+
+    const field = screen.getByLabelText(/^Email address/);
+    await user.clear(field);
+    await user.type(field, "meera@example.com");
+    await user.click(screen.getByRole("button", { name: "Use your password instead" }));
+    expect(screen.getByLabelText(/^Email address/)).toHaveValue("meera@example.com");
+
+    await user.click(screen.getByRole("button", { name: "Use a one-time code instead" }));
+    await user.click(screen.getByRole("button", { name: "Send code" }));
+    expect(api.last("POST", "/auth/otp/request")!.body).toEqual({
+      channel: "email", destination: "meera@example.com", purpose: "login" });
+  });
+
+  it("leaves the code form empty, on the mobile number, when no email was typed", async () => {
+    api.get("/auth/methods", ALL_METHODS);
+    const { user } = renderUI(<AuthPanel />);
+    await user.click(await screen.findByRole("button", { name: "Use a one-time code instead" }));
+    expect(screen.getByRole("radio", { name: "Mobile number" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText(/^Mobile number/)).toHaveValue("");
+    await user.click(screen.getByRole("radio", { name: "Email" }));
+    expect(screen.getByLabelText(/^Email address/)).toHaveValue("");
+  });
+
+  it("keeps a typed number when switching to email and back", async () => {
+    api.get("/auth/methods", ALL_METHODS);
+    const { user } = renderUI(<AuthPanel />);
+    await user.click(await screen.findByRole("button", { name: "Use a one-time code instead" }));
+    await user.type(screen.getByLabelText(/^Mobile number/), "98765 43210");
+    await user.click(screen.getByRole("radio", { name: "Email" }));
+    await user.click(screen.getByRole("radio", { name: "Mobile number" }));
+    expect(screen.getByLabelText(/^Mobile number/)).toHaveValue("98765 43210");
+  });
+
   it("can send the code by email instead", async () => {
     api.get("/auth/methods", ALL_METHODS);
     api.post("/auth/otp/request", issued({ channel: "email", destination: "a***@example.com" }));

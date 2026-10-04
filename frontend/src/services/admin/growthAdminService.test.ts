@@ -77,11 +77,6 @@ describe("bundles", () => {
 
     await growth.deleteBundle(1);
     expect(api.last("DELETE", "/admin/bundles/1")).toBeTruthy();
-
-    await growth.searchProducts("kurta");
-    const request = api.last("GET", "/admin/products")!;
-    expect(request.query.get("search")).toBe("kurta");
-    expect(request.query.get("pageSize")).toBe("20");
   });
 });
 

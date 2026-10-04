@@ -4,15 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { AdminButton } from "@/components/admin/ui/AdminChrome";
-import { AdminSelect, FormSection } from "@/components/admin/ui/AdminForm";
+import { FormSection } from "@/components/admin/ui/AdminForm";
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
+import { IdSelector } from "@/components/common/IdSelector";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { ApiError } from "@/services/api/client";
-import {
-  getProductSizeGuide,
-  listSizeGuides,
-  setProductSizeGuide,
-} from "@/services/admin/discoveryAdminService";
+import { getProductSizeGuide, setProductSizeGuide } from "@/services/admin/discoveryAdminService";
 import { toast } from "@/store/toastStore";
 
 const SOURCE: Record<string, string> = {
@@ -29,7 +26,6 @@ const SOURCE: Record<string, string> = {
  */
 export function ProductSizeGuidePanel({ productId }: { productId: string }) {
   const state = useAdminResource(() => getProductSizeGuide(productId), [productId], { enabled: Boolean(productId) });
-  const guides = useAdminResource(() => listSizeGuides({ status: "active" }), []);
   const [saving, setSaving] = useState(false);
 
   const save = async (sizeGuideId: string | null) => {
@@ -66,15 +62,15 @@ export function ProductSizeGuidePanel({ productId }: { productId: string }) {
             Showing: <span className="font-medium text-admin-ink">{SOURCE[data.source]}</span>
             {data.guide ? <> — {data.guide.name}</> : null}
           </p>
-          <AdminSelect
-            label="This product's own guide"
-            value={data.assignedGuideId ?? ""}
-            disabled={saving || !guides.data}
-            onChange={(event) => void save(event.target.value || null)}
-            options={[
-              { value: "", label: "None — use the category's or the default" },
-              ...(guides.data?.items ?? []).map((guide) => ({ value: guide.id, label: guide.name })),
-            ]}
+          {/* Chosen by Size guide ID; clearing falls back to the category's or the default. */}
+          <IdSelector
+            entity="size_guide"
+            label="This product's own guide — Size guide ID"
+            heading="This product's own guide"
+            hint="None chosen: the category's guide or the store default applies."
+            disabled={saving}
+            value={data.assignedGuideId ?? null}
+            onChange={(sizeGuideId) => void save(sizeGuideId)}
           />
           {missing.length > 0 ? (
             <p role="status" className="flex flex-wrap items-center gap-2 text-xs text-admin-ink">

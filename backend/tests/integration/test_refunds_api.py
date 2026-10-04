@@ -504,6 +504,19 @@ class TestListAndSummary:
         assert ids(self.listing(client, manager_auth, method="store-credit")) == {three["credit"]["id"]}
         assert ids(self.listing(client, manager_auth, reasonCode="defective")) == {three["waiting"]["id"]}
         assert ids(self.listing(client, manager_auth, q=three["done"]["refundNumber"])) == {three["done"]["id"]}
+
+    def test_the_search_box_takes_ids_only(self, client, manager_auth, three):
+        ids = lambda data: {item["id"] for item in data["items"]}  # noqa: E731
+        done = three["done"]
+        everyone = {row["id"] for row in three.values()}
+        assert ids(self.listing(client, manager_auth, q=done["refundNumber"].lower())) == {done["id"]}
+        assert ids(self.listing(client, manager_auth, q=done["id"])) == {done["id"]}
+        assert ids(self.listing(client, manager_auth, q=done["orderNumber"])) == everyone
+        assert ids(self.listing(client, manager_auth, q=done["invoiceNumber"])) == everyone
+        # A name, a part of a number or a reason is not an ID.
+        assert self.listing(client, manager_auth, q=done["customerName"])["items"] == []
+        assert self.listing(client, manager_auth, q=done["refundNumber"][:-1])["items"] == []
+        assert self.listing(client, manager_auth, q="defective")["items"] == []
         assert len(self.listing(client, manager_auth, orderId=three["done"]["orderId"])["items"]) == 4
         assert self.listing(client, manager_auth, orderId="ORD-NONE")["items"] == []
 

@@ -5,15 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle, Trash2 } from "lucide-react";
 
-import type { PurchaseOrder, Supplier, SupplierProduct } from "@/types/suppliers";
+import type { PurchaseOrder, SupplierProduct } from "@/types/suppliers";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea, FormGrid, FormSection } from "@/components/admin/ui/AdminForm";
 import { ProductPicker } from "@/components/admin/views/growth/shared";
+import { IdSelector } from "@/components/common/IdSelector";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { createPurchaseOrder, updatePurchaseOrder } from "@/services/purchaseOrdersService";
-import { listSupplierProducts, listSuppliers } from "@/services/suppliersService";
+import { getSupplier, listSupplierProducts } from "@/services/suppliersService";
 import { toast } from "@/store/toastStore";
 
 import { ADMIN_CRUMB, NoAccess, PURCHASE_ORDERS_CRUMB, isForbidden, problem, rupees, serverFieldErrors } from "./shared";
@@ -113,23 +114,23 @@ export function PurchaseOrderForm({
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState<PurchaseOrder | null>(null);
 
-  const suppliers = useAdminResource(() => listSuppliers({ pageSize: 100, sort: "name" }), []);
+  // The supplier is chosen by its Supplier ID (docs/id-lookup.md); only that
+  // one supplier is read — for its status and billing state — never a list.
+  const supplierInfo = useAdminResource(() => getSupplier(draft.supplierId), [draft.supplierId], {
+    enabled: Boolean(draft.supplierId),
+  });
   const links = useAdminResource(() => listSupplierProducts(draft.supplierId), [draft.supplierId], {
     enabled: Boolean(draft.supplierId),
   });
   const linkList: SupplierProduct[] = draft.supplierId ? (links.data ?? []) : [];
   const linkFor = (productId: string) => linkList.find((link) => link.productId === productId);
 
-  const supplierList: Supplier[] = suppliers.data?.items ?? [];
-  const selected = supplierList.find((entry) => entry.id === draft.supplierId) ?? null;
-  const supplierOptions = supplierList.map((entry) => ({
-    value: entry.id,
-    label: `${entry.name} (${entry.code})${entry.status === "active" ? "" : ` — ${entry.status}`}`,
-  }));
-  if (draft.supplierId && !selected) {
-    supplierOptions.push({ value: draft.supplierId, label: po?.supplier.name ?? draft.supplierId });
-  }
+  const selected = draft.supplierId && supplierInfo.data?.id === draft.supplierId ? supplierInfo.data : null;
+  const supplierInfoError = draft.supplierId ? supplierInfo.error : null;
+  const supplierName = selected?.name ?? (po && po.supplier.id === draft.supplierId ? po.supplier.name : "");
   const inactive = selected && selected.status !== "active";
+  const supplierError =
+    errors.supplierId ?? (inactive ? "This supplier isn't active. Activate it before raising a purchase order." : undefined);
 
   const clear = (...keys: string[]) =>
     setErrors((current) => {
@@ -222,7 +223,7 @@ export function PurchaseOrderForm({
     );
   }
 
-  if (!editing && isForbidden(suppliers.error)) {
+  if (!editing && isForbidden(supplierInfoError)) {
     return (
       <div>
         <AdminPageHeader title="New purchase order" breadcrumbs={crumbs} />
@@ -251,21 +252,25 @@ export function PurchaseOrderForm({
       ) : null}
 
       <FormSection title="Supplier">
-        <FormGrid>
-          <AdminSelect
-            label="Supplier"
+        <div className="mb-3 flex max-w-xl flex-col gap-1">
+          <IdSelector
+            entity="supplier"
             required
             value={draft.supplierId}
-            placeholder={suppliers.isLoading ? "Loading suppliers…" : "Choose a supplier"}
-            options={supplierOptions}
-            disabled={suppliers.isLoading && !suppliers.data}
-            onChange={(event) => {
-              setDraft((current) => ({ ...current, supplierId: event.target.value }));
+            onChange={(supplierId) => {
+              setDraft((current) => ({ ...current, supplierId: supplierId ?? "" }));
               clear("supplierId");
             }}
-            error={errors.supplierId ?? (inactive ? "This supplier isn't active. Activate it before raising a purchase order." : undefined)}
-            hint={selected?.billingAddress?.state ? `Billing state: ${selected.billingAddress.state}` : undefined}
           />
+          {supplierError ? (
+            <p role="alert" className="text-[0.6875rem] text-[#c23434]">
+              {supplierError}
+            </p>
+          ) : selected?.billingAddress?.state ? (
+            <p className="text-[0.6875rem] text-admin-muted">Billing state: {selected.billingAddress.state}</p>
+          ) : null}
+        </div>
+        <FormGrid>
           <AdminInput
             label="Expected delivery"
             type="date"
@@ -281,10 +286,10 @@ export function PurchaseOrderForm({
             error={errors.supplierReference}
           />
         </FormGrid>
-        {suppliers.error && !isForbidden(suppliers.error) ? (
+        {supplierInfoError && !isForbidden(supplierInfoError) ? (
           <p className="mt-2 text-xs text-[#a32424]">
-            The supplier list didn&rsquo;t load.{" "}
-            <button type="button" className="underline" onClick={() => void suppliers.reload()}>
+            The supplier&rsquo;s details didn&rsquo;t load.{" "}
+            <button type="button" className="underline" onClick={() => void supplierInfo.reload()}>
               Try again
             </button>
           </p>
@@ -294,12 +299,12 @@ export function PurchaseOrderForm({
       <FormSection title="Items" description="Unit costs are before GST. A linked product's cost is filled in from the supplier.">
         {draft.supplierId && activeLinks.length > 0 ? (
           <AdminSelect
-            label={`Add from ${selected?.name ?? "this supplier"}'s products`}
+            label={`Add from ${supplierName || "this supplier"}'s products`}
             value=""
             placeholder="Choose a linked product"
             options={activeLinks.map((link) => ({
               value: link.productId,
-              label: `${link.productName} · ${link.productSku} · ${rupees(link.purchaseCost)}`,
+              label: `${link.productId} · ${link.productName} · ${link.productSku} · ${rupees(link.purchaseCost)}`,
             }))}
             onChange={(event) => {
               const link = activeLinks.find((entry) => entry.productId === event.target.value);

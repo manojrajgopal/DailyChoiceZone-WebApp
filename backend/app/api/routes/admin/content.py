@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Literal, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -266,10 +266,32 @@ class ReviewStatusUpdate(CamelModel):
 @marketing_router.get("/reviews", summary="Every review, for moderation")
 def list_reviews(
     status: Optional[str] = None,
+    product_id: Optional[str] = Query(None, alias="productId", max_length=64,
+                                      description="A Product ID or SKU, matched exactly."),
+    customer_id: Optional[str] = Query(None, alias="customerId", max_length=64,
+                                       description="A Customer ID, matched exactly."),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    reviews = review_service.list_all(db, status=status)
+    """Reviews to moderate, narrowed by Product ID and/or Customer ID — never by name or text."""
+    from app.models import Customer, Product, Review
+    from app.services.lookup.filters import id_condition
+
+    conditions = [
+        condition
+        for condition in (
+            id_condition("product", product_id, column=Review.product_id, via=Product.id),
+            id_condition("customer", customer_id, column=Review.customer_id, via=Customer.id),
+        )
+        if condition is not None
+    ]
+    if conditions:
+        statement = select(Review).where(*conditions).order_by(Review.submitted_at.desc())
+        if status and status != "all":
+            statement = statement.where(Review.status == status)
+        reviews = list(db.execute(statement).scalars().all())
+    else:
+        reviews = review_service.list_all(db, status=status)
     return ok_list(
         [
             {

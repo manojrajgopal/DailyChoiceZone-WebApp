@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download, Printer, Search, X } from "lucide-react";
+import { Download, Printer, X } from "lucide-react";
 
 import type { Invoice, InvoiceStatus, BillingPaymentStatus } from "@/types";
 
 import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { IdKindFilter } from "@/components/admin/ui/IdKindFilter";
 import { BillingStatusBadge } from "@/components/billing/BillingStatusBadge";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { datedFilename, downloadCsv, toCsv } from "@/lib/billing/csv";
 import { formatMoney } from "@/lib/money";
+import type { LookupEntity } from "@/lib/lookup/entities";
 import { formatDate } from "@/lib/utils/format";
 import { getInvoices, isOverdue } from "@/services/billing/invoiceService";
 import { paymentMethodLabel } from "@/services/billing/paymentService";
@@ -32,10 +34,14 @@ const PAYMENT_STATUSES: BillingPaymentStatus[] = [
 
 type DateWindow = "all" | "7d" | "30d" | "3m";
 
-export function AdminInvoicesView() {
-  const { data, isLoading } = useAdminResource(() => getInvoices(), []);
+/** An invoice is found by its own ID or its order's — exactly, on the server (docs/id-lookup.md). */
+const ID_KINDS: readonly LookupEntity[] = ["invoice", "order"];
 
-  const [term, setTerm] = useState("");
+export function AdminInvoicesView() {
+  const [idKind, setIdKind] = useState<LookupEntity>("invoice");
+  const [searchId, setSearchId] = useState("");
+  const { data, isLoading } = useAdminResource(() => getInvoices({ search: searchId || undefined }), [searchId]);
+
   const [status, setStatus] = useState<InvoiceStatus | "all">("all");
   const [payment, setPayment] = useState<BillingPaymentStatus | "all">("all");
   const [dateWindow, setDateWindow] = useState<DateWindow>("all");
@@ -47,7 +53,6 @@ export function AdminInvoicesView() {
   const [now] = useState(() => Date.now());
 
   const filtered = useMemo(() => {
-    const terms = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const floor = Number(minAmount);
     const days = dateWindow === "7d" ? 7 : dateWindow === "30d" ? 30 : dateWindow === "3m" ? 90 : null;
     const cutoff = days ? now - days * 86400000 : null;
@@ -65,34 +70,22 @@ export function AdminInvoicesView() {
         return false;
       }
 
-      if (terms.length > 0) {
-        const haystack = [
-          invoice.invoiceNumber,
-          invoice.orderNumber,
-          invoice.customerName,
-          invoice.customerEmail,
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!terms.every((token) => haystack.includes(token))) return false;
-      }
-
       return true;
     });
-  }, [invoices, term, status, payment, dateWindow, minAmount, now]);
+  }, [invoices, status, payment, dateWindow, minAmount, now]);
 
   const billed = filtered.reduce((sum, invoice) => sum + invoice.breakdown.grandTotal, 0);
   const collected = filtered.reduce((sum, invoice) => sum + invoice.amountPaid, 0);
 
   const hasFilters =
-    status !== "all" || payment !== "all" || dateWindow !== "all" || minAmount !== "" || term !== "";
+    status !== "all" || payment !== "all" || dateWindow !== "all" || minAmount !== "" || searchId !== "";
 
   const clear = () => {
     setStatus("all");
     setPayment("all");
     setDateWindow("all");
     setMinAmount("");
-    setTerm("");
+    setSearchId("");
   };
 
   const exportCsv = () => {
@@ -263,26 +256,17 @@ export function AdminInvoicesView() {
       />
 
       <div className="mb-4 rounded-[3px] border border-admin-border bg-admin-surface p-3">
+        <IdKindFilter
+          kinds={ID_KINDS}
+          entity={idKind}
+          value={searchId}
+          onChange={({ entity, id }) => {
+            setIdKind(entity);
+            setSearchId(id);
+          }}
+          className="mb-2 lg:max-w-2xl"
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:max-w-xs">
-            <label htmlFor="invoice-search" className="sr-only">
-              Search invoices by number, order or customer
-            </label>
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            <input
-              id="invoice-search"
-              type="search"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder="Invoice, order, customer…"
-              className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
-            />
-          </div>
-
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value as InvoiceStatus | "all")}
@@ -358,7 +342,7 @@ export function AdminInvoicesView() {
         pageSize={15}
         initialSort={{ columnId: "date", direction: "desc" }}
         emptyTitle="No invoices match"
-        emptyDescription="Adjust the search or filters above."
+        emptyDescription="Check the ID, or adjust the filters above."
       />
     </div>
   );

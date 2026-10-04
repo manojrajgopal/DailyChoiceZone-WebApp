@@ -6,6 +6,7 @@ import { RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminTextarea, AdminToggle } from "@/components/admin/ui/AdminForm";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { Badge, Detail, TD, TH, TableState, problem } from "@/components/admin/views/operations/shared";
 import { Modal } from "@/components/ui/Dialog";
@@ -24,7 +25,7 @@ import {
 } from "@/services/admin/engagementAdminService";
 import { toast } from "@/store/toastStore";
 
-const KEYS = ["status", "answered", "q"] as const;
+const KEYS = ["status", "answered", "q", "product", "customer", "text"] as const;
 
 const STATUS: Record<string, { label: string; tone: "green" | "amber" | "red" | "grey" }> = {
   pending: { label: "Awaiting review", tone: "amber" },
@@ -42,18 +43,27 @@ const ACTIONS: Record<string, string> = {
  * Customer questions about products. Nothing appears on a product page until
  * it is published here; customers are emailed when their question is
  * published, declined or answered (unless they've turned those emails off).
+ *
+ * A question, its product and its customer are found by ID (docs/id-lookup.md),
+ * each matched exactly; the text box searches only the question's own words,
+ * never a product's or a customer's name.
  */
 export function AdminQuestionsView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
   const [openId, setOpenId] = useState<number | null>(null);
 
   const list = useAdminResource(
-    () => listQuestions({ status: filters.status, answered: filters.answered, q: filters.q, page, pageSize }),
+    () => listQuestions({
+      status: filters.status, answered: filters.answered, q: filters.q, productId: filters.product,
+      customerId: filters.customer, text: filters.text, page, pageSize,
+    }),
     [filters, page, pageSize],
   );
   const data = list.data;
   const counts = data?.counts ?? {};
-  const filtered = Boolean(filters.status || filters.answered || filters.q);
+  const filtered = Boolean(
+    filters.status || filters.answered || filters.q || filters.product || filters.customer || filters.text,
+  );
 
   return (
     <div>
@@ -81,8 +91,11 @@ export function AdminQuestionsView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search questions" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Words in the question, product, SKU or customer" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <LogSearch label="Words in the question" value={filters.text} onChange={(text) => setFilters({ text })} placeholder="Words in the question" />
+        <IdFilter entity="question" value={filters.q} onChange={(q) => setFilters({ q })} className="w-40" />
+        <IdFilter entity="product" value={filters.product} onChange={(product) => setFilters({ product })} className="w-52" />
+        <IdFilter entity="customer" value={filters.customer} onChange={(customer) => setFilters({ customer })} className="w-52" />
         <FilterSelect
           label="Answered"
           value={filters.answered}
@@ -123,7 +136,7 @@ export function AdminQuestionsView() {
                 empty={Boolean(data && data.items.length === 0)}
                 onRetry={() => void list.reload()}
                 title={filtered ? "No questions match" : "No questions yet"}
-                hint={filtered ? "Try a different filter or search." : "Questions appear here when customers ask them."}
+                hint={filtered ? "Try different words or IDs." : "Questions appear here when customers ask them."}
               />
               {data?.items.map((row) => {
                 const status = STATUS[row.status] ?? STATUS.pending!;

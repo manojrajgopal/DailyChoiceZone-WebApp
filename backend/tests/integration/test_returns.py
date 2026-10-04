@@ -208,3 +208,51 @@ class TestTheStoreSide:
         assert client.get("/api/admin/returns", headers=auth).status_code in (401, 403)
         listed = client.get("/api/admin/returns", headers=admin_auth).json()["data"]
         assert len(listed) == 1 and listed[0]["nextSteps"] == ["approved", "rejected", "cancelled"]
+
+
+class TestFindingByID:
+    """`q` is a Return ID or the order's number/ID and `customer` a Customer ID — exact, never a name."""
+
+    @pytest.fixture()
+    def two(self, client, auth, admin_auth, delivered):
+        add(client, auth, "PRD002", 1)
+        second = place(client, auth).json()["data"]["order"]
+        assert client.put(f"/api/admin/orders/{second['id']}/status", headers=admin_auth,
+                          json={"status": "delivered", "note": "", "confirm": True}).status_code == 200
+        first_request = ask(client, auth, delivered).json()["data"]
+        second_request = ask(client, auth, second).json()["data"]
+        return (delivered, first_request), (second, second_request)
+
+    def _ids(self, client, admin_auth, **params):
+        response = client.get("/api/admin/returns", headers=admin_auth, params=params)
+        assert response.status_code == 200, response.text
+        return sorted(r["id"] for r in response.json()["data"])
+
+    def test_by_return_id_exactly(self, client, admin_auth, two):
+        (_, first), (_, second) = two
+        assert self._ids(client, admin_auth, q=first["id"]) == [first["id"]]
+        assert self._ids(client, admin_auth, q=f" {second['id'].lower()} ") == [second["id"]]
+
+    def test_a_partial_return_id_is_not_a_match(self, client, admin_auth, two):
+        (_, first), _ = two
+        assert self._ids(client, admin_auth, q=first["id"][:-1]) == []
+
+    def test_by_the_orders_number_or_id(self, client, admin_auth, two):
+        _, (order, request) = two
+        assert self._ids(client, admin_auth, q=order["orderNumber"]) == [request["id"]]
+        assert self._ids(client, admin_auth, q=order["id"]) == [request["id"]]
+
+    def test_by_customer_id(self, client, admin_auth, two, customer):
+        (_, first), (_, second) = two
+        assert self._ids(client, admin_auth, customer=customer.id) == sorted([first["id"], second["id"]])
+        assert self._ids(client, admin_auth, customer="CUS999") == []
+        assert self._ids(client, admin_auth, customer=customer.email) == []
+
+    @pytest.mark.parametrize("junk", ["Asha", "Cotton Kurta", "shopper@example.com", "'; DROP TABLE return_requests; --", "%"])
+    def test_names_and_junk_match_nothing(self, client, admin_auth, two, junk):
+        assert self._ids(client, admin_auth, q=junk) == []
+
+    def test_filters_combine_with_status(self, client, admin_auth, two):
+        (_, first), _ = two
+        assert self._ids(client, admin_auth, q=first["id"], status="requested") == [first["id"]]
+        assert self._ids(client, admin_auth, q=first["id"], status="refunded") == []

@@ -1,30 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Trash2 } from "lucide-react";
-
-import type { AdminProduct } from "@/types/admin";
+import { Plus, Trash2 } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import {
-  AdminCheckbox,
   AdminInput,
   AdminSelect,
   AdminTextarea,
   AdminToggle,
   FormGrid,
 } from "@/components/admin/ui/AdminForm";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
+import { IdAutocomplete } from "@/components/common/IdAutocomplete";
+import { IdMultiSelect } from "@/components/common/IdMultiSelect";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { ApiError } from "@/services/api/client";
-import { listCategories } from "@/services/admin/categoryAdminService";
 import {
   createSizeGuide,
   deleteSizeGuide,
   getSizeGuide,
   listSizeGuides,
-  searchProducts,
   setSizeGuideCategories,
   setSizeGuideProducts,
   updateSizeGuide,
@@ -122,17 +120,11 @@ export function AdminSizeGuidesView() {
       <div className="grid items-start gap-5 xl:grid-cols-[22rem_1fr]">
         <AdminCard padded={false}>
           <div className="flex flex-col gap-2 border-b border-admin-border p-3">
-            <label className="relative block">
-              <span className="sr-only">Search size guides</span>
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-muted" aria-hidden="true" />
-              <input
-                type="search"
-                value={filter.q}
-                onChange={(event) => setFilter((current) => ({ ...current, q: event.target.value }))}
-                placeholder="Search guides"
-                className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface pl-8 pr-3 text-[0.8125rem] text-admin-ink"
-              />
-            </label>
+            <IdFilter
+              entity="size_guide"
+              value={filter.q}
+              onChange={(q) => setFilter((current) => ({ ...current, q }))}
+            />
             <AdminSelect
               label="Status"
               value={filter.status}
@@ -481,28 +473,10 @@ function SizeGuideEditor({
 }
 
 function Assignments({ guide, onChanged }: { guide: AdminSizeGuide; onChanged: () => void }) {
-  const categories = useAdminResource(() => listCategories(), []);
   const [chosen, setChosen] = useState<string[]>(guide.categoryIds);
   const [savingCategories, setSavingCategories] = useState(false);
-  const [term, setTerm] = useState("");
-  const [results, setResults] = useState<AdminProduct[]>([]);
 
   useEffect(() => setChosen(guide.categoryIds), [guide.categoryIds]);
-  useEffect(() => {
-    const text = term.trim();
-    if (text.length < 2) {
-      setResults([]);
-      return;
-    }
-    let live = true;
-    const timer = setTimeout(() => {
-      searchProducts(text).then((items) => live && setResults(items)).catch(() => live && setResults([]));
-    }, 250);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [term]);
 
   const assigned = new Set((guide.assignedProducts ?? []).map((p) => p.id));
 
@@ -533,44 +507,30 @@ function Assignments({ guide, onChanged }: { guide: AdminSizeGuide; onChanged: (
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <AdminCard title="Categories" description="The guide every product with sizes in these categories shows, unless it has its own.">
-        {!categories.data ? (
-          <span aria-busy="true" aria-label="Loading categories" className="block h-16 animate-pulse rounded-[2px] bg-admin-border" />
-        ) : (
-          <div className="flex flex-col">
-            {categories.data.map((category) => (
-              <AdminCheckbox
-                key={category.id}
-                label={category.name}
-                checked={chosen.includes(category.id)}
-                onChange={(event) => setChosen((current) => event.target.checked
-                  ? [...current, category.id] : current.filter((id) => id !== category.id))}
-              />
-            ))}
-            <div className="mt-3">
-              <AdminButton size="sm" loading={savingCategories} onClick={() => void saveCategories()}>Save categories</AdminButton>
-            </div>
+        <div className="flex flex-col">
+          {/* Categories are chosen by Category ID (docs/id-lookup.md). */}
+          <IdMultiSelect
+            entity="category"
+            label="Add a category — Category ID"
+            placeholder="Search Category ID…"
+            values={chosen}
+            onChange={setChosen}
+            emptyText="No categories yet. Add them by Category ID."
+          />
+          <div className="mt-3">
+            <AdminButton size="sm" loading={savingCategories} onClick={() => void saveCategories()}>Save categories</AdminButton>
           </div>
-        )}
+        </div>
       </AdminCard>
 
       <AdminCard title="Products" description="Products that show this guide whatever their category's is.">
-        <label className="relative block">
-          <span className="sr-only">Find products to assign</span>
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-muted" aria-hidden="true" />
-          <input type="search" value={term} onChange={(event) => setTerm(event.target.value)}
-            placeholder="Find a product to assign"
-            className="h-9 w-full rounded-[3px] border border-admin-border pl-8 pr-3 text-[0.8125rem]" />
-        </label>
-        {results.filter((p) => !assigned.has(p.id)).length > 0 ? (
-          <ul className="mt-2 divide-y divide-admin-border rounded-[3px] border border-admin-border">
-            {results.filter((p) => !assigned.has(p.id)).map((product) => (
-              <li key={product.id} className="flex items-center gap-2 px-3 py-1.5">
-                <span className="flex-1 truncate text-xs text-admin-ink">{product.name}</span>
-                <AdminButton size="sm" onClick={() => void products([product.id], "add")}>Assign</AdminButton>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        <IdAutocomplete
+          entity="product"
+          label="Assign a product — Product ID or SKU"
+          placeholder="Search Product ID or SKU…"
+          exclude={[...assigned]}
+          onSelect={(id) => void products([id], "add")}
+        />
         <ul className="mt-3 flex flex-col gap-1">
           {(guide.assignedProducts ?? []).length === 0 ? (
             <li className="text-xs text-admin-muted">None assigned directly.</li>

@@ -5,6 +5,7 @@ import { Download, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput } from "@/components/admin/ui/AdminForm";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { Badge, Detail, JsonBlock, TD, TH, TableState, problem } from "@/components/admin/views/operations/shared";
 import { Modal } from "@/components/ui/Dialog";
@@ -24,6 +25,10 @@ const OUTCOME: Record<string, { label: string; tone: "green" | "amber" | "red" }
 /**
  * The audit trail: who did what in the portal, recorded by the server.
  * Read-only — there is no way to change or remove an entry.
+ *
+ * Who did it is chosen by their Admin user ID, and the search box takes a
+ * record's exact ID or an action code (docs/id-lookup.md). Names and emails
+ * are shown on each entry but never searched.
  */
 export function AdminAuditLogView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
@@ -66,11 +71,12 @@ export function AdminAuditLogView() {
       <StatusTabs label="Outcome" value={filters.outcome} onChange={(outcome) => setFilters({ outcome })}
         tabs={[{ value: "", label: "Everything" }, ...Object.entries(OUTCOME).map(([value, o]) => ({ value, label: o.label, count: data?.counts[value] }))]} />
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <LogSearch label="Search the log" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="What, who, or a record's ID" />
+        <LogSearch label="Record ID or action" value={filters.q} onChange={(q) => setFilters({ q })}
+          placeholder="A record's exact ID (PRD001) or an action (products.update)" />
         <FilterSelect label="Area" value={filters.resourceType} onChange={(resourceType) => setFilters({ resourceType })}
           options={[{ value: "", label: "Every area" }, ...(facets.data?.resourceTypes ?? []).map((r) => ({ value: r, label: r }))]} />
-        <FilterSelect label="Who" value={filters.actor} onChange={(actor) => setFilters({ actor })}
-          options={[{ value: "", label: "Anyone" }, ...(facets.data?.actors ?? []).map((a) => ({ value: a.id, label: a.name }))]} />
+        <IdFilter entity="admin_user" label="Who (Admin user ID)" value={filters.actor}
+          onChange={(actor) => setFilters({ actor })} className="w-52" />
         <div className="w-36"><AdminInput label="From" type="date" value={filters.from} onChange={(e) => setFilters({ from: e.target.value })} /></div>
         <div className="w-36"><AdminInput label="To" type="date" value={filters.to} onChange={(e) => setFilters({ to: e.target.value })} /></div>
         {filtered ? <AdminButton size="sm" variant="ghost" onClick={clear}><X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> Clear</AdminButton> : null}
@@ -91,6 +97,7 @@ export function AdminAuditLogView() {
                   <td className={cn(TD, "whitespace-nowrap text-admin-muted")}>{formatDateTime(entry.occurredAt)}</td>
                   <td className={TD}>
                     <span className="font-medium text-admin-ink">{entry.actor.name || (entry.actor.type === "anonymous" ? "Not signed in" : entry.actor.type)}</span>
+                    {entry.actor.id ? <span className="block font-mono text-[0.625rem] text-admin-faint">{entry.actor.id}</span> : null}
                     {entry.actor.role ? <span className="block text-admin-muted">{entry.actor.role}</span> : null}
                   </td>
                   <td className={TD}>

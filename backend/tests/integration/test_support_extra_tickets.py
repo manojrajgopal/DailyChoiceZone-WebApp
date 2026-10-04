@@ -80,6 +80,13 @@ def own_order(db, customer):
     return order
 
 
+@pytest.fixture()
+def other_auth(client, other_customer) -> dict:
+    token = client.post("/api/auth/login", json={"email": other_customer.email, "password": "Customer@123"})
+    assert token.status_code == 200, token.text
+    return {"Authorization": f"Bearer {token.json()['data']['token']['accessToken']}"}
+
+
 # ------------------------------------------------------------- raising one
 
 
@@ -701,6 +708,10 @@ class TestAccessEdges:
         client.put(f"{DESK}/{mine['id']}/assignment", headers=admin_auth, json={"agentId": agent["id"]})
         headers = admin_login(client, editor)
         assert [t["number"] for t in client.get(DESK, headers=headers).json()["data"]] == [mine["number"]]
+        # Another ticket's exact number does not reach past that.
+        others = [t for t in client.get(DESK, headers=admin_auth).json()["data"] if t["number"] != mine["number"]]
+        assert others
+        assert client.get(f"{DESK}?q={others[0]['number']}", headers=headers).json()["data"] == []
         assert client.get(f"{DESK}?agent=me", headers=headers).json()["data"][0]["number"] == mine["number"]
         dashboard = client.get("/api/admin/support/dashboard", headers=headers).json()["data"]
         assert dashboard["totals"]["total"] == 1
@@ -737,9 +748,31 @@ class TestTheCustomersList:
         assert numbers("?status=resolved") == set()
         assert numbers("?status=nonsense") == {a["number"], b["number"]}
         assert numbers(f"?q={b['number']}") == {b["number"]}
+        assert numbers(f"?q={b['number'].lower()}") == {b["number"]}
         assert numbers("?q=DCZ19901") == {a["number"]}
-        assert numbers("?q=missing") == {b["number"]}
+        assert numbers("?q=ORD901") == {a["number"]}
+        # The box takes a request or order number, exactly: subject words, a partial
+        # number or a longer one find nothing.
+        assert numbers("?q=missing") == set()
+        assert numbers(f"?q={b['number'][:-1]}") == set()
+        assert numbers(f"?q={b['number']}0") == set()
+        assert numbers("?q=DCZ1990") == set()
         assert numbers("?q=nothing-like-it") == set()
+        assert numbers("?q=%27%3B%20DROP%20TABLE%20support_tickets%3B--") == set()
+
+    def test_the_search_never_reaches_another_customers_ticket(self, client, auth, other_auth, support, own_order):
+        mine = raise_ticket(client, auth, "Orders", "Order Status", orderId="ORD901").json()["data"]["ticket"]
+
+        def numbers(headers, query):
+            response = client.get(f"/api/support/tickets{query}", headers=headers)
+            assert response.status_code == 200
+            return [t["number"] for t in response.json()["data"]]
+
+        assert numbers(auth, f"?q={mine['number']}") == [mine["number"]]
+        # Someone else, given the exact number or the order's number, still sees only their own.
+        assert numbers(other_auth, f"?q={mine['number']}") == []
+        assert numbers(other_auth, f"?q={mine['id']}") == []
+        assert numbers(other_auth, "?q=DCZ19901") == []
 
 
 @pytest.fixture()
@@ -806,16 +839,71 @@ class TestTheDeskFilters:
         assert find(f"from={yesterday}&to={tomorrow}") == set(n.values())
         assert find("from=not-a-date") == set(n.values())
 
-    def test_text_search(self, client, admin_auth, desk):
+    def test_the_ticket_box_is_an_exact_ticket_id(self, client, admin_auth, desk):
         n = {k: v["number"] for k, v in desk.items() if k != "agent"}
         find = lambda q: set(self._numbers(client, admin_auth, q))  # noqa: E731
-        assigned = {v["number"] for k, v in desk.items() if k != "agent" and v["agent"] == "Filter Agent"}
-        assert find("q=Filter Agent") == assigned
-        assert find("q=DCZ19901") == {n["order"]}
-        assert find("q=gita@example") == {n["guest"]}
-        assert find("q=Gita Guest") == {n["guest"]}
         assert find(f"q={n['urgent']}") == {n["urgent"]}
-        assert find("q=PRD002") == {n["payment"]}
+        assert find(f"q={desk['urgent']['id']}") == {n["urgent"]}
+        assert find(f"q={n['urgent'].lower()}") == {n["urgent"]}
+        # A partial or a longer number is another ticket's ID, not this one.
+        assert find(f"q={n['urgent'][:-1]}") == set()
+        assert find(f"q={n['urgent']}9") == set()
+        assert find(f"q={n['urgent'][-6:]}") == set()
+
+    def test_names_emails_and_agents_never_identify_a_ticket(self, client, admin_auth, desk):
+        find = lambda q: set(self._numbers(client, admin_auth, q))  # noqa: E731
+        for value in ("Filter Agent", "Filter", "gita@example.com", "gita@example", "Gita Guest", "Gita",
+                      "DCZ19901", "PRD002"):
+            assert find(f"q={value}") == set(), value
+        # The customer, order, product and agent filters take IDs, not names or emails.
+        assert find("customer=gita@example.com") == set()
+        assert find("customer=Gita Guest") == set()
+        assert find("order=Gita") == set()
+        assert find("agent=Filter Agent") == set()
+        assert find("product=Saree") == set()
+
+    def test_junk_is_an_empty_list_not_an_error(self, client, admin_auth, desk):
+        for value in ("%27%3B%20DROP%20TABLE%20support_tickets%3B--", "%25", "%5F", "a%27b"):
+            for key in ("q", "customer", "order", "agent", "product", "subject"):
+                assert self._numbers(client, admin_auth, f"{key}={value}") == [], (key, value)
+
+    def test_ids_are_matched_however_they_are_typed(self, client, admin_auth, desk):
+        n = {k: v["number"] for k, v in desk.items() if k != "agent"}
+        find = lambda q: set(self._numbers(client, admin_auth, q))  # noqa: E731
+        assert find("customer=cus-001") == set(n.values()) - {n["guest"]}
+        assert find("customer=CUS0011") == set()
+        assert find("order=%23dcz19901") == {n["order"]}
+        assert find("product=prd-002") == {n["payment"]}
+
+    def test_subject_words_are_content(self, client, admin_auth, desk, db):
+        from app.models import SupportTicket
+
+        n = {k: v["number"] for k, v in desk.items() if k != "agent"}
+        db.query(SupportTicket).filter_by(number=n["urgent"]).one().subject = "Locked out after a 100% refund"
+        db.flush()
+        find = lambda q: set(self._numbers(client, admin_auth, q))  # noqa: E731
+        assert find("subject=locked out") == {n["urgent"]}
+        assert find("subject=100%25") == {n["urgent"]}
+        # The words are the subject's alone: never a name or an email.
+        assert find("subject=Gita") == set()
+        assert find("subject=gita@example.com") == set()
+
+    def test_an_agent_scoped_to_a_team_cannot_widen_it_with_an_id(self, desk, db):
+        from app.models import SupportTicket
+        from app.services.support import queries
+
+        n = {k: v["number"] for k, v in desk.items() if k != "agent"}
+        payment = db.query(SupportTicket).filter_by(number=n["payment"]).one()
+        scope = sorted({t.team_id for t in db.query(SupportTicket).all()
+                        if t.team_id is not None and t.team_id != payment.team_id})
+        assert scope
+        # The exact number of a ticket outside the team finds nothing.
+        assert queries.staff_tickets(db, {"q": n["payment"]}, me=None, scope_team_ids=scope) == ([], 0)
+        assert queries.staff_tickets(db, {"product": "PRD002"}, me=None, scope_team_ids=scope) == ([], 0)
+        inside = next(number for number in n.values() if number != n["payment"]
+                      and db.query(SupportTicket).filter_by(number=number).one().team_id in scope)
+        rows, total = queries.staff_tickets(db, {"q": inside}, me=None, scope_team_ids=scope)
+        assert total == 1 and rows[0].number == inside
 
     def test_statuses_and_views(self, client, admin_auth, desk):
         n = {k: v["number"] for k, v in desk.items() if k != "agent"}

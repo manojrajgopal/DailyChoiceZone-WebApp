@@ -5,7 +5,8 @@ import { Download, Pencil, Plus, RefreshCw, Trash2, Upload, X } from "lucide-rea
 
 import { AdminButton, AdminCard, AdminPageHeader, ConfirmDialog } from "@/components/admin/ui/AdminChrome";
 import { AdminCheckbox, AdminInput, AdminToggle } from "@/components/admin/ui/AdminForm";
-import { FilterSelect, LogFooter, LogSearch, StatusTabs, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { FilterSelect, LogFooter, StatusTabs, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { DeliveryEstimateSettings } from "@/components/admin/views/discovery/DeliveryEstimateSettings";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -219,8 +220,9 @@ export function AdminPincodesView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search pincodes" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Pincode, city, district or state" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        {/* One pincode, exactly; the state has its own filter. */}
+        <IdFilter entity="pincode" label="Pincode" value={filters.q} onChange={(q) => setFilters({ q })} className="w-48" />
         <FilterSelect
           label="State"
           value={filters.state}

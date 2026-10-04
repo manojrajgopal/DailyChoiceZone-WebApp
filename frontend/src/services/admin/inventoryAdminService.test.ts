@@ -14,6 +14,10 @@ describe("listInventory / listStockLog", () => {
     api.get("/admin/inventory", []);
     await inventory.listInventory();
     expect(api.last("GET", "/admin/inventory")!.headers.authorization).toBe("Bearer test-token");
+    expect(api.last("GET", "/admin/inventory")!.query.get("q")).toBeNull();
+
+    await inventory.listInventory("PRD001");
+    expect(api.last("GET", "/admin/inventory")!.query.get("q")).toBe("PRD001");
 
     api.get("/admin/inventory/log", []);
     await inventory.listStockLog();

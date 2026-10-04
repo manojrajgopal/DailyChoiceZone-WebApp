@@ -412,10 +412,16 @@ class TestDecisions:
         with pytest.raises(NotFoundError):
             referrals.decide(db, admin, row.id + 1000, "approve")
 
-    def test_the_list_searches_by_name_and_code(self, client, db, friend, admin_auth):
+    def test_the_list_finds_by_customer_id_and_code(self, client, db, friend, admin_auth):
         referral(db, "CUS200")
-        by_name = client.get("/api/admin/referrals?q=Ravi", headers=admin_auth).json()["data"]
-        assert by_name["pagination"]["total"] == 1 and by_name["items"][0]["referee"]["email"] == "friend@example.com"
+        by_referee = client.get("/api/admin/referrals?q=CUS200", headers=admin_auth).json()["data"]
+        assert by_referee["pagination"]["total"] == 1 and by_referee["items"][0]["referee"]["email"] == "friend@example.com"
+        by_referrer = client.get("/api/admin/referrals?q=cus001", headers=admin_auth).json()["data"]
+        assert by_referrer["pagination"]["total"] == 1
+        # Names and emails are not IDs.
+        for text in ("Ravi", "Asha", "friend@example.com", "CUS20", "ASHATES", "'; DROP TABLE referrals; --"):
+            response = client.get("/api/admin/referrals", params={"q": text}, headers=admin_auth)
+            assert response.status_code == 200 and response.json()["data"]["items"] == []
         by_code = client.get("/api/admin/referrals?q=ashatest", headers=admin_auth).json()["data"]
         assert by_code["pagination"]["total"] == 1
         nobody = client.get("/api/admin/referrals?q=zzz-nobody", headers=admin_auth).json()["data"]

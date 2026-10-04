@@ -136,6 +136,33 @@ class TestReading:
         assert csv.status_code == 200 and csv.headers["content-type"].startswith("text/csv")
         assert "products.update" in csv.text
 
+    def test_who_did_it_is_an_admin_user_id_never_a_name_or_email(self, client, db, catalogue, admin, admin_auth):
+        client.put("/api/products/PRD001", headers=admin_auth, json={"price": 899})
+
+        def total(params: dict) -> int:
+            response = client.get("/api/admin/audit-logs", headers=admin_auth, params=params)
+            assert response.status_code == 200, response.text
+            return response.json()["data"]["pagination"]["total"]
+
+        everything = total({})
+        assert everything >= 1
+        mine = total({"actor": admin.id})
+        assert mine >= 1
+        assert total({"actor": admin.id.lower()}) == mine
+        assert total({"actor": f"{admin.id[:3]}-{admin.id[3:]}"}) == mine
+        for other in (admin.id[:-1], f"{admin.id}0", admin.name, admin.email, "ADM999"):
+            assert total({"actor": other}) == 0, other
+        # The text box is what happened or a record's ID: the actor's name or email is not in it.
+        assert total({"q": admin.email}) == 0
+        assert total({"q": admin.name}) == 0
+        assert total({"q": "PRD001"}) >= 1
+        assert total({"q": "PRD00"}) == 0  # part of a record's ID is not that record
+        assert total({"q": "Changed product"}) == 0  # summaries carry names: not searched
+        # Junk is an empty list, not an error.
+        assert total({"q": "'; DROP TABLE audit_logs; --"}) == 0
+        assert total({"actor": "'; DROP TABLE audit_logs; --"}) == 0
+        assert total({"q": "%"}) == 0
+
     def test_only_the_super_admin_or_those_granted_it_can_read(self, client, db, admin, editor, auth):
         token = client.post("/api/admin/auth/login", json={"email": editor.email, "password": "Admin@123"}).json()
         headers = {"Authorization": f"Bearer {token['data']['token']['accessToken']}"}

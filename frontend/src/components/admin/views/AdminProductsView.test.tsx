@@ -82,10 +82,11 @@ describe("AdminProductsView", () => {
     expect(within(row).getByRole("link", { name: "View Linen shirt on the storefront" })).toHaveAttribute("href", "/product/P1");
   });
 
-  it("sends the search, filters, sort and page from the address bar", async () => {
-    await open("/admin/products?search=linen&status=draft&category=men&brand=Loom&stock=low-stock&flag=isNew&sort=price-desc&page=2&pageSize=50");
+  it("sends the Product ID, filters, sort and page from the address bar", async () => {
+    await open("/admin/products?q=PRD001&status=draft&category=men&brand=Loom&stock=low-stock&flag=isNew&sort=price-desc&page=2&pageSize=50");
     const query = api.last("GET", "/admin/products")!.query;
-    expect(query.get("search")).toBe("linen");
+    expect(query.get("q")).toBe("PRD001");
+    expect(query.get("search")).toBeNull();
     expect(query.get("status")).toBe("draft");
     expect(query.get("category")).toBe("men");
     expect(query.get("brands")).toBe("Loom");
@@ -96,7 +97,7 @@ describe("AdminProductsView", () => {
     expect(query.get("pageSize")).toBe("50");
 
     expect(screen.getByRole("tab", { name: "Draft 10" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("searchbox", { name: /Search products/ })).toHaveValue("linen");
+    expect(screen.getByRole("group", { name: "Filtered by Product ID or SKU PRD001" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: /Price/ })).toHaveAttribute("aria-sort", "descending");
   });
 
@@ -123,8 +124,27 @@ describe("AdminProductsView", () => {
     await user.selectOptions(screen.getByRole("combobox", { name: "Sort products" }), "best-selling");
     expect(router.replace).toHaveBeenLastCalledWith("/admin/products?sort=best-selling", { scroll: false });
 
-    await user.type(screen.getByRole("searchbox", { name: /Search products/ }), "kurta");
-    await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/admin/products?search=kurta", { scroll: false }));
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  });
+
+  it("filters by a Product ID chosen from the ID suggestions, never by name", async () => {
+    api.get("/admin/lookup/product", (req) =>
+      req.query.get("q") === "DCZ-LS" ? { items: [{ id: "PRD001", match: "DCZ-LS-01" }], hasMore: false } : { items: [], hasMore: false },
+    );
+    const { user } = await open();
+    const box = screen.getByRole("combobox", { name: "Product ID or SKU" });
+    expect(box).toHaveAttribute("placeholder", "Search Product ID…");
+
+    await user.type(box, "DCZ-LS");
+    await user.click(await screen.findByRole("option", { name: /PRD001/ }));
+    expect(router.replace).toHaveBeenLastCalledWith("/admin/products?q=PRD001", { scroll: false });
+    expect(api.last("GET", "/admin/lookup/product")!.query.get("q")).toBe("DCZ-LS");
+  });
+
+  it("removes the Product ID filter from its chip", async () => {
+    const { user } = await open("/admin/products?q=PRD001&status=draft");
+    await user.click(screen.getByRole("button", { name: "Remove Product ID or SKU filter" }));
+    expect(router.replace).toHaveBeenLastCalledWith("/admin/products?status=draft", { scroll: false });
   });
 
   it("sorts on the server from the column headers", async () => {
@@ -154,13 +174,13 @@ describe("AdminProductsView", () => {
   });
 
   it("clears every filter at once", async () => {
-    const { user } = await open("/admin/products?search=linen&brand=Loom&sort=newest");
+    const { user } = await open("/admin/products?q=PRD001&brand=Loom&sort=newest");
     await user.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(router.replace).toHaveBeenLastCalledWith("/admin/products", { scroll: false });
   });
 
   it("says so when nothing matches", async () => {
-    setLocation("/admin/products?search=zzz");
+    setLocation("/admin/products?q=PRD999");
     serve([]);
     renderUI(<AdminProductsView />);
     expect(await screen.findByText("No products match")).toBeInTheDocument();

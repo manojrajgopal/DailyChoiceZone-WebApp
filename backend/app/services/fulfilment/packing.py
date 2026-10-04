@@ -1088,11 +1088,12 @@ def search(db: Session, *, admin=None, q: str = "", status: str = "", scope: str
     conditions = []
     if scope != "all" and status != "cancelled":
         conditions += [PackingJob.status != "cancelled", Order.status.not_in(GONE)]
-    text = (q or "").strip()[:80]
-    if text:
-        like = f"%{text}%"
-        conditions.append(or_(Order.order_number.like(like), Order.customer_name.ilike(like),
-                              Order.customer_email.ilike(like)))
+    # `q` is an Order ID (docs/id-lookup.md), matched exactly: never a name or an email.
+    from app.services.lookup.filters import id_condition
+
+    by_order = id_condition("order", q)
+    if by_order is not None:
+        conditions.append(by_order)
     start, end = _parse_day(date_from), _parse_day(date_to)
     if start:
         conditions.append(Order.placed_at >= start)
@@ -1100,8 +1101,10 @@ def search(db: Session, *, admin=None, q: str = "", status: str = "", scope: str
         conditions.append(Order.placed_at < end + timedelta(days=1))
     if payment_status:
         conditions.append(Order.payment_status == payment_status.strip()[:20])
-    if courier:
-        conditions.append(Shipment.courier_name.ilike(f"%{courier.strip()[:60]}%"))
+    if (courier or "").strip():
+        # A courier's code, exactly: the integration's (`shiprocket`) or the courier's own.
+        code = courier.strip()[:40]
+        conditions.append(or_(Shipment.provider_code == code, Shipment.courier_code == code))
     if priority in PRIORITIES:
         conditions.append(PackingJob.priority == priority)
     if assigned == "unassigned":
@@ -1109,7 +1112,10 @@ def search(db: Session, *, admin=None, q: str = "", status: str = "", scope: str
     elif assigned == "me" and admin is not None:
         conditions.append(PackingJob.assigned_to == admin.id)
     elif assigned:
-        conditions.append(PackingJob.assigned_to == assigned.strip()[:20])
+        # An Admin user ID, exactly (ADM001 = ADM-001); a name keeps nothing.
+        by_admin = id_condition("admin_user", assigned, column=PackingJob.assigned_to, via=AdminUser.id)
+        if by_admin is not None:
+            conditions.append(by_admin)
     if shipping_type:
         conditions.append(Order.delivery_method == shipping_type.strip()[:30])
     if overdue:

@@ -42,6 +42,11 @@ export type AdminProduct = Product &
      * not mistake those for shared ones.
      */
     sharedImages?: string[];
+    /**
+     * The Category ID (`CAT001`) the product belongs to. `category` is the
+     * slug the storefront's URLs use; the portal picks and saves by this.
+     */
+    categoryId?: string;
   };
 
 /** What the product form submits. Derived fields are computed on save. */

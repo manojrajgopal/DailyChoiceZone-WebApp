@@ -74,16 +74,17 @@ def ask(identifier: str, payload: AskRequest, db: Session = Depends(get_db),
 def list_all(
     status: str = Query("", max_length=20),
     answered: str = Query("", max_length=3),
-    q: str = Query("", max_length=80),
-    product_id: str = Query("", max_length=20, alias="productId"),
-    customer_id: str = Query("", max_length=20, alias="customerId"),
+    q: str = Query("", max_length=64, description="A Question ID, matched exactly."),
+    product_id: str = Query("", max_length=64, alias="productId", description="A Product ID or SKU, exact."),
+    customer_id: str = Query("", max_length=64, alias="customerId", description="A Customer ID, exact."),
+    text: str = Query("", max_length=80, description="Words in the question itself."),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_access("questions")),
 ):
     items, total, counts = service.search(db, status=status, answered=answered, q=q, product_id=product_id,
-                                          customer_id=customer_id, page=page, page_size=page_size)
+                                          customer_id=customer_id, text=text, page=page, page_size=page_size)
     return ok({"items": items, "pagination": Pagination.build(page, page_size, total).model_dump(), "counts": counts})
 
 

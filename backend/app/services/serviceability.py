@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError, ValidationError
@@ -454,12 +454,14 @@ def delete(db: Session, row_id: int) -> None:
 
 def search(db: Session, *, q: str = "", state: str = "", active: str = "", serviceable: str = "",
            cod: str = "", page: int = 1, page_size: int = 25) -> tuple:
+    from app.services.lookup.filters import id_condition
+
     conditions = []
-    text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        conditions.append(or_(DeliveryPincode.pincode.like(like), DeliveryPincode.city.ilike(like),
-                              DeliveryPincode.district.ilike(like), DeliveryPincode.state.ilike(like)))
+    # `q` is a pincode, matched exactly (docs/id-lookup.md): 560001 never keeps
+    # 5600011, and a city or state name keeps nothing — `state` filters by state.
+    by_pincode = id_condition("pincode", q)
+    if by_pincode is not None:
+        conditions.append(by_pincode)
     if state:
         conditions.append(DeliveryPincode.state == state)
     for flag, column in ((active, DeliveryPincode.active), (serviceable, DeliveryPincode.serviceable),

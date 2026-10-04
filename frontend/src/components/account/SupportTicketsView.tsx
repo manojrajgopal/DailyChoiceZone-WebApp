@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState, type FormEvent } from "react";
 import { ArrowRight, MessageSquarePlus, Search } from "lucide-react";
 
 import { listMyTickets, type TicketRow } from "@/services/supportService";
@@ -34,11 +34,13 @@ export function SupportTicketsView() {
   const [term, setTerm] = useState("");
   const [search, setSearch] = useState("");
 
-  // Search as they type, without a request per keystroke.
-  useEffect(() => {
-    const timer = setTimeout(() => setSearch(term.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [term]);
+  // "Find a request" takes a request number or an order number and matches it
+  // exactly (docs/id-lookup.md), so it runs when they press Enter, not on every
+  // keystroke — a half-typed number is no number. Clearing the box shows them all.
+  const find = (event: FormEvent) => {
+    event.preventDefault();
+    setSearch(term.trim());
+  };
 
   const { data, error, isLoading, reload } = useAsync(() => listMyTickets(filter, search), [filter, search, isSignedIn], {
     enabled: isSignedIn,
@@ -51,24 +53,29 @@ export function SupportTicketsView() {
       breadcrumb={[{ label: "Support requests" }]}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative sm:w-72">
+        <form role="search" onSubmit={find} className="relative sm:w-72">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
             strokeWidth={1.5}
             aria-hidden="true"
           />
           <label htmlFor="ticket-search" className="sr-only">
-            Search your requests
+            Find a request by its request number or order number
           </label>
           <input
             id="ticket-search"
             type="search"
             value={term}
-            onChange={(event) => setTerm(event.target.value)}
-            placeholder="Request number, subject or order"
+            onChange={(event) => {
+              setTerm(event.target.value);
+              if (!event.target.value.trim()) setSearch("");
+            }}
+            placeholder="Request or order number, then Enter"
+            autoComplete="off"
+            spellCheck={false}
             className="h-11 w-full rounded-control border border-ink-200 bg-shell pl-9 pr-3 text-sm text-ink placeholder:text-ink-400 hover:border-ink-300 focus:border-copper-500"
           />
-        </div>
+        </form>
         <ButtonLink href="/contact" size="sm">
           <MessageSquarePlus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
           New request
@@ -113,12 +120,17 @@ export function SupportTicketsView() {
             <EmptyState
               icon="search"
               title="No requests match"
-              description="Try a different filter or search."
+              description={
+                search
+                  ? `No request of yours has the number ${search}. Check it against the email we sent, or try your order number.`
+                  : "Try a different filter."
+              }
               secondaryAction={{
                 label: "Show all",
                 onClick: () => {
                   setFilter("");
                   setTerm("");
+                  setSearch("");
                 },
               }}
             />

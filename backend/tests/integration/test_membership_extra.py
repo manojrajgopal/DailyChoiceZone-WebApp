@@ -342,9 +342,24 @@ class TestTheMembers:
         assert [m["id"] for m in found["items"]] == ["MEM800"]
         assert found["counts"] == {"active": 1, "pending": 1, "expired": 0, "cancelled": 0}
         assert found["plans"] == [{"id": "MBP800", "name": "Quarterly"}]
-        assert [m["id"] for m in search(q="Asha Rao")["items"]] == ["MEM800"]
-        assert [m["id"] for m in search(q="someone.else", status="pending")["items"]] == ["MEM801"]
+        # Identifiers only: a Membership ID or a Customer ID, exactly.
+        assert [m["id"] for m in search(q="MEM800")["items"]] == ["MEM800"]
+        assert [m["id"] for m in search(q="CUS002", status="pending")["items"]] == ["MEM801"]
+        assert [m["id"] for m in search(customer="CUS002", status="pending")["items"]] == ["MEM801"]
+        assert search(customer="CUS001", status="pending")["items"] == []
+        assert search(q="MEM80")["items"] == []
+        # Names, emails and plan names are not IDs.
+        assert search(q="Asha Rao")["items"] == []
+        assert search(q="someone.else", status="pending")["items"] == []
+        assert search(q="Quarterly")["items"] == []
         assert search(plan="MBP800", q="nobody-at-all")["items"] == []
+        # The plan filter is a Membership plan ID too, exactly.
+        assert [m["id"] for m in search(plan="mbp800")["items"]] == ["MEM800"]
+        for plan in ("MBP80", "MBP8000", "Quarterly"):
+            assert search(plan=plan, status="pending")["items"] == [], plan
+        # Longer IDs with the same start, and junk, match nothing (and never error).
+        for text in ("MEM8000", "CUS0021", "'; DROP TABLE customer_memberships; --"):
+            assert search(q=text)["items"] == [] and search(customer=text[:40])["items"] == [], text
 
     def test_ending_a_membership_now(self, client, db, admin_auth, customer):
         member(db)

@@ -159,8 +159,35 @@ class TestAdmin:
         data = client.get("/api/admin/delivery/pincodes?cod=no", headers=admin_auth).json()["data"]
         assert [r["pincode"] for r in data["items"]] == ["110001"]
         assert set(data["states"]) >= {"Delhi", "Karnataka", "Tripura"}
-        assert client.get("/api/admin/delivery/pincodes?q=Agartala",
+        assert client.get("/api/admin/delivery/pincodes?q=799001",
                           headers=admin_auth).json()["data"]["items"][0]["pincode"] == "799001"
+        # A city is not an ID: it finds nothing (the state has its own filter).
+        assert client.get("/api/admin/delivery/pincodes?q=Agartala",
+                          headers=admin_auth).json()["data"]["items"] == []
+
+    @pytest.mark.parametrize("q, expected", [
+        ("560001", ["560001"]),          # exact
+        (" 560 001 ", ["560001"]),        # spacing normalised
+        ("5600", []),                     # a partial pincode is not a match
+        ("56000", []),
+        ("5600011", []),                  # nor a longer one
+        ("Bengaluru", []),                # a city
+        ("Karnataka", []),                # a state
+        ("'; DROP TABLE delivery_pincodes; --", []),  # junk: empty, never a 500
+        ("%", []),
+    ])
+    def test_q_is_one_pincode_exactly(self, client, admin_auth, listed, q, expected):
+        response = client.get("/api/admin/delivery/pincodes", headers=admin_auth, params={"q": q})
+        assert response.status_code == 200, response.text
+        assert [r["pincode"] for r in response.json()["data"]["items"]] == expected
+
+    def test_q_and_the_state_filter_combine(self, client, admin_auth, listed):
+        both = client.get("/api/admin/delivery/pincodes", headers=admin_auth,
+                          params={"q": "560001", "state": "Karnataka"}).json()["data"]["items"]
+        assert [r["pincode"] for r in both] == ["560001"]
+        neither = client.get("/api/admin/delivery/pincodes", headers=admin_auth,
+                             params={"q": "560001", "state": "Delhi"}).json()["data"]["items"]
+        assert neither == []
 
     def test_a_pincode_is_listed_once(self, client, admin_auth, listed):
         again = client.post("/api/admin/delivery/pincodes", headers=admin_auth, json={"pincode": "560001"})

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { api, fail, file } from "@/test/api";
+import { idPreview, lookupBackend } from "@/test/lookup-fixtures";
 import { setLocation } from "@/test/navigation";
 import { renderUI, screen, waitFor, within } from "@/test/render";
 import { member, paged, registry, segmentDetail } from "@/test/segments-fixtures";
@@ -15,8 +16,8 @@ beforeEach(() => {
   api.get("/admin/segments/fields", registry());
   api.get("/admin/segments/3", segmentDetail());
   api.get("/admin/segments/3/members", (req) => ({
-    ...paged(req.query.get("q") === "zzz" ? [] : [member(), member({ customerId: "CUS002", name: "Ravi K", rfmLabel: "no-orders", rfmScore: "000", lastOrderAt: null })], {
-      total: req.query.get("q") === "zzz" ? 0 : 60,
+    ...paged(req.query.get("q") === "CUS009" ? [] : [member(), member({ customerId: "CUS002", name: "Ravi K", rfmLabel: "no-orders", rfmScore: "000", lastOrderAt: null })], {
+      total: req.query.get("q") === "CUS009" ? 0 : 60,
       totalPages: 3,
       page: Number(req.query.get("page") ?? 1),
     }),
@@ -94,9 +95,17 @@ describe("AdminSegmentDetailView", () => {
       await user.click(screen.getByRole("button", { name: "Page 2" }));
       await waitFor(() => expect(api.last("GET", "/admin/segments/3/members")!.query.get("page")).toBe("2"));
 
-      await user.type(screen.getByLabelText("Search members"), "zzz");
-      expect(await screen.findByText("No members match")).toBeInTheDocument();
-      expect(api.last("GET", "/admin/segments/3/members")!.query.get("q")).toBe("zzz");
+      // Members are found by Customer ID only (docs/id-lookup.md): a name finds no ID.
+      lookupBackend("customer", [idPreview("customer", "CUS009"), idPreview("customer", "CUS001")]);
+      const field = screen.getByRole("combobox", { name: "Customer ID" });
+      await user.type(field, "Asha");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      expect(api.requests("GET", "/admin/segments/3/members").some((req) => req.query.get("q"))).toBe(false);
+      await user.clear(field);
+      await user.type(field, "CUS00");
+      await user.click(await screen.findByRole("option", { name: "CUS009" }));
+      expect(await screen.findByText("CUS009 is not in this segment")).toBeInTheDocument();
+      expect(api.last("GET", "/admin/segments/3/members")!.query.get("q")).toBe("CUS009");
       expect(api.last("GET", "/admin/segments/3/members")!.query.get("page")).toBe("1");
     });
   });

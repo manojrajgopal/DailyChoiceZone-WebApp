@@ -390,13 +390,14 @@ def _code_conflict() -> ConflictError:
 
 def list_suppliers(db: Session, *, q: str = "", status: str = "", sort: str = "name", page: int = 1,
                    page_size: int = 25) -> Tuple[List[dict], int, dict]:
+    # `q` is a Supplier ID — `SUP001` or the supplier's code — matched exactly
+    # (docs/id-lookup.md): never a name, GSTIN, contact, email or phone.
+    from app.services.lookup.filters import id_condition
+
     conditions = []
-    term = (q or "").strip()
-    if term:
-        like = f"%{term}%"
-        conditions.append(or_(Supplier.name.like(like), Supplier.code.like(like), Supplier.legal_name.like(like),
-                              Supplier.gstin.like(like), Supplier.email.like(like), Supplier.phone.like(like),
-                              Supplier.contact_person.like(like)))
+    by_id = id_condition("supplier", q)
+    if by_id is not None:
+        conditions.append(by_id)
 
     counts = {s: 0 for s in STATUSES}
     for value, count in db.execute(

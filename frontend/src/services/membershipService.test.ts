@@ -102,11 +102,12 @@ describe("admin calls", () => {
 
   it("searchMembers builds a query from the given filters", async () => {
     api.get(/\/admin\/memberships\/search/, ok({ items: [], pagination: {}, counts: {}, plans: [] }));
-    await searchMembers({ status: "active", plan: "gold", q: "asha", page: 2, pageSize: 20 });
+    await searchMembers({ status: "active", plan: "MBP001", q: "MEM001", customer: "CUS001", page: 2, pageSize: 20 });
     const request = api.last()!;
     expect(request.query.get("status")).toBe("active");
-    expect(request.query.get("plan")).toBe("gold");
-    expect(request.query.get("q")).toBe("asha");
+    expect(request.query.get("plan")).toBe("MBP001");
+    expect(request.query.get("q")).toBe("MEM001");
+    expect(request.query.get("customer")).toBe("CUS001");
     expect(request.query.get("page")).toBe("2");
   });
 

@@ -26,7 +26,7 @@ import type { AdminProductListParams, AdminProductPage } from "@/types/searchAdm
 
 import { apiDelete, apiGet, apiGetPage, apiGetPageWithMeta, apiPost, apiPut, query } from "@/services/api/client";
 
-import type { AdminDataSource, NavCounts, PaymentLinkSent } from "../admin-data-source";
+import type { AdminDataSource, NavCounts, PaymentLinkSent, ReviewFilters } from "../admin-data-source";
 
 /**
  * The portal, over the REST API.
@@ -257,8 +257,8 @@ export const httpAdminAdapter: AdminDataSource = {
 
   /* ----------------------------------------------------------- inventory */
 
-  async listInventory(): Promise<InventoryItem[]> {
-    const rows = await apiGet<ApiInventoryRow[]>("/admin/inventory", AUTH);
+  async listInventory(productId?: string): Promise<InventoryItem[]> {
+    const rows = await apiGet<ApiInventoryRow[]>(`/admin/inventory${query({ q: productId || undefined })}`, AUTH);
     // `slug` is not on the API row because nothing in the inventory view links
     // to a storefront page; the type carries it, so it is filled in blank
     // rather than omitted.
@@ -278,8 +278,11 @@ export const httpAdminAdapter: AdminDataSource = {
     return { ...row, slug: "" };
   },
 
-  async listStockLog(): Promise<StockAdjustment[]> {
-    const rows = await apiGet<ApiStockLogRow[]>("/admin/inventory/log", AUTH);
+  async listStockLog(productId?: string): Promise<StockAdjustment[]> {
+    const rows = await apiGet<ApiStockLogRow[]>(
+      `/admin/inventory/log${query({ productId: productId || undefined })}`,
+      AUTH,
+    );
     return rows.map((row) => ({
       productId: row.productId,
       newStock: row.quantityAfter,
@@ -292,9 +295,9 @@ export const httpAdminAdapter: AdminDataSource = {
 
   /* -------------------------------------------------------------- orders */
 
-  async listOrders(customerId?: string): Promise<AdminOrder[]> {
+  async listOrders(customerId?: string, q?: string): Promise<AdminOrder[]> {
     return (
-      await apiGet<ApiAdminOrder[]>(`/admin/orders${query({ customerId })}`, AUTH)
+      await apiGet<ApiAdminOrder[]>(`/admin/orders${query({ customerId, q })}`, AUTH)
     ).map(toAdminOrder);
   },
 
@@ -350,8 +353,8 @@ export const httpAdminAdapter: AdminDataSource = {
 
   /* ----------------------------------------------------------- customers */
 
-  listCustomers(): Promise<AdminCustomer[]> {
-    return apiGet<AdminCustomer[]>("/admin/customers", AUTH);
+  listCustomers(q?: string): Promise<AdminCustomer[]> {
+    return apiGet<AdminCustomer[]>(`/admin/customers${query({ q })}`, AUTH);
   },
 
   getCustomer(id: string): Promise<AdminCustomer | null> {
@@ -390,8 +393,11 @@ export const httpAdminAdapter: AdminDataSource = {
 
   /* ------------------------------------------------------------- reviews */
 
-  listReviews(): Promise<AdminReview[]> {
-    return apiGet<AdminReview[]>("/admin/reviews", AUTH);
+  listReviews(filters: ReviewFilters = {}): Promise<AdminReview[]> {
+    return apiGet<AdminReview[]>(
+      `/admin/reviews${query({ productId: filters.productId || undefined, customerId: filters.customerId || undefined })}`,
+      AUTH,
+    );
   },
 
   async setReviewStatus(id: string, status: ReviewStatus): Promise<AdminReview> {
@@ -554,7 +560,10 @@ function toProductPayload(product: AdminProduct) {
     slug: product.slug,
     sku: product.sku,
     brand: product.brand,
-    category: product.category,
+    // The category is identified by its Category ID. The slug is sent only
+    // for a product that has no ID yet (older data), which the API still accepts.
+    categoryId: product.categoryId || undefined,
+    category: product.categoryId ? undefined : product.category,
     subcategory: product.subcategory,
     price: product.price,
     originalPrice: product.originalPrice,

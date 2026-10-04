@@ -90,13 +90,12 @@ describe("AdminPurchaseOrdersView", () => {
 
   describe("filters", () => {
     it("sends the URL's filters and preselects the supplier for a new PO", async () => {
-      setLocation("/admin/purchase-orders?q=PO-1&status=sent&supplier=SUP002&from=2026-09-01&to=2026-09-30&page=2");
-      suppliers();
+      setLocation("/admin/purchase-orders?q=DCZ-PO-2026-000001&status=sent&supplier=SUP002&from=2026-09-01&to=2026-09-30&page=2");
       api.get("/admin/purchase-orders", page([poListItem()], { page: 2, total: 30, totalPages: 2 }));
       renderUI(<AdminPurchaseOrdersView />);
-      await screen.findByRole("link", { name: "DCZ-PO-2026-000001" });
+      await screen.findAllByRole("link", { name: "DCZ-PO-2026-000001" });
       expect(Object.fromEntries(lastQuery().entries())).toEqual({
-        q: "PO-1",
+        q: "DCZ-PO-2026-000001",
         status: "sent",
         supplier: "SUP002",
         from: "2026-09-01",
@@ -105,39 +104,36 @@ describe("AdminPurchaseOrdersView", () => {
         pageSize: "25",
       });
       expect(screen.getByRole("link", { name: /New purchase order/ })).toHaveAttribute("href", "/admin/purchase-orders/new?supplier=SUP002");
-      await waitFor(() => expect(screen.getByRole("combobox", { name: "Supplier" })).toHaveValue("SUP002"));
+      expect(screen.getByRole("group", { name: "Filtered by Supplier ID SUP002" })).toBeInTheDocument();
+      expect(screen.getByRole("group", { name: "Filtered by Purchase order ID DCZ-PO-2026-000001" })).toBeInTheDocument();
       expect(screen.getByLabelText("Raised from")).toHaveValue("2026-09-01");
     });
 
-    it("lists the suppliers to filter by, keeping one from the URL that isn't in the list", async () => {
-      setLocation("/admin/purchase-orders?supplier=SUP999");
-      suppliers();
-      api.get("/admin/purchase-orders", page([poListItem()]));
-      renderUI(<AdminPurchaseOrdersView />);
-      await screen.findByRole("link", { name: "DCZ-PO-2026-000001" });
-      await waitFor(() =>
-        expect(within(screen.getByRole("combobox", { name: "Supplier" })).getAllByRole("option").map((option) => option.textContent)).toEqual([
-          "All suppliers",
-          "Anvi Textiles",
-          "Blue Looms",
-          "SUP999",
-        ]),
-      );
-      expect(api.last("GET", "/admin/suppliers")!.query.get("pageSize")).toBe("100");
-    });
-
-    it("still works when the supplier list fails", async () => {
-      api.get("/admin/suppliers", fail(500));
-      api.get("/admin/purchase-orders", page([poListItem()]));
-      renderUI(<AdminPurchaseOrdersView />);
-      await screen.findByRole("link", { name: "DCZ-PO-2026-000001" });
-      expect(within(screen.getByRole("combobox", { name: "Supplier" })).getAllByRole("option")).toHaveLength(1);
-    });
-
-    it("changes status, supplier, dates and search through the address bar", async () => {
+    it("chooses the supplier by ID — any supplier, not a capped list of names", async () => {
       setLocation("/admin/purchase-orders");
-      suppliers();
       api.get("/admin/purchase-orders", page([poListItem()]));
+      api.get("/admin/lookup/supplier", { items: [{ id: "SUP150" }], hasMore: false });
+      const { user, rerender } = renderUI(<AdminPurchaseOrdersView />);
+      await screen.findByRole("link", { name: "DCZ-PO-2026-000001" });
+      // No supplier directory is downloaded to build a dropdown.
+      expect(api.requests("GET", "/admin/suppliers")).toHaveLength(0);
+
+      const box = screen.getByRole("combobox", { name: "Supplier ID" });
+      expect(box).toHaveAttribute("placeholder", "Search Supplier ID…");
+      await user.type(box, "SUP15");
+      await user.click(await screen.findByRole("option", { name: "SUP150" }));
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/purchase-orders?supplier=SUP150", { scroll: false });
+      rerender(<AdminPurchaseOrdersView />);
+      await waitFor(() => expect(lastQuery().get("supplier")).toBe("SUP150"));
+
+      await user.click(screen.getByRole("button", { name: "Remove Supplier ID filter" }));
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/purchase-orders", { scroll: false });
+    });
+
+    it("changes status, dates and the Purchase order ID through the address bar", async () => {
+      setLocation("/admin/purchase-orders");
+      api.get("/admin/purchase-orders", page([poListItem()]));
+      api.get("/admin/lookup/purchase_order", { items: [{ id: "DCZ-PO-2026-000077" }], hasMore: false });
       const { user, rerender } = renderUI(<AdminPurchaseOrdersView />);
       await screen.findByRole("link", { name: "DCZ-PO-2026-000001" });
 
@@ -146,18 +142,18 @@ describe("AdminPurchaseOrdersView", () => {
       rerender(<AdminPurchaseOrdersView />);
       await waitFor(() => expect(lastQuery().get("status")).toBe("acknowledged"));
 
-      await waitFor(() => expect(within(screen.getByRole("combobox", { name: "Supplier" })).getAllByRole("option")).toHaveLength(3));
-      await user.selectOptions(screen.getByRole("combobox", { name: "Supplier" }), "SUP002");
-      expect(router.replace).toHaveBeenLastCalledWith("/admin/purchase-orders?status=acknowledged&supplier=SUP002", { scroll: false });
-      rerender(<AdminPurchaseOrdersView />);
-
       await user.type(screen.getByLabelText("Raised from"), "2026-09-01");
-      expect(router.replace).toHaveBeenLastCalledWith("/admin/purchase-orders?status=acknowledged&supplier=SUP002&from=2026-09-01", { scroll: false });
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/purchase-orders?status=acknowledged&from=2026-09-01", { scroll: false });
       rerender(<AdminPurchaseOrdersView />);
 
-      await user.type(screen.getByLabelText("Search purchase orders"), "Q-77");
-      await waitFor(() =>
-        expect(router.replace).toHaveBeenLastCalledWith("/admin/purchase-orders?q=Q-77&status=acknowledged&supplier=SUP002&from=2026-09-01", { scroll: false }),
+      const box = screen.getByRole("combobox", { name: "Purchase order ID" });
+      expect(box).toHaveAttribute("placeholder", "Search Purchase order ID…");
+      expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+      await user.type(box, "PO-2026-00007");
+      await user.click(await screen.findByRole("option", { name: "DCZ-PO-2026-000077" }));
+      expect(router.replace).toHaveBeenLastCalledWith(
+        "/admin/purchase-orders?q=DCZ-PO-2026-000077&status=acknowledged&from=2026-09-01",
+        { scroll: false },
       );
     });
 

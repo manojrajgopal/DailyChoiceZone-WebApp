@@ -5,44 +5,44 @@ import { useState } from "react";
 import { AlertTriangle, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
-import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState } from "@/components/admin/views/operations/shared";
 import { BulkLabelBar } from "@/components/admin/views/packing/BulkLabelBar";
 import { LabelStatusBadge } from "@/components/admin/views/packing/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-import { listShipments, listShippingProviders } from "@/services/shippingService";
+import { listShipments } from "@/services/shippingService";
 import { SHIPMENT_STATUSES, SHIPMENT_STATUS_LABELS } from "@/types/shipping";
 
 import { ShipmentStatusBadge } from "./shared";
 
-const KEYS = ["status", "q", "courier", "provider", "from", "to"] as const;
+const KEYS = ["status", "q", "order", "provider", "from", "to"] as const;
 
 const DATE_INPUT =
   "h-9 rounded-[3px] border border-admin-border bg-admin-surface px-2 text-[0.8125rem] text-admin-ink hover:border-admin-border-strong";
 
 /**
- * Every shipment, newest first: searchable by shipment, order, AWB or
- * customer, and filtered by status, courier, provider and date — all kept in
- * the address bar so a filtered view can be shared.
+ * Every shipment, newest first: found by ID — the Shipment ID (its number or
+ * AWB) or the Order ID, never a name or email (docs/id-lookup.md) — and
+ * filtered by status, courier provider (by code) and date, all kept in the
+ * address bar so a filtered view can be shared.
  */
 export function AdminShipmentsView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
-  const { status, q, courier, provider, from, to } = filters;
+  const { status, q, order, provider, from, to } = filters;
 
   // Primitive dependencies: the filters object is rebuilt whenever the query string is read.
   const shipments = useAdminResource(
-    () => listShipments({ status, q, courier, provider, from, to, page, pageSize }),
-    [status, q, courier, provider, from, to, page, pageSize],
+    () => listShipments({ status, q, order, provider, from, to, page, pageSize }),
+    [status, q, order, provider, from, to, page, pageSize],
   );
-  // For the provider filter. Optional: without it the filter just isn't offered.
-  const providers = useAdminResource(() => listShippingProviders(), []);
 
   const data = shipments.data;
   const counts = data?.counts ?? {};
   const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
-  const filtered = Boolean(status || q || courier || provider || from || to);
+  const filtered = Boolean(status || q || order || provider || from || to);
   const rangeInvalid = Boolean(from && to && from > to);
   // Picked rows for the label actions; kept across pages so a batch can span them.
   const [selected, setSelected] = useState<Record<number, string>>({});
@@ -97,22 +97,11 @@ export function AdminShipmentsView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch
-          label="Search shipments"
-          value={q}
-          onChange={(next) => setFilters({ q: next })}
-          placeholder="Shipment, order number, AWB, customer name or email"
-        />
-        <LogSearch label="Filter by courier" value={courier} onChange={(next) => setFilters({ courier: next })} placeholder="Courier name" />
-        {providers.data && providers.data.length > 0 ? (
-          <FilterSelect
-            label="Provider"
-            value={provider}
-            onChange={(next) => setFilters({ provider: next })}
-            options={[{ value: "", label: "All providers" }, ...providers.data.map((entry) => ({ value: entry.code, label: entry.name }))]}
-          />
-        ) : null}
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="shipment" label="Shipment ID or AWB" value={q} onChange={(next) => setFilters({ q: next })} className="w-64" />
+        <IdFilter entity="order" value={order} onChange={(next) => setFilters({ order: next })} className="w-52" />
+        <IdFilter entity="courier" label="Courier code" value={provider} onChange={(next) => setFilters({ provider: next })}
+          className="w-48" />
         <label className="flex items-center gap-1.5 text-xs text-admin-muted">
           From
           <input type="date" aria-label="Created from" value={from} max={to || undefined} onChange={(event) => setFilters({ from: event.target.value })} className={DATE_INPUT} />

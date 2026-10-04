@@ -31,7 +31,8 @@ export type AdminStockFilter = "in-stock" | "low-stock" | "out-of-stock";
 export type AdminProductFlag = "isNew" | "isTrending" | "isBestSeller" | "isFeatured";
 
 export interface AdminProductListParams {
-  search?: string;
+  /** A Product ID or SKU, matched exactly (docs/id-lookup.md). */
+  q?: string;
   status?: ProductStatus | "all" | "";
   /** One or more category slugs or ids. */
   category?: string | string[];

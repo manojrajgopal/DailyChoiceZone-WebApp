@@ -40,7 +40,7 @@ export function validateProduct(draft: ProductDraft): Record<string, string> {
   const errors: Record<string, string> = {};
 
   if (draft.name.trim().length < 3) errors.name = "Enter a product name.";
-  if (!draft.category) errors.category = "Choose a category.";
+  if (!draft.categoryId && !draft.category) errors.category = "Choose a category.";
   if (!draft.subcategory) errors.subcategory = "Choose a product type.";
 
   if (draft.status !== "draft") {
@@ -219,6 +219,7 @@ export function emptyProductDraft(): ProductDraft {
     name: "",
     brand: "Daily Choice",
     category: "",
+    categoryId: "",
     subcategory: "",
     price: 0,
     originalPrice: 0,

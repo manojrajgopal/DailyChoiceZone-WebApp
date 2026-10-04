@@ -190,9 +190,29 @@ class TestLifecycle:
         assert client.post(f"{API}/{seg['id']}/recalculate", headers=admin_auth).status_code == 409
         listed = client.get(f"{API}?status=archived", headers=admin_auth).json()["data"]
         assert [i["id"] for i in listed["items"]] == [seg["id"]] and listed["counts"]["archived"] == 1
-        assert client.get(f"{API}?status=all&kind=custom&q=spend", headers=admin_auth).json()["data"]["items"]
+        by_id = client.get(f"{API}?status=all&kind=custom&q={seg['id']}", headers=admin_auth).json()["data"]
+        assert [i["id"] for i in by_id["items"]] == [seg["id"]]
         restored = client.post(f"{API}/{seg['id']}/restore", headers=admin_auth).json()["data"]
         assert restored["status"] == "active" and restored["history"][0]["action"] in ("restored", "recalculated")
+
+    def test_the_list_box_takes_a_segment_id_exactly(self, client, admin_auth, db):
+        """docs/id-lookup.md: a Segment ID, exactly; names, descriptions, prefixes and junk find nothing."""
+        seg = create(client, admin_auth)
+        longer_id = int(f"{seg['id']}1")
+        now = datetime.utcnow()
+        db.add(Segment(id=longer_id, name="Longer id", slug=f"longer-id-{longer_id}", rules=[], created_at=now,
+                       updated_at=now))
+        db.flush()
+
+        def ids(q):
+            response = client.get(API, params={"status": "all", "q": q}, headers=admin_auth)
+            assert response.status_code == 200, response.text
+            return [i["id"] for i in response.json()["data"]["items"]]
+
+        assert ids(str(seg["id"])) == [seg["id"]]  # never the longer ID it is a prefix of
+        assert ids(str(longer_id)) == [longer_id]
+        for text in (seg["name"], seg["name"][:4], "spend", "'; DROP TABLE segments; --", "a@b.com"):
+            assert ids(text) == []
 
     def test_unknown_segment(self, client, admin_auth):
         assert client.get(f"{API}/99999", headers=admin_auth).json()["error_code"] == "SEGMENT_NOT_FOUND"
@@ -203,7 +223,10 @@ class TestMembersAndExport:
         seg = create(client, admin_auth, rules=[])
         page = client.get(f"{API}/{seg['id']}/members?pageSize=2", headers=admin_auth).json()["data"]
         assert page["pagination"]["total"] >= 3 and len(page["items"]) == 2
-        found = client.get(f"{API}/{seg['id']}/members?q=Meera", headers=manager).json()["data"]
+        for text in ("Meera", "CUS70", "cus703@example.com", "'; DROP TABLE customers; --"):
+            response = client.get(f"{API}/{seg['id']}/members", params={"q": text}, headers=manager)
+            assert response.status_code == 200 and response.json()["data"]["items"] == []
+        found = client.get(f"{API}/{seg['id']}/members?q=CUS703", headers=manager).json()["data"]
         assert [i["customerId"] for i in found["items"]] == ["CUS703"] and found["masked"] is True
         assert "@" in found["items"][0]["email"] and "cus703" not in found["items"][0]["email"]
 

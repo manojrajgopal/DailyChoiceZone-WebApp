@@ -412,6 +412,28 @@ class TestThePortal:
         assert [o["id"] for o in theirs] == ["ORD953"]
         assert theirs[0]["invoiceId"] is None
 
+    def test_the_order_id_filter_matches_ids_only(self, client, db, ready, admin_auth, other_customer):
+        mine = place(client, ready).json()["data"]["order"]
+        db.add(someone_elses_order("ORD953", "DCZ953", other_customer))
+        db.flush()
+
+        def ids(**params):
+            response = client.get("/api/admin/orders", headers=admin_auth, params=params)
+            assert response.status_code == 200, response.text
+            return [o["id"] for o in response.json()["data"]]
+
+        assert ids(q="DCZ953") == ["ORD953"]
+        assert ids(q="dcz953") == ["ORD953"]
+        assert ids(q="ORD953") == ["ORD953"]
+        assert ids(q=mine["orderNumber"]) == [mine["id"]]
+        assert ids(q="DCZ953", customerId="CUS002") == ["ORD953"]
+        assert ids(q="DCZ953", customerId="CUS001") == []
+        # A name, an email or part of a number is not an Order ID.
+        assert ids(q="Ravi") == []
+        assert ids(q="someone.else@example.com") == []
+        assert ids(q="DCZ95") == []
+        assert len(ids(q="")) == 2
+
     def test_one_order_by_id_or_number(self, client, ready, admin_auth):
         order = place(client, ready).json()["data"]["order"]
         by_id = client.get(f"/api/admin/orders/{order['id']}", headers=admin_auth).json()["data"]

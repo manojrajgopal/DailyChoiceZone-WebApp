@@ -228,15 +228,16 @@ def list_members(
 def search_members(
     status: str = Query("", max_length=12),
     plan: str = Query("", max_length=20),
-    q: str = Query("", max_length=120),
+    q: str = Query("", max_length=120, description="A Membership ID or Customer ID, exactly."),
+    customer: str = Query("", max_length=40, description="A Customer ID, exactly."),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_permission("customers")),
 ):
     service.expire_lapsed(db)
-    rows, total, counts = service.search_members(db, status=status, plan_id=plan, query=q, page=page,
-                                                 page_size=page_size)
+    rows, total, counts = service.search_members(db, status=status, plan_id=plan, query=q, customer_id=customer,
+                                                 page=page, page_size=page_size)
     plans = db.query(MembershipPlan).order_by(MembershipPlan.sort_order, MembershipPlan.name).all()
     return ok({
         "items": _member_rows(db, rows),

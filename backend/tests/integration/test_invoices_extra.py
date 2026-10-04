@@ -88,8 +88,17 @@ class TestTheLedger:
         assert ids(status="all", paymentStatus="all") == both
         assert ids(paymentStatus="paid") == {paid["invoiceId"]}
         assert ids(orderId=cod["order"]["id"]) == {cod["invoiceId"]}
-        assert ids(search=f"Asha {paid['order']['orderNumber']}") == {paid["invoiceId"]}
-        assert ids(search="Asha nobody-matches-this") == set()
+        # `search` is an ID, matched exactly: the invoice's own or its order's.
+        invoice_number = client.get(f"/api/admin/billing/invoices/{paid['invoiceId']}",
+                                    headers=admin_auth).json()["data"]["invoiceNumber"]
+        assert ids(search=paid["order"]["orderNumber"]) == {paid["invoiceId"]}
+        assert ids(search=paid["order"]["id"]) == {paid["invoiceId"]}
+        assert ids(search=invoice_number) == {paid["invoiceId"]}
+        assert ids(search=paid["invoiceId"].lower()) == {paid["invoiceId"]}
+        # Names, emails and fragments of an ID are not IDs.
+        assert ids(search="Asha") == set()
+        assert ids(search="shopper@example.com") == set()
+        assert ids(search=paid["order"]["orderNumber"][:-1]) == set()
         assert ids(minAmount=100000) == both
         assert ids(minAmount=100001) == set()
         yesterday = (datetime.utcnow() - timedelta(days=1)).isoformat()
@@ -120,6 +129,14 @@ class TestTheLedger:
         assert ids(status="paid") == {paid["paymentId"]}
         assert ids(orderId=paid["order"]["id"]) == {paid["paymentId"]}
         assert ids(search=cod["order"]["orderNumber"]) == {cod["paymentId"]}
+        # Any of the payment's IDs finds it — never a name or an email.
+        assert ids(search=cod["paymentId"]) == {cod["paymentId"]}
+        assert ids(search=cod["invoiceId"]) == {cod["paymentId"]}
+        transaction = client.get(f"/api/admin/billing/payments/{paid['paymentId']}",
+                                 headers=admin_auth).json()["data"]["transactionId"]
+        assert ids(search=transaction) == {paid["paymentId"]}
+        assert ids(search="Asha") == set()
+        assert ids(search="shopper@example.com") == set()
 
     def test_one_payment_and_its_timeline(self, client, admin_auth, paid):
         one = client.get(f"/api/admin/billing/payments/{paid['paymentId']}", headers=admin_auth).json()["data"]
@@ -315,7 +332,15 @@ class TestRefunds:
         assert reasons() == ["Colour differs", "Late delivery"]
         assert reasons(status="pending") == ["Colour differs"]
         assert reasons(status="all", orderId=paid["order"]["id"]) == ["Colour differs", "Late delivery"]
-        assert reasons(search="Colour differs") == ["Colour differs"]
+        # `search` is an ID — the refund's, its order's or its invoice's — never the reason or a name.
+        rows = client.get(REFUNDS, headers=admin_auth).json()["data"]
+        colour = next(row for row in rows if row["reason"] == "Colour differs")
+        assert reasons(search=colour["refundNumber"]) == ["Colour differs"]
+        assert reasons(search=colour["id"]) == ["Colour differs"]
+        assert reasons(search=paid["order"]["orderNumber"]) == ["Colour differs", "Late delivery"]
+        assert reasons(search=paid["invoiceId"]) == ["Colour differs", "Late delivery"]
+        assert reasons(search="Colour differs") == []
+        assert reasons(search="Asha") == []
 
 
 class TestRefundsThatWait:
@@ -462,6 +487,27 @@ class TestCreditNotes:
         # 5% GST included: ₹525 is ₹500 + ₹25 tax.
         assert (note["total"], note["amount"], note["tax"]) == (52500, 50000, 2500)
         assert note["creditNoteNumber"] and note["status"] == "issued"
+
+    def test_the_list_finds_notes_by_id_only(self, client, admin_auth, paid, cod):
+        note = client.post("/api/admin/billing/credit-notes", headers=admin_auth, json={
+            "invoiceId": paid["invoiceId"], "total": 1000, "reason": "Price adjustment"}).json()["data"]
+        other = client.post("/api/admin/billing/credit-notes", headers=admin_auth, json={
+            "invoiceId": cod["invoiceId"], "total": 1000, "reason": "Price adjustment"}).json()["data"]
+
+        def ids(**params):
+            response = client.get("/api/admin/billing/credit-notes", headers=admin_auth, params=params)
+            assert response.status_code == 200, response.text
+            return {row["id"] for row in response.json()["data"]}
+
+        assert ids() == {note["id"], other["id"]}
+        assert ids(q=note["creditNoteNumber"]) == {note["id"]}
+        assert ids(q=note["id"]) == {note["id"]}
+        assert ids(q=note["invoiceNumber"]) == {note["id"]}
+        assert ids(q=paid["order"]["orderNumber"]) == {note["id"]}
+        assert ids(q=cod["order"]["id"]) == {other["id"]}
+        assert ids(q="Asha") == set()
+        assert ids(q="Price adjustment") == set()
+        assert ids(q=note["creditNoteNumber"][:-1]) == set()
 
     def test_it_cannot_exceed_the_invoice(self, client, admin_auth, paid):
         response = client.post("/api/admin/billing/credit-notes", headers=admin_auth, json={

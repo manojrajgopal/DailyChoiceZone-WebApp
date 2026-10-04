@@ -5,6 +5,7 @@ import { RefreshCw, RotateCcw, Send, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea, AdminToggle } from "@/components/admin/ui/AdminForm";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { Badge, Detail, JsonBlock, TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { Modal } from "@/components/ui/Dialog";
@@ -39,7 +40,7 @@ const STATUS_LABEL: Record<string, string> = {
   sent: "Sent", delivered: "Delivered", read: "Read", queued: "Queued", sending: "Sending", failed: "Retrying",
   dead: "Failed", skipped: "Not sent",
 };
-const KEYS = ["tab", "channel", "status", "event", "q", "from", "to"] as const;
+const KEYS = ["tab", "channel", "status", "event", "customer", "q", "from", "to"] as const;
 
 /**
  * Notifications: every message to customers on every channel — what was sent,
@@ -161,11 +162,12 @@ function Overview({ data, error, onSaved }: { data: NotificationOverview | null;
 
 function History({ events }: { events: { key: string; label: string }[] }) {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
+  // Found by ID only (docs/id-lookup.md): a Customer ID, or the message's own reference or provider id, exactly.
   const list = useAdminResource(() => listDeliveries({ channel: filters.channel, status: filters.status, event: filters.event,
-    q: filters.q, from: filters.from, to: filters.to, page, pageSize }), [filters, page, pageSize]);
+    customer: filters.customer, q: filters.q, from: filters.from, to: filters.to, page, pageSize }), [filters, page, pageSize]);
   const [openId, setOpenId] = useState<number | null>(null);
   const data = list.data;
-  const filtered = ["channel", "status", "event", "q", "from", "to"].some((k) => filters[k as keyof typeof filters]);
+  const filtered = ["channel", "status", "event", "customer", "q", "from", "to"].some((k) => filters[k as keyof typeof filters]);
 
   return (
     <div>
@@ -173,7 +175,9 @@ function History({ events }: { events: { key: string; label: string }[] }) {
         tabs={[{ value: "", label: "All" }, ...["sent", "delivered", "queued", "failed", "dead", "skipped"].map((s) => ({
           value: s, label: STATUS_LABEL[s] ?? s, count: data?.counts[s] }))]} />
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <LogSearch label="Search" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Customer, reference or provider id" />
+        <IdFilter entity="customer" value={filters.customer} onChange={(customer) => setFilters({ customer })} className="min-w-[13rem]" />
+        <LogSearch label="Message reference or provider message ID" value={filters.q} onChange={(q) => setFilters({ q })}
+          placeholder="Search message reference or provider message ID…" />
         <FilterSelect label="Channel" value={filters.channel} onChange={(channel) => setFilters({ channel })}
           options={[{ value: "", label: "Every channel" }, ...(Object.keys(CHANNEL_LABELS) as Channel[]).map((c) => ({ value: c, label: CHANNEL_LABELS[c] }))]} />
         <FilterSelect label="Event" value={filters.event} onChange={(event) => setFilters({ event })}

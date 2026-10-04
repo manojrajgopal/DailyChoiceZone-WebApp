@@ -121,7 +121,9 @@ export function AdminWebhooksView() {
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search events" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Event, payment, Razorpay payment, refund ID or order number" />
+        <LogSearch label="Event ID, Payment ID, gateway payment ID, Refund ID or Order ID" value={filters.q}
+          onChange={(q) => setFilters({ q })}
+          placeholder="Search Event ID, Payment ID, gateway payment ID, Refund ID or Order ID…" />
         <FilterSelect
           label="Event type"
           value={filters.event}

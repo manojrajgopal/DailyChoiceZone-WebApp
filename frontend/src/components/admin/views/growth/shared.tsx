@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { useState } from "react";
 
-import { AdminButton } from "@/components/admin/ui/AdminChrome";
+import { IdAutocomplete } from "@/components/common/IdAutocomplete";
 import { problem } from "@/components/admin/views/operations/shared";
 import { cn } from "@/lib/utils/cn";
-import { type PickableProduct, searchProducts } from "@/services/admin/growthAdminService";
+import type { PickableProduct } from "@/services/admin/growthAdminService";
+import { resolveId, type IdPreview } from "@/services/lookupService";
 
 export const rupees = (value: number) =>
   `₹${value.toLocaleString("en-IN", { minimumFractionDigits: value % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
@@ -30,9 +30,31 @@ export function utc(iso: string): Date {
   return new Date(iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`);
 }
 
+/** The preview's Price (paise) etc. as the product the pickers hand back. */
+export function pickableFromPreview(preview: IdPreview): PickableProduct {
+  const value = (label: string) => preview.fields.find((f) => f.label === label)?.value;
+  const num = (label: string) => Number(value(label) ?? 0) || 0;
+  const stock = num("Stock");
+  const available = value("Available") === undefined ? stock : num("Available");
+  return {
+    id: preview.id,
+    name: preview.title,
+    sku: String(value("SKU") ?? ""),
+    price: num("Price") / 100,
+    stock,
+    reservedStock: Math.max(0, stock - available),
+    status: preview.status,
+    images: preview.image ? [preview.image] : [],
+  };
+}
+
+const SELLABLE = new Set(["active", "out-of-stock"]);
+
 /**
- * Find a product to add to a sale or a bundle, with the portal's own product
- * search. Already-chosen products are shown but can't be added twice.
+ * Add a product to a sale, a bundle or an order by its Product ID or SKU
+ * (docs/id-lookup.md) — never by name. The chosen ID's details are read once,
+ * exactly; already-chosen products can't be picked again, and a product that
+ * isn't on sale (draft, archived) is refused with a reason.
  */
 export function ProductPicker({
   chosen,
@@ -43,67 +65,40 @@ export function ProductPicker({
   onPick: (product: PickableProduct) => void;
   label?: string;
 }) {
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<PickableProduct[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (q.trim().length < 2) {
-      setResults([]);
-      return;
+  const pick = async (id: string, preview?: IdPreview) => {
+    setError("");
+    setBusy(true);
+    try {
+      const product = pickableFromPreview(preview ?? (await resolveId("admin", "product", id)));
+      if (chosen.includes(product.id)) setError(`${product.id} is already added.`);
+      else if (!SELLABLE.has(product.status)) {
+        setError(`${product.id} (${product.name}) is ${product.status || "not on sale"} and can't be added.`);
+      } else onPick(product);
+    } catch (e) {
+      setError(problem(e, `Couldn't load Product ID ${id}.`));
+    } finally {
+      setBusy(false);
     }
-    let live = true;
-    const timer = setTimeout(() => {
-      setBusy(true);
-      searchProducts(q.trim())
-        .then((rows) => live && (setResults(rows), setError("")))
-        .catch((e) => live && setError(problem(e, "Search didn't work.")))
-        .finally(() => live && setBusy(false));
-    }, 250);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [q]);
+  };
 
   return (
     <div className="rounded-[3px] border border-dashed border-admin-border p-3">
-      <label className="flex items-center gap-2 text-xs text-admin-muted">
-        <Search className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
-        <span className="sr-only">{label}</span>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={`${label}: search by name or SKU`}
-          className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-surface px-2 text-[0.8125rem] text-admin-ink outline-none focus:border-copper-500"
-        />
-      </label>
-      {error ? <p className="mt-2 text-xs text-[#a32424]">{error}</p> : null}
-      {busy ? <p className="mt-2 text-xs text-admin-muted">Searching…</p> : null}
-      {results.length ? (
-        <ul className="mt-2 max-h-56 divide-y divide-admin-border overflow-y-auto">
-          {results.map((product) => {
-            const taken = chosen.includes(product.id);
-            const sellable = product.status === "active" || product.status === "out-of-stock";
-            return (
-              <li key={product.id} className="flex items-center justify-between gap-3 py-2 text-xs">
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-admin-ink">{product.name}</span>
-                  <span className="text-admin-muted">
-                    {product.sku} · {rupees(product.price)} · {Math.max(0, product.stock - product.reservedStock)} available
-                    {sellable ? "" : ` · ${product.status}`}
-                  </span>
-                </span>
-                <AdminButton size="sm" variant="ghost" disabled={taken || !sellable} onClick={() => onPick(product)}>
-                  <Plus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" /> {taken ? "Added" : "Add"}
-                </AdminButton>
-              </li>
-            );
-          })}
-        </ul>
-      ) : q.trim().length >= 2 && !busy && !error ? (
-        <p className="mt-2 text-xs text-admin-muted">No products match.</p>
+      <IdAutocomplete
+        entity="product"
+        label={`${label} — Product ID or SKU`}
+        placeholder="Search Product ID or SKU…"
+        exclude={chosen}
+        disabled={busy}
+        onSelect={(id, preview) => void pick(id, preview)}
+      />
+      {busy ? <p className="mt-2 text-xs text-admin-muted">Loading product…</p> : null}
+      {error ? (
+        <p role="alert" className="mt-2 text-xs text-[#a32424]">
+          {error}
+        </p>
       ) : null}
     </div>
   );

@@ -400,22 +400,36 @@ def search_log(
     status: str = "",
     email_type: str = "",
     query: str = "",
+    subject: str = "",
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     page: int = 1,
     page_size: int = 25,
 ) -> tuple:
-    """The whole email log, filtered and paged in the database. Returns (rows, total, counts)."""
-    from sqlalchemy import func, or_
+    """
+    The whole email log, filtered and paged in the database. Returns (rows, total, counts).
+
+    `query` is the record the email was about — its reference, an order number or
+    a ticket number — matched exactly (docs/id-lookup.md); never the recipient's
+    address, which would identify a customer by email. `subject` is content:
+    words in the subject line.
+    """
+    from sqlalchemy import false, func
+
+    from app.services.lookup.filters import normalised_id
+    from app.services.search.base import LIKE_ESCAPE, escape_like
 
     conditions = []
     if email_type:
         conditions.append(EmailLog.email_type == email_type)
-    text = (query or "").strip()
-    if text:
-        like = f"%{text}%"
-        conditions.append(or_(EmailLog.recipient.ilike(like), EmailLog.subject.ilike(like),
-                              EmailLog.reference.ilike(like)))
+    raw = (query or "").strip()
+    if raw:
+        reference = normalised_id(raw)
+        # References are stored as written (DCZ10241, DCZ-2026-000123): the ID as typed or normalised.
+        conditions.append(EmailLog.reference.in_(sorted({raw, reference})) if reference else false())
+    words = (subject or "").strip()
+    if words:
+        conditions.append(EmailLog.subject.ilike(f"%{escape_like(words)}%", escape=LIKE_ESCAPE))
     if date_from is not None:
         conditions.append(EmailLog.created_at >= date_from)
     if date_to is not None:

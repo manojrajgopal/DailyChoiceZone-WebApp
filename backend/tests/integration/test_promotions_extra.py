@@ -135,7 +135,7 @@ class TestBundleEditing:
         assert shop.get(f"/api/admin/bundles/{bundle['id']}", headers=admin_auth).status_code == 404
 
     def test_the_portal_list_filters_and_counts(self, shop, admin_auth):
-        make_bundle(shop, admin_auth)
+        office = make_bundle(shop, admin_auth)
         make_bundle(shop, admin_auth, name="Weekend Set", status="draft")
         response = shop.get("/api/admin/bundles?status=draft", headers=admin_auth)
         assert response.status_code == 200
@@ -143,9 +143,10 @@ class TestBundleEditing:
         assert [b["name"] for b in data["items"]] == ["Weekend Set"]
         assert data["counts"] == {"draft": 1, "active": 1, "archived": 0}
         assert data["items"][0]["sales"] == {"orders": 0, "units": 0, "revenue": 0.0}
-        found = shop.get("/api/admin/bundles?q=office", headers=admin_auth).json()["data"]
+        found = shop.get(f"/api/admin/bundles?q={office['id']}", headers=admin_auth).json()["data"]
         assert [b["name"] for b in found["items"]] == ["Office Look"]
-        empty = shop.get("/api/admin/bundles?q=nothing", headers=admin_auth).json()["data"]
+        # The box takes a Bundle ID (docs/id-lookup.md): a name finds nothing.
+        empty = shop.get("/api/admin/bundles?q=office", headers=admin_auth).json()["data"]
         assert empty["items"] == [] and empty["pagination"]["total"] == 0
 
 
@@ -461,10 +462,10 @@ class TestFlashSaleEditing:
 
 
 class TestFlashSaleListings:
-    def test_the_portal_list_by_phase_and_name(self, shop, admin_auth):
+    def test_the_portal_list_by_phase_and_id(self, shop, admin_auth):
         now = datetime.utcnow()
         make_sale(shop, admin_auth)
-        make_sale(shop, admin_auth, name="Midnight Madness", publish=False,
+        midnight = make_sale(shop, admin_auth, name="Midnight Madness", publish=False,
                   items=[{"productId": "PRD002", "salePrice": 1500}])
         make_sale(shop, admin_auth, name="Next Week", starts=now + timedelta(days=6), ends=now + timedelta(days=7),
                   items=[{"productId": "PRD002", "salePrice": 1500}])
@@ -479,7 +480,8 @@ class TestFlashSaleListings:
         assert everything["pagination"]["total"] == 3 and "itemCount" in everything["items"][0]
         assert [s["name"] for s in listing("phase=draft")["items"]] == ["Midnight Madness"]
         assert [s["name"] for s in listing("phase=scheduled")["items"]] == ["Next Week"]
-        assert [s["name"] for s in listing("q=madness")["items"]] == ["Midnight Madness"]
+        assert [s["name"] for s in listing(f"q={midnight['id']}")["items"]] == ["Midnight Madness"]
+        assert listing("q=madness")["items"] == []  # a name is not a Flash sale ID (docs/id-lookup.md)
         assert listing("phase=ended")["items"] == []
 
     def test_a_draft_is_not_on_the_storefront(self, shop, admin_auth):

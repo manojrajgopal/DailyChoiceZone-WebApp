@@ -498,23 +498,25 @@ def list_members(db: Session, *, status: Optional[str] = None, limit: int = 500)
 
 
 def search_members(
-    db: Session, *, status: str = "", plan_id: str = "", query: str = "", page: int = 1, page_size: int = 25,
+    db: Session, *, status: str = "", plan_id: str = "", query: str = "", customer_id: str = "", page: int = 1,
+    page_size: int = 25,
 ) -> tuple:
-    """Every member, filtered and paged in the database. Returns (rows, total, counts by status)."""
-    from sqlalchemy import or_
+    """
+    Every member, filtered and paged in the database. Returns (rows, total, counts by status).
+
+    `query` is a Membership ID or a Customer ID and `customer_id` a Customer ID,
+    each matched exactly (docs/id-lookup.md): names, emails and plan names match nothing.
+    """
+    from app.services.lookup.filters import any_id_condition, id_condition
 
     conditions = []
-    if plan_id:
-        conditions.append(CustomerMembership.plan_id == plan_id)
-    text = (query or "").strip()
-    if text:
-        like = f"%{text}%"
-        people = select(Customer.id).where(or_(
-            Customer.email.ilike(like), Customer.first_name.ilike(like), Customer.last_name.ilike(like),
-            func.concat(Customer.first_name, " ", Customer.last_name).ilike(like),
-        ))
-        conditions.append(or_(CustomerMembership.customer_id.in_(people), CustomerMembership.id.ilike(like),
-                              CustomerMembership.plan_name.ilike(like)))
+    for condition in (
+        id_condition("membership_plan", plan_id, column=CustomerMembership.plan_id),
+        any_id_condition(query, ("membership", None, None), ("customer", CustomerMembership.customer_id, None)),
+        id_condition("customer", customer_id, column=CustomerMembership.customer_id),
+    ):
+        if condition is not None:
+            conditions.append(condition)
     counts = dict(db.execute(
         select(CustomerMembership.status, func.count()).where(*conditions).group_by(CustomerMembership.status)
     ).all())

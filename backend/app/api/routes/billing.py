@@ -72,7 +72,8 @@ def list_invoices(
 
     `orderId` narrows it to a single order's invoice, which is what the order
     and invoice screens ask for. They used to read the whole ledger — 334 KB —
-    and pick the row out in the browser.
+    and pick the row out in the browser. `search` is an Invoice or Order ID,
+    matched exactly (docs/id-lookup.md); names and emails match nothing.
     """
     rows = service.list_invoices(
         db,
@@ -117,7 +118,11 @@ def list_payments(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    """`orderId` narrows it to one order's transaction — see the invoices route."""
+    """
+    `orderId` narrows it to one order's transaction — see the invoices route.
+    `search` is a Payment ID (or gateway transaction id), Order ID or Invoice
+    ID, matched exactly.
+    """
     rows = service.list_payments(
         db, search=search, status=status, method=method, order_id=order_id
     )
@@ -152,6 +157,7 @@ def list_refunds(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
+    """`search` is a Refund, Order or Invoice ID, matched exactly."""
     rows = service.list_refunds(db, search=search, status=status, order_id=order_id)
     return ok_list([RefundOut.from_model(refund).model_dump(by_alias=True) for refund in rows])
 
@@ -218,11 +224,15 @@ def update_refund(
 @admin_router.get("/credit-notes", summary="Every credit note")
 def list_credit_notes(
     order_id: Optional[str] = Query(None, alias="orderId"),
+    q: Optional[str] = Query(None, max_length=80),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    """`orderId` narrows it to one order's notes — see the invoices route."""
-    rows = service.list_credit_notes(db, order_id=order_id)
+    """
+    `orderId` narrows it to one order's notes — see the invoices route. `q` is
+    a Credit note, Invoice or Order ID, matched exactly.
+    """
+    rows = service.list_credit_notes(db, order_id=order_id, q=q)
     return ok_list([CreditNoteOut.model_validate(note).model_dump(by_alias=True) for note in rows])
 
 

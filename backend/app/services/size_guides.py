@@ -577,9 +577,13 @@ def admin_view(db: Session, guide: SizeGuide, *, with_products: bool = False) ->
 
 def search(db: Session, *, q: str = "", status: str = "", kind: str = "", page: int = 1,
            page_size: int = 25) -> Tuple[List[SizeGuide], int]:
+    from app.services.lookup.filters import id_condition
+
     conditions = []
-    if q.strip():
-        conditions.append(SizeGuide.name.ilike(f"%{q.strip()}%"))
+    # The list's box is a Size guide ID (SZG001), matched exactly — never the name.
+    by_id = id_condition("size_guide", q)
+    if by_id is not None:
+        conditions.append(by_id)
     if status in STATUSES:
         conditions.append(SizeGuide.status == status)
     if kind in SIZE_GUIDE_KINDS:

@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { Bell, Check, CreditCard, FileText, LogOut, Menu, Package, Search, ShoppingCart, Undo2, User, Users } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Bell, Check, Loader2, LogOut, Menu, Search, User } from "lucide-react";
 
 import type { AdminNotification } from "@/types/admin";
 
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { usePoll } from "@/hooks/usePoll";
+import { adminLookupHref } from "@/lib/lookup/entities";
+import { lookupErrorMessage } from "@/lib/lookup/errors";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
 import {
@@ -17,35 +19,30 @@ import {
   markNotificationRead,
   search,
   EMPTY_SEARCH_RESULTS,
+  MIN_SEARCH_LENGTH,
+  type AdminSearchResult,
   type AdminSearchResults,
 } from "@/services/admin/adminSearchService";
 
 const EMPTY_RESULTS: AdminSearchResults = EMPTY_SEARCH_RESULTS;
 
-const RESULT_ICONS = {
-  product: Package,
-  order: ShoppingCart,
-  customer: Users,
-  invoice: FileText,
-  payment: CreditCard,
-  refund: Undo2,
-} as const;
-
 /**
- * The admin top bar: menu toggle, global search, notifications and profile.
+ * The admin top bar: menu toggle, global ID search, notifications and profile.
  *
- * Search spans products, orders, customers and billing, because an
- * administrator arrives holding an identifier — an order number from an email,
- * a SKU from a supplier, a transaction reference from a bank statement — and
- * should not have to work out which list owns it first.
+ * The search finds any record by its ID — an order number from an email, a
+ * SKU from a supplier, a transaction reference from a bank statement — without
+ * first working out which list owns it. IDs only: a name finds nothing (see
+ * docs/id-lookup.md). Choosing an ID opens its preview.
  */
 export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const router = useRouter();
   const { user, signOut } = useAdminSession();
 
   const [term, setTerm] = useState("");
-  const [results, setResults] = useState<AdminSearchResults>(EMPTY_RESULTS);
+  const [found, setFound] = useState<{ term: string; results: AdminSearchResults; error: unknown } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeResult, setActiveResult] = useState(-1);
+  const searchIds = useId();
 
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [bellOpen, setBellOpen] = useState(false);
@@ -57,31 +54,33 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
   /* --------------------------------------------------------- search */
 
-  // Debounced: every keystroke querying three collections is wasteful now and
-  // would be three API calls later.
+  // Debounced, and a request made stale by newer typing is aborted rather
+  // than ignored, so an old answer can never land on top of a newer one.
+  const trimmedTerm = term.trim();
+  const searching = trimmedTerm.length >= MIN_SEARCH_LENGTH;
   useEffect(() => {
-    const trimmed = term.trim();
-    if (trimmed.length < 2) {
-      setResults(EMPTY_RESULTS);
-      return;
-    }
-
-    let active = true;
+    if (!searching) return;
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      search(trimmed)
-        .then((found) => {
-          if (active) setResults(found);
+      search(trimmedTerm, 3, { signal: controller.signal })
+        .then((results) => {
+          if (!controller.signal.aborted) setFound({ term: trimmedTerm, results, error: null });
         })
-        .catch(() => {
-          if (active) setResults(EMPTY_RESULTS);
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted) setFound({ term: trimmedTerm, results: EMPTY_RESULTS, error });
         });
-    }, 180);
-
+    }, 250);
     return () => {
-      active = false;
       clearTimeout(timer);
+      controller.abort();
     };
-  }, [term]);
+  }, [searching, trimmedTerm]);
+
+  const current = searching && found?.term === trimmedTerm ? found : null;
+  const results = current?.results ?? EMPTY_RESULTS;
+  const isSearching = searching && !current;
+  const flat: AdminSearchResult[] = results.groups.flatMap((group) => group.items);
+  const listOpen = searchOpen && searching;
 
   /* -------------------------------------------------- notifications */
 
@@ -131,11 +130,37 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     };
   }, []);
 
-  const go = (href: string) => {
+  const go = (result: AdminSearchResult) => {
     setSearchOpen(false);
     setTerm("");
-    router.push(href);
+    setActiveResult(-1);
+    router.push(adminLookupHref(result.entity, result.id));
   };
+
+  const onSearchKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (flat.length === 0) return;
+      setSearchOpen(true);
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActiveResult((index) => (index + step + flat.length) % flat.length);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      // Enter with nothing highlighted opens the only match, if there is one.
+      const chosen = flat[activeResult] ?? (flat.length === 1 ? flat[0] : undefined);
+      if (chosen) go(chosen);
+    }
+  };
+
+  const listId = `${searchIds}-results`;
+  const optionId = (index: number) => `${searchIds}-result-${index}`;
+  let searchStatus = "";
+  if (listOpen) {
+    if (isSearching) searchStatus = "Searching IDs…";
+    else if (current?.error) searchStatus = lookupErrorMessage(current.error, { idLabel: "ID" });
+    else if (results.total === 0) searchStatus = "No matching IDs found.";
+    else searchStatus = `${results.total} matching ${results.total === 1 ? "ID" : "IDs"}.`;
+  }
 
   const iconButton =
     "relative inline-flex h-9 w-9 items-center justify-center rounded-[3px] text-admin-ink transition-colors hover:bg-admin-raised";
@@ -154,7 +179,7 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       {/* ------------------------------------------------------- search */}
       <div ref={searchRef} className="relative min-w-0 flex-1 max-w-md">
         <label htmlFor="admin-search" className="sr-only">
-          Search products, orders and customers
+          Search any record by its ID
         </label>
         <Search
           className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
@@ -164,73 +189,87 @@ export function AdminHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <input
           id="admin-search"
           type="search"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={listOpen && flat.length > 0}
+          aria-controls={listId}
+          aria-activedescendant={listOpen && flat[activeResult] ? optionId(activeResult) : undefined}
+          aria-describedby={`${searchIds}-status`}
           value={term}
-          placeholder="Search products, orders, customers"
+          placeholder="Search by ID… (DCZ10241, PRD001, CUS001)"
           autoComplete="off"
+          spellCheck={false}
           onChange={(event) => {
             setTerm(event.target.value);
             setSearchOpen(true);
+            setActiveResult(-1);
           }}
           onFocus={() => setSearchOpen(true)}
-          className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2.5 text-[0.8125rem] text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
+          onKeyDown={onSearchKey}
+          className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-8 font-mono text-[0.8125rem] text-admin-ink placeholder:font-sans placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
         />
+        {isSearching ? (
+          <Loader2
+            className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-admin-faint"
+            aria-hidden="true"
+          />
+        ) : null}
+        <p id={`${searchIds}-status`} role="status" aria-live="polite" className="sr-only">
+          {searchStatus}
+        </p>
 
-        {searchOpen && term.trim().length >= 2 ? (
+        {listOpen ? (
           <div className="scroll-panel absolute left-0 right-0 top-11 z-40 max-h-[70vh] overflow-y-auto rounded-[3px] border border-admin-border bg-admin-surface shadow-raised">
-            {results.total === 0 ? (
-              <p className="px-3 py-6 text-center text-xs text-admin-muted">
-                Nothing matches &ldquo;{term.trim()}&rdquo;.
-              </p>
+            {flat.length === 0 ? (
+              <p className="px-3 py-6 text-center text-xs text-admin-muted">{searchStatus}</p>
             ) : (
-              <>
-                {(
-                  [
-                    ["Products", results.products],
-                    ["Orders", results.orders],
-                    ["Customers", results.customers],
-                    ["Invoices", results.invoices],
-                    ["Payments", results.payments],
-                    ["Refunds", results.refunds],
-                  ] as const
-                ).map(([heading, group]) =>
-                  group.length === 0 ? null : (
-                    <div key={heading} className="border-b border-admin-border last:border-0">
-                      <p className="px-3 pb-1 pt-2.5 text-[0.625rem] font-medium uppercase tracking-[0.12em] text-admin-faint">
-                        {heading}
-                      </p>
-                      <ul>
-                        {group.map((result) => {
-                          const Icon = RESULT_ICONS[result.kind];
-                          return (
-                            <li key={`${result.kind}-${result.id}`}>
-                              <button
-                                type="button"
-                                onClick={() => go(result.href)}
-                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-admin-raised"
-                              >
-                                <Icon
-                                  className="h-3.5 w-3.5 shrink-0 text-admin-faint"
-                                  strokeWidth={1.75}
-                                  aria-hidden="true"
-                                />
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-xs text-admin-ink">
-                                    {result.title}
-                                  </span>
-                                  <span className="block truncate text-[0.625rem] text-admin-muted">
-                                    {result.subtitle}
-                                  </span>
-                                </span>
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  ),
-                )}
-              </>
+              <ul id={listId} role="listbox" aria-label="Matching IDs">
+                {results.groups.map((group) => (
+                  <li key={group.entity} role="presentation" className="border-b border-admin-border last:border-0">
+                    <p className="px-3 pb-1 pt-2.5 text-[0.625rem] font-medium uppercase tracking-[0.12em] text-admin-faint">
+                      {group.idLabel}
+                    </p>
+                    <ul role="group" aria-label={group.idLabel}>
+                      {group.items.map((result) => {
+                        const index = flat.indexOf(result);
+                        return (
+                          <li
+                            key={`${result.entity}-${result.id}`}
+                            id={optionId(index)}
+                            role="option"
+                            aria-selected={index === activeResult}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => go(result)}
+                            onMouseEnter={() => setActiveResult(index)}
+                            className={cn(
+                              "flex cursor-pointer items-baseline justify-between gap-2.5 px-3 py-2 transition-colors hover:bg-admin-raised",
+                              index === activeResult && "bg-admin-raised",
+                            )}
+                          >
+                            <span className="min-w-0 truncate text-xs text-admin-ink">
+                              <span className="text-admin-muted">{result.label} — </span>
+                              <span className="font-mono">{result.id}</span>
+                            </span>
+                            {result.match ? (
+                              <span className="shrink-0 truncate font-mono text-[0.625rem] text-admin-muted">
+                                matched {result.match}
+                              </span>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
             )}
+            <Link
+              href="/admin/lookup"
+              onClick={() => setSearchOpen(false)}
+              className="block border-t border-admin-border px-3 py-2 text-[0.6875rem] text-copper-600 hover:bg-admin-raised"
+            >
+              Open the ID lookup
+            </Link>
           </div>
         ) : null}
       </div>

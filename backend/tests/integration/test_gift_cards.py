@@ -234,13 +234,41 @@ class TestGoingBack:
 class TestPortal:
     def test_list_search_and_detail(self, client, auth, admin_auth, catalogue, settings_documents, mailbox):  # noqa: F811
         code = issue_card(client, admin_auth, mailbox, 500)
-        data = client.get(f"/api/admin/gift-cards?q={code[-4:]}", headers=admin_auth).json()["data"]
+        data = client.get("/api/admin/gift-cards", headers=admin_auth).json()["data"]
         assert data["pagination"]["total"] == 1 and data["outstanding"] == 500
         card_id = data["items"][0]["id"]
-        assert client.get(f"/api/admin/gift-cards?q={code}", headers=admin_auth).json()["data"]["pagination"]["total"] == 1
+
+        def total(**params):
+            return client.get("/api/admin/gift-cards", headers=admin_auth, params=params).json()["data"]["pagination"]["total"]
+
+        # Found by ID (GC12 or its GC-000012 reference) or by the whole code — never by a fragment or a name.
+        assert total(q=f"GC{card_id}") == 1
+        assert total(q=data["items"][0]["reference"]) == 1
+        assert total(q=f"GC{card_id + 1000}") == 0
+        assert total(code=code) == 1
+        assert total(code=code[:-1]) == 0
+        assert total(q=code[-4:]) == 0
+        assert total(q=data["items"][0]["recipientName"]) == 0
+        assert total(q=data["items"][0]["recipientEmail"]) == 0
         detail = client.get(f"/api/admin/gift-cards/{card_id}", headers=admin_auth).json()["data"]
         assert detail["transactions"][0]["kind"] == "issue" and detail["source"] == "admin"
         assert code not in str(detail)
+
+    def test_the_purchaser_filter_takes_a_customer_id(self, client, db, auth, admin_auth, mailbox):  # noqa: F811
+        issue_card(client, admin_auth, mailbox, 500)
+        card = db.execute(select(GiftCard)).scalars().one()
+        card.purchaser_id = "CUS001"
+        db.flush()
+
+        def total(**params):
+            return client.get("/api/admin/gift-cards", headers=admin_auth, params=params).json()["data"]["pagination"]["total"]
+
+        assert total(customer="CUS001") == 1
+        assert total(customer="cus001") == 1
+        assert total(customer="CUS002") == 0
+        # The purchaser's name or email is not a Customer ID.
+        assert total(customer="Asha") == 0
+        assert total(customer="shopper@example.com") == 0
 
     def test_disable_and_enable(self, client, auth, admin_auth, mailbox):  # noqa: F811
         code = issue_card(client, admin_auth, mailbox, 500)

@@ -31,6 +31,7 @@ import { BarList } from "@/components/admin/charts/BarList";
 import { TimeSeriesChart } from "@/components/admin/charts/TimeSeriesChart";
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminPagination } from "@/components/admin/ui/AdminPagination";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { usePoll } from "@/hooks/usePoll";
 import { cn } from "@/lib/utils/cn";
@@ -54,8 +55,12 @@ const VIEWS: { id: string; label: string; filters: DeskFilters }[] = [
 
 /** The keys the list reads from, and writes to, the address bar. */
 const FILTER_KEYS: (keyof DeskFilters)[] = [
-  "view", "status", "category", "subcategory", "priority", "team", "agent", "channel", "contactType", "sla", "q", "sort", "from", "to",
+  "view", "status", "category", "subcategory", "priority", "team", "agent", "channel", "contactType", "sla", "q", "subject",
+  "customer", "order", "sort", "from", "to",
 ];
+
+/** Filters that narrow to one record (by its ID) or to words in the subject — kept when a saved view is chosen. */
+const KEPT_ACROSS_VIEWS = ["q", "subject", "customer", "order", "sort"] as const;
 
 function filtersFrom(params: URLSearchParams): DeskFilters {
   const out: DeskFilters = {};
@@ -150,9 +155,13 @@ function TicketsTab() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const filters = useMemo(() => filtersFrom(new URLSearchParams(params.toString())), [params]);
+  // Keyed on the text, so a re-render with the same address keeps the same filters.
+  const searchText = params.toString();
+  const filters = useMemo(() => filtersFrom(new URLSearchParams(searchText)), [searchText]);
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const [term, setTerm] = useState(filters.q ?? "");
+  // Words in the subject: content, typed freely. Records (ticket, customer, order,
+  // agent) are chosen by their ID instead (docs/id-lookup.md).
+  const [term, setTerm] = useState(filters.subject ?? "");
   const [showFilters, setShowFilters] = useState(false);
 
   const apply = useCallback(
@@ -171,7 +180,7 @@ function TicketsTab() {
   // Search as they type, a moment after they stop.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if ((filters.q ?? "") !== term.trim()) apply({ ...filters, q: term.trim() || undefined });
+      if ((filters.subject ?? "") !== term.trim()) apply({ ...filters, subject: term.trim() || undefined });
     }, 350);
     return () => clearTimeout(timer);
   }, [term, filters, apply]);
@@ -188,13 +197,19 @@ function TicketsTab() {
 
   const activeView = VIEWS.find(
     (view) =>
-      FILTER_KEYS.every((key) => (view.filters[key] ?? "") === (filters[key] ?? "") || key === "q" || key === "sort"),
+      FILTER_KEYS.every(
+        (key) => (view.filters[key] ?? "") === (filters[key] ?? "") || (KEPT_ACROSS_VIEWS as readonly string[]).includes(key),
+      ),
   )?.id;
 
   const set = (patch: DeskFilters) => apply({ ...filters, ...patch });
-  const extraFilterCount = (["status", "category", "subcategory", "priority", "team", "channel", "contactType", "from", "to"] as const).filter(
+  const extraFilterCount = (["status", "category", "subcategory", "priority", "team", "channel", "contactType", "customer", "order", "from", "to"] as const).filter(
     (key) => filters[key],
   ).length;
+
+  // "me" and "unassigned" are choices; anything else in `agent` is a support agent's ID.
+  const agentChoice = filters.agent === "me" || filters.agent === "unassigned" ? filters.agent : "";
+  const agentId = filters.agent && !agentChoice ? filters.agent : "";
 
   const categories = lookups.data?.categories ?? [];
   const chosenCategory = categories.find((node) => String(node.id) === filters.category);
@@ -248,7 +263,9 @@ function TicketsTab() {
             type="button"
             role="tab"
             aria-selected={activeView === view.id}
-            onClick={() => apply({ ...view.filters, q: filters.q, sort: filters.sort })}
+            onClick={() =>
+              apply({ ...view.filters, ...Object.fromEntries(KEPT_ACROSS_VIEWS.map((key) => [key, filters[key]])) })
+            }
             className={cn(
               "rounded-[3px] px-2.5 py-1.5 text-xs transition-colors",
               activeView === view.id
@@ -262,31 +279,38 @@ function TicketsTab() {
       </div>
 
       {/* --------------------------------------------------------- filters */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[14rem] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint" aria-hidden="true" />
-          <label htmlFor="desk-search" className="sr-only">
-            Search tickets
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="ticket" value={filters.q ?? ""} onChange={(q) => set({ q: q || undefined })} className="w-60" />
+        <div className="relative min-w-[12rem] flex-1">
+          <Search className="pointer-events-none absolute bottom-2.5 left-2.5 h-3.5 w-3.5 text-admin-faint" aria-hidden="true" />
+          <label htmlFor="desk-subject" className="sr-only">
+            Words in the subject
           </label>
           <input
-            id="desk-search"
+            id="desk-subject"
             type="search"
             value={term}
             onChange={(event) => setTerm(event.target.value)}
-            placeholder="Ticket number, subject, customer, email, order or agent"
+            placeholder="Words in the subject"
             className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface pl-8 pr-2.5 text-[0.8125rem] text-admin-ink placeholder:text-admin-faint hover:border-admin-border-strong focus:border-copper-500"
           />
         </div>
         <DeskSelect
-          label="Agent"
-          value={filters.agent ?? ""}
-          onChange={(agent) => set({ agent })}
+          label="Assignment"
+          value={agentChoice}
+          onChange={(agent) => set({ agent: agent || undefined })}
           options={[
-            { value: "", label: "Any agent" },
+            { value: "", label: agentId ? "Agent by ID" : "Anyone" },
             { value: "me", label: "Me" },
             { value: "unassigned", label: "Unassigned" },
-            ...(lookups.data?.agents ?? []).map((agent) => ({ value: String(agent.id), label: agent.name + (agent.active ? "" : " (inactive)") })),
           ]}
+        />
+        <IdFilter
+          entity="support_agent"
+          label="Support agent ID"
+          value={agentId}
+          onChange={(agent) => set({ agent: agent || undefined })}
+          className="w-44"
         />
         <DeskSelect
           label="SLA"
@@ -373,6 +397,12 @@ function TicketsTab() {
                 { value: "chat", label: "Live chat" },
               ]}
             />
+            <IdFilter
+              entity="customer"
+              value={filters.customer ?? ""}
+              onChange={(customer) => set({ customer: customer || undefined })}
+            />
+            <IdFilter entity="order" value={filters.order ?? ""} onChange={(order) => set({ order: order || undefined })} />
             <label className="flex flex-col gap-1.5 text-xs font-medium text-admin-ink">
               Raised from
               <input

@@ -60,6 +60,7 @@ export interface RefundListFilters {
   status?: string;
   method?: string;
   reasonCode?: string;
+  /** A Refund, Order or Invoice ID, matched exactly — never a name or a reason. */
   q?: string;
   orderId?: string;
   awaitingApproval?: boolean;

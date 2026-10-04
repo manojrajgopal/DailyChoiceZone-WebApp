@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
 
 import type { SupportAgent } from "@/services/supportService";
 
 import { AdminCard } from "@/components/admin/ui/AdminChrome";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { IdSelector } from "@/components/common/IdSelector";
 import { AdminInput, AdminSelect, AdminToggle, FormGrid } from "@/components/admin/ui/AdminForm";
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
 
@@ -72,7 +73,8 @@ function toDraft(agent: SupportAgent): Draft {
 export function StaffSettings({ config, reload }: TabProps) {
   const [editing, setEditing] = useState<SupportAgent | "new" | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [term, setTerm] = useState("");
+  // A person is found by their support agent ID (docs/id-lookup.md), never by a name or an email.
+  const [agentId, setAgentId] = useState("");
   const [team, setTeam] = useState("");
 
   const open = (agent: SupportAgent | "new") => {
@@ -82,16 +84,12 @@ export function StaffSettings({ config, reload }: TabProps) {
   const patch = (next: Partial<Draft>) => setDraft((current) => ({ ...current, ...next }));
 
   const rows = useMemo(() => {
-    const text = term.trim().toLowerCase();
     return config.agents.filter(
-      (agent) =>
-        (!team || String(agent.teamId) === team) &&
-        (!text || [agent.name, agent.email, agent.role, agent.team, agent.specialization].some((value) => value.toLowerCase().includes(text))),
+      (agent) => (!team || String(agent.teamId) === team) && (!agentId || String(agent.id) === agentId),
     );
-  }, [config.agents, term, team]);
+  }, [config.agents, agentId, team]);
 
   const departmentOf = (teamId: number | null) => config.teams.find((entry) => entry.id === teamId)?.department ?? "";
-  const linked = new Set(config.agents.map((agent) => agent.adminUserId).filter(Boolean));
 
   return (
     <AdminCard
@@ -100,18 +98,8 @@ export function StaffSettings({ config, reload }: TabProps) {
       action={<AddButton onClick={() => open("new")}>Add person</AddButton>}
       padded={false}
     >
-      <div className="flex flex-wrap gap-2 border-b border-admin-border p-3">
-        <div className="relative min-w-[12rem] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint" aria-hidden="true" />
-          <input
-            type="search"
-            aria-label="Search staff"
-            value={term}
-            onChange={(event) => setTerm(event.target.value)}
-            placeholder="Search name, email, role or specialisation"
-            className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-surface pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint"
-          />
-        </div>
+      <div className="flex flex-wrap items-end gap-2 border-b border-admin-border p-3">
+        <IdFilter entity="support_agent" label="Support agent ID" value={agentId} onChange={setAgentId} className="w-52" />
         <select
           aria-label="Filter by team"
           value={team}
@@ -153,7 +141,9 @@ export function StaffSettings({ config, reload }: TabProps) {
                 {agent.name}
                 {agent.isLead ? <span className="ml-1.5 text-[0.625rem] font-normal text-copper-700">Lead</span> : null}
               </p>
-              <p className="text-admin-muted">{agent.email}</p>
+              <p className="text-admin-muted">
+                <span className="font-mono">#{agent.id}</span> · {agent.email}
+              </p>
               {agent.specialization ? <p className="text-admin-faint">{agent.specialization}</p> : null}
             </td>
             <td className="px-3 py-2.5 text-admin-ink">{agent.role || "—"}</td>
@@ -238,15 +228,13 @@ export function StaffSettings({ config, reload }: TabProps) {
             placeholder="e.g. Frontend, UPI payments"
           />
           <AdminInput label="Mobile" value={draft.phone} maxLength={14} onChange={(e) => patch({ phone: e.target.value })} hint="Optional" />
-          <AdminSelect
-            label="Portal account"
-            value={draft.adminUserId}
-            onChange={(e) => patch({ adminUserId: e.target.value })}
-            placeholder="None — emails only"
-            options={config.portalAccounts
-              .filter((account) => !linked.has(account.id) || account.id === draft.adminUserId)
-              .map((account) => ({ value: account.id, label: `${account.name} · ${account.email} (${account.role})` }))}
-            hint="Linked, they can answer from the portal and see their team's tickets."
+          <IdSelector
+            entity="admin_user"
+            label="Portal account (Admin user ID)"
+            value={draft.adminUserId || null}
+            onChange={(id) => patch({ adminUserId: id ?? "" })}
+            hint="Optional. Linked, they can answer from the portal and see their team's tickets."
+            compact
           />
           <AdminInput
             label="Photo (web address)"

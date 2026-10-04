@@ -273,14 +273,19 @@ def list_pos(db: Session, *, q: str = "", status: str = "", supplier: str = "", 
              date_to: str = "", sort: str = "createdAt", page: int = 1,
              page_size: int = 25) -> Tuple[List[dict], int, dict]:
     start, end = _day(date_from, "from"), _day(date_to, "to")
+    # IDs only (docs/id-lookup.md): `q` is a Purchase order ID (its number or
+    # `POR…` id) or the supplier's own document number, exactly; `supplier` is
+    # a Supplier ID (`SUP001` or its code). Never a supplier's name.
+    from app.services.lookup.filters import id_condition
+
     conditions = []
+    by_id = id_condition("purchase_order", q)
     term = (q or "").strip()
-    if term:
-        like = f"%{term}%"
-        conditions.append(or_(PurchaseOrder.po_number.like(like), PurchaseOrder.supplier_reference.like(like),
-                              Supplier.name.like(like), Supplier.code.like(like)))
-    if supplier:
-        conditions.append(PurchaseOrder.supplier_id == supplier)
+    if by_id is not None:
+        conditions.append(or_(by_id, PurchaseOrder.supplier_reference == term[:80]))
+    by_supplier = id_condition("supplier", supplier, column=PurchaseOrder.supplier_id)
+    if by_supplier is not None:
+        conditions.append(by_supplier)
     if start:
         conditions.append(PurchaseOrder.created_at >= start)
     if end:

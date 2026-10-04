@@ -190,11 +190,16 @@ export function listMembers(filters: { status?: string; limit?: number } = {}): 
   return apiGet(`/admin/memberships${query({ status: filters.status, limit: filters.limit })}`, ADMIN);
 }
 
-/** Every member, filtered and paged by the server. */
+/**
+ * Every member, filtered and paged by the server. `plan` is a Membership plan
+ * ID, `q` a Membership ID (or Customer ID) and `customer` a Customer ID — each
+ * matched exactly; names, emails and plan names match nothing.
+ */
 export function searchMembers(filters: {
   status?: string;
   plan?: string;
   q?: string;
+  customer?: string;
   page?: number;
   pageSize?: number;
 }): Promise<MemberPage> {

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Plus, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
-import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { FilterSelect, LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
@@ -22,7 +23,11 @@ const SORTS: { value: SupplierSort; label: string }[] = [
   { value: "createdAt", label: "Sort: newest" },
 ];
 
-/** The supplier directory. Archived suppliers are hidden unless their tab is chosen. */
+/**
+ * The supplier directory. Archived suppliers are hidden unless their tab is
+ * chosen. One supplier is found by its Supplier ID (or code), never by a name,
+ * GSTIN or email (docs/id-lookup.md).
+ */
 export function AdminSuppliersView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
   const sort = (SORTS.some((entry) => entry.value === filters.sort) ? filters.sort : "name") as SupplierSort;
@@ -75,13 +80,8 @@ export function AdminSuppliersView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch
-          label="Search suppliers"
-          value={filters.q}
-          onChange={(q) => setFilters({ q })}
-          placeholder="Name, code, GSTIN, contact or email"
-        />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="supplier" value={filters.q} onChange={(q) => setFilters({ q })} className="w-56" />
         <FilterSelect label="Sort suppliers" value={sort} onChange={(value) => setFilters({ sort: value === "name" ? "" : value })} options={SORTS} />
         {filtered ? (
           <AdminButton size="sm" variant="ghost" onClick={clear}>

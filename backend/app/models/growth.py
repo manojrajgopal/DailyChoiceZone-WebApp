@@ -94,7 +94,7 @@ class Referral(Base):
     referee_id: Mapped[str] = mapped_column(
         BusinessId, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, unique=True
     )
-    code: Mapped[str] = mapped_column(String(16), nullable=False)
+    code: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     # Why it is held or was refused, for the person reviewing it.
     flags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

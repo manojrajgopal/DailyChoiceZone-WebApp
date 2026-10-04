@@ -53,6 +53,7 @@ from app.models import (
 )
 from app.services import billing
 from app.services import invoices as ledger
+from app.services.lookup.filters import any_id_condition
 
 logger = logging.getLogger(__name__)
 
@@ -722,10 +723,12 @@ def search(db: Session, *, status: str = "", method: str = "", reason_code: str 
         query = query.where(Refund.order_id == order_id)
     if awaiting_approval:
         query = query.where(Refund.status == "requested", Refund.requires_approval.is_(True))
-    for word in (q or "").split():
-        pattern = f"%{word}%"
-        query = query.where(Refund.refund_number.like(pattern) | Refund.order_number.like(pattern)
-                            | Refund.customer_name.like(pattern) | Refund.invoice_number.like(pattern))
+    # `q` is an ID, matched exactly (docs/id-lookup.md): the Refund ID, the
+    # Order ID or the Invoice ID. A customer's name matches nothing.
+    by_id = any_id_condition(q, ("refund", None, None), ("order", Refund.order_id, Order.id),
+                             ("invoice", Refund.invoice_id, Invoice.id))
+    if by_id is not None:
+        query = query.where(by_id)
     total = db.execute(select(func.count()).select_from(query.subquery())).scalar_one()
     rows = db.execute(query.order_by(Refund.requested_at.desc(), Refund.id.desc())
                       .offset((max(1, page) - 1) * page_size).limit(page_size)).scalars().all()

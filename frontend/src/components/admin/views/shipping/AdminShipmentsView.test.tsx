@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { api, fail, networkError } from "@/test/api";
+import { idPreview, lookupBackend } from "@/test/lookup-fixtures";
 import { router, setLocation } from "@/test/navigation";
 import { renderUI, screen, signIn, waitFor, within } from "@/test/render";
-import { providerConfig, manualProvider, shipmentRow } from "@/test/shipping-fixtures";
+import { shipmentRow } from "@/test/shipping-fixtures";
 import { page } from "@/test/suppliers-fixtures";
 
 import { AdminShipmentsView } from "./AdminShipmentsView";
@@ -53,7 +54,7 @@ describe("AdminShipmentsView", () => {
     });
 
     it("says nothing matches when a filter is on", async () => {
-      setLocation("/admin/shipments?q=nobody");
+      setLocation("/admin/shipments?q=DCZ-SH-2026-999999");
       api.get("/admin/shipments", page([]));
       api.get("/admin/shipping/providers", []);
       renderUI(<AdminShipmentsView />);
@@ -127,7 +128,7 @@ describe("AdminShipmentsView", () => {
 
   describe("filters in the address bar", () => {
     it("sends the filters it finds in the URL", async () => {
-      setLocation("/admin/shipments?status=delivered&q=asha&courier=Delhivery&provider=manual&from=2026-10-01&to=2026-10-02&page=2&pageSize=50");
+      setLocation("/admin/shipments?status=delivered&q=1234567890&order=DCZ10042&provider=manual&from=2026-10-01&to=2026-10-02&page=2&pageSize=50");
       api.get("/admin/shipping/providers", []);
       api.get("/admin/shipments", page([shipmentRow()], { page: 2, total: 60, totalPages: 2 }));
       renderUI(<AdminShipmentsView />);
@@ -136,8 +137,8 @@ describe("AdminShipmentsView", () => {
       const query = lastQuery();
       expect(Object.fromEntries(query.entries())).toEqual({
         status: "delivered",
-        q: "asha",
-        courier: "Delhivery",
+        q: "1234567890",
+        order: "DCZ10042",
         provider: "manual",
         from: "2026-10-01",
         to: "2026-10-02",
@@ -145,7 +146,9 @@ describe("AdminShipmentsView", () => {
         pageSize: "50",
       });
       expect(screen.getByRole("tab", { name: /^Delivered/ })).toHaveAttribute("aria-selected", "true");
-      expect(screen.getByLabelText("Search shipments")).toHaveValue("asha");
+      // Each ID filtering the list shows as a chip that can be removed.
+      expect(screen.getByRole("group", { name: "Filtered by Shipment ID or AWB 1234567890" })).toBeInTheDocument();
+      expect(screen.getByRole("group", { name: "Filtered by Order ID DCZ10042" })).toBeInTheDocument();
     });
 
     it("filters by status from the tabs, back on page 1", async () => {
@@ -164,50 +167,75 @@ describe("AdminShipmentsView", () => {
       expect(lastQuery().get("page")).toBe("1");
     });
 
-    it("searches a moment after typing stops", async () => {
+    it("filters by a Shipment ID chosen from the ID suggestions, not by free text", async () => {
       setLocation("/admin/shipments");
       api.get("/admin/shipping/providers", []);
       api.get("/admin/shipments", page([shipmentRow()]));
+      api.get("/admin/lookup/shipment", { items: [{ id: "DCZ-SH-2026-000012" }], hasMore: false });
       const { user, rerender } = renderUI(<AdminShipmentsView />);
       await screen.findByRole("link", { name: "DCZ-SH-2026-000012" });
 
-      await user.type(screen.getByLabelText("Search shipments"), "  1234567890 ");
-      expect(router.replace).not.toHaveBeenCalled();
-      await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/admin/shipments?q=1234567890", { scroll: false }));
-      expect(router.replace).toHaveBeenCalledTimes(1);
+      // The box names the ID it takes; there is no name/email search and no courier-name box.
+      const box = screen.getByRole("combobox", { name: "Shipment ID or AWB" });
+      expect(box).toHaveAttribute("placeholder", "Search Shipment ID…");
+      expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Filter by courier")).not.toBeInTheDocument();
+
+      await user.type(box, "SH-2026-0000");
+      await user.click(await screen.findByRole("option", { name: "DCZ-SH-2026-000012" }));
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/shipments?q=DCZ-SH-2026-000012", { scroll: false });
+      expect(api.last("GET", "/admin/lookup/shipment")!.query.get("q")).toBe("SH-2026-0000");
 
       follow(rerender);
-      await waitFor(() => expect(lastQuery().get("q")).toBe("1234567890"));
+      await waitFor(() => expect(lastQuery().get("q")).toBe("DCZ-SH-2026-000012"));
     });
 
-    it("filters by courier name", async () => {
+    it("filters by an Order ID, and removing the chip clears it", async () => {
       setLocation("/admin/shipments");
       api.get("/admin/shipping/providers", []);
       api.get("/admin/shipments", page([shipmentRow()]));
-      const { user } = renderUI(<AdminShipmentsView />);
+      api.get("/admin/lookup/order", { items: [{ id: "DCZ10042" }], hasMore: false });
+      const { user, rerender } = renderUI(<AdminShipmentsView />);
       await screen.findByRole("link", { name: "DCZ-SH-2026-000012" });
-      await user.type(screen.getByLabelText("Filter by courier"), "DTDC");
-      await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/admin/shipments?courier=DTDC", { scroll: false }));
+
+      await user.type(screen.getByRole("combobox", { name: "Order ID" }), "DCZ100");
+      await user.click(await screen.findByRole("option", { name: "DCZ10042" }));
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/shipments?order=DCZ10042", { scroll: false });
+
+      follow(rerender);
+      await waitFor(() => expect(lastQuery().get("order")).toBe("DCZ10042"));
+      await user.click(screen.getByRole("button", { name: "Remove Order ID filter" }));
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/shipments", { scroll: false });
     });
 
-    it("offers a provider filter only once the providers load", async () => {
+    it("filters by courier code, picked from the ID lookup", async () => {
       setLocation("/admin/shipments");
-      api.get("/admin/shipping/providers", [providerConfig(), manualProvider()]);
       api.get("/admin/shipments", page([shipmentRow()]));
+      lookupBackend("courier", [
+        idPreview("courier", "shiprocket", { title: "Shiprocket", volatile: false }),
+        idPreview("courier", "manual", { title: "Manual", volatile: false }),
+      ]);
       const { user } = renderUI(<AdminShipmentsView />);
 
-      const select = await screen.findByRole("combobox", { name: "Provider" });
-      expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual(["All providers", "Shiprocket", "Manual"]);
-      await user.selectOptions(select, "manual");
+      const field = await screen.findByRole("combobox", { name: "Courier code" });
+      await user.type(field, "Manual courier");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      await user.clear(field);
+      await user.type(field, "ma");
+      await user.click(await screen.findByRole("option", { name: "manual" }));
       expect(router.replace).toHaveBeenLastCalledWith("/admin/shipments?provider=manual", { scroll: false });
+      // The provider list is never downloaded to build a dropdown of names.
+      expect(api.requests("GET", "/admin/shipping/providers")).toHaveLength(0);
     });
 
-    it("leaves the provider filter out when the providers can't be read", async () => {
-      api.get("/admin/shipping/providers", fail(403, "Forbidden", "FORBIDDEN"));
+    it("shows the courier code it is filtering by, with a way to remove it", async () => {
+      setLocation("/admin/shipments?provider=manual");
       api.get("/admin/shipments", page([shipmentRow()]));
-      renderUI(<AdminShipmentsView />);
-      await screen.findByRole("link", { name: "DCZ-SH-2026-000012" });
-      expect(screen.queryByRole("combobox", { name: "Provider" })).not.toBeInTheDocument();
+      const { user } = renderUI(<AdminShipmentsView />);
+      expect(await screen.findByRole("group", { name: "Filtered by Courier code manual" })).toBeInTheDocument();
+      await waitFor(() => expect(api.last("GET", "/admin/shipments")!.query.get("provider")).toBe("manual"));
+      await user.click(screen.getByRole("button", { name: "Remove Courier code filter" }));
+      expect(router.replace).toHaveBeenLastCalledWith("/admin/shipments", { scroll: false });
     });
 
     it("filters by date and warns when the range is back to front", async () => {
@@ -221,7 +249,7 @@ describe("AdminShipmentsView", () => {
     });
 
     it("clears every filter but keeps the page size", async () => {
-      setLocation("/admin/shipments?status=delivered&q=asha&pageSize=50");
+      setLocation("/admin/shipments?status=delivered&q=DCZ10042&pageSize=50");
       api.get("/admin/shipping/providers", []);
       api.get("/admin/shipments", page([shipmentRow()]));
       const { user } = renderUI(<AdminShipmentsView />);

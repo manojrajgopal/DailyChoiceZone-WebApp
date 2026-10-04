@@ -462,6 +462,34 @@ class TestReading:
         by_number = client.get(BASE, headers=admin_auth, params={"q": order["orderNumber"]}).json()["data"]
         assert by_number["pagination"]["total"] == 1
 
+    def test_the_search_box_takes_ids_only(self, client, admin_auth, order, manual_on, db):
+        shipment = created(client, admin_auth, order["id"])
+
+        def ids(**params):
+            response = client.get(BASE, headers=admin_auth, params=params)
+            assert response.status_code == 200
+            return [r["id"] for r in response.json()["data"]["items"]]
+
+        # The shipment number, its AWB and the order's number each find it, exactly.
+        assert ids(q=shipment["shipmentNumber"]) == [shipment["id"]]
+        assert ids(q=shipment["shipmentNumber"].lower()) == [shipment["id"]]
+        assert ids(q="LX-100200") == [shipment["id"]]
+        assert ids(q=order["orderNumber"]) == [shipment["id"]]
+        assert ids(order=order["orderNumber"]) == [shipment["id"]]
+        # Part of an ID, a name or an email is not an ID.
+        db_order = db.get(Order, order["id"])
+        assert ids(q="LX-100") == []
+        assert ids(q=shipment["shipmentNumber"][:-1]) == []
+        assert ids(q=db_order.customer_name) == []
+        assert ids(q=db_order.customer_email) == []
+        assert ids(order="DCZ00000") == []
+        # The courier filter is the courier's code, exactly — not its name.
+        code = db.get(Shipment, shipment["id"]).courier_code
+        assert ids(courier="Local Express") == []
+        assert ids(courier="manual") == [shipment["id"]]
+        if code:
+            assert ids(courier=code) == [shipment["id"]]
+
     def test_an_unknown_shipment_is_404(self, client, admin_auth):
         response = client.get(f"{BASE}/999999", headers=admin_auth)
         assert response.status_code == 404 and response.json()["error_code"] == "SHIPMENT_NOT_FOUND"

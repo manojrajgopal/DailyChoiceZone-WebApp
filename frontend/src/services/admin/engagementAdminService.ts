@@ -36,7 +36,11 @@ export interface AdminAlertRow {
   history?: { fromPrice: number; toPrice: number; outcome: string; note: string; at: string }[];
 }
 
-export function listAlerts(kind: "stock" | "price", filters: { status?: string; q?: string; page?: number; pageSize?: number }) {
+/** `productId` (Product ID or SKU) and `customerId` are matched exactly — never by name or email. */
+export function listAlerts(
+  kind: "stock" | "price",
+  filters: { status?: string; productId?: string; customerId?: string; page?: number; pageSize?: number },
+) {
   return apiGet<Paged<AdminAlertRow> & { counts: Record<string, number> }>(`/admin/alerts/${kind}${query(filters)}`, ADMIN);
 }
 
@@ -62,7 +66,14 @@ export interface AdminQuestion {
   events?: { action: string; note: string; by: string; at: string }[];
 }
 
-export function listQuestions(filters: { status?: string; answered?: string; q?: string; page?: number; pageSize?: number }) {
+/**
+ * `q` is a Question ID, `productId` a Product ID or SKU and `customerId` a
+ * Customer ID — each matched exactly. `text` searches the question's own words only.
+ */
+export function listQuestions(filters: {
+  status?: string; answered?: string; q?: string; productId?: string; customerId?: string; text?: string;
+  page?: number; pageSize?: number;
+}) {
   return apiGet<Paged<AdminQuestion> & { counts: Record<string, number> }>(`/admin/questions${query(filters)}`, ADMIN);
 }
 
@@ -133,7 +144,18 @@ export interface GiftCardSettings {
   storeCreditWithCoupons: boolean;
 }
 
-export function listGiftCards(filters: { status?: string; q?: string; page?: number; pageSize?: number }) {
+/**
+ * Gift cards, found by ID only: `q` is a Gift card ID (`GC12`), `customer` the
+ * purchaser's Customer ID and `code` a whole card code — each matched exactly.
+ */
+export function listGiftCards(filters: {
+  status?: string;
+  q?: string;
+  customer?: string;
+  code?: string;
+  page?: number;
+  pageSize?: number;
+}) {
   return apiGet<Paged<AdminGiftCard> & { counts: Record<string, number>; outstanding: number }>(
     `/admin/gift-cards${query(filters)}`, ADMIN);
 }
@@ -177,6 +199,7 @@ export interface CreditLedger {
   pagination: Paged<unknown>["pagination"];
 }
 
+/** `q`: a Customer ID, exactly — found even without a credit account. */
 export function listStoreCredit(filters: { q?: string; withBalance?: boolean; page?: number; pageSize?: number }) {
   return apiGet<Paged<CreditBalanceRow> & { outstanding: number }>(`/admin/store-credit${query(filters)}`, ADMIN);
 }
@@ -256,11 +279,13 @@ export function getLoyaltyMetrics(days = 30) {
   return apiGet<LoyaltyMetrics>(`/admin/loyalty/metrics${query({ days })}`, ADMIN);
 }
 
+/** `q`: a Customer ID, exactly. */
 export function listLoyaltyBalances(filters: { q?: string; page?: number; pageSize?: number }) {
   return apiGet<Paged<LoyaltyBalanceRow>>(`/admin/loyalty/balances${query(filters)}`, ADMIN);
 }
 
-export function listLoyaltyLedger(filters: { kind?: string; q?: string; customerId?: string; page?: number; pageSize?: number }) {
+/** `customerId` and `orderId` (or `q`, either) are matched exactly — never by name, email or reason. */
+export function listLoyaltyLedger(filters: { kind?: string; q?: string; customerId?: string; orderId?: string; page?: number; pageSize?: number }) {
   return apiGet<Paged<LoyaltyLedgerRow>>(`/admin/loyalty/ledger${query(filters)}`, ADMIN);
 }
 

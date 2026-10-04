@@ -177,9 +177,12 @@ def preview(payload: TenderPreviewRequest, db: Session = Depends(get_db),
 
 @admin_gift_router.get("", summary="Gift cards")
 def admin_list_cards(status: str = Query("", max_length=20), q: str = Query("", max_length=80),
+                     customer: str = Query("", max_length=40), code: str = Query("", max_length=40),
                      page: int = Query(1, ge=1), page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
                      db: Session = Depends(get_db), admin: AdminUser = Depends(require_access("gift-cards"))):
-    items, total, counts, outstanding = gift_cards.admin_search(db, status=status, q=q, page=page, page_size=page_size)
+    """`q` is a Gift card ID, `customer` the purchaser's Customer ID, `code` a whole card code — all exact."""
+    items, total, counts, outstanding = gift_cards.admin_search(db, status=status, q=q, customer=customer, code=code,
+                                                                page=page, page_size=page_size)
     return ok({"items": items, "pagination": _page(page, page_size, total), "counts": counts,
                "outstanding": outstanding})
 
@@ -332,10 +335,14 @@ def admin_loyalty_balances(q: str = Query("", max_length=80), page: int = Query(
 
 @admin_loyalty_router.get("/ledger", summary="Every points movement")
 def admin_loyalty_ledger(kind: str = Query("", max_length=20), q: str = Query("", max_length=80),
-                         customer_id: str = Query("", max_length=20, alias="customerId"),
+                         customer_id: str = Query("", max_length=40, alias="customerId",
+                                                  description="A Customer ID, exactly."),
+                         order_id: str = Query("", max_length=40, alias="orderId",
+                                               description="An Order ID or order number, exactly."),
                          page: int = Query(1, ge=1), page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
                          db: Session = Depends(get_db), admin: AdminUser = Depends(require_access("loyalty"))):
-    items, total = loyalty.admin_ledger(db, kind=kind, q=q, customer_id=customer_id, page=page, page_size=page_size)
+    items, total = loyalty.admin_ledger(db, kind=kind, q=q, customer_id=customer_id, order_id=order_id, page=page,
+                                        page_size=page_size)
     return ok({"items": items, "pagination": _page(page, page_size, total)})
 
 

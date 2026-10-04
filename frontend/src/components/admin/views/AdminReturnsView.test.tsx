@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ReturnRequest } from "@/types/returns";
 import { api, fail, networkError } from "@/test/api";
+import { idPreview, lookupBackend } from "@/test/lookup-fixtures";
 import { setLocation } from "@/test/navigation";
 import { renderUI, screen, signIn, waitFor, within } from "@/test/render";
 import { useToastStore } from "@/store/toastStore";
@@ -100,6 +101,46 @@ describe("AdminReturnsView", () => {
       await user.click(screen.getByRole("tab", { name: "All" }));
       expect(await screen.findByRole("link", { name: "RET-1" })).toBeInTheDocument();
       expect(api.last("GET", "/admin/returns")!.query.get("status")).toBeNull();
+    });
+  });
+
+  describe("finding by ID", () => {
+    it("narrows the list to one Return ID, picked from the lookup; a name finds nothing", async () => {
+      api.get("/admin/returns", (req) => (req.query.get("q") === "RET002" ? [returnRequest({ id: "RET002" })] : [returnRequest()]));
+      lookupBackend("return", [idPreview("return", "RET001"), idPreview("return", "RET002")]);
+      const { user } = renderUI(<AdminReturnsView />);
+      await screen.findByRole("link", { name: "RET-1" });
+
+      const field = screen.getByRole("combobox", { name: "Return ID" });
+      await user.type(field, "Meera");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      await user.clear(field);
+      await user.type(field, "RET");
+      await user.click(await screen.findByRole("option", { name: "RET002" }));
+
+      expect(await within(await screen.findByRole("table")).findByRole("link", { name: "RET002" })).toHaveAttribute(
+        "href", "/admin/returns/detail?id=RET002");
+      expect(api.last("GET", "/admin/returns")!.query.get("q")).toBe("RET002");
+      expect(screen.getByRole("group", { name: "Filtered by Return ID RET002" })).toBeInTheDocument();
+    });
+
+    it("finds an order's requests by Order ID, and a customer's by Customer ID", async () => {
+      api.get("/admin/returns", []);
+      lookupBackend("order", [idPreview("order", "DCZ10241")]);
+      lookupBackend("customer", [idPreview("customer", "CUS001")]);
+      const { user } = renderUI(<AdminReturnsView />);
+      await screen.findByText("No requests yet.");
+
+      await user.selectOptions(screen.getByRole("combobox", { name: "Which ID to find by" }), "order");
+      await user.type(screen.getByRole("combobox", { name: "Order ID" }), "DCZ");
+      await user.click(await screen.findByRole("option", { name: "DCZ10241" }));
+      await waitFor(() => expect(api.last("GET", "/admin/returns")!.query.get("q")).toBe("DCZ10241"));
+      expect(await screen.findByText("No requests match that ID.")).toBeInTheDocument();
+
+      await user.type(screen.getByRole("combobox", { name: "Customer ID" }), "CUS");
+      await user.click(await screen.findByRole("option", { name: "CUS001" }));
+      await waitFor(() => expect(api.last("GET", "/admin/returns")!.query.get("customer")).toBe("CUS001"));
+      expect(api.last("GET", "/admin/returns")!.query.get("q")).toBe("DCZ10241");
     });
   });
 

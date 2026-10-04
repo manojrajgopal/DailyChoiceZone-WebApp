@@ -137,15 +137,19 @@ def _inventory_row(product: Product) -> dict:
 
 @inventory_router.get("", summary="Stock across the catalogue")
 def list_inventory(
+    q: Optional[str] = Query(None, max_length=64, description="A Product ID or SKU, matched exactly."),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
+    """Every product's stock; `q` narrows it to the product that Product ID or SKU names (never a name)."""
+    from app.services.lookup.filters import id_condition
+
+    statement = select(Product).options(selectinload(Product.images), selectinload(Product.category))
+    by_id = id_condition("product", q)
+    if by_id is not None:
+        statement = statement.where(by_id)
     products = (
-        db.execute(
-            select(Product)
-            .options(selectinload(Product.images), selectinload(Product.category))
-            .order_by(Product.name)
-        )
+        db.execute(statement.order_by(Product.name))
         .unique()
         .scalars()
         .all()
@@ -183,11 +187,21 @@ def stock_log(
     # Bounded: a negative limit reached MySQL as `LIMIT -5` (a 500), and an
     # unbounded one read the whole ledger.
     limit: int = Query(200, ge=1, le=1000),
+    product_id: Optional[str] = Query(
+        None, alias="productId", max_length=64, description="A Product ID or SKU, matched exactly."
+    ),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
+    """The ledger, newest first; `productId` keeps one product's movements (never matched by name)."""
+    from app.services.lookup.filters import id_condition
+
+    statement = select(StockAdjustment)
+    by_product = id_condition("product", product_id, column=StockAdjustment.product_id, via=Product.id)
+    if by_product is not None:
+        statement = statement.where(by_product)
     rows = db.execute(
-        select(StockAdjustment).order_by(StockAdjustment.created_at.desc()).limit(limit)
+        statement.order_by(StockAdjustment.created_at.desc(), StockAdjustment.id.desc()).limit(limit)
     ).scalars().all()
 
     return ok_list(

@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.models import AdminUser, Customer
 from app.models.segments import CustomerMetrics, Segment, SegmentEvent, SegmentMember
+from app.services.lookup.filters import id_condition
 from app.services.segments import metrics, rules as engine
 
 logger = logging.getLogger(__name__)
@@ -370,9 +371,10 @@ def list_segments(db: Session, *, q: str = "", status: str = "active", kind: str
         conditions.append(Segment.status == status)
     if kind in ("default", "custom"):
         conditions.append(Segment.kind == kind)
-    if q.strip():
-        term = f"%{q.strip()}%"
-        conditions.append(or_(Segment.name.ilike(term), Segment.description.ilike(term)))
+    # A Segment ID, exactly (docs/id-lookup.md): names and descriptions match nothing.
+    condition = id_condition("segment", q)
+    if condition is not None:
+        conditions.append(condition)
     counts = dict(db.execute(select(Segment.status, func.count()).group_by(Segment.status)).all())
     total = db.execute(select(func.count()).select_from(Segment).where(*conditions)).scalar_one()
     rows = db.execute(select(Segment).where(*conditions).order_by(Segment.kind.desc(), Segment.name)
@@ -431,10 +433,10 @@ def preview(db: Session, admin: AdminUser, payload: dict) -> dict:
 def members(db: Session, admin: AdminUser, segment_id, *, q: str = "", page: int = 1, page_size: int = 25) -> tuple:
     segment = load(db, segment_id)
     conditions = [SegmentMember.segment_id == segment.id]
-    if q.strip():
-        term = f"%{q.strip()}%"
-        conditions.append(or_(Customer.id.ilike(term), Customer.email.ilike(term), Customer.phone.ilike(term),
-                              func.concat(Customer.first_name, " ", Customer.last_name).ilike(term)))
+    # A Customer ID, exactly (docs/id-lookup.md): names, emails and phones match nothing.
+    condition = id_condition("customer", q)
+    if condition is not None:
+        conditions.append(condition)
     base = (select(*_member_columns(), SegmentMember.added_at).select_from(SegmentMember)
             .join(Customer, Customer.id == SegmentMember.customer_id)
             .join(CustomerMetrics, CustomerMetrics.customer_id == Customer.id).where(*conditions))

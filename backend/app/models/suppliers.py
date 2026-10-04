@@ -111,7 +111,7 @@ class PurchaseOrder(Base):
     tax_total: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     total: Mapped[int] = mapped_column(Money, nullable=False, default=0)
     expected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    supplier_reference: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    supplier_reference: Mapped[str] = mapped_column(String(60), nullable=False, default="", index=True)
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

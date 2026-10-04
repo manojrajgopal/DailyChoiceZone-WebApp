@@ -434,8 +434,18 @@ class TestAdminFilters:
         by_customer = total("customerId=CUS002")
         assert [i["id"] for i in by_customer["items"]] == [theirs]
         assert by_customer["items"][0]["customer"]["email"] == other_customer.email
-        assert total("q=Asha")["pagination"]["total"] == 1
-        assert total("q=DCZ-WO0001")["pagination"]["total"] == 2
+        assert total("productId=DCZ-WO0001")["pagination"]["total"] == 2  # the SKU is an identifier too
+        assert total(f"q={theirs}")["pagination"]["total"] == 1
+        assert total(f"q={theirs}&customerId=CUS001")["pagination"]["total"] == 0
+        # Names, emails and SKUs are not Question IDs; the text box searches only the wording.
+        # ("Cotton" is only in the product's name, "Asha" only in the customer's.)
+        for query in ("q=Asha", "q=DCZ-WO0001", f"q={other_customer.email}", "customerId=Asha",
+                      "productId=Kurta", "text=Asha", "text=Cotton", "productId=PRD00",
+                      "productId=PRD0010", "customerId=CUS0011", "customerId=%27%3B%20DROP",
+                      "q=%27%3B%20DROP"):
+            assert total(query)["pagination"]["total"] == 0, query
+        assert total("text=colour")["pagination"]["total"] == 1
+        assert total("text=kurta")["pagination"]["total"] == 1  # the wording itself, not the product's name
         counts = total("")["counts"]
         assert counts["approved"] == 1 and counts["pending"] == 1 and counts["unanswered"] == 0
 

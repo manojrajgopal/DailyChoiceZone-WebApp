@@ -63,7 +63,9 @@ export interface DeliveryFilters {
   channel?: string;
   status?: string;
   event?: string;
+  /** A Customer ID, matched exactly. */
   customer?: string;
+  /** A message's reference or provider message id, matched exactly — never a name, email or phone. */
   q?: string;
   from?: string;
   to?: string;

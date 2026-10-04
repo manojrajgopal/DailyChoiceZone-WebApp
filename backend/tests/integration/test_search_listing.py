@@ -488,10 +488,23 @@ class TestFacets:
 
 
 class TestAdminList:
-    def test_server_side_search_status_and_counts(self, client, admin_auth, shop):
-        body = client.get("/api/admin/products?search=lamp", headers=admin_auth).json()
+    def test_server_side_id_filter_status_and_counts(self, client, admin_auth, shop):
+        body = client.get("/api/admin/products?q=PRD108", headers=admin_auth).json()
         assert [p["id"] for p in body["data"]] == ["PRD108"]
         assert body["counts"]["draft"] == 1 and body["counts"]["all"] == 1
+
+    def test_the_id_filter_takes_a_sku_and_is_exact(self, client, admin_auth, shop):
+        assert ids(client.get("/api/admin/products?q=FLK-2000", headers=admin_auth)) == ["PRD109"]
+        assert ids(client.get("/api/admin/products?q=prd109", headers=admin_auth)) == ["PRD109"]
+        # PRD10 is the start of nine IDs, but no product's ID.
+        assert ids(client.get("/api/admin/products?q=PRD10", headers=admin_auth)) == []
+
+    def test_names_brands_and_free_text_find_nothing(self, client, admin_auth, shop):
+        assert ids(client.get("/api/admin/products?q=Lamp", headers=admin_auth)) == []
+        assert ids(client.get("/api/admin/products?q=Terra", headers=admin_auth)) == []
+        assert ids(client.get("/api/admin/products?q=Draft%20Lamp", headers=admin_auth)) == []
+        # The storefront's free-text search is not a portal filter: it is ignored here.
+        assert len(ids(client.get("/api/admin/products?search=lamp", headers=admin_auth))) == 9
 
     def test_counts_ignore_the_status_filter(self, client, admin_auth, shop):
         body = client.get("/api/admin/products?status=draft", headers=admin_auth).json()
@@ -521,10 +534,9 @@ class TestAdminList:
     def test_admin_sorts(self, client, admin_auth, shop, sort, first):
         assert ids(client.get(f"/api/admin/products?sort={sort}", headers=admin_auth))[0] == first
 
-    def test_admin_search_matches_the_barcode(self, client, db, admin_auth, shop):
+    def test_the_storefront_search_never_matches_a_barcode(self, client, db, admin_auth, shop):
         shop["PRD105"].barcode = "8901234567890"
         db.flush()
-        assert ids(client.get("/api/admin/products?search=890123456", headers=admin_auth)) == ["PRD105"]
         assert ids(client.get("/api/products?search=890123456")) == []
 
     def test_paging_and_bounds(self, client, admin_auth, shop):

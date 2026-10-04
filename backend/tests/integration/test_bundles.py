@@ -6,10 +6,12 @@ per component, and stock returned per component when an order is cancelled.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 
 from app.core import rate_limit
-from app.models import CartBundle, InvoiceItem, Order, OrderItem, Product
+from app.models import Bundle, CartBundle, InvoiceItem, Order, OrderItem, Product
 from tests.integration.wallet_helpers import fill_bag, mailbox, place  # noqa: F401
 
 pytestmark = pytest.mark.integration
@@ -198,3 +200,27 @@ class TestOrdering:
         assert shop.delete(f"/api/admin/bundles/{bundle['id']}", headers=admin_auth).status_code == 409
         detail = shop.get(f"/api/admin/bundles/{bundle['id']}", headers=admin_auth).json()["data"]
         assert detail["sales"] == {"orders": 1, "units": 2, "revenue": 5998.0}
+
+
+class TestPortalListFindsById:
+    """docs/id-lookup.md: the list box takes a Bundle ID, exactly; names, prefixes and junk find nothing."""
+
+    def test_the_list_box_takes_a_bundle_id_exactly(self, shop, admin_auth, db):
+        first = make_bundle(shop, admin_auth)
+        longer_id = int(f"{first['id']}1")
+        now = datetime.utcnow()
+        db.add(Bundle(id=longer_id, slug=f"office-look-longer-{longer_id}", name="Office Look Longer",
+                      status="draft", created_at=now, updated_at=now))
+        db.flush()
+
+        def ids(q):
+            response = shop.get("/api/admin/bundles", headers=admin_auth, params={"q": q})
+            assert response.status_code == 200, response.text
+            return [row["id"] for row in response.json()["data"]["items"]]
+
+        assert sorted(ids("")) == sorted([first["id"], longer_id])
+        assert ids(str(first["id"])) == [first["id"]]  # never the longer ID it is a prefix of
+        assert ids(f" #{first['id']} ") == [first["id"]]
+        assert ids(str(longer_id)) == [longer_id]
+        for text in ("Office", "Office Look", "'; DROP TABLE bundles; --", "a@b.com", "99999"):
+            assert ids(text) == []

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, Search, Trash2, X } from "lucide-react";
+import { Check, Trash2, X } from "lucide-react";
 
 import type { AdminReview, ReviewStatus } from "@/types/admin";
 
@@ -12,6 +12,7 @@ import {
   ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { DomainStatus, StatusBadge } from "@/components/admin/ui/StatusBadge";
 import { Rating } from "@/components/ui/Rating";
 import { Modal } from "@/components/ui/Dialog";
@@ -31,9 +32,11 @@ import { toast } from "@/store/toastStore";
  * that queue — sorting by date would bury the only rows that need action.
  */
 export function AdminReviewsView() {
-  const reviews = useAdminResource(() => listReviews(), []);
+  // Narrowed on the server by exact IDs — never by a product or customer name.
+  const [productId, setProductId] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const reviews = useAdminResource(() => listReviews({ productId, customerId }), [productId, customerId]);
 
-  const [term, setTerm] = useState("");
   const [status, setStatus] = useState<ReviewStatus | "all">("pending");
   const [rating, setRating] = useState<number | "all">("all");
   const [reading, setReading] = useState<AdminReview | null>(null);
@@ -51,20 +54,15 @@ export function AdminReviewsView() {
     [rows],
   );
 
-  const filtered = useMemo(() => {
-    const terms = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return rows.filter((review) => {
-      if (status !== "all" && review.status !== status) return false;
-      if (rating !== "all" && review.rating !== rating) return false;
-      if (terms.length > 0) {
-        const haystack = [review.productName, review.customerName, review.title, review.body]
-          .join(" ")
-          .toLowerCase();
-        if (!terms.every((token) => haystack.includes(token))) return false;
-      }
-      return true;
-    });
-  }, [rows, term, status, rating]);
+  const filtered = useMemo(
+    () =>
+      rows.filter((review) => {
+        if (status !== "all" && review.status !== status) return false;
+        if (rating !== "all" && review.rating !== rating) return false;
+        return true;
+      }),
+    [rows, status, rating],
+  );
 
   const moderate = async (review: AdminReview, next: ReviewStatus) => {
     setBusy(true);
@@ -231,24 +229,8 @@ export function AdminReviewsView() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[3px] border border-admin-border bg-admin-surface p-3">
-        <div className="relative min-w-0 flex-1 sm:max-w-xs">
-          <label htmlFor="review-search" className="sr-only">
-            Search reviews by product, customer or text
-          </label>
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-            strokeWidth={1.75}
-            aria-hidden="true"
-          />
-          <input
-            id="review-search"
-            type="search"
-            value={term}
-            onChange={(event) => setTerm(event.target.value)}
-            placeholder="Product, customer or text…"
-            className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
-          />
-        </div>
+        <IdFilter entity="product" label="Product ID or SKU" value={productId} onChange={setProductId} className="w-56" />
+        <IdFilter entity="customer" value={customerId} onChange={setCustomerId} className="w-56" />
 
         <select
           value={status}

@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Download, RefreshCw, Send, X } from "lucide-react";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
-import { LogFooter, LogSearch, StatusTabs, collectPages, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, collectPages, downloadCsv, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { Badge, TD, TH, TableState, problem } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDateTime } from "@/lib/support/format";
@@ -14,7 +15,7 @@ import { formatPrice } from "@/lib/utils/format";
 import { listAlerts, resendAlert, type AdminAlertRow } from "@/services/admin/engagementAdminService";
 import { toast } from "@/store/toastStore";
 
-const KEYS = ["kind", "status", "q"] as const;
+const KEYS = ["kind", "status", "productId", "customerId"] as const;
 
 const STATUS: Record<string, { label: string; tone: "green" | "amber" | "red" | "grey" }> = {
   active: { label: "Waiting", tone: "amber" },
@@ -33,13 +34,15 @@ export function AdminAlertsView() {
   const [busy, setBusy] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
 
+  // Alerts are found by exact IDs — never a customer's name or email, or a product's name.
+  const ids = { productId: filters.productId, customerId: filters.customerId };
   const alerts = useAdminResource(
-    () => listAlerts(kind, { status: filters.status, q: filters.q, page, pageSize }),
-    [kind, filters.status, filters.q, page, pageSize],
+    () => listAlerts(kind, { status: filters.status, ...ids, page, pageSize }),
+    [kind, filters.status, filters.productId, filters.customerId, page, pageSize],
   );
   const data = alerts.data;
   const counts = data?.counts ?? {};
-  const filtered = Boolean(filters.status || filters.q);
+  const filtered = Boolean(filters.status || filters.productId || filters.customerId);
 
   const resend = async (row: AdminAlertRow) => {
     setBusy(row.id);
@@ -58,7 +61,7 @@ export function AdminAlertsView() {
     setExporting(true);
     try {
       const { rows, truncated } = await collectPages((p) =>
-        listAlerts(kind, { status: filters.status, q: filters.q, page: p, pageSize: 100 }),
+        listAlerts(kind, { status: filters.status, ...ids, page: p, pageSize: 100 }),
       );
       downloadCsv(
         `${kind}-alerts-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -126,8 +129,9 @@ export function AdminAlertsView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search alerts" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="Customer name or email, product name or SKU" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="customer" value={filters.customerId} onChange={(customerId) => setFilters({ customerId })} className="w-56" />
+        <IdFilter entity="product" label="Product ID or SKU" value={filters.productId} onChange={(productId) => setFilters({ productId })} className="w-56" />
         {filtered ? (
           <AdminButton size="sm" variant="ghost" onClick={clear}>
             <X className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />

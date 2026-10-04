@@ -52,6 +52,7 @@ import type {
  */
 
 export interface InvoiceQuery {
+  /** An Invoice or Order ID, matched exactly — never a name or an email. */
   search?: string;
   status?: Invoice["status"] | "all";
   paymentStatus?: Payment["status"] | "all";
@@ -66,6 +67,7 @@ export interface InvoiceQuery {
 }
 
 export interface PaymentQuery {
+  /** A Payment ID (or gateway transaction id), Order ID or Invoice ID, matched exactly. */
   search?: string;
   status?: Payment["status"] | "all";
   method?: Payment["method"] | "all";
@@ -76,6 +78,7 @@ export interface PaymentQuery {
 }
 
 export interface RefundQuery {
+  /** A Refund, Order or Invoice ID, matched exactly. */
   search?: string;
   status?: Refund["status"] | "all";
   orderId?: string;
@@ -129,8 +132,8 @@ export interface BillingDataSource {
   createRefund(draft: RefundDraft): Promise<Refund>;
   updateRefund(refund: Refund): Promise<Refund>;
 
-  /** Every credit note, or one order's. */
-  listCreditNotes(orderId?: string): Promise<CreditNote[]>;
+  /** Every credit note, one order's, or those an ID (`q`: credit note, invoice or order) names. */
+  listCreditNotes(orderId?: string, q?: string): Promise<CreditNote[]>;
   getCreditNote(id: string): Promise<CreditNote | null>;
   createCreditNote(draft: CreditNoteDraft): Promise<CreditNote>;
   updateCreditNote(note: CreditNote): Promise<CreditNote>;

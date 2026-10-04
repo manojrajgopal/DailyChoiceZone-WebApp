@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -13,6 +13,7 @@ from app.core.errors import AuthorizationError, NotFoundError
 from app.dependencies.auth import get_current_admin, require_access, require_permission
 from app.models import AdminUser, Address, Customer, Order, WishlistItem
 from app.schemas.base import CamelModel
+from app.services.lookup.filters import id_condition
 from app.utils.response import ok, ok_list
 
 router = APIRouter(prefix="/admin/customers", tags=["Customers"])
@@ -101,11 +102,16 @@ def _to_dict(customer: Customer, stats: dict, wishlist: list[str]) -> dict:
 
 @router.get("", summary="Every customer")
 def list_customers(
+    q: Optional[str] = Query(None, description="A Customer ID: only that customer. Names and emails match nothing."),
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(require_access("customers")),
 ):
+    stmt = select(Customer).options(selectinload(Customer.addresses)).order_by(Customer.id)
+    condition = id_condition("customer", q)
+    if condition is not None:
+        stmt = stmt.where(condition)
     customers = (
-        db.execute(select(Customer).options(selectinload(Customer.addresses)).order_by(Customer.id))
+        db.execute(stmt)
         .unique()
         .scalars()
         .all()

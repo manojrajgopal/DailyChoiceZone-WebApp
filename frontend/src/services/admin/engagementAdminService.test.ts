@@ -11,9 +11,12 @@ beforeEach(() => {
 
 describe("alerts", () => {
   it("listAlerts GETs the kind-scoped endpoint with filters", async () => {
-    await engagement.listAlerts("stock", { status: "active", q: "kurta", page: 2 });
+    await engagement.listAlerts("stock", { status: "active", productId: "PRD001", customerId: "CUS002", page: 2 });
     const request = api.last("GET", "/admin/alerts/stock")!;
     expect(request.query.get("status")).toBe("active");
+    expect(request.query.get("productId")).toBe("PRD001");
+    expect(request.query.get("customerId")).toBe("CUS002");
+    expect(request.query.get("q")).toBeNull();
     expect(request.query.get("page")).toBe("2");
     expect(request.headers.authorization).toBe("Bearer test-token");
   });
@@ -28,6 +31,11 @@ describe("questions", () => {
   it("lists, reads, approves, rejects, answers, edits and deletes", async () => {
     await engagement.listQuestions({ status: "pending" });
     expect(api.last("GET", "/admin/questions")!.query.get("status")).toBe("pending");
+
+    await engagement.listQuestions({ productId: "PRD001", customerId: "CUS002", text: "shrink" });
+    const sent = api.last("GET", "/admin/questions")!.query;
+    expect([sent.get("productId"), sent.get("customerId"), sent.get("text")]).toEqual(["PRD001", "CUS002", "shrink"]);
+    expect(sent.has("q")).toBe(false);
 
     await engagement.getQuestion(1);
     expect(api.last("GET", "/admin/questions/1")).toBeTruthy();
@@ -102,6 +110,12 @@ describe("loyalty", () => {
 
     await engagement.listLoyaltyLedger({ kind: "manual_credit" });
     expect(api.last("GET", "/admin/loyalty/ledger")!.query.get("kind")).toBe("manual_credit");
+
+    await engagement.listLoyaltyLedger({ customerId: "CUS001", orderId: "DCZ10241" });
+    const ledger = api.last("GET", "/admin/loyalty/ledger")!.query;
+    expect(ledger.get("customerId")).toBe("CUS001");
+    expect(ledger.get("orderId")).toBe("DCZ10241");
+    expect(ledger.has("q")).toBe(false);
 
     const input = { kind: "manual_credit" as const, points: 100, reason: "Goodwill", requestKey: "req-2" };
     await engagement.adjustPoints("C1", input);

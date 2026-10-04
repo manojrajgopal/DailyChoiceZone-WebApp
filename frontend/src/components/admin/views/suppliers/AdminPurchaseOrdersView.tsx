@@ -4,13 +4,13 @@ import Link from "next/link";
 import { Plus, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
-import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
 import { listPurchaseOrders } from "@/services/purchaseOrdersService";
-import { listSuppliers } from "@/services/suppliersService";
 import type { PurchaseOrderStatus } from "@/types/suppliers";
 
 import { ADMIN_CRUMB, NoAccess, PO_STATUS_LABELS, PoStatusBadge, isForbidden, rupees } from "./shared";
@@ -22,15 +22,17 @@ const STATUSES = Object.keys(PO_STATUS_LABELS) as PurchaseOrderStatus[];
 const DATE_INPUT =
   "h-9 rounded-[3px] border border-admin-border bg-admin-surface px-2 text-[0.8125rem] text-admin-ink hover:border-admin-border-strong";
 
-/** Every purchase order, filterable by status, supplier and date. */
+/**
+ * Every purchase order, filterable by status, supplier and date. A purchase
+ * order and a supplier are each chosen by ID (docs/id-lookup.md) — never by a
+ * supplier's name — so any supplier can be filtered on, not just the first 100.
+ */
 export function AdminPurchaseOrdersView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
   const orders = useAdminResource(
     () => listPurchaseOrders({ ...filters, page, pageSize }),
     [filters.q, filters.status, filters.supplier, filters.from, filters.to, page, pageSize],
   );
-  // For the supplier filter only; a failure here just leaves the filter short.
-  const suppliers = useAdminResource(() => listSuppliers({ pageSize: 100, sort: "name" }), []);
   const data = orders.data;
   const counts = data?.counts ?? {};
   const filtered = Boolean(filters.q || filters.status || filters.supplier || filters.from || filters.to);
@@ -42,14 +44,6 @@ export function AdminPurchaseOrdersView() {
         <NoAccess area="purchasing" />
       </div>
     );
-  }
-
-  const supplierOptions = [
-    { value: "", label: "All suppliers" },
-    ...(suppliers.data?.items ?? []).map((entry) => ({ value: entry.id, label: entry.name })),
-  ];
-  if (filters.supplier && !supplierOptions.some((option) => option.value === filters.supplier)) {
-    supplierOptions.push({ value: filters.supplier, label: filters.supplier });
   }
 
   return (
@@ -80,9 +74,9 @@ export function AdminPurchaseOrdersView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search purchase orders" value={filters.q} onChange={(q) => setFilters({ q })} placeholder="PO number, supplier or reference" />
-        <FilterSelect label="Supplier" value={filters.supplier} onChange={(supplier) => setFilters({ supplier })} options={supplierOptions} />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdFilter entity="purchase_order" value={filters.q} onChange={(q) => setFilters({ q })} className="w-64" />
+        <IdFilter entity="supplier" value={filters.supplier} onChange={(supplier) => setFilters({ supplier })} className="w-56" />
         <label className="flex items-center gap-1.5 text-xs text-admin-muted">
           From
           <input type="date" aria-label="Raised from" value={filters.from} max={filters.to || undefined} onChange={(e) => setFilters({ from: e.target.value })} className={DATE_INPUT} />

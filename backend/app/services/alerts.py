@@ -518,22 +518,27 @@ def _deliveries(db: Session, references: List[str]) -> dict:
 
 
 def admin_search(db: Session, kind: str, *, status: str = "", q: str = "", product_id: str = "",
-                 page: int = 1, page_size: int = 25) -> tuple:
+                 customer_id: str = "", page: int = 1, page_size: int = 25) -> tuple:
+    """
+    The portal's alert list. Alerts are found by ID only (docs/id-lookup.md):
+    `product_id` is a Product ID or SKU, `customer_id` a Customer ID, and `q` either
+    of those — each matched exactly, never a name, an email or part of one.
+    """
+    from app.services.lookup.filters import any_id_condition, id_condition
+
     model = StockAlert if kind == "stock" else PriceAlert
     conditions = []
     if status in ("active", "notified", "unsubscribed"):
         conditions.append(model.status == status)
     elif status == "failing":
         conditions.append(and_(model.status == "active", model.last_error != ""))
-    if product_id:
-        conditions.append(model.product_id == product_id)
-    text = (q or "").strip()
-    if text:
-        like = f"%{text}%"
-        people = select(Customer.id).where(or_(Customer.email.ilike(like), Customer.first_name.ilike(like),
-                                               Customer.last_name.ilike(like)))
-        goods = select(Product.id).where(or_(Product.name.ilike(like), Product.sku.ilike(like), Product.id == text))
-        conditions.append(or_(model.customer_id.in_(people), model.product_id.in_(goods)))
+    for condition in (
+        id_condition("product", product_id, column=model.product_id, via=Product.id),
+        id_condition("customer", customer_id, column=model.customer_id, via=Customer.id),
+        any_id_condition(q, ("customer", model.customer_id, Customer.id), ("product", model.product_id, Product.id)),
+    ):
+        if condition is not None:
+            conditions.append(condition)
     total = db.execute(select(func.count()).select_from(model).where(*conditions)).scalar_one()
     rows = db.execute(select(model).where(*conditions).order_by(model.id.desc())
                       .offset((max(1, page) - 1) * page_size).limit(page_size)).scalars().all()

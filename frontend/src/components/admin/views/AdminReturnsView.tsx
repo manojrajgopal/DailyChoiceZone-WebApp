@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import type { ReturnRequest, ReturnStatus } from "@/types/returns";
+import type { LookupEntity } from "@/lib/lookup/entities";
 
 import {
   AdminButton,
@@ -14,6 +15,8 @@ import {
   AdminPageHeader,
   ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
+import { IdKindFilter } from "@/components/admin/ui/IdKindFilter";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
@@ -63,18 +66,22 @@ export function ReturnStatusBadge({ status }: { status: ReturnStatus }) {
 
 export function AdminReturnsView() {
   const [filter, setFilter] = useState("");
+  // Finding one request (or one order's, or one customer's) is by ID only.
+  const [findBy, setFindBy] = useState<{ entity: LookupEntity; id: string }>({ entity: "return", id: "" });
+  const [customer, setCustomer] = useState("");
   const [rows, setRows] = useState<ReturnRequest[] | null>(null);
+  const q = findBy.id;
 
   useEffect(() => {
     let active = true;
     setRows(null);
-    listReturns({ status: filter || undefined })
+    listReturns({ status: filter || undefined, q: q || undefined, customer: customer || undefined })
       .then((result) => active && setRows(result))
       .catch(() => active && setRows([]));
     return () => {
       active = false;
     };
-  }, [filter]);
+  }, [filter, q, customer]);
 
   return (
     <div>
@@ -104,6 +111,11 @@ export function AdminReturnsView() {
         ))}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-end gap-2">
+        <IdKindFilter kinds={["return", "order"]} entity={findBy.entity} value={findBy.id} onChange={setFindBy} />
+        <IdFilter entity="customer" value={customer} onChange={setCustomer} className="w-52" />
+      </div>
+
       <AdminCard padded={false}>
         {rows === null ? (
           <div className="flex h-40 items-center justify-center">
@@ -111,7 +123,7 @@ export function AdminReturnsView() {
           </div>
         ) : rows.length === 0 ? (
           <p className="p-8 text-center text-sm text-admin-muted">
-            No requests {filter ? "with this status" : "yet"}.
+            No requests {q || customer ? "match that ID" : filter ? "with this status" : "yet"}.
           </p>
         ) : (
           <div className="overflow-x-auto">

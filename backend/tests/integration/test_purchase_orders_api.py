@@ -613,12 +613,21 @@ class TestList:
         assert [row["id"] for row in data["items"]] == ["POR003"]
         assert data["counts"]["cancelled"] == 1 and data["counts"]["draft"] == 0
 
-    def test_search_matches_number_reference_and_supplier(self, client, admin_auth, several):
-        assert [r["id"] for r in self._list(client, admin_auth, q="000002")["items"]] == ["POR002"]
-        assert [r["id"] for r in self._list(client, admin_auth, q="q-alpha")["items"]] == ["POR001"]
-        assert [r["id"] for r in self._list(client, admin_auth, q="MERI")["items"]] == ["POR003"]
-        assert [r["id"] for r in self._list(client, admin_auth, q="Anvi")["items"]] == ["POR002", "POR001"]
-        assert self._list(client, admin_auth, q="nothing-like-it")["items"] == []
+    def test_filter_by_supplier_takes_its_id_or_code_never_its_name(self, client, admin_auth, several):
+        assert [r["id"] for r in self._list(client, admin_auth, supplier="MERI-AUD")["items"]] == ["POR003"]
+        assert [r["id"] for r in self._list(client, admin_auth, supplier="SUP001")["items"]] == ["POR002", "POR001"]
+        assert self._list(client, admin_auth, supplier="Anvi Textiles")["items"] == []
+        assert self._list(client, admin_auth, supplier="SUP00")["items"] == []
+
+    def test_search_takes_the_po_id_or_the_suppliers_reference_exactly(self, client, admin_auth, several):
+        number = several["second"]["poNumber"]
+        assert [r["id"] for r in self._list(client, admin_auth, q=number)["items"]] == ["POR002"]
+        assert [r["id"] for r in self._list(client, admin_auth, q=number.lower())["items"]] == ["POR002"]
+        assert [r["id"] for r in self._list(client, admin_auth, q="POR002")["items"]] == ["POR002"]
+        assert [r["id"] for r in self._list(client, admin_auth, q="Q-ALPHA")["items"]] == ["POR001"]
+        # Part of a number, the supplier's name or code: not a purchase order ID.
+        for text in ("000002", number[:-1], "Q-ALP", "MERI", "MERI-AUD", "Anvi", "Anvi Textiles", "nothing-like-it"):
+            assert self._list(client, admin_auth, q=text)["items"] == [], text
 
     def test_date_range(self, client, admin_auth, several):
         today = datetime.utcnow().date()

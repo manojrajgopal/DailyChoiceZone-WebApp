@@ -165,7 +165,10 @@ export function getEmailLog(limit?: number): Promise<EmailLogEntry[]> {
 export interface EmailLogFilters {
   status?: string;
   type?: string;
+  /** The record the email was about — an order number or a request number — matched exactly. */
   q?: string;
+  /** Words in the subject line: content, never the recipient. */
+  subject?: string;
   from?: string;
   to?: string;
   page?: number;

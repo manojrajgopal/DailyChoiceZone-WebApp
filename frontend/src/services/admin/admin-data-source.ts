@@ -108,13 +108,15 @@ export interface AdminDataSource {
   deleteCollection(id: string): Promise<void>;
 
   /* ------------------------------------------------------------- inventory */
-  listInventory(): Promise<InventoryItem[]>;
+  /** `productId`: a Product ID or SKU, matched exactly on the server. */
+  listInventory(productId?: string): Promise<InventoryItem[]>;
   adjustStock(adjustment: StockAdjustment): Promise<InventoryItem>;
-  listStockLog(): Promise<StockAdjustment[]>;
+  /** Newest first; `productId` (a Product ID or SKU, exact) keeps one product's changes. */
+  listStockLog(productId?: string): Promise<StockAdjustment[]>;
 
   /* ---------------------------------------------------------------- orders */
-  /** Every order, or one customer's. */
-  listOrders(customerId?: string): Promise<AdminOrder[]>;
+  /** Every order, one customer's, or the one an Order ID (`q`) names. */
+  listOrders(customerId?: string, q?: string): Promise<AdminOrder[]>;
   getOrder(id: string): Promise<AdminOrder | null>;
   updateOrderStatus(
     id: string,
@@ -129,7 +131,8 @@ export interface AdminDataSource {
   sendPaymentLink(id: string): Promise<PaymentLinkSent>;
 
   /* ------------------------------------------------------------- customers */
-  listCustomers(): Promise<AdminCustomer[]>;
+  /** `q`: a Customer ID, matched exactly — only that customer (docs/id-lookup.md). */
+  listCustomers(q?: string): Promise<AdminCustomer[]>;
   getCustomer(id: string): Promise<AdminCustomer | null>;
   setCustomerStatus(id: string, status: AdminCustomer["status"]): Promise<AdminCustomer>;
 
@@ -139,7 +142,7 @@ export interface AdminDataSource {
   deleteCoupon(id: string): Promise<void>;
 
   /* --------------------------------------------------------------- reviews */
-  listReviews(): Promise<AdminReview[]>;
+  listReviews(filters?: ReviewFilters): Promise<AdminReview[]>;
   setReviewStatus(id: string, status: ReviewStatus): Promise<AdminReview>;
   deleteReview(id: string): Promise<void>;
 
@@ -196,4 +199,10 @@ export interface PaymentLinkSent {
   shortUrl: string;
   paymentId: string;
   orderNumber: string;
+}
+
+/** The review list's ID filters: a Product ID (or SKU) and a Customer ID, each exact. */
+export interface ReviewFilters {
+  productId?: string;
+  customerId?: string;
 }

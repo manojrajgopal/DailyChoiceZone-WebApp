@@ -329,13 +329,19 @@ class TestList:
         assert [s["code"] for s in self._list(client, admin_auth, status="archived")["items"]] == ["OLD"]
         assert [s["code"] for s in self._list(client, admin_auth, status="inactive")["items"]] == ["MID"]
 
-    def test_search_matches_name_code_email_and_contact(self, client, admin_auth, several):
-        assert [s["code"] for s in self._list(client, admin_auth, q="audio")["items"]] == ["ALPHA"]
-        assert [s["code"] for s in self._list(client, admin_auth, q="zeta.example")["items"]] == ["ZETA"]
-        assert [s["code"] for s in self._list(client, admin_auth, q="meena")["items"]] == ["ALPHA"]
+    def test_search_takes_the_supplier_id_or_code_exactly(self, client, admin_auth, several):
+        alpha = several[1]
+        assert [s["code"] for s in self._list(client, admin_auth, q="ALPHA")["items"]] == ["ALPHA"]
+        assert [s["code"] for s in self._list(client, admin_auth, q="alpha")["items"]] == ["ALPHA"]
+        assert [s["code"] for s in self._list(client, admin_auth, q=alpha["id"])["items"]] == ["ALPHA"]
         assert [s["code"] for s in self._list(client, admin_auth, q="mid")["items"]] == ["MID"]
         counted = self._list(client, admin_auth, q="old")
         assert counted["items"] == [] and counted["counts"]["archived"] == 1
+
+    def test_search_never_matches_names_emails_or_contacts(self, client, admin_auth, several):
+        for text in ("audio", "Alpha Audio", "zeta.example", "z@zeta.example.com", "meena", "ALP", "Zeta Fabrics"):
+            data = self._list(client, admin_auth, q=text)
+            assert data["items"] == [], text
 
     def test_sorts(self, client, admin_auth, several):
         assert [s["code"] for s in self._list(client, admin_auth, sort="code")["items"]] == ["ALPHA", "MID", "ZETA"]

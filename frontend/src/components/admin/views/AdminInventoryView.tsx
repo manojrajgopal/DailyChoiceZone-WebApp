@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { PackageCheck, Search, X } from "lucide-react";
+import { PackageCheck, X } from "lucide-react";
 
 import type { InventoryItem, StockAdjustment, StockStatus } from "@/types/admin";
 
 import { AdminButton, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminSelect, AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
+import { IdFilter } from "@/components/admin/ui/IdFilter";
 import { DomainStatus } from "@/components/admin/ui/StatusBadge";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
@@ -34,10 +35,13 @@ import { toast } from "@/store/toastStore";
 export function AdminInventoryView() {
   const adjustmentReasons = useSiteContent()?.stockAdjustmentReasons ?? [];
 
-  const inventory = useAdminResource(() => listInventory(), []);
-  const log = useAdminResource(() => listStockLog(), []);
+  // A Product ID or SKU narrows the list on the server — exactly that product, never a name match.
+  const [productId, setProductId] = useState("");
+  const inventory = useAdminResource(() => listInventory(productId), [productId]);
+  // The stock log has its own Product ID filter: one product's movements, exactly.
+  const [logProductId, setLogProductId] = useState("");
+  const log = useAdminResource(() => listStockLog(logProductId), [logProductId]);
 
-  const [term, setTerm] = useState("");
   const [status, setStatus] = useState<StockStatus | "all">("all");
   const [category, setCategory] = useState("all");
 
@@ -50,22 +54,19 @@ export function AdminInventoryView() {
   const items = inventory.data ?? [];
 
   const categories = useMemo(
-    () => [...new Set(items.map((item) => item.category))].sort(),
-    [items],
+    () => [...new Set([...items.map((item) => item.category), ...(category !== "all" ? [category] : [])])].sort(),
+    [items, category],
   );
 
-  const filtered = useMemo(() => {
-    const terms = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return items.filter((item) => {
-      if (status !== "all" && item.status !== status) return false;
-      if (category !== "all" && item.category !== category) return false;
-      if (terms.length > 0) {
-        const haystack = `${item.name} ${item.sku}`.toLowerCase();
-        if (!terms.every((token) => haystack.includes(token))) return false;
-      }
-      return true;
-    });
-  }, [items, term, status, category]);
+  const filtered = useMemo(
+    () =>
+      items.filter((item) => {
+        if (status !== "all" && item.status !== status) return false;
+        if (category !== "all" && item.category !== category) return false;
+        return true;
+      }),
+    [items, status, category],
+  );
 
   const counts = useMemo(
     () => ({
@@ -243,24 +244,13 @@ export function AdminInventoryView() {
       {/* ---------------------------------------------------------- filters */}
       <div className="mb-4 rounded-[3px] border border-admin-border bg-admin-surface p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:max-w-xs">
-            <label htmlFor="inventory-search" className="sr-only">
-              Search inventory by product name or SKU
-            </label>
-            <Search
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-            <input
-              id="inventory-search"
-              type="search"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              placeholder="Product or SKU…"
-              className="h-8 w-full rounded-[3px] border border-admin-border bg-admin-raised pl-8 pr-2 text-xs text-admin-ink placeholder:text-admin-faint focus:border-copper-500 focus:bg-admin-surface"
-            />
-          </div>
+          <IdFilter
+            entity="product"
+            label="Product ID or SKU"
+            value={productId}
+            onChange={setProductId}
+            className="min-w-0 flex-1 sm:max-w-xs"
+          />
 
           <select
             value={status}
@@ -288,14 +278,14 @@ export function AdminInventoryView() {
             ))}
           </select>
 
-          {status !== "all" || category !== "all" || term ? (
+          {status !== "all" || category !== "all" || productId ? (
             <AdminButton
               size="sm"
               variant="ghost"
               onClick={() => {
                 setStatus("all");
                 setCategory("all");
-                setTerm("");
+                setProductId("");
               }}
             >
               <X className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
@@ -313,16 +303,28 @@ export function AdminInventoryView() {
         pageSize={15}
         initialSort={{ columnId: "available", direction: "asc" }}
         emptyTitle="Nothing matches"
-        emptyDescription="Adjust the search or filters above."
+        emptyDescription="Adjust the Product ID or filters above."
       />
 
       {/* -------------------------------------------------------- stock log */}
-      {(log.data ?? []).length > 0 ? (
+      {(log.data ?? []).length > 0 || logProductId ? (
         <AdminCard
           title="Recent stock changes"
           description="The latest stock updates."
           className="mt-4"
         >
+          <IdFilter
+            entity="product"
+            label="Stock changes for Product ID or SKU"
+            value={logProductId}
+            onChange={setLogProductId}
+            className="mb-3 min-w-0 sm:max-w-xs"
+          />
+          {(log.data ?? []).length === 0 ? (
+            <p className="text-xs text-admin-muted">
+              {log.isLoading ? "Loading stock changes…" : "No stock changes for that product."}
+            </p>
+          ) : null}
           <ul className="flex flex-col divide-y divide-admin-border">
             {(log.data ?? []).slice(0, 8).map((entry, index) => {
               const item = items.find((row) => row.productId === entry.productId);

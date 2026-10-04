@@ -29,6 +29,12 @@ export interface OtpSignInProps {
   onSignedIn: (session: AuthSession, created: boolean) => void;
   /** Told when the store has switched code sign-in off since the page loaded. */
   onUnavailable?: () => void;
+  /**
+   * The email address typed on the password form, shared with this one: it is
+   * filled in here already, and what is typed here goes back there.
+   */
+  email?: string;
+  onEmailChange?: (email: string) => void;
 }
 
 type Step =
@@ -44,9 +50,27 @@ type Step =
  * server never says whether an account exists until the code has proved the
  * number or address is the shopper's.
  */
-export function OtpSignIn({ emailOtp, mobileOtp, purpose = "login", referralCode, onSignedIn, onUnavailable }: OtpSignInProps) {
-  const [channel, setChannel] = useState<OtpChannel>(mobileOtp ? "sms" : "email");
-  const [destination, setDestination] = useState("");
+export function OtpSignIn({
+  emailOtp,
+  mobileOtp,
+  purpose = "login",
+  referralCode,
+  onSignedIn,
+  onUnavailable,
+  email: sharedEmail,
+  onEmailChange,
+}: OtpSignInProps) {
+  // An email already typed on the password form means they're signing in by email.
+  const [channel, setChannel] = useState<OtpChannel>(
+    emailOtp && sharedEmail?.trim() ? "email" : mobileOtp ? "sms" : "email",
+  );
+  const [phone, setPhone] = useState("");
+  const [ownEmail, setOwnEmail] = useState("");
+  const email = sharedEmail ?? ownEmail;
+  const setEmail = (value: string) => {
+    if (onEmailChange) onEmailChange(value);
+    if (sharedEmail === undefined) setOwnEmail(value);
+  };
   const [fieldError, setFieldError] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -54,6 +78,8 @@ export function OtpSignIn({ emailOtp, mobileOtp, purpose = "login", referralCode
 
   const both = emailOtp && mobileOtp;
   const activeChannel: OtpChannel = channel === "sms" && !mobileOtp ? "email" : channel === "email" && !emailOtp ? "sms" : channel;
+  const destination = activeChannel === "sms" ? phone : email;
+  const setDestination = activeChannel === "sms" ? setPhone : setEmail;
 
   const request = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -101,6 +127,7 @@ export function OtpSignIn({ emailOtp, mobileOtp, purpose = "login", referralCode
       <CodeSignUp
         step={step}
         referralCode={referralCode}
+        initialEmail={email}
         onSignedIn={(session) => onSignedIn(session, true)}
         onExpired={(message) => {
           setStep({ kind: "destination" });
@@ -127,7 +154,6 @@ export function OtpSignIn({ emailOtp, mobileOtp, purpose = "login", referralCode
               aria-checked={activeChannel === value}
               onClick={() => {
                 setChannel(value);
-                setDestination("");
                 setFieldError(undefined);
                 setError(undefined);
               }}
@@ -196,17 +222,20 @@ export function OtpSignIn({ emailOtp, mobileOtp, purpose = "login", referralCode
 function CodeSignUp({
   step,
   referralCode,
+  initialEmail = "",
   onSignedIn,
   onExpired,
 }: {
   step: Extract<Step, { kind: "signup" }>;
   referralCode?: string;
+  /** An email typed earlier on this page, offered for an account made with a texted code. */
+  initialEmail?: string;
   onSignedIn: (session: AuthSession) => void;
   onExpired: (message: string) => void;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail.trim());
   const [offers, setOffers] = useState(true);
   const [emailError, setEmailError] = useState<string>();
   const [error, setError] = useState<string>();

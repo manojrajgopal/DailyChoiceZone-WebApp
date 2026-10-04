@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import type { Collection } from "@/types";
 
@@ -18,16 +18,15 @@ import {
 } from "@/components/admin/ui/AdminForm";
 import { DataTable, type Column } from "@/components/admin/ui/DataTable";
 import { StatusBadge } from "@/components/admin/ui/StatusBadge";
+import { IdMultiSelect } from "@/components/common/IdMultiSelect";
 import { Modal } from "@/components/ui/Dialog";
 import { useAdminResource } from "@/hooks/useAdminResource";
-import { cn } from "@/lib/utils/cn";
 import { slugify } from "@/lib/utils/format";
 import {
   deleteCollection,
   listCollections,
   saveCollection,
 } from "@/services/admin/collectionAdminService";
-import { listProducts } from "@/services/admin/productAdminService";
 import { toast } from "@/store/toastStore";
 
 function emptyCollection(): Collection {
@@ -47,40 +46,17 @@ function emptyCollection(): Collection {
  *
  * Membership is curated rather than computed — that is the whole point of a
  * collection, as opposed to a category. The picker below is therefore the main
- * event, with a search so a hundred-plus catalogue stays navigable.
+ * event: products are added by Product ID or SKU (docs/id-lookup.md), so the
+ * editor never downloads the catalogue to search it by name.
  */
 export function AdminCollectionsView() {
   const collections = useAdminResource(() => listCollections(), []);
 
   const [editing, setEditing] = useState<Collection | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Collection | null>(null);
-  const [pickerTerm, setPickerTerm] = useState("");
   const [saving, setSaving] = useState(false);
 
-  /**
-   * The catalogue, fetched only once the editor is open.
-   *
-   * It feeds the "search products to add" picker and nothing else, so opening
-   * this page used to download every product to render a table that shows a
-   * count it already had.
-   */
-  const products = useAdminResource(() => listProducts(), [], { enabled: editing !== null });
-
   const rows = collections.data ?? [];
-  const catalogue = products.data ?? [];
-
-  const pickerResults = useMemo(() => {
-    const terms = pickerTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const sellable = catalogue.filter((product) => product.status !== "archived");
-    if (terms.length === 0) return sellable.slice(0, 40);
-
-    return sellable
-      .filter((product) => {
-        const haystack = `${product.name} ${product.sku} ${product.category}`.toLowerCase();
-        return terms.every((token) => haystack.includes(token));
-      })
-      .slice(0, 40);
-  }, [catalogue, pickerTerm]);
 
   const onSave = async () => {
     if (!editing) return;
@@ -95,7 +71,6 @@ export function AdminCollectionsView() {
 
     toast.success(`${result.data.name} saved`);
     setEditing(null);
-    setPickerTerm("");
     await collections.reload();
   };
 
@@ -113,17 +88,6 @@ export function AdminCollectionsView() {
 
     toast.success(`${result.data} deleted`);
     await collections.reload();
-  };
-
-  const toggleProduct = (productId: string) => {
-    if (!editing) return;
-    const has = editing.productIds.includes(productId);
-    setEditing({
-      ...editing,
-      productIds: has
-        ? editing.productIds.filter((id) => id !== productId)
-        : [...editing.productIds, productId],
-    });
   };
 
   const columns: Column<Collection>[] = [
@@ -183,10 +147,7 @@ export function AdminCollectionsView() {
         <span className="flex items-center justify-end gap-0.5">
           <button
             type="button"
-            onClick={() => {
-              setEditing({ ...collection });
-              setPickerTerm("");
-            }}
+            onClick={() => setEditing({ ...collection })}
             aria-label={`Edit ${collection.name}`}
             className="inline-flex h-7 w-7 items-center justify-center rounded-[3px] text-admin-muted transition-colors hover:bg-admin-raised hover:text-admin-ink"
           >
@@ -214,10 +175,7 @@ export function AdminCollectionsView() {
         actions={
           <AdminButton
             variant="primary"
-            onClick={() => {
-              setEditing(emptyCollection());
-              setPickerTerm("");
-            }}
+            onClick={() => setEditing(emptyCollection())}
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden="true" />
             Add collection
@@ -239,10 +197,7 @@ export function AdminCollectionsView() {
       <Modal
         open={editing !== null}
         onOpenChange={(open) => {
-          if (!open) {
-            setEditing(null);
-            setPickerTerm("");
-          }
+          if (!open) setEditing(null);
         }}
         title={editing?.name ? `Edit ${editing.name}` : "Add collection"}
         className="max-w-2xl"
@@ -297,75 +252,14 @@ export function AdminCollectionsView() {
                 </span>
               </p>
 
-              <div className="relative mb-2">
-                <label htmlFor="collection-picker" className="sr-only">
-                  Search products to add
-                </label>
-                <Search
-                  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-faint"
-                  strokeWidth={1.75}
-                  aria-hidden="true"
-                />
-                <input
-                  id="collection-picker"
-                  type="search"
-                  value={pickerTerm}
-                  onChange={(event) => setPickerTerm(event.target.value)}
-                  placeholder="Search the catalogue…"
-                  className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface pl-8 pr-2.5 text-[0.8125rem] text-admin-ink placeholder:text-admin-faint focus:border-copper-500"
-                />
-              </div>
-
-              <ul className="scroll-panel max-h-64 overflow-y-auto rounded-[3px] border border-admin-border">
-                {pickerResults.length === 0 ? (
-                  <li className="px-3 py-6 text-center text-xs text-admin-muted">
-                    Nothing matches that search.
-                  </li>
-                ) : (
-                  pickerResults.map((product) => {
-                    const selected = editing.productIds.includes(product.id);
-                    return (
-                      <li key={product.id} className="border-b border-admin-border last:border-0">
-                        <label
-                          className={cn(
-                            "flex cursor-pointer items-center gap-2.5 px-2.5 py-2 transition-colors",
-                            selected ? "bg-copper-50" : "hover:bg-admin-raised",
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected}
-                            onChange={() => toggleProduct(product.id)}
-                            className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-copper-600"
-                          />
-                          <span className="h-8 w-6 shrink-0 overflow-hidden rounded-[2px] bg-admin-raised">
-                            {product.images[0] ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={product.images[0]}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-xs text-admin-ink">
-                              {product.name}
-                            </span>
-                            <span className="block text-[0.625rem] text-admin-faint">
-                              {product.sku}
-                            </span>
-                          </span>
-                        </label>
-                      </li>
-                    );
-                  })
-                )}
-              </ul>
-
-              <p className="mt-1.5 text-[0.625rem] text-admin-muted">
-                Showing up to 40 matches. Search to narrow it down.
-              </p>
+              <IdMultiSelect
+                entity="product"
+                label="Add a product — Product ID or SKU"
+                placeholder="Search Product ID or SKU…"
+                values={editing.productIds}
+                onChange={(productIds) => setEditing({ ...editing, productIds })}
+                emptyText="No products yet. Add them by Product ID or SKU."
+              />
             </div>
 
             <div className="flex justify-end gap-2">

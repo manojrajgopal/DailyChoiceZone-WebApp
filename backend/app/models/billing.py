@@ -456,10 +456,10 @@ class WebhookEvent(Base):
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     error: Mapped[str] = mapped_column(String(500), nullable=False, default="", server_default="")
-    order_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
-    payment_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    order_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True, index=True)
+    payment_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True, index=True)
     gateway_payment_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
-    refund_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    refund_id: Mapped[Optional[str]] = mapped_column(String(60), nullable=True, index=True)
     # The fields processing reads — ids, amounts, statuses — never the
     # customer's contact, card, bank or UPI details.
     payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

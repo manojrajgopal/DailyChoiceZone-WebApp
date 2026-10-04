@@ -5,10 +5,12 @@ import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, Download, RefreshCw, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
-import { FilterSelect, LogFooter, LogSearch, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
+import { IdKindFilter } from "@/components/admin/ui/IdKindFilter";
+import { FilterSelect, LogFooter, StatusTabs, useUrlFilters } from "@/components/admin/ui/LogPage";
 import { TD, TH, TableState, Tile, problem } from "@/components/admin/views/operations/shared";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { datedFilename, downloadCsv, toCsv } from "@/lib/billing/csv";
+import { isLookupEntity, type LookupEntity } from "@/lib/lookup/entities";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils/cn";
 import { formatDate } from "@/lib/utils/format";
@@ -19,7 +21,9 @@ import { REFUND_METHOD_LABELS } from "@/types/refunds";
 
 import { RefundActions, RefundStatusBadge } from "./RefundActions";
 
-const KEYS = ["status", "q", "method", "reasonCode", "awaiting"] as const;
+const KEYS = ["status", "q", "idType", "method", "reasonCode", "awaiting"] as const;
+/** The search box takes an ID — the refund's, its order's or its invoice's — matched exactly (docs/id-lookup.md). */
+const ID_KINDS: readonly LookupEntity[] = ["refund", "order", "invoice"];
 const money = (paise: number) => formatMoney(paise, { showDecimals: true });
 
 const REASONS = [
@@ -31,14 +35,15 @@ const REASONS = [
 
 /**
  * Every refund, newest first, filtered on the server: by status, method,
- * reason, or those waiting for a manager's approval, and searchable by
- * refund, order, invoice or customer. Each row opens to its items, notes and
+ * reason, or those waiting for a manager's approval, and found by a Refund,
+ * Order or Invoice ID. Each row opens to its items, notes and
  * the steps it allows next. Refunds are raised from an order's page, where
  * the items and amounts are worked out.
  */
 export function AdminRefundsQueueView() {
   const { filters, page, pageSize, setFilters, setPage, setPageSize, clear } = useUrlFilters(KEYS);
   const { status, q, method, reasonCode, awaiting } = filters;
+  const idKind: LookupEntity = isLookupEntity(filters.idType) && ID_KINDS.includes(filters.idType) ? filters.idType : "refund";
   const request: RefundListFilters = {
     status, q, method, reasonCode, awaitingApproval: awaiting === "1", page, pageSize,
   };
@@ -138,9 +143,9 @@ export function AdminRefundsQueueView() {
         ]}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <LogSearch label="Search refunds" value={q} onChange={(next) => setFilters({ q: next })}
-          placeholder="Refund, order or invoice number, customer" />
+      <div className="mb-3 flex flex-wrap items-end gap-2">
+        <IdKindFilter kinds={ID_KINDS} entity={idKind} value={q}
+          onChange={({ entity, id }) => setFilters({ idType: entity === "refund" ? "" : entity, q: id })} />
         <FilterSelect label="Method" value={method} onChange={(next) => setFilters({ method: next })}
           options={[{ value: "", label: "Any method" },
             ...Object.entries(REFUND_METHOD_LABELS).map(([value, label]) => ({ value, label }))]} />
@@ -177,7 +182,7 @@ export function AdminRefundsQueueView() {
                 empty={Boolean(data && data.items.length === 0)}
                 onRetry={() => void refunds.reload()}
                 title={filtered ? "No refunds match" : "No refunds yet"}
-                hint={filtered ? "Try a different filter or search." : "Refunds raised from orders and returns appear here."}
+                hint={filtered ? "Check the ID, or try a different filter." : "Refunds raised from orders and returns appear here."}
               />
               {data?.items.map((row) => {
                 const expanded = open === row.id;

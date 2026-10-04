@@ -116,6 +116,14 @@ describe("inventory", () => {
     const rows = await httpAdminAdapter.listStockLog();
     expect(rows[0]).toMatchObject({ productId: "P1", newStock: 10 });
   });
+
+  it("listStockLog sends one product's ID as productId, and nothing when unfiltered", async () => {
+    api.get("/admin/inventory/log", []);
+    await httpAdminAdapter.listStockLog("PRD001");
+    expect(api.last("GET", "/admin/inventory/log")!.query.get("productId")).toBe("PRD001");
+    await httpAdminAdapter.listStockLog("");
+    expect(api.last("GET", "/admin/inventory/log")!.query.has("productId")).toBe(false);
+  });
 });
 
 describe("orders", () => {

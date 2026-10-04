@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { api, fail } from "@/test/api";
-import { setLocation } from "@/test/navigation";
+import { idPreview, lookupBackend } from "@/test/lookup-fixtures";
+import { router, setLocation } from "@/test/navigation";
 import {
   labelOverview,
   labelVersion,
@@ -77,6 +78,59 @@ describe("AdminPackingQueueView", () => {
     expect(query.get("priority")).toBe("urgent");
     expect(query.get("overdue")).toBe("true");
     expect(query.get("scope")).toBe("all");
+  });
+
+  it("finds orders by Order ID and couriers by code, never by name or email", async () => {
+    setLocation("/admin/packing?q=DCZ10042&courier=shiprocket");
+    serveQueue();
+    const { user } = renderUI(<AdminPackingQueueView />);
+    await screen.findByRole("link", { name: "#DCZ10042" });
+    const query = api.last("GET", "/admin/packing")!.query;
+    expect(query.get("q")).toBe("DCZ10042");
+    expect(query.get("courier")).toBe("shiprocket");
+    expect(screen.getByRole("group", { name: "Filtered by Order ID DCZ10042" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Filtered by Courier code shiprocket" })).toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove Courier code filter" }));
+    expect(router.replace).toHaveBeenLastCalledWith("/admin/packing?q=DCZ10042", { scroll: false });
+  });
+
+  it("picks the Order ID to filter by from the ID suggestions", async () => {
+    setLocation("/admin/packing");
+    serveQueue();
+    api.get("/admin/lookup/order", { items: [{ id: "DCZ10042" }], hasMore: false });
+    const { user } = renderUI(<AdminPackingQueueView />);
+    await screen.findByRole("link", { name: "#DCZ10042" });
+    const box = screen.getByRole("combobox", { name: "Order ID" });
+    expect(box).toHaveAttribute("placeholder", "Search Order ID…");
+    await user.type(box, "DCZ1004");
+    await user.click(await screen.findByRole("option", { name: "DCZ10042" }));
+    expect(router.replace).toHaveBeenLastCalledWith("/admin/packing?q=DCZ10042", { scroll: false });
+  });
+
+  it("filters by the Admin user ID it's assigned to, picked from the suggestions", async () => {
+    setLocation("/admin/packing");
+    serveQueue();
+    lookupBackend("admin_user", [idPreview("admin_user", "ADM001", { title: "Ravi Kumar" })]);
+    const { user } = renderUI(<AdminPackingQueueView />);
+    await screen.findByRole("link", { name: "#DCZ10042" });
+    const box = screen.getByRole("combobox", { name: "Assigned to (Admin user ID)" });
+    await user.type(box, "Ravi");
+    expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+    await user.clear(box);
+    await user.type(box, "ADM0");
+    await user.click(await screen.findByRole("option", { name: "ADM001" }));
+    expect(router.replace).toHaveBeenLastCalledWith("/admin/packing?assignedTo=ADM001", { scroll: false });
+  });
+
+  it("sends an Admin user ID from the address bar as it is", async () => {
+    setLocation("/admin/packing?assignedTo=ADM001");
+    serveQueue();
+    renderUI(<AdminPackingQueueView />);
+    await screen.findByRole("link", { name: "#DCZ10042" });
+    expect(api.last("GET", "/admin/packing")!.query.get("assignedTo")).toBe("ADM001");
+    expect(screen.getByRole("group", { name: "Filtered by Assigned to (Admin user ID) ADM001" })).toBeInTheDocument();
   });
 
   it("says so when nothing is waiting", async () => {
@@ -213,12 +267,47 @@ describe("AdminPackingJobView", () => {
     await waitFor(() => expect(toasts()).toContain("error:Someone else already started it."));
   });
 
-  it("assigns the job to a member of staff", async () => {
-    const { user } = await openJob();
-    api.post("/admin/packing/7/assign", packingJob({ assignedTo: { id: "A1", name: "Ravi" } }));
-    await screen.findByRole("option", { name: "Ravi" });
-    await user.selectOptions(screen.getByLabelText("Assigned to"), "A1");
-    await waitFor(() => expect(api.last("POST", "/admin/packing/7/assign")?.body).toEqual({ adminId: "A1" }));
+  describe("assigning by Admin user ID", () => {
+    const staff = () =>
+      lookupBackend("admin_user", [
+        idPreview("admin_user", "ADM001", { title: "Ravi Kumar", subtitle: "ravi@example.com" }),
+        idPreview("admin_user", "ADM002", { title: "Meena Iyer" }),
+      ]);
+    const field = () => screen.getByRole("combobox", { name: "Assigned to (Admin user ID)" });
+
+    it("suggests Admin user IDs as they are typed, and sends the exact ID picked", async () => {
+      staff();
+      const { user } = await openJob();
+      api.post("/admin/packing/7/assign", packingJob({ assignedTo: { id: "ADM002", name: "Meena Iyer" } }));
+      await user.type(field(), "ADM00");
+      expect(await screen.findByRole("option", { name: "ADM001" })).toBeInTheDocument();
+      await user.click(screen.getByRole("option", { name: "ADM002" }));
+      await waitFor(() => expect(api.last("POST", "/admin/packing/7/assign")?.body).toEqual({ adminId: "ADM002" }));
+      expect(api.last("GET", "/admin/lookup/admin_user")!.query.get("q")).toBe("ADM00");
+    });
+
+    it("never finds a person by name", async () => {
+      staff();
+      const { user } = await openJob();
+      await user.type(field(), "Ravi");
+      expect((await screen.findAllByText("No matching IDs found.")).length).toBeGreaterThan(0);
+      expect(screen.queryByRole("option", { name: /^ADM/ })).not.toBeInTheDocument();
+      expect(api.requests("POST", "/admin/packing/7/assign")).toHaveLength(0);
+    });
+
+    it("unassigns with Clear, and shows who has it when it can't be changed", async () => {
+      staff();
+      const { user } = await openJob(packingJob({ assignedTo: { id: "ADM001", name: "Ravi Kumar" } }));
+      api.post("/admin/packing/7/assign", packingJob());
+      await user.click(screen.getByRole("button", { name: "Clear Assigned to (Admin user ID)" }));
+      await waitFor(() => expect(api.last("POST", "/admin/packing/7/assign")?.body).toEqual({ adminId: null }));
+    });
+
+    it("shows the assignee read-only when assigning isn't allowed", async () => {
+      await openJob(packingJob({ assignedTo: { id: "ADM001", name: "Ravi Kumar" }, actions: packingActions({ slip: true }) }));
+      expect(screen.queryByRole("combobox", { name: /Assigned to/ })).not.toBeInTheDocument();
+      expect(screen.getByText("ADM001")).toBeInTheDocument();
+    });
   });
 
   it("says when the job doesn't load", async () => {

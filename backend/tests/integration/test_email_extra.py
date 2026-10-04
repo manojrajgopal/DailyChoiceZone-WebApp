@@ -323,7 +323,11 @@ class TestTheLog:
         by_type = self.search(client, admin_auth, type="order_updates")
         assert [i["recipient"] for i in by_type["items"]] == ["c@example.com", "b@example.com"]  # newest row first
         assert by_type["counts"] == {"sent": 1, "failed": 1}
-        assert [i["reference"] for i in self.search(client, admin_auth, q="INV")["items"]] == ["DCZ1"]
+        # Words in the subject are content; the reference is an exact ID.
+        assert [i["reference"] for i in self.search(client, admin_auth, subject="INV")["items"]] == ["DCZ1"]
+        assert [i["reference"] for i in self.search(client, admin_auth, q="DCZ1")["items"]] == ["DCZ1"]
+        assert self.search(client, admin_auth, q="INV")["items"] == []
+        assert self.search(client, admin_auth, q="a@example.com")["items"] == []
         since = (datetime.utcnow() - timedelta(days=7)).isoformat()
         until = (datetime.utcnow() - timedelta(days=2)).isoformat()
         assert [i["reference"] for i in self.search(client, admin_auth, **{"from": since, "to": until})["items"]] == \

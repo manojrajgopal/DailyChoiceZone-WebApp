@@ -90,7 +90,7 @@ class NotificationDelivery(Base):
     campaign_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("marketing_campaigns.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    reference: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    reference: Mapped[str] = mapped_column(String(60), nullable=False, default="", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

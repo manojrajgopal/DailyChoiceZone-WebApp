@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -21,6 +21,7 @@ from app.models import (
     RefundItem,
 )
 from app.services import billing
+from app.services.lookup.filters import any_id_condition
 from app.services.payments import get_provider
 from app.utils.ids import next_id
 
@@ -64,19 +65,12 @@ def list_invoices(
     if min_amount is not None:
         conditions.append(Invoice.grand_total >= min_amount)
 
-    if search:
-        # Every word must match something, so more words narrow rather than
-        # widen — which is what a person typing two words expects.
-        for word in search.split():
-            pattern = f"%{word}%"
-            conditions.append(
-                or_(
-                    Invoice.invoice_number.like(pattern),
-                    Invoice.order_number.like(pattern),
-                    Invoice.customer_name.like(pattern),
-                    Invoice.customer_email.like(pattern),
-                )
-            )
+    # `search` is an ID, matched exactly (docs/id-lookup.md): the invoice's
+    # own (DCZ-INV-2026-000001 / INV001) or its order's (DCZ10241 / ORD001).
+    # A customer's name or email is not an ID and matches nothing.
+    by_id = any_id_condition(search, ("invoice", None, None), ("order", Invoice.order_id, Order.id))
+    if by_id is not None:
+        conditions.append(by_id)
 
     if conditions:
         statement = statement.where(and_(*conditions))
@@ -186,18 +180,16 @@ def list_payments(
     if method and method != "all":
         conditions.append(Payment.method == method)
 
-    if search:
-        for word in search.split():
-            pattern = f"%{word}%"
-            conditions.append(
-                or_(
-                    Payment.transaction_id.like(pattern),
-                    Payment.order_number.like(pattern),
-                    Payment.invoice_number.like(pattern),
-                    Payment.customer_name.like(pattern),
-                    Payment.customer_email.like(pattern),
-                )
-            )
+    # An ID, exactly: the Payment ID or gateway transaction id, the Order ID
+    # or the Invoice ID. Names and emails match nothing.
+    by_id = any_id_condition(
+        search,
+        ("payment", None, None),
+        ("order", Payment.order_id, Order.id),
+        ("invoice", Payment.invoice_id, Invoice.id),
+    )
+    if by_id is not None:
+        conditions.append(by_id)
 
     if conditions:
         statement = statement.where(and_(*conditions))
@@ -337,18 +329,16 @@ def list_refunds(
     if status and status != "all":
         conditions.append(Refund.status == REFUND_STATUS_ALIASES.get(status, status))
 
-    if search:
-        for word in search.split():
-            pattern = f"%{word}%"
-            conditions.append(
-                or_(
-                    Refund.refund_number.like(pattern),
-                    Refund.order_number.like(pattern),
-                    Refund.invoice_number.like(pattern),
-                    Refund.customer_name.like(pattern),
-                    Refund.reason.like(pattern),
-                )
-            )
+    # An ID, exactly: the Refund ID (number, RFD001 or gateway reference),
+    # the Order ID or the Invoice ID. A name or a reason is not an ID.
+    by_id = any_id_condition(
+        search,
+        ("refund", None, None),
+        ("order", Refund.order_id, Order.id),
+        ("invoice", Refund.invoice_id, Invoice.id),
+    )
+    if by_id is not None:
+        conditions.append(by_id)
 
     if conditions:
         statement = statement.where(and_(*conditions))
@@ -1132,10 +1122,22 @@ def set_refund_status(db: Session, refund_id: str, status: str) -> Refund:
 # ------------------------------------------------------------ credit notes
 
 
-def list_credit_notes(db: Session, *, order_id: Optional[str] = None) -> List[CreditNote]:
+def list_credit_notes(db: Session, *, order_id: Optional[str] = None, q: Optional[str] = None) -> List[CreditNote]:
+    """
+    Every credit note, or one order's. `q` is an ID, matched exactly: the
+    credit note's own, its invoice's or its order's (docs/id-lookup.md).
+    """
     statement = select(CreditNote).order_by(CreditNote.issued_at.desc())
     if order_id:
         statement = statement.where(CreditNote.order_id == order_id)
+    by_id = any_id_condition(
+        q,
+        ("credit_note", None, None),
+        ("invoice", CreditNote.invoice_id, Invoice.id),
+        ("order", CreditNote.order_id, Order.id),
+    )
+    if by_id is not None:
+        statement = statement.where(by_id)
     return list(db.execute(statement).scalars().all())
 
 

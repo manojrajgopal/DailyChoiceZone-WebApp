@@ -1,164 +1,69 @@
-import { stageLabel } from "@/lib/orders/orderFlow";
 import type { AdminNotification } from "@/types/admin";
 
-import { formatMoney } from "@/lib/money";
-import { billingDataSource } from "@/services/billing/billing-data-source.instance";
+import type { LookupEntity } from "@/lib/lookup/entities";
+import { searchAllIds, type IdSearchResults } from "@/services/lookupService";
 
 import { adminDataSource } from "./admin-data-source.instance";
 
 /**
- * Global admin search.
+ * Global admin search — by ID (docs/id-lookup.md).
  *
- * One box across products, orders, customers and billing, because an
- * administrator arrives with an identifier — an order number from an email, a
- * transaction reference from a bank statement, an invoice number from an
- * accountant — and should not have to decide which list it lives in first.
+ * One box across every record the role may open, because an administrator
+ * arrives with an identifier: an order number from an email, a SKU from a
+ * supplier, a transaction reference from a bank statement, a shipment number
+ * from a courier. The server matches **identifiers only** — a name, an email
+ * or a word finds nothing — and returns IDs grouped by entity, a few each.
+ * Choosing one opens that record's preview (`/admin/lookup`).
  *
- * Billing references are exactly the case that makes a global search worth
- * having: nobody knows whether "TXN20260904…" is a payment or a refund until
- * they have found it.
+ * It used to download every order and every customer and match names in the
+ * browser; now each keystroke pause is one small request.
  */
 
-export type SearchResultKind =
-  | "product"
-  | "order"
-  | "customer"
-  | "invoice"
-  | "payment"
-  | "refund";
-
 export interface AdminSearchResult {
-  kind: SearchResultKind;
+  entity: LookupEntity;
+  label: string;
   id: string;
-  title: string;
-  subtitle: string;
-  href: string;
+  /** Another identifier that matched (a SKU, a gateway id). */
+  match?: string;
+}
+
+export interface AdminSearchGroup {
+  entity: LookupEntity;
+  label: string;
+  idLabel: string;
+  items: AdminSearchResult[];
+  hasMore: boolean;
 }
 
 export interface AdminSearchResults {
-  products: AdminSearchResult[];
-  orders: AdminSearchResult[];
-  customers: AdminSearchResult[];
-  invoices: AdminSearchResult[];
-  payments: AdminSearchResult[];
-  refunds: AdminSearchResult[];
+  groups: AdminSearchGroup[];
   total: number;
 }
 
-export const EMPTY_SEARCH_RESULTS: AdminSearchResults = {
-  products: [],
-  orders: [],
-  customers: [],
-  invoices: [],
-  payments: [],
-  refunds: [],
-  total: 0,
-};
+export const EMPTY_SEARCH_RESULTS: AdminSearchResults = { groups: [], total: 0 };
 
-const EMPTY = EMPTY_SEARCH_RESULTS;
+/** The shortest term worth asking about: one character would match every ID of that letter. */
+export const MIN_SEARCH_LENGTH = 2;
 
-/** Every term must appear somewhere in the record, so more words narrow. */
-function matches(haystack: string, terms: string[]): boolean {
-  const text = haystack.toLowerCase();
-  return terms.every((term) => text.includes(term));
+function shape(found: IdSearchResults): AdminSearchResults {
+  const groups = found.groups.map((group) => ({
+    entity: group.entity,
+    label: group.label,
+    idLabel: group.idLabel,
+    hasMore: group.hasMore,
+    items: group.items.map((item) => ({ entity: group.entity, label: group.label, id: item.id, match: item.match })),
+  }));
+  return { groups, total: groups.reduce((sum, group) => sum + group.items.length, 0) };
 }
 
-export async function search(term: string, perGroup = 5): Promise<AdminSearchResults> {
+export async function search(
+  term: string,
+  perGroup = 3,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<AdminSearchResults> {
   const trimmed = term.trim();
-  if (trimmed.length < 2) return EMPTY;
-
-  const terms = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
-
-  const [products, orders, customers, invoices, payments, refunds] = await Promise.all([
-    // Matched and capped by the server (search & filters): the global search
-    // never downloads the catalogue.
-    adminDataSource.listProductsPage({ search: trimmed, pageSize: perGroup }),
-    adminDataSource.listOrders(),
-    // Roles without `customers` get 403 here (docs/customer-segmentation.md §2):
-    // the search then simply shows no customer hits.
-    adminDataSource.listCustomers().catch(() => []),
-    billingDataSource.listInvoices({ search: trimmed }),
-    billingDataSource.listPayments({ search: trimmed }),
-    billingDataSource.listRefunds({ search: trimmed }),
-  ]);
-
-  const productHits: AdminSearchResult[] = products.items
-    .slice(0, perGroup)
-    .map((product) => ({
-      kind: "product" as const,
-      id: product.id,
-      title: product.name,
-      subtitle: `${product.sku} · ${product.brand}`,
-      href: `/admin/products/edit?id=${product.id}`,
-    }));
-
-  const orderHits: AdminSearchResult[] = orders
-    .filter((order) =>
-      matches([order.orderNumber, order.customerName, order.customerEmail, order.status].join(" "), terms),
-    )
-    .slice(0, perGroup)
-    .map((order) => ({
-      kind: "order" as const,
-      id: order.id,
-      title: order.orderNumber,
-      subtitle: `${order.customerName} · ${stageLabel(order.status)}`,
-      href: `/admin/orders/detail?id=${order.id}`,
-    }));
-
-  const customerHits: AdminSearchResult[] = customers
-    .filter((customer) =>
-      matches([customer.firstName, customer.lastName, customer.email, customer.phone].join(" "), terms),
-    )
-    .slice(0, perGroup)
-    .map((customer) => ({
-      kind: "customer" as const,
-      id: customer.id,
-      title: `${customer.firstName} ${customer.lastName}`,
-      subtitle: customer.email,
-      href: `/admin/customers/detail?id=${customer.id}`,
-    }));
-
-  // The billing adapter has already filtered these by the same term, so they
-  // only need capping and shaping.
-  const invoiceHits: AdminSearchResult[] = invoices.slice(0, perGroup).map((invoice) => ({
-    kind: "invoice" as const,
-    id: invoice.id,
-    title: invoice.invoiceNumber,
-    subtitle: `${invoice.customerName} · ${formatMoney(invoice.breakdown.grandTotal)}`,
-    href: `/admin/billing/invoices/detail?id=${invoice.id}`,
-  }));
-
-  const paymentHits: AdminSearchResult[] = payments.slice(0, perGroup).map((payment) => ({
-    kind: "payment" as const,
-    id: payment.id,
-    title: payment.transactionId,
-    subtitle: `${payment.customerName} · ${formatMoney(payment.amount)}`,
-    href: `/admin/billing/payments/detail?id=${payment.id}`,
-  }));
-
-  const refundHits: AdminSearchResult[] = refunds.slice(0, perGroup).map((refund) => ({
-    kind: "refund" as const,
-    id: refund.id,
-    title: refund.refundNumber,
-    subtitle: `${refund.customerName} · ${formatMoney(refund.amount)}`,
-    href: "/admin/billing/refunds",
-  }));
-
-  return {
-    products: productHits,
-    orders: orderHits,
-    customers: customerHits,
-    invoices: invoiceHits,
-    payments: paymentHits,
-    refunds: refundHits,
-    total:
-      productHits.length +
-      orderHits.length +
-      customerHits.length +
-      invoiceHits.length +
-      paymentHits.length +
-      refundHits.length,
-  };
+  if (trimmed.length < MIN_SEARCH_LENGTH) return EMPTY_SEARCH_RESULTS;
+  return shape(await searchAllIds(trimmed, { perEntity: perGroup, signal }));
 }
 
 /* ------------------------------------------------------------ notifications */

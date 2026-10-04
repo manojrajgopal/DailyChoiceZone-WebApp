@@ -6,7 +6,10 @@ import { AlertCircle, FolderPlus, Plus, Trash2, X } from "lucide-react";
 
 import { AdminButton, AdminButtonLink, AdminCard, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import { AdminInput, AdminTextarea, FormGrid } from "@/components/admin/ui/AdminForm";
+import { IdMultiSelect } from "@/components/common/IdMultiSelect";
+import { IdSelector } from "@/components/common/IdSelector";
 import { useAdminResource } from "@/hooks/useAdminResource";
+import { idLabel, type LookupEntity } from "@/lib/lookup/entities";
 import { cn } from "@/lib/utils/cn";
 import { ApiError } from "@/services/api/client";
 import { createSegment, getSegment, getSegmentFields, previewSegment, updateSegment } from "@/services/segmentsService";
@@ -574,6 +577,16 @@ function ConditionRow({
 
 const toNumber = (text: string): number | null => (text === "" ? null : Number(text));
 
+/**
+ * Rule fields whose values are records: chosen by ID from the lookup
+ * (docs/id-lookup.md), never typed or picked by name.
+ */
+const ENTITY_FIELDS: Record<string, LookupEntity> = {
+  purchasedProducts: "product",
+  purchasedCategories: "category",
+  membershipPlan: "membership_plan",
+};
+
 /** The input(s) a value needs: by the operator's value kind first, then the field's type. */
 function ValueEditor({
   field,
@@ -591,6 +604,34 @@ function ValueEditor({
   onChange: (value: RuleValue) => void;
 }) {
   if (kind === "none") return null;
+
+  const entity = ENTITY_FIELDS[field.key];
+  if (entity && kind === "list") {
+    const ids = Array.isArray(value) ? value.filter((entry): entry is string | number => entry !== null).map(String) : [];
+    return (
+      <IdMultiSelect
+        entity={entity}
+        label={`${label} ${idLabel(entity)}`}
+        hideLabel
+        values={ids}
+        onChange={(next) => onChange(next)}
+        disabled={disabled}
+      />
+    );
+  }
+  if (entity && kind === "single") {
+    return (
+      <IdSelector
+        entity={entity}
+        label={`${label} ${idLabel(entity)}`}
+        hideLabel
+        compact
+        value={typeof value === "string" || typeof value === "number" ? String(value) : null}
+        onChange={(id) => onChange(id)}
+        disabled={disabled}
+      />
+    );
+  }
 
   if (kind === "days") {
     return (
@@ -636,7 +677,7 @@ function ValueEditor({
       <CommaListInput
         values={list.map(String)}
         label={`${label} values`}
-        placeholder={field.type === "list" ? "Product ids, separated by commas" : "Values, separated by commas"}
+        placeholder="Values, separated by commas"
         disabled={disabled}
         onChange={onChange}
       />

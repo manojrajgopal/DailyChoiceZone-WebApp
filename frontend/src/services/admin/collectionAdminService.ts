@@ -29,12 +29,9 @@ export async function saveCollection(collection: Collection): Promise<AdminResul
   const clash = existing.find((c) => c.slug === slug && c.id !== collection.id);
   if (clash) return { ok: false, reason: `That web address is already used by ${clash.name}. Please choose another.` };
 
-  // Drop ids that no longer resolve, so a collection page can never 404 a tile.
-  const products = await adminDataSource.listProducts();
-  const known = new Set(products.map((product) => product.id));
-  const productIds = collection.productIds.filter((productId) => known.has(productId));
-
-  return { ok: true, data: await adminDataSource.saveCollection({ ...collection, slug, productIds }) };
+  // Products are chosen by ID; the server drops any ID that no longer resolves,
+  // so a collection page can never 404 a tile — no catalogue download needed.
+  return { ok: true, data: await adminDataSource.saveCollection({ ...collection, slug }) };
 }
 
 export async function deleteCollection(id: string): Promise<AdminResult<string>> {
