@@ -46,6 +46,7 @@ from tests.integration.wallet_helpers import (  # noqa: F401 -- `mailbox` is a f
     mailbox,
     place,
 )
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -88,9 +89,8 @@ def spendable(db, customer_id="CUS001"):
 
 
 def deliver(client, admin_auth, order_id):
-    for status in ("processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"):
-        response = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth, json={"status": status})
-        assert response.status_code == 200, response.text
+    """Picked, packed, shipped and delivered, the way the store does it (docs/order-fulfilment.md)."""
+    advance(client, admin_auth, order_id, "delivered")
 
 
 def save_loyalty(db, **values):

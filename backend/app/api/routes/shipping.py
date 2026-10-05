@@ -113,6 +113,16 @@ def create_shipment(response: Response, payload: dict = Body(...), db: Session =
     return ok(view, message=message)
 
 
+@admin_router.get("/pipeline", summary="Packed orders waiting for a shipment, and orders missing one")
+def shipment_pipeline(db: Session = Depends(get_db), admin: AdminUser = Depends(shipments_access)):
+    """
+    What surrounds the shipment list: packed orders a shipment can be created
+    for, orders dispatched with no shipment on record (from before the
+    workflow was enforced), and whether a courier is switched on. Read only.
+    """
+    return ok(service.pipeline(db))
+
+
 @admin_router.get("/{shipment_id}", summary="A shipment")
 def get_shipment(shipment_id: int, db: Session = Depends(get_db), admin: AdminUser = Depends(shipments_access)):
     return ok(service.admin_view(db, service.get(db, shipment_id)))
@@ -159,6 +169,19 @@ def refresh_shipment(shipment_id: int, db: Session = Depends(get_db), admin: Adm
     return ok(service.admin_view(db, shipment), message="Tracking refreshed.")
 
 
+@admin_router.post("/{shipment_id}/status", summary="Move a shipment one step (docs/order-fulfilment.md)")
+def move_shipment(shipment_id: int, payload: dict = Body(...), db: Session = Depends(get_db),
+                  admin: AdminUser = Depends(shipments_access)):
+    """
+    `{ status, reason?, description?, location?, occurredAt? }`. Only the moves
+    the shipment's `transitions` lists are accepted (409
+    `INVALID_SHIPMENT_TRANSITION` otherwise); exceptions and backward moves
+    need a reason (422 `REASON_REQUIRED`). The order follows the shipment.
+    """
+    shipment = service.transition(db, shipment_id, payload, admin=admin)
+    return ok(service.admin_view(db, shipment), message=f"Shipment is now {service.STATUS_LABELS[shipment.status].lower()}.")
+
+
 @admin_router.post("/{shipment_id}/events", status_code=201, summary="Record a tracking update by hand")
 def add_event(shipment_id: int, payload: dict = Body(...), db: Session = Depends(get_db),
               admin: AdminUser = Depends(shipments_access)):
@@ -203,8 +226,10 @@ def save_provider(code: str, request: Request, payload: dict = Body(...), db: Se
 
 
 @providers_router.post("/{code}/test", summary="Test a courier's credentials")
-def test_provider(code: str, db: Session = Depends(get_db), admin: AdminUser = Depends(config_access)):
+def test_provider(code: str, payload: Optional[dict] = Body(default=None), db: Session = Depends(get_db),
+                  admin: AdminUser = Depends(config_access)):
+    """Tests the saved credentials, or the ones in `credentials` (and `environment`) without saving them."""
     rate_limit.check(f"shipping-test:{code[:30]}", limit=10, window_seconds=60,
                      message="Too many connection tests. Please wait a minute.")
-    result = provider_config.test(db, code[:30].lower(), actor=admin)
+    result = provider_config.test(db, code[:30].lower(), actor=admin, payload=payload)
     return ok(result, message=result["message"])

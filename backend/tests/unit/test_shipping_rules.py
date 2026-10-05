@@ -28,10 +28,15 @@ class TestTransitions:
     def test_allowed(self, current, new):
         assert service.can_move(current, new)
 
+    def test_a_failed_delivery_can_be_dispatched_again(self):
+        # The courier re-attempts after a failure (docs/order-fulfilment.md).
+        assert service.can_move("delivery-failed", "in-transit")
+        assert service.can_move("delivery-failed", "out-for-delivery")
+
     @pytest.mark.parametrize("current,new", [
         ("in-transit", "picked-up"), ("picked-up", "cancelled"), ("out-for-delivery", "pending"),
         ("pending", "returned-to-origin"), ("ready-for-pickup", "ready-for-pickup"), ("pending", "teleported"),
-        ("delivery-failed", "in-transit"), ("pending", "delivery-attempted"),
+        ("delivered", "in-transit"), ("pending", "delivery-attempted"),
     ])
     def test_refused(self, current, new):
         assert not service.can_move(current, new)

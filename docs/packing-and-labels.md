@@ -35,8 +35,14 @@ pending ──start picking──▶ picking ──picking complete──▶ pic
   gets exactly one job the next time the queue, the dashboard or the order's
   packing card is read.
 - **Status changes go through the order.** Starting to pick moves the order to
-  `processing`, and marking it packed moves it to `packed`. Both go through
-  the order's own status change, so the customer messages go out exactly once.
+  `processing` ("Packing"), and marking it packed moves it to `packed`.
+  Reopening a packed job (with a reason) moves the order back to Packing. Only
+  packing may make these moves (docs/order-fulfilment.md), so the customer
+  messages go out exactly once.
+- **Payment first.** Picking starts only when the payment allows fulfilment
+  (paid or cash on delivery); otherwise `PAYMENT_REQUIRED`.
+- **The open queue is the warehouse's.** A job handed to a shipment
+  (`ready-to-ship`, "Handed to shipping") leaves the open queue.
 - **Problems on the shelf.** A line can be flagged as missing stock, damaged or
   wrong item, with a quantity and a note. A flagged line blocks "picking
   complete" unless the problem is cleared, or someone overrides it with a

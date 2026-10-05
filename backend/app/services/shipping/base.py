@@ -17,41 +17,18 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
-# The shipment vocabulary, in lifecycle order.
-STATUSES = (
-    "pending",
-    "ready-for-pickup",
-    "pickup-scheduled",
-    "picked-up",
-    "in-transit",
-    "at-destination-hub",
-    "out-for-delivery",
-    "delivered",
-    "delivery-attempted",
-    "delivery-failed",
-    "returned-to-origin",
-    "cancelled",
-)
+from app.services.fulfilment import workflow as _workflow
 
-STATUS_LABELS: Dict[str, str] = {
-    "pending": "Awaiting courier",
-    "ready-for-pickup": "Ready for pickup",
-    "pickup-scheduled": "Pickup scheduled",
-    "picked-up": "Picked up",
-    "in-transit": "In transit",
-    "at-destination-hub": "Reached destination hub",
-    "out-for-delivery": "Out for delivery",
-    "delivered": "Delivered",
-    "delivery-attempted": "Delivery attempted",
-    "delivery-failed": "Delivery failed",
-    "returned-to-origin": "Returned to origin",
-    "cancelled": "Cancelled",
-}
+# The shipment vocabulary, in lifecycle order. Defined once, with the rules
+# for moving between them, in `fulfilment/workflow.py`.
+STATUSES = _workflow.SHIPMENT_STATUSES
+
+STATUS_LABELS: Dict[str, str] = dict(_workflow.SHIPMENT_LABELS)
 
 # No further courier movement is expected.
-TERMINAL = {"delivered", "returned-to-origin", "cancelled"}
+TERMINAL = set(_workflow.SHIPMENT_TERMINAL)
 # Still with the store: a courier pickup hasn't happened, so cancelling is possible.
-BEFORE_PICKUP = {"pending", "ready-for-pickup", "pickup-scheduled"}
+BEFORE_PICKUP = set(_workflow.SHIPMENT_BEFORE_PICKUP)
 
 
 class ProviderError(Exception):

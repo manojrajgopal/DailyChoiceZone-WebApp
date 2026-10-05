@@ -10,6 +10,8 @@ import type {
   Shipment,
   ShipmentFilters,
   ShipmentList,
+  ShipmentPipeline,
+  ShipmentTransitionInput,
   ShippingProviderConfig,
 } from "@/types/shipping";
 
@@ -98,6 +100,19 @@ export function addShipmentEvent(id: number, input: ManualEventInput): Promise<S
   return apiPost(`/admin/shipments/${id}/events`, input, ADMIN);
 }
 
+/**
+ * Move a shipment one step (`shipment.transitions`). The server refuses any
+ * other move, and asks for a reason for exceptions and backward moves.
+ */
+export function moveShipment(id: number, input: ShipmentTransitionInput): Promise<Shipment> {
+  return apiPost(`/admin/shipments/${id}/status`, input, ADMIN);
+}
+
+/** Packed orders waiting for a shipment, and dispatched orders with none on record. */
+export function getShipmentPipeline(): Promise<ShipmentPipeline> {
+  return apiGet("/admin/shipments/pipeline", ADMIN);
+}
+
 /* -------------------------------------------------------- admin: providers */
 
 export function listShippingProviders(): Promise<ShippingProviderConfig[]> {
@@ -108,8 +123,12 @@ export function updateShippingProvider(code: string, patch: ProviderUpdate): Pro
   return apiPut(`/admin/shipping/providers/${enc(code)}`, patch, ADMIN);
 }
 
-export function testShippingProvider(code: string): Promise<{ ok: boolean; message: string }> {
-  return apiPost(`/admin/shipping/providers/${enc(code)}/test`, {}, ADMIN);
+/** Tests the saved credentials, with any typed (not yet saved) `credentials` and `environment` used instead. */
+export function testShippingProvider(
+  code: string,
+  draft: { credentials?: Record<string, string>; environment?: string } = {},
+): Promise<{ ok: boolean; message: string }> {
+  return apiPost(`/admin/shipping/providers/${enc(code)}/test`, draft, ADMIN);
 }
 
 /** A key for one create attempt, so a double click or a retry can't create two shipments. */

@@ -24,6 +24,7 @@ from app.services import email as email_service
 from app.services.messaging import providers, service as messaging
 from tests.integration.messaging_helpers import email_account, sms_whatsapp  # noqa: F401
 from tests.integration.wallet_helpers import fill_bag, place
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -57,9 +58,7 @@ def deliveries(db, **filters):
 
 
 def ship(client, admin_auth, order_id):
-    for status in ("processing", "packed", "shipped"):
-        response = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth, json={"status": status})
-        assert response.status_code == 200, response.text
+    advance(client, admin_auth, order_id, "shipped")
 
 
 class TestChannels:

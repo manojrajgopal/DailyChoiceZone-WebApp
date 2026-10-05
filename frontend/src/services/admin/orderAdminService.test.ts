@@ -42,22 +42,6 @@ describe("listOrders / getOrder", () => {
   });
 });
 
-describe("availableMovesFor", () => {
-  it("offers the next stage for a pending order", () => {
-    const moves = orders.availableMovesFor(order({ status: "pending" }));
-    expect(moves.map((m) => m.target)).toContain("confirmed");
-  });
-
-  it("offers nothing for a cancelled (terminal) order", () => {
-    expect(orders.availableMovesFor(order({ status: "cancelled" }))).toEqual([]);
-  });
-
-  it("offers only cancellation while awaiting payment", () => {
-    const moves = orders.availableMovesFor(order({ status: "pending", awaitingPayment: true }));
-    expect(moves.map((m) => m.target)).toEqual(["cancelled"]);
-  });
-});
-
 describe("updateOrderStatus", () => {
   it("refuses when the order no longer exists", async () => {
     api.get("/admin/orders/missing", fail(404));
@@ -71,39 +55,22 @@ describe("updateOrderStatus", () => {
     expect(result).toEqual({ ok: false, reason: "This order is already pending." });
   });
 
-  it("refuses an illegal move, e.g. from a terminal status", async () => {
-    api.get("/admin/orders/O1", { id: "O1", items: [], status: "cancelled" });
-    const result = await orders.updateOrderStatus("O1", "confirmed", "", "A1");
-    expect(result.ok).toBe(false);
-    expect((result as { reason: string }).reason).toContain("cannot be moved to");
+  it("leaves legality to the server and shows its message", async () => {
+    api.get("/admin/orders/O1", { id: "O1", items: [], status: "confirmed" });
+    api.put(
+      "/admin/orders/O1/status",
+      fail(409, "Order cannot be moved directly from Confirmed to Delivered.", "INVALID_TRANSITION"),
+    );
+    const result = await orders.updateOrderStatus("O1", "delivered", "", "A1");
+    expect(result).toEqual({ ok: false, reason: "Order cannot be moved directly from Confirmed to Delivered." });
   });
 
-  it("refuses a skip or a back-move without confirmation", async () => {
-    api.get("/admin/orders/O1", { id: "O1", items: [], status: "pending" });
-    const result = await orders.updateOrderStatus("O1", "packed", "", "A1", false);
-    expect(result).toEqual({ ok: false, reason: "This change skips or reverses a stage and needs confirming." });
-  });
-
-  it("accepts a skip when confirmed, and writes it", async () => {
-    api.get("/admin/orders/O1", { id: "O1", items: [], status: "pending" });
-    api.put("/admin/orders/O1/status", { id: "O1", items: [], status: "packed" });
-    const result = await orders.updateOrderStatus("O1", "packed", "Fast-tracked", "A1", true);
-    expect(result).toMatchObject({ ok: true, data: { status: "packed" } });
-    expect(api.last("PUT", "/admin/orders/O1/status")!.body).toEqual({ status: "packed", note: "Fast-tracked", confirm: true });
-  });
-
-  it("accepts an ordinary next-stage move without confirmation", async () => {
+  it("writes an allowed move, never asking to confirm a skip", async () => {
     api.get("/admin/orders/O1", { id: "O1", items: [], status: "pending" });
     api.put("/admin/orders/O1/status", { id: "O1", items: [], status: "confirmed" });
     const result = await orders.updateOrderStatus("O1", "confirmed", "Paid", "A1");
     expect(result.ok).toBe(true);
-  });
-
-  it("surfaces the server's error message on a failed write", async () => {
-    api.get("/admin/orders/O1", { id: "O1", items: [], status: "pending" });
-    api.put("/admin/orders/O1/status", fail(409, "Stock already released"));
-    const result = await orders.updateOrderStatus("O1", "confirmed", "", "A1");
-    expect(result).toEqual({ ok: false, reason: "Stock already released" });
+    expect(api.last("PUT", "/admin/orders/O1/status")!.body).toMatchObject({ status: "confirmed", note: "Paid" });
   });
 });
 

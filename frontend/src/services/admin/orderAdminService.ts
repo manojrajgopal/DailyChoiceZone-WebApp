@@ -5,7 +5,7 @@ import type {
   PaymentStatus,
 } from "@/types/admin";
 
-import { availableMoves, needsConfirmation, stageLabel, type Move } from "@/lib/orders/orderFlow";
+import { stageLabel } from "@/lib/orders/orderFlow";
 import { ApiError } from "@/services/api/client";
 
 import type { PaymentLinkSent } from "./admin-data-source";
@@ -14,10 +14,11 @@ import { adminDataSource } from "./admin-data-source.instance";
 /**
  * Order management.
  *
- * The rule this service owns is which status changes are legal. An order that
- * has been delivered cannot go back to processing, and a cancelled order is
- * final — allowing either would corrupt the timeline that customer support
- * reads.
+ * Which status changes are legal is the server's decision, not this file's
+ * (`backend/app/services/fulfilment/workflow.py`, docs/order-fulfilment.md).
+ * The order page draws the actions `fulfilmentAdminService` returns; this
+ * only reads orders and passes a status change through for the server to
+ * accept or refuse with its own message.
  */
 
 /**
@@ -32,17 +33,16 @@ export function getOrder(id: string): Promise<AdminOrder | null> {
   return adminDataSource.getOrder(id);
 }
 
-/** Where an order can go from here, and what kind of move each is. */
-export function availableMovesFor(order: AdminOrder): Move[] {
-  return availableMoves(order.status, order.awaitingPayment ?? false);
-}
-
+/**
+ * Ask the server to move an order (confirm, cancel, record a return to
+ * origin). Every other stage belongs to packing and shipments, and the server
+ * refuses it here with a message that says so.
+ */
 export async function updateOrderStatus(
   id: string,
   status: AdminOrderStatus,
   note: string,
   by: string,
-  confirm = false,
 ): Promise<AdminResult<AdminOrder>> {
   const order = await adminDataSource.getOrder(id);
   if (!order) return { ok: false, reason: "That order no longer exists." };
@@ -51,22 +51,8 @@ export async function updateOrderStatus(
     return { ok: false, reason: `This order is already ${stageLabel(status).toLowerCase()}.` };
   }
 
-  const move = availableMovesFor(order).find((entry) => entry.target === status);
-  if (!move) {
-    return {
-      ok: false,
-      reason: `An order that is ${stageLabel(order.status).toLowerCase()} cannot be moved to ${stageLabel(status).toLowerCase()}.`,
-    };
-  }
-  if (needsConfirmation(move) && !confirm) {
-    return { ok: false, reason: "This change skips or reverses a stage and needs confirming." };
-  }
-
   try {
-    return {
-      ok: true,
-      data: await adminDataSource.updateOrderStatus(id, status, note, by, confirm),
-    };
+    return { ok: true, data: await adminDataSource.updateOrderStatus(id, status, note, by) };
   } catch (error) {
     return {
       ok: false,

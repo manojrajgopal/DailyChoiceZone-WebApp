@@ -333,7 +333,11 @@ def _apply_paid(db: Session, payment: Payment, result: PaymentResult) -> None:
             order.events.append(
                 OrderEvent(
                     status="confirmed",
+                    from_status="pending",
                     note="Payment received.",
+                    source="payment",
+                    related_type="payment",
+                    related_id=str(payment.id)[:40],
                     actor="system",
                     occurred_at=now,
                 )
@@ -425,11 +429,13 @@ def expire_payment(
 
     tenders.release_for_order(db, order, reason="Payment window closed")
 
+    previous = order.status
     order.status = "cancelled"
     order.payment_status = "expired"
     order.payment_expires_at = None
     order.events.append(
-        OrderEvent(status="cancelled", note=reason, actor="system", occurred_at=now)
+        OrderEvent(status="cancelled", from_status=previous, note=reason, reason=reason[:300], source="payment",
+                   actor="system", occurred_at=now)
     )
 
     payment.status = "expired"

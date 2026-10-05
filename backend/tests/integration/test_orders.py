@@ -10,6 +10,9 @@ client is not allowed to decide.
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
+
+from tests.integration.fulfilment_helpers import advance  # noqa: E402
 
 pytestmark = pytest.mark.integration
 
@@ -257,16 +260,17 @@ class TestCancelling:
 
 class TestTheFulfilmentPipeline:
     """
-    An order moves one stage at a time. Skipping a stage or stepping back is
-    allowed only when the request says `confirm`, and is written into the
-    timeline; some moves are never allowed at all.
+    The order status endpoint confirms, cancels and records a return to
+    origin. Every other stage belongs to packing or a shipment, and nothing
+    can be skipped or reversed by asking, `confirm` or not
+    (docs/order-fulfilment.md).
     """
 
-    def _move(self, client, admin_auth, order_id, status, confirm=False):
+    def _move(self, client, admin_auth, order_id, status, confirm=False, reason=""):
         return client.put(
             f"/api/admin/orders/{order_id}/status",
             headers=admin_auth,
-            json={"status": status, "note": "", "confirm": confirm},
+            json={"status": status, "note": "", "confirm": confirm, "reason": reason},
         )
 
     @pytest.fixture()
@@ -274,67 +278,99 @@ class TestTheFulfilmentPipeline:
         # Cash on delivery: confirmed on placement.
         return place(client, ready).json()["data"]["order"]["id"]
 
-    def test_every_stage_in_order_needs_no_confirmation(self, client, admin_auth, order_id):
+    def test_the_real_flow_reaches_every_stage_in_order(self, client, admin_auth, order_id):
+        seen = []
         for status in ("processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"):
-            response = self._move(client, admin_auth, order_id, status)
-            assert response.status_code == 200, (status, response.text)
-            assert response.json()["data"]["status"] == status
+            advance(client, admin_auth, order_id, status)
+            seen.append(client.get(f"/api/admin/orders/{order_id}", headers=admin_auth).json()["data"]["status"])
+        assert seen == ["processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"]
 
-    def test_skipping_a_stage_needs_confirmation(self, client, admin_auth, order_id):
-        refused = self._move(client, admin_auth, order_id, "shipped")
-        assert refused.status_code == 409
-        assert refused.json()["error_code"] == "CONFIRMATION_REQUIRED"
+    @pytest.mark.parametrize("target", ["processing", "packed", "shipped", "in-transit", "out-for-delivery",
+                                        "delivered"])
+    def test_no_stage_can_be_typed_in(self, client, admin_auth, order_id, target):
+        for confirm in (False, True):
+            response = self._move(client, admin_auth, order_id, target, confirm=confirm)
+            assert response.status_code == 409, target
+            assert response.json()["error_code"] in ("WORKFLOW_OWNED", "INVALID_TRANSITION")
 
-        confirmed = self._move(client, admin_auth, order_id, "shipped", confirm=True)
-        assert confirmed.status_code == 200
-        latest = confirmed.json()["data"]["timeline"][-1]
-        assert latest["status"] == "shipped"
-        assert "Skipped Processing, Packed" in latest["note"]
+    def test_confirmed_to_delivered_says_why(self, client, admin_auth, order_id):
+        response = self._move(client, admin_auth, order_id, "delivered", confirm=True)
+        assert response.json()["message"].startswith("Order cannot be moved directly from Confirmed to Delivered")
 
-    def test_going_back_needs_confirmation(self, client, admin_auth, order_id):
-        for status in ("processing", "packed", "shipped"):
-            self._move(client, admin_auth, order_id, status)
-
-        refused = self._move(client, admin_auth, order_id, "packed")
-        assert refused.status_code == 409
-        assert refused.json()["error_code"] == "CONFIRMATION_REQUIRED"
-
-        confirmed = self._move(client, admin_auth, order_id, "packed", confirm=True)
-        assert confirmed.status_code == 200
-        assert "Moved back from Shipped" in confirmed.json()["data"]["timeline"][-1]["note"]
+    def test_a_shipped_order_is_moved_by_its_shipment(self, client, admin_auth, order_id):
+        advance(client, admin_auth, order_id, "packed")
+        response = self._move(client, admin_auth, order_id, "shipped")
+        assert response.status_code == 409 and response.json()["error_code"] == "WORKFLOW_OWNED"
+        assert "create the shipment" in response.json()["message"]
 
     @pytest.mark.parametrize(
-        ("path", "target"),
+        ("reach", "target"),
         [
-            (("processing",), "pending"),  # only a payment leaves pending
-            (("processing", "packed", "shipped"), "cancelled"),  # dispatched: a return
-            (("processing",), "returned"),  # never dispatched: a cancellation
+            ("processing", "pending"),  # only a payment leaves pending
+            ("shipped", "cancelled"),  # dispatched: a return
+            ("processing", "returned"),  # never dispatched: a cancellation
+            ("packed", "confirmed"),  # backwards
         ],
     )
-    def test_moves_that_are_never_allowed(self, client, admin_auth, order_id, path, target):
-        for status in path:
-            self._move(client, admin_auth, order_id, status)
-        response = self._move(client, admin_auth, order_id, target, confirm=True)
+    def test_moves_that_are_never_allowed(self, client, admin_auth, order_id, reach, target):
+        advance(client, admin_auth, order_id, reach)
+        response = self._move(client, admin_auth, order_id, target, confirm=True, reason="Because")
         assert response.status_code == 409
-        assert response.json()["error_code"] == "INVALID_TRANSITION"
+        assert response.json()["error_code"] in ("INVALID_TRANSITION", "ORDER_NOT_CANCELLABLE")
 
-    def test_a_delivered_order_cannot_go_back(self, client, admin_auth, order_id):
-        self._move(client, admin_auth, order_id, "delivered", confirm=True)
-        response = self._move(client, admin_auth, order_id, "shipped", confirm=True)
-        assert response.status_code == 409
-        # …but it can be returned.
-        assert self._move(client, admin_auth, order_id, "returned").status_code == 200
+    def test_cancelling_after_picking_needs_a_reason(self, client, admin_auth, order_id):
+        advance(client, admin_auth, order_id, "processing")
+        refused = self._move(client, admin_auth, order_id, "cancelled")
+        assert refused.status_code == 422 and refused.json()["error_code"] == "REASON_REQUIRED"
+        done = self._move(client, admin_auth, order_id, "cancelled", reason="Out of stock on the shelf")
+        assert done.status_code == 200 and done.json()["data"]["status"] == "cancelled"
+
+    def test_a_booked_shipment_blocks_cancelling(self, client, admin_auth, order_id):
+        advance(client, admin_auth, order_id, "packed")
+        from tests.integration.fulfilment_helpers import _shipment
+
+        _shipment(client, admin_auth, order_id)
+        response = self._move(client, admin_auth, order_id, "cancelled", reason="Changed mind")
+        assert response.status_code == 409 and response.json()["error_code"] == "SHIPMENT_ACTIVE"
+
+    def test_a_delivered_order_cannot_go_back_or_be_cancelled(self, client, admin_auth, order_id):
+        advance(client, admin_auth, order_id, "delivered")
+        assert self._move(client, admin_auth, order_id, "shipped", confirm=True).status_code == 409
+        cancel = self._move(client, admin_auth, order_id, "cancelled", reason="Too late")
+        assert cancel.status_code == 409 and cancel.json()["error_code"] == "ORDER_NOT_CANCELLABLE"
+        # Items coming back after delivery are a return request, not a status.
+        assert self._move(client, admin_auth, order_id, "returned", reason="Sent back").status_code == 409
+
+    def test_a_return_to_origin_closes_the_order_and_restocks(self, client, admin_auth, order_id, db):
+        from app.models import Order, Product
+
+        before = db.get(Product, "PRD001").stock
+        units = sum(item.quantity for item in db.get(Order, order_id).items if item.product_id == "PRD001")
+        advance(client, admin_auth, order_id, "returned")
+        db.expire_all()
+        order = db.get(Order, order_id)
+        assert order.status == "returned" and order.stock_state == "released"
+        assert db.get(Product, "PRD001").stock == before + units
 
     def test_a_finished_order_is_final(self, client, admin_auth, order_id):
         self._move(client, admin_auth, order_id, "cancelled")
         response = self._move(client, admin_auth, order_id, "confirmed", confirm=True)
         assert response.status_code == 409
 
-    def test_the_customer_can_cancel_while_packed(self, client, admin_auth, ready, order_id):
-        self._move(client, admin_auth, order_id, "processing")
-        self._move(client, admin_auth, order_id, "packed")
+    def test_the_customer_can_cancel_only_before_picking(self, client, admin_auth, ready, order_id):
+        advance(client, admin_auth, order_id, "processing")
         response = client.post(f"/api/orders/{order_id}/cancel", headers=ready, json={"reason": ""})
-        assert response.status_code == 200
+        assert response.status_code == 409 and response.json()["error_code"] == "ORDER_NOT_CANCELLABLE"
+
+    def test_every_change_is_recorded_with_where_it_came_from(self, client, admin_auth, order_id, db):
+        from app.models import OrderEvent
+
+        advance(client, admin_auth, order_id, "shipped")
+        rows = db.execute(select(OrderEvent).where(OrderEvent.order_id == order_id, OrderEvent.source != "")
+                          .order_by(OrderEvent.id)).scalars().all()
+        assert [(r.from_status, r.status, r.source) for r in rows] == [
+            ("confirmed", "processing", "packing"), ("processing", "packed", "packing"),
+            ("packed", "shipped", "shipment")]
 
     def test_an_unknown_status_is_refused(self, client, admin_auth, order_id):
         response = self._move(client, admin_auth, order_id, "teleported", confirm=True)

@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from app.core import rate_limit
 from app.models import CustomerNotification, Notification
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -43,8 +44,7 @@ def test_order_updates_and_points_reach_the_bell(client, db, auth, admin_auth, c
     fill_bag(client, auth)
     placed = place(client, auth)
     order_id = placed["order"]["id"]
-    for status in ("processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"):
-        client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth, json={"status": status})
+    advance(client, admin_auth, order_id, "delivered")
     kinds = [r.kind for r in bell(db)]
     assert "order_confirmation" in kinds and "order_updates" in kinds and "loyalty" in kinds
     order_rows = [r for r in bell(db) if r.kind == "order_updates"]

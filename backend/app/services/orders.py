@@ -34,117 +34,31 @@ from app.services.lookup.filters import id_condition
 from app.services.payments import PaymentRequest, get_provider
 from app.utils.ids import next_id
 
-# The fulfilment pipeline, in order. An order moves one stage at a time;
-# jumping ahead or stepping back is allowed only when the caller confirms it
-# (`confirm=True`), and is written into the timeline note so the record says
-# so. `shipped` is the stage where the parcel is dispatched to the courier.
-ORDER_FLOW = (
-    "pending",
-    "confirmed",
-    "processing",
-    "packed",
-    "shipped",
-    "in-transit",
-    "out-for-delivery",
-    "delivered",
-)
+# The order lifecycle and who may move it live in one place:
+# `services/fulfilment/workflow.py` (docs/order-fulfilment.md). These names
+# stay here because the rest of the app has always read them from orders.
+from app.services.fulfilment import workflow  # noqa: E402
 
-STAGE_LABELS = {
-    "pending": "Pending",
-    "confirmed": "Confirmed",
-    "processing": "Processing",
-    "packed": "Packed",
-    "shipped": "Shipped",
-    "in-transit": "In transit",
-    "out-for-delivery": "Out for delivery",
-    "delivered": "Delivered",
-    "cancelled": "Cancelled",
-    "returned": "Returned",
-}
-
-ORDER_STATUSES = set(ORDER_FLOW) | {"cancelled", "returned"}
-
-# Once it has left the warehouse, cancelling is a return, not a cancellation.
-CANCELLABLE_FROM = {"pending", "confirmed", "processing", "packed"}
-RETURNABLE_FROM = {"shipped", "in-transit", "out-for-delivery", "delivered"}
-TERMINAL = {"cancelled", "returned"}
+ORDER_FLOW = workflow.ORDER_FLOW
+STAGE_LABELS = workflow.ORDER_LABELS
+ORDER_STATUSES = workflow.ORDER_STATUSES
+CANCELLABLE_FROM = workflow.CANCELLABLE
+RETURNABLE_FROM = frozenset({"shipped", "in-transit", "out-for-delivery"})
+TERMINAL = workflow.ORDER_TERMINAL
+CUSTOMER_CANCELLABLE = workflow.CUSTOMER_CANCELLABLE
 
 logger = logging.getLogger(__name__)
 
-CUSTOMER_CANCELLABLE = CANCELLABLE_FROM
 
+def _shipment_facts(db: Session, order: Order) -> dict:
+    """What the workflow needs to know about the order's shipments."""
+    from app.models.shipping import Shipment
 
-def classify_transition(order: Order, target: str) -> str:
-    """
-    What moving `order` to `target` would be: "same", "next", "skip", "back",
-    "cancel" or "return". Raises `ConflictError` for a move that is never
-    allowed, confirmed or not.
-
-    Never allowed:
-    - leaving `cancelled` or `returned` — they are records, not stages;
-    - cancelling once dispatched (that is a return) or returning before it;
-    - going back to `pending` — only a payment moves an order out of it, and
-      only a payment could move it back;
-    - going back from `delivered` — the delivery (and, for cash on delivery,
-      the collection) has been recorded; the way back is a return;
-    - moving a checkout order forward while its stock is only held for a
-      payment that has not arrived. The payment confirms it, or the hold lapses.
-    """
-    current = order.status
-    if target not in ORDER_STATUSES:
-        raise ValidationError(f"'{target}' is not an order status.", error_code="INVALID_STATUS")
-    if target == current:
-        return "same"
-    if current in TERMINAL:
-        raise ConflictError(
-            f"This order is {current}; its status can no longer change.",
-            error_code="INVALID_TRANSITION",
-        )
-    if target == "cancelled":
-        if current not in CANCELLABLE_FROM:
-            raise ConflictError(
-                "This order has left the warehouse and cannot be cancelled. Record a return instead.",
-                error_code="INVALID_TRANSITION",
-            )
-        return "cancel"
-    if target == "returned":
-        if current not in RETURNABLE_FROM:
-            raise ConflictError(
-                "Only an order that has been shipped can be returned. Cancel it instead.",
-                error_code="INVALID_TRANSITION",
-            )
-        return "return"
-
-    here, there = ORDER_FLOW.index(current), ORDER_FLOW.index(target)
-    if there > here:
-        if current == "pending" and order.stock_state == "reserved" and order.payment_status != "paid":
-            raise ConflictError(
-                "This order is waiting for its payment. It is confirmed when the payment arrives.",
-                error_code="AWAITING_PAYMENT",
-            )
-        return "next" if there == here + 1 else "skip"
-
-    if target == "pending":
-        raise ConflictError(
-            "An order cannot be moved back to pending.", error_code="INVALID_TRANSITION"
-        )
-    if current == "delivered":
-        raise ConflictError(
-            "A delivered order cannot be moved back. Record a return instead.",
-            error_code="INVALID_TRANSITION",
-        )
-    return "back"
-
-
-def transition_note(order: Order, target: str, kind: str) -> str:
-    """What the timeline should say about an out-of-sequence move."""
-    if kind == "skip":
-        here, there = ORDER_FLOW.index(order.status), ORDER_FLOW.index(target)
-        skipped = ", ".join(STAGE_LABELS[s] for s in ORDER_FLOW[here + 1 : there])
-        return f"Skipped {skipped}."
-    if kind == "back":
-        return f"Moved back from {STAGE_LABELS[order.status]}."
-    return ""
+    latest = db.execute(select(Shipment).where(Shipment.order_id == order.id)
+                        .order_by(Shipment.created_at.desc(), Shipment.id.desc())).scalars().first()
+    active = db.execute(select(Shipment).where(Shipment.active_key == order.id)).scalar_one_or_none()
+    return {"latest_shipment_status": latest.status if latest is not None else "",
+            "active_shipment": active.shipment_number if active is not None else ""}
 
 
 # The delivery methods the shipping calculation understands. Anything else
@@ -893,35 +807,43 @@ def update_status(
     *,
     note: str = "",
     actor: str = "system",
-    confirm: bool = False,
+    source: str = "admin",
+    reason: str = "",
+    related_type: str = "",
+    related_id: str = "",
 ) -> Order:
     """
     Move an order along, and record that it moved.
 
-    The rules are enforced here rather than trusted from the client — see
-    `classify_transition`. The next stage needs nothing more; skipping stages
-    or stepping back needs `confirm=True`, so a slip of the dropdown cannot
-    rewrite an order's history, and the timeline records what was done.
+    Every rule is `workflow.check_order_move`: one step at a time, and only by
+    the part of the system that owns the step (`source`). The packing service
+    moves an order to Packing and Packed, a shipment moves it from Packed to
+    Delivered, and an admin confirms, cancels, or records a return to origin.
+    Nothing can be skipped by asking twice. The event records where it came
+    from, why, and which packing job or shipment did it.
     """
     order = get_order(db, order_id)
+    reason = (reason or "").strip()[:300]
 
-    kind = classify_transition(order, status)
-    if kind == "same":
+    move = workflow.check_order_move(order, status, source, reason=reason, **_shipment_facts(db, order))
+    if move is None:
         return order
-    if kind in ("skip", "back") and not confirm:
-        raise ConflictError(
-            f"Moving this order from {STAGE_LABELS[order.status]} to {STAGE_LABELS[status]} "
-            + ("skips stages" if kind == "skip" else "moves it backwards")
-            + " and needs confirming.",
-            error_code="CONFIRMATION_REQUIRED",
-        )
 
-    extra = transition_note(order, status, kind)
+    previous = order.status
+    here, there = workflow.flow_index(previous), workflow.flow_index(status)
+    extra = ""
+    if move.kind == "forward" and here >= 0 and there > here + 1:
+        # Only a courier can do this: it never scanned the stages between.
+        extra = "No courier scan for " + ", ".join(STAGE_LABELS[s] for s in ORDER_FLOW[here + 1:there]) + "."
     note = " ".join(part for part in (extra, note.strip()) if part)
 
     order.status = status
     now = datetime.utcnow()
-    order.events.append(OrderEvent(status=status, note=note, actor=actor, occurred_at=now))
+    order.events.append(OrderEvent(
+        status=status, from_status=previous, note=note, reason=reason, source=source,
+        related_type=related_type[:20], related_id=str(related_id)[:40], actor=(actor or "system")[:40],
+        occurred_at=now,
+    ))
 
     from app.services import email as email_service
 
@@ -951,13 +873,18 @@ def update_status(
     # depends on what the order did with it. See `return_stock`. The coupon
     # use comes back too, so a one-time code isn't burnt by an order that
     # never went ahead.
-    if status == "cancelled":
-        return_stock(db, order, note="Order cancelled")
+    #
+    # A parcel that came back to origin unwinds the same way: the goods are
+    # back on the shelf and the customer never received them. `stock_state`
+    # keeps either from returning the same units twice.
+    unwound = status in ("cancelled", "returned")
+    if unwound:
+        return_stock(db, order, note="Order cancelled" if status == "cancelled" else "Returned to origin")
         coupon_service.release_usage(db, order.id)
         # Gift cards, store credit and points put towards it go back in full.
         from app.services import tenders
 
-        tenders.release_for_order(db, order, reason=f"Order {order.order_number} cancelled")
+        tenders.release_for_order(db, order, reason=f"Order {order.order_number} {status}")
         # An invoice nobody paid is void with its order — it used to stay
         # "issued, payable on delivery" for an order that was never coming.
         # A paid one stands: the refund and its credit note answer it.
@@ -966,6 +893,7 @@ def update_status(
         ).scalar_one_or_none()
         if invoice is not None and invoice.status not in ("paid", "cancelled") and not invoice.amount_paid:
             invoice.status = "cancelled"
+    if status == "cancelled":
         # Packing: the warehouse stops working on it (docs/packing-and-labels.md).
         from app.services.fulfilment import packing
 
@@ -989,7 +917,7 @@ def update_status(
     db.commit()
 
     # Cancelled stock is back on the shelf: anyone waiting for it hears now.
-    if status == "cancelled":
+    if unwound:
         from app.services import alerts
 
         for product_id in {item.product_id for item in order.items}:
@@ -1002,13 +930,13 @@ def update_status(
     # still *recorded* as owed — see `refund_if_collected` — so it can be
     # retried rather than silently forgotten, which is what used to happen:
     # cancelling a paid order put the stock back and kept the money.
-    if status == "cancelled":
-        refund_if_collected(db, order, reason=note or "Order cancelled")
+    if unwound:
+        refund_if_collected(db, order, reason=reason or note or f"Order {status}")
 
     # A payment link outstanding for an order that is cancelled, or whose cash
     # has just been collected, must stop being payable — otherwise the
     # customer can still pay it and be charged for something already settled.
-    if status in ("cancelled", "delivered"):
+    if status in ("cancelled", "returned", "delivered"):
         _retire_payment_link(db, order)
 
     db.refresh(order)
@@ -1049,24 +977,29 @@ def cancel_order(db: Session, order_id: str, customer: Customer, reason: str = "
     """
     A customer cancelling their own order.
 
-    Only while it is still in the warehouse. Once dispatched it is a return,
-    which is a different process with a different shape.
+    Only until the warehouse starts picking it (docs/order-fulfilment.md).
+    After that the store cancels it on request; once dispatched it is a
+    return, which is a different process with a different shape.
     """
     order = get_order(db, order_id, customer_id=customer.id)
 
     if order.status not in CUSTOMER_CANCELLABLE:
-        raise ConflictError(
-            f"This order is already {order.status} and can no longer be cancelled. "
-            "Start a return instead.",
-            error_code="ORDER_NOT_CANCELLABLE",
-        )
+        if order.status in ("processing", "packed"):
+            message = ("This order is already being packed and can no longer be cancelled online. "
+                       "Please contact support.")
+        else:
+            message = (f"This order is already {STAGE_LABELS.get(order.status, order.status).lower()} and can "
+                       "no longer be cancelled. Start a return instead.")
+        raise ConflictError(message, error_code="ORDER_NOT_CANCELLABLE")
 
     return update_status(
         db,
         order.id,
         "cancelled",
         note=reason or "Cancelled by the customer.",
+        reason=reason,
         actor="customer",
+        source="customer",
     )
 
 

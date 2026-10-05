@@ -45,7 +45,9 @@ export function CreateShipmentDialog({
   const [service, setService] = useState(initial?.services.length === 1 ? initial.services[0]! : "");
   const [courierName, setCourierName] = useState("");
   const [awb, setAwb] = useState("");
-  const [pkg, setPkg] = useState<PackageForm>(() => packageForm(shipping.defaultPackage));
+  // The packed parcels come first (docs/order-fulfilment.md): what the warehouse weighed and measured.
+  const packed = shipping.packing?.package ?? null;
+  const [pkg, setPkg] = useState<PackageForm>(() => packageForm(packed ?? shipping.defaultPackage));
   const [errors, setErrors] = useState<PackageErrors & { service?: string; courierName?: string; awb?: string; provider?: string }>({});
   const [rates, setRates] = useState<RateOption[] | null>(null);
   const [ratesError, setRatesError] = useState("");
@@ -238,7 +240,9 @@ export function CreateShipmentDialog({
           <legend className="mb-2 text-xs font-medium text-admin-ink">Package</legend>
           <p className="mb-3 text-[0.6875rem] text-admin-muted">
             {isManual ? "Only the weight is needed for a manual courier." : "The courier needs the weight, all three dimensions, the count and the type."}
-            {shipping.defaultPackage ? " Prefilled from the courier's saved default package." : ""}
+            {packed
+              ? " Prefilled from the packed parcels."
+              : shipping.defaultPackage ? " Prefilled from the courier's saved default package." : ""}
           </p>
           <PackageFields form={pkg} errors={errors} requireAll={!isManual} disabled={submitting} onChange={updatePackage} />
         </fieldset>

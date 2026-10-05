@@ -24,6 +24,7 @@ from tests.integration.test_shipping_helpers import (  # noqa: F401
     event,
     manual_on,
     order,
+    packed_order,
     place_order,
     shiprocket,
     shiprocket_on,
@@ -100,6 +101,13 @@ class TestProviderConfiguration:
         result = client.post(f"{PROVIDERS}/shiprocket/test", headers=admin_auth).json()["data"]
         assert result["ok"] is False and "wrong-pass" not in result["message"]
 
+    def test_typed_credentials_are_tested_before_saving_and_not_stored(self, client, admin_auth, db, shiprocket):
+        typed = {"email": CREDENTIALS["email"], "password": CREDENTIALS["password"]}
+        result = client.post(f"{PROVIDERS}/shiprocket/test", json={"credentials": typed}, headers=admin_auth).json()["data"]
+        assert result == {"ok": True, "message": "Connected to Shiprocket."}
+        row = next(r for r in client.get(PROVIDERS, headers=admin_auth).json()["data"] if r["code"] == "shiprocket")
+        assert row["configured"] is False and row["credentials"] == {}
+
     def test_an_unknown_provider_is_404(self, client, admin_auth):
         assert configure(client, admin_auth, "fedex", active=True).status_code == 404
 
@@ -149,7 +157,7 @@ class TestCreatingManually:
 
     def test_an_awb_already_used_is_refused(self, client, admin_auth, order, manual_on, auth):
         created(client, admin_auth, order["id"])
-        other = place_order(client, auth, product_id="PRD002")
+        other = packed_order(client, auth, admin_auth, product_id="PRD002")
         response = create(client, admin_auth, other["id"], key="key-00000009")
         assert response.status_code == 409 and response.json()["error_code"] == "AWB_EXISTS"
 
@@ -253,7 +261,7 @@ class TestCreatingAtShiprocket:
                                                           shiprocket, db):
         shiprocket.answer("POST /orders/create/adhoc", httpx.Response(500))
         create(client, admin_auth, order["id"], provider="shiprocket")
-        assert order_status(db, order["id"]) == "confirmed"
+        assert order_status(db, order["id"]) == "packed"
 
     def test_a_secret_never_appears_in_an_error(self, client, admin_auth, order, shiprocket_on, shiprocket):
         shiprocket.answer("POST /orders/create/adhoc",
@@ -375,12 +383,19 @@ class TestOperating:
 
 
 class TestManualEvents:
+    """Manual moves follow `workflow.SHIPMENT_TRANSITIONS`: one step at a time (docs/order-fulfilment.md)."""
+
     @pytest.fixture()
     def shipment(self, client, admin_auth, order, manual_on):
         return created(client, admin_auth, order["id"])
 
+    def walk(self, client, admin_auth, shipment_id, *statuses):
+        for status in statuses:
+            response = event(client, admin_auth, shipment_id, status, reason="Courier says so")
+            assert response.status_code == 201, (status, response.text)
+
     def test_each_milestone_moves_the_order_forward(self, client, admin_auth, shipment, db, order):
-        steps = [("picked-up", "shipped"), ("in-transit", "in-transit"),
+        steps = [("picked-up", "shipped"), ("in-transit", "in-transit"), ("at-destination-hub", "in-transit"),
                  ("out-for-delivery", "out-for-delivery"), ("delivered", "delivered")]
         for status, expected in steps:
             response = event(client, admin_auth, shipment["id"], status)
@@ -389,15 +404,28 @@ class TestManualEvents:
         final = client.get(f"{BASE}/{shipment['id']}", headers=admin_auth).json()["data"]
         assert final["deliveredAt"] is not None
         assert final["actions"]["manualEvent"] is False
+        assert final["transitions"] == []
 
-    def test_skipping_ahead_is_allowed_but_never_backwards(self, client, admin_auth, shipment, db, order):
-        assert event(client, admin_auth, shipment["id"], "out-for-delivery").status_code == 201
-        assert order_status(db, order["id"]) == "out-for-delivery"
-        response = event(client, admin_auth, shipment["id"], "picked-up")
+    def test_skipping_ahead_is_refused_and_so_is_going_back(self, client, admin_auth, shipment, db, order):
+        response = event(client, admin_auth, shipment["id"], "out-for-delivery")
         assert response.status_code == 409 and response.json()["error_code"] == "INVALID_SHIPMENT_TRANSITION"
+        assert "before pickup" in response.json()["message"]
+        assert order_status(db, order["id"]) == "packed"
+        self.walk(client, admin_auth, shipment["id"], "picked-up", "in-transit")
+        back = event(client, admin_auth, shipment["id"], "picked-up")
+        assert back.status_code == 409 and back.json()["error_code"] == "INVALID_SHIPMENT_TRANSITION"
+        jump = event(client, admin_auth, shipment["id"], "delivered")
+        assert jump.status_code == 409 and "Next: At destination hub" in jump.json()["message"]
+
+    def test_the_same_status_again_records_a_tracking_note(self, client, admin_auth, shipment, db):
+        self.walk(client, admin_auth, shipment["id"], "picked-up")
+        response = event(client, admin_auth, shipment["id"], "picked-up", description="Scanned at the hub")
+        assert response.status_code == 201
+        assert db.get(Shipment, shipment["id"]).status == "picked-up"
 
     def test_a_delivered_shipment_is_closed(self, client, admin_auth, shipment):
-        event(client, admin_auth, shipment["id"], "delivered")
+        self.walk(client, admin_auth, shipment["id"], "picked-up", "in-transit", "at-destination-hub",
+                  "out-for-delivery", "delivered")
         response = event(client, admin_auth, shipment["id"], "in-transit")
         assert response.status_code == 409 and response.json()["error_code"] == "SHIPMENT_CLOSED"
 
@@ -409,16 +437,25 @@ class TestManualEvents:
         response = event(client, admin_auth, shipment["id"], "picked-up", occurredAt="2099-01-01T10:00:00")
         assert response.status_code == 422
 
+    def test_exceptions_need_a_reason(self, client, admin_auth, shipment):
+        self.walk(client, admin_auth, shipment["id"], "picked-up", "in-transit")
+        response = event(client, admin_auth, shipment["id"], "delivery-failed")
+        assert response.status_code == 422 and response.json()["error_code"] == "REASON_REQUIRED"
+
     def test_delivery_failure_alerts_and_leaves_the_order(self, client, admin_auth, shipment, db, order):
-        event(client, admin_auth, shipment["id"], "picked-up")
-        event(client, admin_auth, shipment["id"], "delivery-failed")
-        assert order_status(db, order["id"]) == "shipped"
+        self.walk(client, admin_auth, shipment["id"], "picked-up", "in-transit", "delivery-failed")
+        assert order_status(db, order["id"]) == "in-transit"
         assert "delivery-failed" in db.get(Shipment, shipment["id"]).alerts_sent
 
-    def test_an_attempt_can_be_followed_by_another_run(self, client, admin_auth, shipment):
-        event(client, admin_auth, shipment["id"], "out-for-delivery")
-        assert event(client, admin_auth, shipment["id"], "delivery-attempted").status_code == 201
-        assert event(client, admin_auth, shipment["id"], "out-for-delivery").status_code == 201
+    def test_an_attempt_can_be_followed_by_another_run(self, client, admin_auth, shipment, db, order):
+        self.walk(client, admin_auth, shipment["id"], "picked-up", "in-transit", "at-destination-hub",
+                  "out-for-delivery", "delivery-attempted", "out-for-delivery", "delivered")
+        assert order_status(db, order["id"]) == "delivered"
+
+    def test_a_failed_delivery_can_be_retried(self, client, admin_auth, shipment, db):
+        self.walk(client, admin_auth, shipment["id"], "picked-up", "in-transit", "at-destination-hub",
+                  "out-for-delivery", "delivery-failed", "out-for-delivery")
+        assert db.get(Shipment, shipment["id"]).status == "out-for-delivery"
 
     def test_manual_has_no_tracking_to_refresh(self, client, admin_auth, shipment):
         response = client.post(f"{BASE}/{shipment['id']}/refresh", headers=admin_auth)
@@ -428,10 +465,11 @@ class TestManualEvents:
         from app.models import OrderEvent
 
         event(client, admin_auth, shipment["id"], "picked-up")
-        notes = db.execute(select(OrderEvent.status, OrderEvent.note).where(
-            OrderEvent.order_id == order["id"])).all()
-        assert any(status == "shipped" and note.endswith(f"Courier update for shipment {shipment['shipmentNumber']}.")
-                   for status, note in notes)
+        rows = db.execute(select(OrderEvent).where(OrderEvent.order_id == order["id"],
+                                                   OrderEvent.status == "shipped")).scalars().all()
+        assert len(rows) == 1
+        assert rows[0].from_status == "packed" and rows[0].source == "shipment"
+        assert rows[0].related_type == "shipment" and rows[0].related_id == shipment["shipmentNumber"]
 
     def test_courier_moments_notify_the_customer_once(self, client, admin_auth, order, manual_on, monkeypatch):
         from app.services.email import notifications
@@ -440,12 +478,58 @@ class TestManualEvents:
         monkeypatch.setattr(notifications, "notify_shipment",
                             lambda db, shipment, order, key, suffix="": sent.append((key, suffix)) or True)
         shipment = created(client, admin_auth, order["id"])
-        event(client, admin_auth, shipment["id"], "out-for-delivery")
-        event(client, admin_auth, shipment["id"], "delivery-attempted")
-        event(client, admin_auth, shipment["id"], "delivery-failed")
-        event(client, admin_auth, shipment["id"], "returned-to-origin")
-        assert [key for key, _ in sent] == ["shipment_created", "delivery_attempted", "delivery_failed",
-                                           "shipment_returned"]
+        self.walk(client, admin_auth, shipment["id"], "picked-up", "in-transit", "at-destination-hub",
+                  "out-for-delivery", "delivery-attempted", "out-for-delivery", "delivery-failed",
+                  "returned-to-origin")
+        keys = [key for key, _ in sent]
+        assert keys[0] == "shipment_created"
+        assert keys.count("delivery_attempted") == 1 and keys.count("delivery_failed") == 1
+        assert keys[-1] == "shipment_returned"
+
+
+class TestTransitions:
+    """`POST /admin/shipments/{id}/status`: the portal's one-step moves."""
+
+    @pytest.fixture()
+    def shipment(self, client, admin_auth, order, manual_on):
+        return created(client, admin_auth, order["id"])
+
+    def move(self, client, headers, shipment_id, status, **extra):
+        return client.post(f"{BASE}/{shipment_id}/status", headers=headers, json={"status": status, **extra})
+
+    def test_offers_only_the_next_steps(self, client, admin_auth, shipment):
+        offered = {t["status"]: t for t in shipment["transitions"]}
+        assert set(offered) == {"pickup-scheduled", "picked-up", "cancelled"}
+        assert offered["cancelled"]["requiresReason"] is True and offered["picked-up"]["kind"] == "forward"
+
+    def test_pickup_cancelled_by_the_courier_goes_back_with_a_reason(self, client, admin_auth, shipment, db):
+        assert self.move(client, admin_auth, shipment["id"], "pickup-scheduled").status_code == 200
+        refused = self.move(client, admin_auth, shipment["id"], "ready-for-pickup")
+        assert refused.status_code == 422 and refused.json()["error_code"] == "REASON_REQUIRED"
+        back = self.move(client, admin_auth, shipment["id"], "ready-for-pickup", reason="Courier cancelled pickup")
+        assert back.status_code == 200 and back.json()["data"]["status"] == "ready-for-pickup"
+        db.expire_all()
+        assert db.get(Shipment, shipment["id"]).pickup_status == ""
+
+    def test_cancel_through_the_transition_needs_a_reason(self, client, admin_auth, shipment, db, order):
+        assert self.move(client, admin_auth, shipment["id"], "cancelled").status_code == 422
+        done = self.move(client, admin_auth, shipment["id"], "cancelled", reason="Wrong address")
+        assert done.status_code == 200 and done.json()["data"]["status"] == "cancelled"
+        assert order_status(db, order["id"]) == "packed"
+
+    def test_return_to_origin_frees_the_order_for_a_return_or_reship(self, client, admin_auth, shipment, db, order):
+        for status in ("picked-up", "in-transit", "at-destination-hub", "out-for-delivery"):
+            assert self.move(client, admin_auth, shipment["id"], status).status_code == 200
+        self.move(client, admin_auth, shipment["id"], "delivery-attempted", reason="Customer not home")
+        self.move(client, admin_auth, shipment["id"], "returned-to-origin", reason="Three attempts")
+        db.expire_all()
+        assert db.get(Shipment, shipment["id"]).active_key is None
+        overview = client.get(f"/api/admin/orders/{order['id']}/shipping", headers=admin_auth).json()["data"]
+        assert overview["canCreate"] is True and overview["createMode"] == "reship"
+
+    def test_staff_without_shipments_cannot_move(self, client, shipment, db):
+        headers = role_headers(db, "ADM900", "editor")
+        assert self.move(client, headers, shipment["id"], "picked-up").status_code == 403
 
 
 # ------------------------------------------------------------- reading

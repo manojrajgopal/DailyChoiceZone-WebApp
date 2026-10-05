@@ -26,6 +26,7 @@ from tests.integration.test_shipping_helpers import (  # noqa: F401
     created,
     manual_on,
     order,
+    packed_order,
     place_order,
     shiprocket,
     shiprocket_on,
@@ -45,6 +46,25 @@ def generate(client, headers, shipment_id: int, expect: int = 201, **body):
     response = client.post(f"/api/admin/shipments/{shipment_id}/labels", headers=headers, json=body or None)
     assert response.status_code == expect, response.text
     return response.json()
+
+
+def legacy(client, auth, db) -> dict:
+    """
+    An order moved to "shipped" by hand before packing and shipments were
+    enforced: no packing job, no shipment. Its missing shipment can still be
+    recorded, and that is the one kind of shipment with no packed packages.
+    """
+    from app.models import Order
+
+    placed = place_order(client, auth)
+    db.get(Order, placed["id"]).status = "shipped"
+    db.flush()
+    return placed
+
+
+@pytest.fixture()
+def legacy_order(client, auth, db, catalogue, settings_documents) -> dict:
+    return legacy(client, auth, db)
 
 
 @pytest.fixture()
@@ -103,8 +123,8 @@ class TestGenerating:
         pdf = client.get(f"{LABELS}/{label['id']}/preview", headers=admin_auth).content
         assert pages(pdf) == 3
 
-    def test_an_unpacked_multi_box_shipment_gets_a_page_per_box(self, client, admin_auth, order, manual_on):
-        shipment = created(client, admin_auth, order["id"], package={**BOX, "count": 2})
+    def test_an_unpacked_multi_box_shipment_gets_a_page_per_box(self, client, admin_auth, legacy_order, manual_on):
+        shipment = created(client, admin_auth, legacy_order["id"], package={**BOX, "count": 2})
         label = generate(client, admin_auth, shipment["id"])["data"]["current"]
         assert label["pageCount"] == 2
 
@@ -138,8 +158,8 @@ class TestRegenerating:
 
 
 class TestValidation:
-    def test_missing_dimensions_is_recorded_as_a_failure(self, client, admin_auth, order, manual_on, db):
-        shipment = created(client, admin_auth, order["id"], package={"weightGrams": 500})
+    def test_missing_dimensions_is_recorded_as_a_failure(self, client, admin_auth, legacy_order, manual_on, db):
+        shipment = created(client, admin_auth, legacy_order["id"], package={"weightGrams": 500})
         response = client.post(f"/api/admin/shipments/{shipment['id']}/labels", headers=admin_auth)
         assert response.status_code == 422
         body = response.json()
@@ -196,9 +216,9 @@ class TestValidation:
 
 
 class TestBulk:
-    def test_mixed_results_never_fail_the_batch(self, client, auth, admin_auth, order, manual_on):
+    def test_mixed_results_never_fail_the_batch(self, client, auth, admin_auth, order, manual_on, db):
         good = created(client, admin_auth, order["id"])
-        other = place_order(client, auth)
+        other = legacy(client, auth, db)
         bad = created(client, admin_auth, other["id"], key="key-00000002", awb="LX-100201",
                       package={"weightGrams": 300})
         response = client.post(f"{LABELS}/bulk", headers=admin_auth,
@@ -224,9 +244,9 @@ class TestBulk:
 
     def test_zip_and_merged_download(self, client, auth, admin_auth, order, manual_on):
         first = created(client, admin_auth, order["id"])
-        other = place_order(client, auth)
+        other = packed_order(client, auth, admin_auth)
         second = created(client, admin_auth, other["id"], key="key-00000002", awb="LX-100201")
-        third = place_order(client, auth)
+        third = packed_order(client, auth, admin_auth)
         unlabelled = created(client, admin_auth, third["id"], key="key-00000003", awb="LX-100202")
         client.post(f"{LABELS}/bulk", headers=admin_auth, json={"shipmentIds": [first["id"], second["id"]]})
         ids = f"{first['id']},{second['id']},{unlabelled['id']}"
@@ -244,7 +264,7 @@ class TestBulk:
 
     def test_the_shipments_list_shows_label_status(self, client, auth, admin_auth, order, manual_on):
         first = created(client, admin_auth, order["id"])
-        other = place_order(client, auth)
+        other = packed_order(client, auth, admin_auth)
         created(client, admin_auth, other["id"], key="key-00000002", awb="LX-100201")
         generate(client, admin_auth, first["id"])
         items = client.get("/api/admin/shipments", headers=admin_auth).json()["data"]["items"]

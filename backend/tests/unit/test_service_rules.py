@@ -1,5 +1,5 @@
 """
-Business rules that are pure functions: the order state machine, audit
+Business rules that are pure functions: audit
 redaction, phone numbers and unsubscribe links, webhook signatures, visitor
 attribution and pincode validation.
 
@@ -19,97 +19,12 @@ from types import SimpleNamespace
 import pytest
 
 from app.core.config import settings
-from app.core.errors import ConflictError, ValidationError
-from app.services import analytics_events, audit, orders, serviceability
+from app.core.errors import ValidationError
+from app.services import analytics_events, audit, serviceability
 from app.services.messaging import service as messaging
 
 
-# ------------------------------------------------------------ order states
-
-
-def _order(status, stock_state="committed", payment_status="paid"):
-    return SimpleNamespace(status=status, stock_state=stock_state, payment_status=payment_status)
-
-
-FLOW = list(orders.ORDER_FLOW)
-
-
-class TestOrderTransitions:
-    @pytest.mark.parametrize("current, target", list(zip(FLOW, FLOW[1:])))
-    def test_each_next_stage(self, current, target):
-        assert orders.classify_transition(_order(current), target) == "next"
-
-    @pytest.mark.parametrize("current, target", [("confirmed", "packed"), ("pending", "delivered"),
-                                                 ("processing", "in-transit")])
-    def test_skipping_stages(self, current, target):
-        assert orders.classify_transition(_order(current), target) == "skip"
-
-    @pytest.mark.parametrize("current, target", [("packed", "confirmed"), ("shipped", "processing"),
-                                                 ("out-for-delivery", "in-transit")])
-    def test_moving_back(self, current, target):
-        assert orders.classify_transition(_order(current), target) == "back"
-
-    @pytest.mark.parametrize("status", FLOW + ["cancelled", "returned"])
-    def test_same_status(self, status):
-        assert orders.classify_transition(_order(status), status) == "same"
-
-    @pytest.mark.parametrize("current", sorted(orders.CANCELLABLE_FROM))
-    def test_cancellable_before_dispatch(self, current):
-        assert orders.classify_transition(_order(current), "cancelled") == "cancel"
-
-    @pytest.mark.parametrize("current", ["shipped", "in-transit", "out-for-delivery", "delivered"])
-    def test_not_cancellable_once_dispatched(self, current):
-        with pytest.raises(ConflictError) as caught:
-            orders.classify_transition(_order(current), "cancelled")
-        assert caught.value.error_code == "INVALID_TRANSITION"
-
-    @pytest.mark.parametrize("current", sorted(orders.RETURNABLE_FROM))
-    def test_returnable_after_dispatch(self, current):
-        assert orders.classify_transition(_order(current), "returned") == "return"
-
-    @pytest.mark.parametrize("current", ["pending", "confirmed", "processing", "packed"])
-    def test_not_returnable_before_dispatch(self, current):
-        with pytest.raises(ConflictError):
-            orders.classify_transition(_order(current), "returned")
-
-    @pytest.mark.parametrize("terminal", ["cancelled", "returned"])
-    @pytest.mark.parametrize("target", ["pending", "confirmed", "delivered"])
-    def test_terminal_states_never_change(self, terminal, target):
-        with pytest.raises(ConflictError) as caught:
-            orders.classify_transition(_order(terminal), target)
-        assert caught.value.error_code == "INVALID_TRANSITION"
-
-    @pytest.mark.parametrize("current", ["confirmed", "shipped"])
-    def test_never_back_to_pending(self, current):
-        with pytest.raises(ConflictError, match="back to pending"):
-            orders.classify_transition(_order(current), "pending")
-
-    @pytest.mark.parametrize("target", ["shipped", "packed", "confirmed"])
-    def test_delivered_never_moves_back(self, target):
-        with pytest.raises(ConflictError, match="delivered order"):
-            orders.classify_transition(_order("delivered"), target)
-
-    def test_an_order_waiting_for_payment_cannot_be_moved_forward(self):
-        with pytest.raises(ConflictError) as caught:
-            orders.classify_transition(_order("pending", "reserved", "pending"), "confirmed")
-        assert caught.value.error_code == "AWAITING_PAYMENT"
-
-    def test_an_order_waiting_for_payment_can_still_be_cancelled(self):
-        assert orders.classify_transition(_order("pending", "reserved", "pending"), "cancelled") == "cancel"
-
-    def test_a_paid_reserved_order_moves_forward(self):
-        assert orders.classify_transition(_order("pending", "reserved", "paid"), "confirmed") == "next"
-
-    @pytest.mark.parametrize("target", ["shipping", "", "PENDING", "lost"])
-    def test_unknown_status(self, target):
-        with pytest.raises(ValidationError) as caught:
-            orders.classify_transition(_order("pending"), target)
-        assert caught.value.error_code == "INVALID_STATUS"
-
-    def test_notes_for_out_of_sequence_moves(self):
-        assert orders.transition_note(_order("confirmed"), "shipped", "skip") == "Skipped Processing, Packed."
-        assert orders.transition_note(_order("shipped"), "packed", "back") == "Moved back from Shipped."
-        assert orders.transition_note(_order("confirmed"), "processing", "next") == ""
+# Order states: see tests/unit/test_fulfilment_workflow.py.
 
 
 # -------------------------------------------------------------- audit trail

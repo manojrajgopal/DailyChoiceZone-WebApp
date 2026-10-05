@@ -22,7 +22,7 @@ export type ShipmentStatus =
 
 /** Fallback labels, for when a row arrives without its own `statusLabel`. */
 export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
-  pending: "Pending",
+  pending: "Shipment created",
   "ready-for-pickup": "Ready for pickup",
   "pickup-scheduled": "Pickup scheduled",
   "picked-up": "Picked up",
@@ -192,9 +192,51 @@ export interface Shipment {
   events: ShipmentEvent[];
   technical: ShipmentTechnical;
   actions: ShipmentActions;
+  /** The manual moves allowed from here, decided by the server (docs/order-fulfilment.md). */
+  transitions?: ShipmentTransition[];
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+}
+
+/** One manual shipment move the server allows from the current status. */
+export interface ShipmentTransition {
+  status: ShipmentStatus;
+  label: string;
+  /** What the button says: "Mark picked up", "Delivery attempted"… */
+  action: string;
+  kind: "forward" | "exception" | "back" | "cancel";
+  requiresReason: boolean;
+}
+
+export interface ShipmentTransitionInput {
+  status: string;
+  reason?: string;
+  description?: string;
+  location?: string;
+  occurredAt?: string;
+  visible?: boolean;
+}
+
+/** Around the shipment list: packed orders waiting, and orders missing a shipment record. */
+export interface PipelineOrder {
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  status: string;
+  statusLabel: string;
+  paymentStatus: string;
+  placedAt: string;
+  packedAt: string | null;
+  packingJobId: number | null;
+  packageCount: number;
+}
+
+export interface ShipmentPipeline {
+  readyToShip: { count: number; items: PipelineOrder[] };
+  missingShipments: { count: number; items: PipelineOrder[] };
+  deliveredWithoutShipment: number;
+  couriersActive: boolean;
 }
 
 /** A row of the shipments list (and of an order's shipping summary). */
@@ -216,6 +258,11 @@ export interface ShipmentSummary {
   updatedAt: string;
   /** The store's own label (see types/packing `LabelStatus`). */
   labelStatus?: "not-generated" | "generating" | "generated" | "failed" | "regenerated" | "cancelled";
+  orderStatus?: string;
+  /** Delivery attempted, failed or returned to origin. */
+  exception?: boolean;
+  /** The next forward step, when there is one. */
+  nextAction?: ShipmentTransition | null;
 }
 
 export interface ShipmentList {
@@ -265,6 +312,11 @@ export interface OrderShipping {
   canCreate: boolean;
   /** Why `canCreate` is false. */
   reason: string;
+  reasonCode?: string;
+  /** normal, record-missing (dispatched with no shipment on record) or reship (after a return to origin). */
+  createMode?: "normal" | "record-missing" | "reship";
+  /** The order's packing job, with its packed parcels aggregated for the shipment (null when not packed). */
+  packing?: { jobId: number; status: string; statusLabel: string; package: Partial<ShipmentPackage> | null } | null;
   providers: ShippingOption[];
   defaultPackage: Partial<ShipmentPackage> | null;
 }
@@ -311,6 +363,8 @@ export interface ManualEventInput {
   location: string;
   occurredAt: string;
   visible: boolean;
+  /** Required for exceptions and backward moves. */
+  reason?: string;
 }
 
 /* -------------------------------------------------------- admin: providers */

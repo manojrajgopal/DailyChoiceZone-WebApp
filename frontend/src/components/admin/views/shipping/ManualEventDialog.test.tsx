@@ -14,10 +14,21 @@ function localValue(date: Date): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
+/** Out for delivery: the server allows delivered, or an exception with a reason. */
+const OUT = shipment({
+  status: "out-for-delivery",
+  statusLabel: "Out for delivery",
+  transitions: [
+    { status: "delivered", label: "Delivered", action: "Mark delivered", kind: "forward", requiresReason: false },
+    { status: "delivery-attempted", label: "Delivery attempted", action: "Delivery attempted", kind: "exception", requiresReason: true },
+    { status: "delivery-failed", label: "Delivery failed", action: "Delivery failed", kind: "exception", requiresReason: true },
+  ],
+});
+
 function setup() {
   const onOpenChange = vi.fn();
   const onSaved = vi.fn();
-  const view = renderUI(<ManualEventDialog shipment={shipment()} open onOpenChange={onOpenChange} onSaved={onSaved} />);
+  const view = renderUI(<ManualEventDialog shipment={OUT} open onOpenChange={onOpenChange} onSaved={onSaved} />);
   const dialog = screen.getByRole("dialog", { name: "Record a tracking event" });
   return { ...view, dialog, onOpenChange, onSaved };
 }
@@ -33,14 +44,16 @@ describe("ManualEventDialog", () => {
     vi.useRealTimers();
   });
 
-  it("offers every status staff can record, but not pending or cancelled, and starts at now", () => {
+  it("offers only the next steps the server allows, plus a note at the current status, and starts at now", () => {
     const { dialog } = setup();
     const options = within(within(dialog).getByLabelText(/^What happened/)).getAllByRole("option").map((option) => option.textContent);
-    expect(options[0]).toBe("Choose a status");
-    expect(options).toContain("Delivered");
-    expect(options).toContain("Returned to origin");
-    expect(options).not.toContain("Pending");
-    expect(options).not.toContain("Cancelled");
+    expect(options).toEqual([
+      "Choose a status",
+      "Out for delivery — tracking note, no move",
+      "Mark delivered",
+      "Delivery attempted (needs a reason)",
+      "Delivery failed (needs a reason)",
+    ]);
     expect(within(dialog).getByLabelText(/^When/)).toHaveValue(localValue(NOW));
     expect(within(dialog).getByRole("switch")).toBeChecked();
   });
@@ -98,26 +111,41 @@ describe("ManualEventDialog", () => {
       location: "Mysuru",
       occurredAt: new Date(localValue(NOW)).toISOString(),
       visible: false,
+      reason: "",
     });
     expect(toasts()).toContain("success:Recorded “Delivered”.");
   });
 
   it("goes back to the form from the confirmation", async () => {
     const { user, dialog } = setup();
-    await user.selectOptions(within(dialog).getByLabelText(/^What happened/), "picked-up");
+    await user.selectOptions(within(dialog).getByLabelText(/^What happened/), "delivered");
     await user.click(within(dialog).getByRole("button", { name: "Continue" }));
     await user.click(within(dialog).getByRole("button", { name: "Back" }));
-    expect(within(dialog).getByLabelText(/^What happened/)).toHaveValue("picked-up");
+    expect(within(dialog).getByLabelText(/^What happened/)).toHaveValue("delivered");
+  });
+
+  it("asks for a reason for an exception and sends it", async () => {
+    api.post("/admin/shipments/12/events", shipment({ status: "delivery-attempted" }));
+    const { user, dialog } = setup();
+    await user.selectOptions(within(dialog).getByLabelText(/^What happened/), "delivery-attempted");
+    await user.click(within(dialog).getByRole("button", { name: "Continue" }));
+    expect(within(dialog).getByText("Give a short reason (at least 3 characters).")).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/^Reason/), "Customer not home");
+    await user.click(within(dialog).getByRole("button", { name: "Continue" }));
+    await user.click(within(dialog).getByRole("button", { name: "Record event" }));
+    await waitFor(() => expect(api.last("POST", "/admin/shipments/12/events")!.body).toMatchObject({
+      status: "delivery-attempted", reason: "Customer not home",
+    }));
   });
 
   it("returns to the form with the API's message when recording fails", async () => {
     api.post("/admin/shipments/12/events", fail(409, "A delivered shipment can't move back.", "INVALID_TRANSITION"));
     const { user, dialog, onSaved } = setup();
-    await user.selectOptions(within(dialog).getByLabelText(/^What happened/), "in-transit");
+    await user.selectOptions(within(dialog).getByLabelText(/^What happened/), "delivered");
     await user.click(within(dialog).getByRole("button", { name: "Continue" }));
     await user.click(within(dialog).getByRole("button", { name: "Record event" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("A delivered shipment can't move back.");
-    expect(within(dialog).getByLabelText(/^What happened/)).toHaveValue("in-transit");
+    expect(within(dialog).getByLabelText(/^What happened/)).toHaveValue("delivered");
     expect(onSaved).not.toHaveBeenCalled();
   });
 

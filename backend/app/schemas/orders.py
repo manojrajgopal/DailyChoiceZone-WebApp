@@ -182,7 +182,10 @@ class OrderOut(CamelModel):
 class OrderStatusUpdate(CamelModel):
     status: str
     note: str = ""
-    # Required to skip stages or move an order backwards.
+    # Why: required to cancel once picking has started, and to record a return.
+    reason: str = ""
+    # Accepted for older clients and ignored: no confirmation lets an order skip
+    # or reverse a stage any more (docs/order-fulfilment.md).
     confirm: bool = False
 
 

@@ -21,9 +21,23 @@ const KEYS = ["status", "q", "scope", "from", "to", "paymentStatus", "courier", 
 const DATE_INPUT =
   "h-9 rounded-[3px] border border-admin-border bg-admin-surface px-2 text-[0.8125rem] text-admin-ink hover:border-admin-border-strong";
 
+/** What each queue holds, for its empty state. */
+const QUEUE_HINTS: Record<string, string> = {
+  "": "Confirmed orders appear here to be picked and packed.",
+  pending: "Confirmed orders waiting for someone to start picking.",
+  picking: "Orders being picked from the shelves.",
+  picked: "Every item picked; waiting to be packed.",
+  packing: "Being packed into parcels.",
+  packed: "Packed orders waiting for a shipment. Create one from the order page.",
+  "ready-to-ship": "Orders handed to a shipment. They are tracked on the Shipments page from here.",
+  cancelled: "Packing jobs stopped because their order was cancelled.",
+};
+
 /**
  * The packing queue: every order waiting to be picked and packed, most urgent
- * first, then oldest. An order is found by its Order ID and a courier by its
+ * first, then oldest. Only the warehouse's open work is here: once a shipment
+ * takes a packed order it leaves the queue ("Handed to shipping" keeps the
+ * record), and shipped or delivered orders never appear (docs/order-fulfilment.md). An order is found by its Order ID and a courier by its
  * code — never by a name or email (docs/id-lookup.md). Filters live in the
  * address bar, so a view ("my urgent orders, overdue") can be bookmarked or
  * shared.
@@ -45,7 +59,10 @@ export function AdminPackingQueueView() {
 
   const data = queue.data;
   const counts = data?.counts ?? {};
-  const total = Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0);
+  // History tabs ("Handed to shipping", "Cancelled") are never part of the open queue.
+  const openTotal = Object.entries(counts)
+    .filter(([key]) => key !== "ready-to-ship" && key !== "cancelled")
+    .reduce((sum, [, value]) => sum + (value ?? 0), 0);
   const filtered = Boolean(status || q || from || to || paymentStatus || courier || priority || assignedTo
     || shippingType || overdue || scope);
   const s = summary.data;
@@ -65,9 +82,11 @@ export function AdminPackingQueueView() {
         }
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
         <Tile label="Waiting to pick" value={s ? String(s.waitingToPick) : null} />
         <Tile label="Waiting to pack" value={s ? String(s.waitingToPack) : null} />
+        <Tile label="Ready to ship" value={s ? String(s.readyToShip ?? 0) : null}
+          hint="Packed, waiting for a shipment" />
         <Tile label="Packed today" value={s ? String(s.packedToday) : null} tone="good" />
         <Tile label="Overdue" value={s ? String(s.overdue) : null} tone={s && s.overdue > 0 ? "bad" : undefined}
           hint={s ? `Not packed within ${s.slaHours} h` : undefined} />
@@ -78,11 +97,13 @@ export function AdminPackingQueueView() {
         value={status}
         onChange={(next) => setFilters({ status: next })}
         tabs={[
-          { value: "", label: "All open", count: data ? total : undefined },
-          ...PACKING_STATUSES.filter((value) => value !== "cancelled").map((value) => ({
-            value, label: PACKING_STATUS_LABELS[value], count: data ? (counts[value] ?? 0) : undefined,
+          { value: "", label: "All open", count: data ? openTotal : undefined },
+          ...PACKING_STATUSES.filter((value) => value !== "cancelled" && value !== "ready-to-ship").map((value) => ({
+            value, label: value === "packed" ? "Ready to ship" : PACKING_STATUS_LABELS[value],
+            count: data ? (counts[value] ?? 0) : undefined,
           })),
-          { value: "cancelled", label: "Cancelled" },
+          { value: "ready-to-ship", label: "Handed to shipping", count: data ? (counts["ready-to-ship"] ?? 0) : undefined },
+          { value: "cancelled", label: "Cancelled", count: data ? (counts.cancelled ?? 0) : undefined },
         ]}
       />
 
@@ -123,7 +144,7 @@ export function AdminPackingQueueView() {
         <label className="flex items-center gap-1.5 text-xs text-admin-ink">
           <input type="checkbox" checked={scope === "all"} onChange={(event) =>
             setFilters({ scope: event.target.checked ? "all" : "" })} />
-          Include shipped
+          Include finished
         </label>
         {filtered ? (
           <AdminButton size="sm" variant="ghost" onClick={clear}>
@@ -158,8 +179,8 @@ export function AdminPackingQueueView() {
                 failed={Boolean(queue.error && !data)}
                 empty={Boolean(data && data.items.length === 0)}
                 onRetry={() => void queue.reload()}
-                title={filtered ? "No orders match" : "Nothing to pack"}
-                hint={filtered ? "Try a different filter or search." : "Confirmed orders appear here to be picked and packed."}
+                title={filtered && !status ? "No orders match" : status ? "Nothing in this queue" : "Nothing to pack"}
+                hint={filtered && status === "" ? "Try a different filter or search." : QUEUE_HINTS[status] ?? QUEUE_HINTS[""] ?? ""}
               />
               {data?.items.map((row) => (
                 <tr key={row.id} className="align-top hover:bg-admin-raised">

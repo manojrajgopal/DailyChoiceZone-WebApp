@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -62,23 +62,29 @@ def update_status(
     admin: AdminUser = Depends(require_permission("orders")),
 ):
     """
-    One endpoint for every transition.
+    The moves an admin makes by hand: confirm, cancel, record a return to
+    origin.
 
-    Not `/ship`, `/deliver`, `/cancel` — they are the same operation with a
-    different argument, and the legal transitions are enforced in the service
-    rather than implied by which URL was called.
+    Everything else belongs to the workflow that owns it
+    (`services/fulfilment/workflow.py`, docs/order-fulfilment.md): packing
+    moves an order to Packing and Packed, a shipment moves it from Packed to
+    Delivered. Asking this endpoint for one of those is refused (409
+    `WORKFLOW_OWNED`), as is any skip or backward move (409
+    `INVALID_TRANSITION`) — whatever the request says, so the workflow can't
+    be bypassed by calling the API directly.
     """
     from app.services import audit
 
     previous = service.get_order(db, order_id).status
     order = service.update_status(
-        db, order_id, payload.status, note=payload.note, actor=admin.id, confirm=payload.confirm
+        db, order_id, payload.status, note=payload.note, reason=payload.reason, actor=admin.id, source="admin"
     )
     if previous != order.status:
+        details = {k: v for k, v in (("note", payload.note), ("reason", payload.reason)) if v}
         audit.record(db, "orders.status", resource_type="orders", resource_id=order.id, actor=admin,
                      summary=f"Moved order {order.order_number} from {previous} to {order.status}",
                      changes={"status": {"from": previous, "to": order.status}},
-                     details={"note": payload.note} if payload.note else None)
+                     details=details or None)
         db.commit()
     invoice = db.execute(
         select(Invoice).where(Invoice.order_id == order.id)
@@ -87,6 +93,35 @@ def update_status(
         OrderOut.from_model(order, invoice).model_dump(by_alias=True),
         message=f"Order is now {payload.status}.",
     )
+
+
+@router.get("/{order_id}/fulfilment", summary="Where the order is in fulfilment, and what can be done next")
+def order_fulfilment(order_id: str, db: Session = Depends(get_db), admin: AdminUser = Depends(get_current_admin)):
+    """
+    The lifecycle (each step completed, current, upcoming, skipped, exception
+    or cancelled), the valid next actions for this admin, the packing job,
+    packages, shipment, tracking and returns, and one history across all of
+    them. Decided here; the order page only draws it.
+    """
+    from app.services.fulfilment import overview
+
+    return ok(overview.view(db, order_id[:20], admin))
+
+
+@router.post("/{order_id}/fulfilment/actions", summary="Take the next fulfilment step from the order page")
+def order_fulfilment_action(order_id: str, payload: dict = Body(...), db: Session = Depends(get_db),
+                            admin: AdminUser = Depends(get_current_admin)):
+    """
+    `{ action, reason?, note? }`, where action is one of `confirm`, `cancel`,
+    `record-return` (permission `orders`) or `start-packing`, `begin-packing`,
+    `repack` (permission `packing`). Each is validated by the service that owns
+    it. Answers with the fresh fulfilment view.
+    """
+    from app.services.fulfilment import overview
+
+    message = overview.perform(db, order_id[:20], payload, admin)
+    db.expire_all()
+    return ok(overview.view(db, order_id[:20], admin), message=message)
 
 
 @router.post("/{order_id}/payment-link", status_code=201, summary="Ask the customer to pay online")

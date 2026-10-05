@@ -8,10 +8,7 @@ import { Modal } from "@/components/ui/Dialog";
 import { problem } from "@/components/admin/views/operations/shared";
 import { addShipmentEvent } from "@/services/shippingService";
 import { toast } from "@/store/toastStore";
-import { SHIPMENT_STATUSES, SHIPMENT_STATUS_LABELS, type Shipment } from "@/types/shipping";
-
-/** Statuses staff can record by hand. Cancelling has its own action. */
-const RECORDABLE = SHIPMENT_STATUSES.filter((status) => status !== "pending" && status !== "cancelled");
+import { SHIPMENT_STATUS_LABELS, type Shipment } from "@/types/shipping";
 
 /** Now, as a `datetime-local` value in the browser's clock. */
 function localNow(): string {
@@ -22,6 +19,7 @@ function localNow(): string {
 
 interface Errors {
   status?: string;
+  reason?: string;
   occurredAt?: string;
   description?: string;
   location?: string;
@@ -29,8 +27,11 @@ interface Errors {
 
 /**
  * Record a tracking event by hand — for Manual couriers, or a courier that
- * told the team something its API didn't. It moves the shipment (and the
- * order) exactly like a courier event, so it asks once more before saving.
+ * told the team something its API didn't. Only the next steps the server
+ * allows are offered (`shipment.transitions`, docs/order-fulfilment.md), plus
+ * a note at the current status (a scan at a hub). Exceptions and backward
+ * moves need a reason. It moves the shipment (and the order) exactly like a
+ * courier event, so it asks once more before saving.
  */
 export function ManualEventDialog({
   shipment,
@@ -48,6 +49,13 @@ export function ManualEventDialog({
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [visible, setVisible] = useState(true);
+  const [reason, setReason] = useState("");
+  const moves = (shipment.transitions ?? []).filter((move) => move.kind !== "cancel");
+  const chosen = moves.find((move) => move.status === status);
+  const options = [
+    { value: shipment.status, label: `${shipment.statusLabel || SHIPMENT_STATUS_LABELS[shipment.status]} — tracking note, no move` },
+    ...moves.map((move) => ({ value: move.status, label: move.requiresReason ? `${move.action} (needs a reason)` : move.action })),
+  ];
   const [errors, setErrors] = useState<Errors>({});
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [saving, setSaving] = useState(false);
@@ -56,6 +64,7 @@ export function ManualEventDialog({
   const validate = (): boolean => {
     const next: Errors = {};
     if (!status) next.status = "Choose what happened.";
+    if (chosen?.requiresReason && reason.trim().length < 3) next.reason = "Give a short reason (at least 3 characters).";
     const when = occurredAt ? new Date(occurredAt) : null;
     if (!when || Number.isNaN(when.getTime())) next.occurredAt = "Enter when it happened.";
     else if (when.getTime() > Date.now() + 5 * 60_000) next.occurredAt = "This can't be in the future.";
@@ -75,6 +84,7 @@ export function ManualEventDialog({
         location: location.trim(),
         occurredAt: new Date(occurredAt).toISOString(),
         visible,
+        reason: reason.trim(),
       });
       toast.success(`Recorded “${SHIPMENT_STATUS_LABELS[status as keyof typeof SHIPMENT_STATUS_LABELS] ?? status}”.`);
       onSaved(updated);
@@ -112,8 +122,19 @@ export function ManualEventDialog({
             value={status}
             error={errors.status}
             onChange={(event) => setStatus(event.target.value)}
-            options={RECORDABLE.map((value) => ({ value, label: SHIPMENT_STATUS_LABELS[value] }))}
+            options={options}
           />
+          {chosen?.requiresReason ? (
+            <AdminTextarea
+              label="Reason"
+              required
+              rows={2}
+              value={reason}
+              error={errors.reason}
+              hint="Saved with the change and shown in the history."
+              onChange={(event) => setReason(event.target.value)}
+            />
+          ) : null}
           <AdminInput
             label="When"
             type="datetime-local"

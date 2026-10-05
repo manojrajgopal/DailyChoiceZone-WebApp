@@ -132,15 +132,18 @@ const MAPS = {
 export function DomainStatus({
   domain,
   status,
+  label,
   className,
 }: {
   domain: keyof typeof MAPS;
   status: string;
+  /** The domain's own wording, when it has one (an order's "processing" reads "Packing"). */
+  label?: string;
   className?: string;
 }) {
   return (
     <StatusBadge tone={MAPS[domain][status] ?? "neutral"} className={className}>
-      {humanStatus(status)}
+      {label || humanStatus(status)}
     </StatusBadge>
   );
 }

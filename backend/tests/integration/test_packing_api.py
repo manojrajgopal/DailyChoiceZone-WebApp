@@ -319,13 +319,50 @@ class TestPacking:
         early = client.post(f"{BASE}/{job['id']}/packages", headers=admin_auth, json=dict(BOX))
         assert early.status_code == 409
 
-    def test_the_order_never_moves_backwards(self, client, admin_auth, packing_order, db):
+    def test_the_order_status_endpoint_cannot_skip_packing(self, client, admin_auth, packing_order, db):
+        for status in ("processing", "packed", "shipped", "delivered"):
+            response = client.put(f"/api/admin/orders/{packing_order['id']}/status", headers=admin_auth,
+                                  json={"status": status, "confirm": True})
+            assert response.status_code == 409, status
+            assert response.json()["error_code"] in ("WORKFLOW_OWNED", "INVALID_TRANSITION")
+        assert order_status(db, packing_order["id"]) == "confirmed"
+
+    def test_a_legacy_order_never_moves_backwards(self, client, admin_auth, packing_order, db):
         job = job_for(client, admin_auth, packing_order["id"])
-        client.put(f"/api/admin/orders/{packing_order['id']}/status", headers=admin_auth,
-                   json={"status": "packed", "confirm": True})
-        assert order_status(db, packing_order["id"]) == "packed"
+        db.get(Order, packing_order["id"]).status = "packed"  # moved by hand before packing was enforced
+        db.flush()
         call(client, admin_auth, "POST", f"/{job['id']}/start-picking")
         assert order_status(db, packing_order["id"]) == "packed"
+
+    def test_picking_and_packing_events_name_the_job(self, client, admin_auth, packing_order, db):
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        rows = db.execute(select(OrderEvent).where(OrderEvent.order_id == packing_order["id"],
+                                                   OrderEvent.source == "packing")
+                          .order_by(OrderEvent.id)).scalars().all()
+        assert [(r.from_status, r.status) for r in rows] == [("confirmed", "processing"), ("processing", "packed")]
+        assert {r.related_id for r in rows} == {str(job["id"])}
+
+    def test_repacking_a_packed_order_moves_it_back_with_a_reason(self, client, admin_auth, packing_order, db):
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        assert order_status(db, packing_order["id"]) == "packed"
+        refused = client.post(f"{BASE}/{job['id']}/reopen", headers=admin_auth, json={"target": "packing"})
+        assert refused.status_code == 422 and refused.json()["error_code"] == "REASON_REQUIRED"
+        call(client, admin_auth, "POST", f"/{job['id']}/reopen", {"target": "packing", "reason": "Box damaged"})
+        assert order_status(db, packing_order["id"]) == "processing"
+        back = db.execute(select(OrderEvent).where(OrderEvent.order_id == packing_order["id"])
+                          .order_by(OrderEvent.id.desc())).scalars().first()
+        assert back.from_status == "packed" and back.status == "processing" and back.reason == "Box damaged"
+
+    def test_unpaid_orders_cannot_be_picked(self, client, admin_auth, packing_order, db):
+        job = job_for(client, admin_auth, packing_order["id"])
+        db.get(Order, packing_order["id"]).payment_status = "failed"
+        db.flush()
+        assert detail(client, admin_auth, job["id"])["actions"]["startPicking"] is False
+        response = client.post(f"{BASE}/{job['id']}/start-picking", headers=admin_auth)
+        assert response.status_code == 409 and response.json()["error_code"] == "PAYMENT_REQUIRED"
+        assert "payment is failed" in response.json()["message"]
 
 
 # -------------------------------------------------------- cancellation
@@ -335,7 +372,14 @@ class TestCancellation:
     def test_cancelling_the_order_cancels_the_job(self, client, auth, admin_auth, packing_order, db):
         job = job_for(client, admin_auth, packing_order["id"])
         call(client, admin_auth, "POST", f"/{job['id']}/start-picking")
-        response = client.post(f"/api/orders/{packing_order['id']}/cancel", headers=auth, json={"reason": "Changed"})
+        # Once picking starts the customer can't cancel online, and the store needs a reason.
+        customer = client.post(f"/api/orders/{packing_order['id']}/cancel", headers=auth, json={"reason": "Changed"})
+        assert customer.status_code == 409 and customer.json()["error_code"] == "ORDER_NOT_CANCELLABLE"
+        no_reason = client.put(f"/api/admin/orders/{packing_order['id']}/status", headers=admin_auth,
+                               json={"status": "cancelled"})
+        assert no_reason.status_code == 422 and no_reason.json()["error_code"] == "REASON_REQUIRED"
+        response = client.put(f"/api/admin/orders/{packing_order['id']}/status", headers=admin_auth,
+                              json={"status": "cancelled", "reason": "Customer called to cancel"})
         assert response.status_code == 200, response.text
         data = detail(client, admin_auth, job["id"])
         assert data["status"] == "cancelled"
@@ -389,11 +433,26 @@ class TestShipment:
         data = detail(client, admin_auth, job["id"])
         assert data["status"] == "packed" and {p["shipmentId"] for p in data["packages"]} == {None}
 
-    def test_packing_after_the_shipment_hands_over_on_packed(self, client, admin_auth, packing_order, manual_on):
-        shipment = created(client, admin_auth, packing_order["id"])
+    def test_no_shipment_before_packing_is_complete(self, client, admin_auth, packing_order, manual_on):
+        from tests.integration.test_shipping_helpers import create
+
         job = job_for(client, admin_auth, packing_order["id"])
-        data = packed(client, admin_auth, job)
+        response = create(client, admin_auth, packing_order["id"])
+        assert response.status_code == 409 and response.json()["error_code"] == "PACKING_INCOMPLETE"
+        picked(client, admin_auth, job)
+        assert create(client, admin_auth, packing_order["id"]).json()["error_code"] == "PACKING_INCOMPLETE"
+
+    def test_a_shipment_takes_the_packed_job_out_of_the_open_queue(self, client, admin_auth, packing_order,
+                                                                   manual_on):
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        shipment = created(client, admin_auth, packing_order["id"])
+        data = detail(client, admin_auth, job["id"])
         assert data["status"] == "ready-to-ship" and data["shipment"]["id"] == shipment["id"]
+        assert call(client, admin_auth, "GET", "")["data"]["items"] == []
+        handed = call(client, admin_auth, "GET", "?status=ready-to-ship")["data"]
+        assert [i["id"] for i in handed["items"]] == [job["id"]]
+        assert handed["counts"]["ready-to-ship"] == 1
 
     def test_ready_needs_a_shipment(self, client, admin_auth, packing_order, manual_on):
         job = job_for(client, admin_auth, packing_order["id"])
@@ -401,9 +460,14 @@ class TestShipment:
         response = client.post(f"{BASE}/{job['id']}/ready", headers=admin_auth)
         assert response.status_code == 409 and response.json()["error_code"] == "SHIPMENT_REQUIRED"
 
-    def test_shipments_without_packing_still_work(self, client, admin_auth, packing_order, manual_on):
-        shipment = created(client, admin_auth, packing_order["id"])
-        assert shipment["package"]["weightGrams"] == 800
+    def test_the_shipment_is_prefilled_from_the_packages(self, client, admin_auth, packing_order, manual_on):
+        from tests.integration.test_shipping_helpers import create
+
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        response = create(client, admin_auth, packing_order["id"], package={})
+        assert response.status_code == 201, response.text
+        assert response.json()["data"]["package"]["weightGrams"] == BOX["weightGrams"]
 
 
 # --------------------------------------------------------------- queue

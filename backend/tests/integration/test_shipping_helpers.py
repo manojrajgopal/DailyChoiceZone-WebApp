@@ -148,10 +148,39 @@ def place_order(client, auth, *, payment_method: str = "cod", product_id: str = 
     return data.get("order", data)
 
 
+def pack(client, admin_headers, order_id: str, package=None) -> dict:
+    """
+    Pick and pack an order through the packing API, as the warehouse does: a
+    shipment can only be created for a packed order (docs/order-fulfilment.md).
+    Returns the packing job.
+    """
+    card = client.get(f"/api/admin/orders/{order_id}/packing", headers=admin_headers)
+    assert card.status_code == 200, card.text
+    job_id = card.json()["data"]["job"]["id"]
+    base = f"/api/admin/packing/{job_id}"
+    for method, path, body, expect in (
+        ("POST", "/pick-all", None, 200),
+        ("POST", "/complete-picking", None, 200),
+        ("POST", "/packages", package or {"weightGrams": 800, "lengthCm": 30, "widthCm": 20, "heightCm": 5,
+                                          "type": "box"}, 201),
+        ("POST", "/packed", {}, 200),
+    ):
+        response = client.request(method, base + path, headers=admin_headers, json=body)
+        assert response.status_code == expect, (path, response.text)
+    return response.json()["data"]
+
+
+def packed_order(client, auth, admin_headers, **kwargs) -> dict:
+    """A placed order, picked and packed: ready for a shipment."""
+    placed = place_order(client, auth, **kwargs)
+    pack(client, admin_headers, placed["id"])
+    return placed
+
+
 @pytest.fixture()
-def order(client, auth, catalogue, settings_documents) -> dict:
-    """A confirmed cash-on-delivery order: shippable."""
-    return place_order(client, auth)
+def order(client, auth, admin_auth, catalogue, settings_documents) -> dict:
+    """A cash-on-delivery order, confirmed, picked and packed: shippable."""
+    return packed_order(client, auth, admin_auth)
 
 
 def create(client, headers, order_id: str, provider: str = "manual", key: str = "key-00000001", **overrides):

@@ -9,7 +9,7 @@ describe("OrderStatusBadge", () => {
   it.each([
     ["pending", "Order placed", "bg-cream-deep"],
     ["confirmed", "Confirmed", "bg-ink"],
-    ["processing", "Processing", "bg-ink"],
+    ["processing", "Being packed", "bg-ink"],
     ["packed", "Packed", "bg-ink"],
     ["shipped", "Shipped", "bg-ink"],
     ["in-transit", "In transit", "bg-ink"],

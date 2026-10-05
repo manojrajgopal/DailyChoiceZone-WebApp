@@ -27,6 +27,8 @@ from app.services.payments.base import PaymentResult
 from app.services.payments.mock import MockPaymentProvider
 from tests.integration.test_orders import ADDRESS, add, place, someone_elses_order
 
+from tests.integration.fulfilment_helpers import advance  # noqa: E402
+
 pytestmark = pytest.mark.integration
 
 
@@ -461,22 +463,26 @@ class TestThePortal:
         from app.models import AuditLog
 
         order_id = place(client, ready).json()["data"]["order"]["id"]
+        skipped = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth,
+                             json={"status": "packed", "note": "Rush", "confirm": True})
+        assert skipped.status_code == 409  # no confirmation skips packing any more
         response = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth,
-                              json={"status": "packed", "note": "Rush", "confirm": True})
+                              json={"status": "cancelled", "note": "Customer called", "reason": "Duplicate order"})
         assert response.status_code == 200
-        assert response.json()["data"]["timeline"][-1]["note"] == "Skipped Processing. Rush"
+        assert response.json()["data"]["timeline"][-1]["note"] == "Customer called"
         entry = db.query(AuditLog).filter(AuditLog.summary.like("Moved order%")).one()
-        assert entry.changes == {"status": {"from": "confirmed", "to": "packed"}}
+        assert entry.changes == {"status": {"from": "confirmed", "to": "cancelled"}}
+        assert entry.details == {"note": "Customer called", "reason": "Duplicate order"}
 
     def test_delivery_settles_cash_on_delivery_and_a_return_follows(self, client, db, ready, admin_auth):
         order_id = place(client, ready).json()["data"]["order"]["id"]
-        moved = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth,
-                           json={"status": "delivered", "confirm": True})
-        assert moved.status_code == 200
+        advance(client, admin_auth, order_id, "delivered")
+        moved = client.get(f"/api/admin/orders/{order_id}", headers=admin_auth)
         assert moved.json()["data"]["paymentStatus"] == "paid"
+        # Delivered is final: items coming back are a return request.
         returned = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth,
-                              json={"status": "returned"})
-        assert returned.status_code == 200 and returned.json()["data"]["status"] == "returned"
+                              json={"status": "returned", "reason": "Sent back"})
+        assert returned.status_code == 409
         again = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth,
                            json={"status": "processing", "confirm": True})
         assert again.status_code == 409 and again.json()["error_code"] == "INVALID_TRANSITION"
@@ -517,8 +523,7 @@ class TestTheTimelineIsTheRecord:
     def test_each_move_adds_one_event(self, client, db, ready, admin_auth):
         order_id = place(client, ready).json()["data"]["order"]["id"]
         for status in ("processing", "packed", "shipped"):
-            assert client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth,
-                              json={"status": status}).status_code == 200
+            advance(client, admin_auth, order_id, status)
         statuses = [e.status for e in db.query(OrderEvent).filter_by(order_id=order_id).order_by(OrderEvent.id)]
         assert statuses == ["pending", "confirmed", "processing", "packed", "shipped"]
         # Shipped: the customer can no longer cancel.

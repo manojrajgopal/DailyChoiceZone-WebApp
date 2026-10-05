@@ -12,6 +12,7 @@ from app.core import rate_limit
 from app.models import Referral, SettingDocument, StoreCreditTransaction
 from app.services import referrals, store_credit
 from tests.integration.wallet_helpers import fill_bag, mailbox, place  # noqa: F401
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -56,9 +57,8 @@ def configure(db, **values):
 
 
 def deliver(client, admin_auth, order_id):
-    for status in ("processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"):
-        response = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth, json={"status": status})
-        assert response.status_code == 200, response.text
+    """Picked, packed, shipped and delivered, the way the store does it (docs/order-fulfilment.md)."""
+    advance(client, admin_auth, order_id, "delivered")
 
 
 def credit(db, customer_id) -> int:

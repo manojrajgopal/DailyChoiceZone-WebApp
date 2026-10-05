@@ -194,8 +194,18 @@ class OrderEvent(Base):
         BusinessId, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False)
+    # The status it moved from; "" for the first event and for older rows.
+    from_status: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
     note: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # An admin id, or "system" / "customer".
+    # Why, when the move needed one (docs/order-fulfilment.md).
+    reason: Mapped[str] = mapped_column(String(300), nullable=False, default="", server_default="")
+    # Which part of the system moved it: admin | packing | shipment | payment |
+    # customer | system. "" for events written before this was recorded.
+    source: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
+    # The record the change came from: "packing" + job id, "shipment" + number.
+    related_type: Mapped[str] = mapped_column(String(20), nullable=False, default="", server_default="")
+    related_id: Mapped[str] = mapped_column(String(40), nullable=False, default="", server_default="")
+    # An admin id, or "system" / "customer" / "courier".
     actor: Mapped[str] = mapped_column(String(40), nullable=False, default="system")
     occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

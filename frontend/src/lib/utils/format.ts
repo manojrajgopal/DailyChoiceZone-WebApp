@@ -47,6 +47,23 @@ export function formatDate(input: string | number | Date): string {
   }).format(date);
 }
 
+/**
+ * A server timestamp as a date and time in the store's clock:
+ * `2026-09-29T04:42:00` becomes `29 Sept 2026, 10:12 am`.
+ */
+export function formatDateTime(input: string | number | Date): string {
+  const date = input instanceof Date ? input : new Date(asUtc(input));
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: STORE_TIME_ZONE,
+  }).format(date);
+}
+
 /** Where the store trades; dates and times are shown in its clock. */
 export const STORE_TIME_ZONE = "Asia/Kolkata";
 

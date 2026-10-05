@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from tests.integration.test_orders import ADDRESS, add, place
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -31,11 +32,8 @@ def delivered(client, auth, admin_auth, catalogue, settings_documents):
     """A cash-on-delivery order for 2 × PRD001, delivered (and so paid)."""
     add(client, auth, "PRD001", 2)
     order = place(client, auth).json()["data"]["order"]
-    response = client.put(
-        f"/api/admin/orders/{order['id']}/status",
-        headers=admin_auth,
-        json={"status": "delivered", "note": "", "confirm": True},
-    )
+    advance(client, admin_auth, order["id"], "delivered")
+    response = client.get(f"/api/admin/orders/{order['id']}", headers=admin_auth)
     assert response.status_code == 200, response.text
     return order
 
@@ -106,11 +104,7 @@ class TestWhoMayAsk:
         add(client, auth, "PRD001", 1)
         order = place(client, auth).json()["data"]["order"]
         client.put("/api/products/PRD001", headers=admin_auth, json={"isReturnable": False})
-        client.put(
-            f"/api/admin/orders/{order['id']}/status",
-            headers=admin_auth,
-            json={"status": "delivered", "confirm": True},
-        )
+        advance(client, admin_auth, order["id"], "delivered")
         assert ask(client, auth, order).status_code == 201
 
     def test_new_orders_carry_the_new_policy(self, client, auth, admin_auth, catalogue, settings_documents):
@@ -217,8 +211,7 @@ class TestFindingByID:
     def two(self, client, auth, admin_auth, delivered):
         add(client, auth, "PRD002", 1)
         second = place(client, auth).json()["data"]["order"]
-        assert client.put(f"/api/admin/orders/{second['id']}/status", headers=admin_auth,
-                          json={"status": "delivered", "note": "", "confirm": True}).status_code == 200
+        advance(client, admin_auth, second["id"], "delivered")
         first_request = ask(client, auth, delivered).json()["data"]
         second_request = ask(client, auth, second).json()["data"]
         return (delivered, first_request), (second, second_request)

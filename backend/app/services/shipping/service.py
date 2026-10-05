@@ -8,12 +8,20 @@ the courier reports. See docs/shipping-and-suppliers.md, sections 4, 6-8.
   idempotent on the client's `idempotencyKey`. The row is committed **before**
   the courier is called, so a failure or a timeout leaves a `pending` record
   that a retry continues from, never a second courier order.
-- A shipment's status moves forward only (a delivery attempt may fall back to
-  out-for-delivery or in-transit); a terminal status never changes through a
-  courier. Unknown courier text is recorded and moves nothing.
-- The order moves **forward only**, through `orders.update_status`, so every
-  order email and side effect keeps working. A refusal is recorded, never raised
-  into a webhook.
+- **A shipment is created only for a packed order** (its packing job packed),
+  or to record the missing shipment of an order already dispatched without
+  one (legacy data), or to re-ship after a return to origin. Never for an
+  order whose payment blocks fulfilment.
+- Two kinds of move, both defined in `fulfilment/workflow.py`
+  (docs/order-fulfilment.md):
+  - **Manual** (`transition`, the portal): strictly one step at a time from
+    `SHIPMENT_TRANSITIONS`, with a reason for exceptions and backward moves.
+  - **Courier** (webhook, poll): `courier_can_move`, which lets a missed scan
+    be passed over but never moves backwards along the line or out of a
+    terminal state. Unknown courier text is recorded and moves nothing.
+- The order moves **forward only**, through
+  `orders.update_status(source="shipment")`, so every order email and side
+  effect keeps working. A refusal is recorded, never raised into a webhook.
 - Staff alerts go once per shipment per kind (`alerts_sent`).
 """
 
@@ -35,6 +43,7 @@ from app.core.errors import AppError, ConflictError, NotFoundError, ValidationEr
 from app.models import Order
 from app.models.shipping import Shipment, ShipmentEvent
 from app.services import audit, billing
+from app.services.fulfilment import workflow
 from app.services.shipping import registry
 from app.services.shipping.base import (
     BEFORE_PICKUP,
@@ -59,9 +68,12 @@ LINE = ("pending", "ready-for-pickup", "pickup-scheduled", "picked-up", "in-tran
 # A parcel with the courier and moving (or meant to be): polled, and watched for being stuck.
 IN_TRANSIT = {"picked-up", "in-transit", "at-destination-hub", "out-for-delivery", "delivery-attempted"}
 # Shipment status -> the order status it implies (forward only).
-ORDER_MOVE = {"picked-up": "shipped", "in-transit": "in-transit", "at-destination-hub": "in-transit",
-              "out-for-delivery": "out-for-delivery", "delivered": "delivered"}
-SHIPPABLE = {"confirmed", "processing", "packed"}
+ORDER_MOVE = workflow.SHIPMENT_TO_ORDER
+# A shipment is created for a packed order. An order already dispatched with
+# no active shipment (moved by hand before this was enforced, or back from a
+# return to origin) may have one recorded too.
+SHIPPABLE = {"packed"}
+RECORDABLE = set(workflow.RECORDABLE_STATUSES)
 
 BACKOFF_MINUTES = (2, 4, 8, 16, 32)
 MAX_ATTEMPTS = 6
@@ -168,26 +180,8 @@ def package_view(package) -> dict:
 
 
 def can_move(current: str, new: str) -> bool:
-    """Whether a shipment may go from `current` to `new` (see the module docstring)."""
-    if not new or new == current or new not in STATUSES or new == "pending":
-        return False
-    if current in TERMINAL:
-        return False
-    if new == "cancelled":
-        return current in BEFORE_PICKUP
-    if current == "delivery-failed":
-        return new in ("returned-to-origin", "delivered")
-    if new == "delivery-failed":
-        return True
-    if new == "returned-to-origin":
-        return current != "pending"
-    if current == "delivery-attempted":
-        return new in ("in-transit", "at-destination-hub", "out-for-delivery", "delivered")
-    if new == "delivery-attempted":
-        return current in ("picked-up", "in-transit", "at-destination-hub", "out-for-delivery")
-    if current in LINE and new in LINE:
-        return LINE.index(new) > LINE.index(current)
-    return False
+    """Whether a courier update may move a shipment from `current` to `new` (`workflow.courier_can_move`)."""
+    return workflow.courier_can_move(current, new)
 
 
 def dedupe_key(event: TrackingEvent) -> str:
@@ -392,11 +386,27 @@ def admin_view(db: Session, shipment: Shipment) -> dict:
                       "lastSyncedAt": shipment.last_synced_at, "nextSyncAt": shipment.next_sync_at,
                       "lastWebhookAt": shipment.last_webhook_at},
         "actions": actions(shipment, supports),
+        "transitions": transitions(shipment),
         "createdAt": shipment.created_at, "updatedAt": shipment.updated_at, "createdBy": shipment.created_by,
     }
 
 
+def transitions(shipment: Shipment) -> List[dict]:
+    """
+    The manual moves offered from here, straight from `workflow.SHIPMENT_TRANSITIONS`.
+    Nothing but cancelling until the courier has confirmed the booking (an AWB).
+    """
+    out = []
+    for move in workflow.shipment_moves(shipment.status):
+        if move.kind != "cancel" and not shipment.awb:
+            continue
+        out.append({"status": move.target, "label": workflow.shipment_label(move.target), "action": move.action,
+                    "kind": move.kind, "requiresReason": move.reason_required})
+    return out
+
+
 def summary_view(shipment: Shipment, order: Optional[Order]) -> dict:
+    forward = next((m for m in transitions(shipment) if m["kind"] == "forward"), None)
     return {
         "id": shipment.id, "shipmentNumber": shipment.shipment_number, "status": shipment.status,
         "statusLabel": STATUS_LABELS.get(shipment.status, shipment.status), "orderId": shipment.order_id,
@@ -406,6 +416,9 @@ def summary_view(shipment: Shipment, order: Optional[Order]) -> dict:
         "requestStatus": shipment.request_status, "lastError": shipment.last_error,
         "expectedDeliveryAt": shipment.expected_delivery_at, "createdAt": shipment.created_at,
         "updatedAt": shipment.updated_at,
+        "orderStatus": order.status if order is not None else "",
+        "exception": shipment.status in workflow.SHIPMENT_EXCEPTIONS,
+        "nextAction": forward,
     }
 
 
@@ -499,13 +512,39 @@ def search(db: Session, *, q: str = "", order: str = "", status: str = "", couri
 # --------------------------------------------------------- order overview
 
 
-def _shippable_reason(order: Order) -> Tuple[Optional[str], str]:
-    """(error code, reason) when this order can't have a shipment created, else (None, "")."""
+def _shippable_reason(db: Session, order: Order) -> Tuple[Optional[str], str]:
+    """
+    (error code, reason) when this order can't have a shipment created, else
+    (None, ""). The business rule: packed first (docs/order-fulfilment.md).
+    """
     if order.status == "pending":
-        return "AWAITING_PAYMENT", "This order is waiting for its payment."
-    if order.status not in SHIPPABLE:
-        return "ORDER_NOT_SHIPPABLE", f"This order is {order.status.replace('-', ' ')}; it can't be shipped."
-    return None, ""
+        return "AWAITING_PAYMENT", "Shipment cannot be created: the order is waiting for its payment."
+    blocked = workflow.payment_blocker(order, action="shipped")
+    if blocked and order.status not in RECORDABLE:
+        return "PAYMENT_REQUIRED", blocked
+    if order.status in ("confirmed", "processing"):
+        return "PACKING_INCOMPLETE", ("Shipment cannot be created because packing has not been completed. "
+                                      "Pick and pack the order first.")
+    if order.status == "packed":
+        from app.models.fulfilment import PackingJob
+
+        job = db.execute(select(PackingJob).where(PackingJob.active_key == order.id)).scalar_one_or_none()
+        if job is None or job.status not in ("packed", "ready-to-ship"):
+            return "PACKING_INCOMPLETE", ("Shipment cannot be created because the order's packing job is not "
+                                          "packed. Complete packing first.")
+        return None, ""
+    if order.status in RECORDABLE:
+        return None, ""
+    return "ORDER_NOT_SHIPPABLE", f"This order is {workflow.label(order.status).lower()}; it can't be shipped."
+
+
+def _create_mode(db: Session, order: Order) -> str:
+    """normal | record-missing (dispatched with no shipment on record) | reship (after a return to origin)."""
+    if order.status not in RECORDABLE:
+        return "normal"
+    returned = db.execute(select(Shipment.id).where(Shipment.order_id == order.id,
+                                                   Shipment.status == "returned-to-origin")).first()
+    return "reship" if returned else "record-missing"
 
 
 def order_overview(db: Session, order_id: str) -> dict:
@@ -518,7 +557,7 @@ def order_overview(db: Session, order_id: str) -> dict:
     active = next((s for s in shipments if s.active_key), None)
     rows = registry.active_rows(db)
     can_create, reason = True, ""
-    code, why = _shippable_reason(order)
+    code, why = _shippable_reason(db, order)
     if active is not None:
         can_create, reason = False, "This order already has an active shipment."
     elif code:
@@ -540,7 +579,8 @@ def order_overview(db: Session, order_id: str) -> dict:
         "order": _order_view(order), "destination": destination_of(order),
         "shipments": [summary_view(s, order) for s in shipments],
         "activeShipmentId": active.id if active is not None else None,
-        "canCreate": can_create, "reason": reason, "providers": provider_list,
+        "canCreate": can_create, "reason": reason, "reasonCode": code or "", "providers": provider_list,
+        "createMode": _create_mode(db, order),
         "defaultPackage": default_package,
         # The packed order's packages, aggregated, to prefill the shipment (docs/packing-and-labels.md).
         "packing": _packing_of(db, order),
@@ -622,7 +662,7 @@ def create(db: Session, admin, payload: dict) -> Tuple[Shipment, bool]:
     if active is not None:
         raise ConflictError(f"This order already has an active shipment ({active.shipment_number}).",
                             error_code="SHIPMENT_EXISTS", details={"shipmentId": active.id})
-    code, why = _shippable_reason(order)
+    code, why = _shippable_reason(db, order)
     if code:
         raise ConflictError(why, error_code=code)
 
@@ -806,14 +846,18 @@ def attempt_create(db: Session, shipment: Shipment, *, adapter=None, actor: str 
 # ------------------------------------------------------- applying updates
 
 
-def _move(db: Session, shipment: Shipment, new: str, *, when: datetime, key: str = "") -> List[tuple]:
+def _move(db: Session, shipment: Shipment, new: str, *, when: datetime, key: str = "",
+          checked: bool = False) -> List[tuple]:
     """
-    Move the shipment if the rules allow. Returns the follow-ups to send once
-    it is saved: [(notification event, idempotency suffix)].
+    Move the shipment if the rules allow (`checked`: a manual move already
+    validated against `workflow.SHIPMENT_TRANSITIONS`). Returns the
+    follow-ups to send once it is saved: [(notification event, idempotency suffix)].
     """
     from app.services.messaging.catalogue import SHIPMENT_EVENTS
 
-    if not can_move(shipment.status, new):
+    if not checked and not can_move(shipment.status, new):
+        return []
+    if new == shipment.status:
         return []
     shipment.status = new
     shipment.updated_at = _now()
@@ -822,6 +866,10 @@ def _move(db: Session, shipment: Shipment, new: str, *, when: datetime, key: str
     if new == "cancelled":
         shipment.active_key = None
         shipment.cancelled_at = shipment.cancelled_at or _now()
+    if new == "returned-to-origin":
+        # Closed: the order is free to be re-shipped, or recorded as returned.
+        shipment.active_key = None
+        shipment.next_sync_at = None
     follow = []
     event = SHIPMENT_EVENTS.get(new)
     if event:
@@ -927,8 +975,10 @@ def move_order(db: Session, shipment: Shipment, order: Order, *, actor: str) -> 
     if orders.ORDER_FLOW.index(target) <= orders.ORDER_FLOW.index(current):
         return
     try:
-        orders.update_status(db, order.id, target, actor=actor or "courier", confirm=True,
-                             note=f"Courier update for shipment {shipment.shipment_number}.")
+        orders.update_status(db, order.id, target, actor=actor or "courier", source="shipment",
+                             note=f"Shipment {shipment.shipment_number}: "
+                                  f"{workflow.shipment_label(shipment.status).lower()}.",
+                             related_type="shipment", related_id=shipment.shipment_number)
     except (ConflictError, ValidationError) as error:
         db.rollback()
         key = f"order-move:{current}:{target}"[:80]
@@ -1182,33 +1232,128 @@ def _parse_when(value) -> Optional[datetime]:
 
 
 def add_event(db: Session, shipment_id, payload: dict, *, admin) -> Shipment:
-    """A tracking update entered by the team. It moves the shipment and order like a courier event."""
+    """
+    A tracking update entered by the team. The same status again records a
+    note (a location scan); a new status is a manual transition, held to
+    `workflow.SHIPMENT_TRANSITIONS` like every other.
+    """
     shipment = get(db, shipment_id, lock=True)
     status = payload.get("status") if isinstance(payload.get("status"), str) else ""
     if status not in STATUSES or status in ("pending", "cancelled"):
         raise ValidationError("Choose a tracking status (cancel the shipment to cancel it).",
                               error_code="INVALID_STATUS")
+    if status != shipment.status:
+        return transition(db, shipment_id, payload, admin=admin, shipment=shipment)
     if shipment.status in TERMINAL:
         raise ConflictError(f"This shipment is {STATUS_LABELS[shipment.status].lower()}; it can't move any more.",
                             error_code="SHIPMENT_CLOSED")
-    if status != shipment.status and not can_move(shipment.status, status):
-        raise ConflictError(f"A shipment can't go from {STATUS_LABELS[shipment.status]} to {STATUS_LABELS[status]}.",
-                            error_code="INVALID_SHIPMENT_TRANSITION")
     if not shipment.awb:
         raise ConflictError("Record the AWB first.", error_code="AWB_REQUIRED")
-    when = _parse_when(payload.get("occurredAt")) or _now()
-    if when > datetime.utcnow() + timedelta(minutes=5):
-        raise ValidationError("occurredAt can't be in the future.", error_code="INVALID_DATE")
+    when = _when(payload)
     description = _clean_text(payload.get("description"), 500) or STATUS_LABELS[status]
     location = _clean_text(payload.get("location"), 160)
     visible = payload.get("visible")
     visible = True if visible is None else bool(visible)
-    key = f"admin:{secrets.token_hex(16)}"
     _event(db, shipment, status=status, description=description, location=location, source="admin",
-           actor=admin.id, visible=visible, occurred_at=when, key=key)
-    follow = _move(db, shipment, status, when=when, key=key)
-    shipment.next_sync_at = next_sync_at(shipment)
+           actor=admin.id, visible=visible, occurred_at=when, key=f"admin:{secrets.token_hex(16)}")
     audit.record(db, "shipment.event", resource_type="shipment", resource_id=shipment.shipment_number, actor=admin,
-                 summary=f"Tracking update on {shipment.shipment_number}: {STATUS_LABELS[status]}")
+                 summary=f"Tracking note on {shipment.shipment_number}: {STATUS_LABELS[status]}")
+    db.commit()
+    return shipment
+
+
+def _when(payload: dict) -> datetime:
+    when = _parse_when(payload.get("occurredAt")) or _now()
+    if when > datetime.utcnow() + timedelta(minutes=5):
+        raise ValidationError("occurredAt can't be in the future.", error_code="INVALID_DATE")
+    return when
+
+
+def transition(db: Session, shipment_id, payload: dict, *, admin, shipment: Optional[Shipment] = None) -> Shipment:
+    """
+    Move a shipment one step by hand: `POST /admin/shipments/{id}/status`.
+
+    Only the moves `workflow.SHIPMENT_TRANSITIONS` offers from the current
+    status; exceptions and backward moves need a reason, which is recorded on
+    the event and in the audit log. Cancelling goes through `cancel` (the
+    courier is told), scheduling a pickup through the courier when it can.
+    The order follows through `_finish`.
+    """
+    shipment = shipment or get(db, shipment_id, lock=True)
+    target = payload.get("status") if isinstance(payload.get("status"), str) else ""
+    reason = _clean_text(payload.get("reason"), 300)
+    move = workflow.check_shipment_move(shipment.status, target, reason=reason)
+    if move.kind == "cancel":
+        return cancel(db, shipment.id, admin=admin, reason=reason)
+    if not shipment.awb:
+        raise ConflictError("Record the AWB first: the courier hasn't confirmed this shipment yet.",
+                            error_code="AWB_REQUIRED")
+    adapter = _adapter(shipment)
+    if target == "pickup-scheduled" and adapter.supports().get("pickup") and shipment.provider_shipment_id:
+        return pickup(db, shipment.id, admin=admin)
+    when = _when(payload)
+    before = shipment.status
+    note = _clean_text(payload.get("description"), 500)
+    description = ". ".join(part for part in (move.action if move.kind != "forward" else
+                                               workflow.shipment_label(target), reason, note) if part)
+    location = _clean_text(payload.get("location"), 160)
+    key = f"admin:{secrets.token_hex(16)}"
+    visible = payload.get("visible")
+    # A step back is the store's own correction: the customer's tracking never shows it.
+    visible = (True if visible is None else bool(visible)) and move.kind != "back"
+    _event(db, shipment, status=target, description=description, location=location, source="admin",
+           actor=admin.id, visible=visible, occurred_at=when, key=key)
+    if move.kind == "back" and target == "ready-for-pickup":
+        shipment.pickup_status, shipment.pickup_scheduled_at, shipment.pickup_token = "", None, ""
+    follow = _move(db, shipment, target, when=when, key=key, checked=True)
+    shipment.next_sync_at = next_sync_at(shipment)
+    audit.record(db, "shipment.status", resource_type="shipment", resource_id=shipment.shipment_number, actor=admin,
+                 summary=f"{shipment.shipment_number}: {workflow.shipment_label(before)} to "
+                         f"{workflow.shipment_label(target)}" + (f" ({reason})" if reason else ""),
+                 changes=audit.diff({"status": before}, {"status": target}),
+                 details={"reason": reason} if reason else None)
     _finish(db, shipment, db.get(Order, shipment.order_id), follow, actor=admin.id)
     return shipment
+
+
+# ---------------------------------------------------------------- pipeline
+
+
+def pipeline(db: Session, *, limit: int = 10) -> dict:
+    """
+    What the Shipments page needs around the shipment list: packed orders
+    waiting for a shipment, orders dispatched with no shipment on record
+    (data from before the workflow was enforced), and whether any courier is
+    switched on. Read only; nothing is created here.
+    """
+    from app.models.fulfilment import PackingJob
+    from app.services.fulfilment import packing
+
+    packing.sync(db)
+    ready_rows = list(db.execute(
+        select(PackingJob, Order).join(Order, Order.id == PackingJob.order_id)
+        .where(PackingJob.status == "packed", PackingJob.active_key.is_not(None), Order.status == "packed")
+        .order_by(PackingJob.packed_at, PackingJob.id)
+    ).all())
+    has_active = select(Shipment.id).where(Shipment.active_key == Order.id).exists()
+    missing = list(db.execute(
+        select(Order).where(Order.status.in_(tuple(RECORDABLE)), ~has_active).order_by(Order.placed_at)
+    ).scalars())
+    has_any = select(Shipment.id).where(Shipment.order_id == Order.id).exists()
+    delivered_unrecorded = db.execute(
+        select(func.count()).select_from(Order).where(Order.status == "delivered", ~has_any)).scalar_one()
+
+    def order_row(order: Order, job=None) -> dict:
+        return {"orderId": order.id, "orderNumber": order.order_number, "customerName": order.customer_name,
+                "status": order.status, "statusLabel": workflow.label(order.status),
+                "paymentStatus": order.payment_status, "placedAt": order.placed_at,
+                "packedAt": job.packed_at if job is not None else None,
+                "packingJobId": job.id if job is not None else None,
+                "packageCount": len([p for p in job.packages if p.removed_at is None]) if job is not None else 0}
+
+    return {
+        "readyToShip": {"count": len(ready_rows), "items": [order_row(o, j) for j, o in ready_rows[:limit]]},
+        "missingShipments": {"count": len(missing), "items": [order_row(o) for o in missing[:limit]]},
+        "deliveredWithoutShipment": int(delivered_unrecorded),
+        "couriersActive": bool(registry.active_rows(db)),
+    }

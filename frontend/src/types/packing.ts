@@ -18,8 +18,8 @@ export const PACKING_STATUS_LABELS: Record<PackingStatus, string> = {
   picking: "Picking",
   picked: "Picked",
   packing: "Packing",
-  packed: "Packed",
-  "ready-to-ship": "Ready to ship",
+  packed: "Packed · ready to ship",
+  "ready-to-ship": "Handed to shipping",
   cancelled: "Cancelled",
 };
 
@@ -221,6 +221,8 @@ export interface PackageInput {
 export interface PackingSummary {
   waitingToPick: number;
   waitingToPack: number;
+  /** Packed, waiting for a shipment to be created. */
+  readyToShip?: number;
   packedToday: number;
   overdue: number;
   slaHours: number;

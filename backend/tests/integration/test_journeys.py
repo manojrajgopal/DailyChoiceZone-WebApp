@@ -16,6 +16,8 @@ import pytest
 
 from app.core import rate_limit
 
+from tests.integration.fulfilment_helpers import advance  # noqa: E402
+
 pytestmark = pytest.mark.integration
 
 ADDRESS = {"fullName": "Asha Rao", "phone": "9876500001", "line1": "4 Brigade Road", "line2": "",
@@ -73,7 +75,7 @@ class TestPrepaidOrderToRefund:
 
         # The team moves it through every stage; each one is on the timeline.
         for stage in STAGES:
-            _move(client, admin_auth, order_id, stage)
+            advance(client, admin_auth, order_id, stage)
         timeline = [e["status"] for e in client.get(f"/api/orders/{order_id}", headers=auth).json()["data"]["timeline"]]
         assert timeline[-len(STAGES):] == STAGES
 
@@ -114,7 +116,7 @@ class TestPrepaidOrderToRefund:
         placed = _checkout(client, auth, quantity=1)
         order_id = placed["order"]["id"]
         for stage in STAGES:
-            _move(client, admin_auth, order_id, stage)
+            advance(client, admin_auth, order_id, stage)
         item_id = client.get(f"/api/orders/{order_id}/returns", headers=auth).json()["data"]["eligibility"]["items"][0][
             "orderItemId"]
         request_id = client.post(f"/api/orders/{order_id}/returns", headers=auth, json={
@@ -139,7 +141,7 @@ class TestCashOnDelivery:
         assert _stock(db, "PRD001") == start - 1
 
         for stage in STAGES:
-            _move(client, admin_auth, order_id, stage)
+            advance(client, admin_auth, order_id, stage)
         # Delivering it records the courier's collection: the payment is settled.
         db.expire_all()
         assert db.get(Payment, placed["paymentId"]).status == "paid"

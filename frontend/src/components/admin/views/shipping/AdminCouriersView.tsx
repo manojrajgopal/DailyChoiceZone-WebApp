@@ -219,7 +219,11 @@ function ProviderCard({
     setTesting(true);
     setTest(null);
     try {
-      const result = await testShippingProvider(provider.code);
+      const typed = Object.fromEntries(Object.entries(credentials).filter(([, value]) => value.trim() !== ""));
+      const result = await testShippingProvider(provider.code, {
+        ...(Object.keys(typed).length > 0 ? { credentials: typed } : {}),
+        ...(environment ? { environment } : {}),
+      });
       setTest(result);
       onTested();
     } catch (error) {
@@ -389,6 +393,13 @@ function ProviderCard({
             <p className="mb-3 mt-0.5 text-[0.6875rem] text-admin-muted">
               Stored encrypted and never shown again. The placeholder shows which are set; leave a field blank to keep it.
             </p>
+            {provider.code === "shiprocket" ? (
+              <p className="mb-3 text-[0.6875rem] leading-relaxed text-admin-muted">
+                These are not your Shiprocket login. In your Shiprocket account go to Settings → API → Configure → Create an
+                API user, give it an email that is different from your login email, and enter that email and the password
+                Shiprocket sends you here.
+              </p>
+            ) : null}
             <FormGrid>
               {provider.credentialFields.map((field) => (
                 <AdminInput

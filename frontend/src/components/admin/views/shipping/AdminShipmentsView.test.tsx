@@ -47,7 +47,7 @@ describe("AdminShipmentsView", () => {
       api.get("/admin/shipping/providers", []);
       renderUI(<AdminShipmentsView />);
       expect(await screen.findByText("No shipments yet")).toBeInTheDocument();
-      expect(screen.getByText(/Create one from an order's page/)).toBeInTheDocument();
+      expect(screen.getByText(/created from an order's page once the order is packed/)).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /Clear filters/ })).not.toBeInTheDocument();
       // No pager for an empty list.
       expect(screen.queryByText(/^Showing/)).not.toBeInTheDocument();
@@ -60,6 +60,94 @@ describe("AdminShipmentsView", () => {
       renderUI(<AdminShipmentsView />);
       expect(await screen.findByText("No shipments match")).toBeInTheDocument();
       expect(screen.getByText("Try a different filter or search.")).toBeInTheDocument();
+    });
+  });
+
+  describe("the pipeline around the list", () => {
+    const pipeline = (overrides = {}) => ({
+      readyToShip: {
+        count: 2,
+        items: [
+          { orderId: "ORD050", orderNumber: "DCZ10050", customerName: "Ravi K", status: "packed", statusLabel: "Packed",
+            paymentStatus: "cod-pending", placedAt: "2026-10-01T05:00:00", packedAt: "2026-10-02T05:00:00",
+            packingJobId: 7, packageCount: 1 },
+        ],
+      },
+      missingShipments: {
+        count: 1,
+        items: [
+          { orderId: "ORD030", orderNumber: "DCZ10030", customerName: "Meera", status: "shipped", statusLabel: "Shipped",
+            paymentStatus: "paid", placedAt: "2026-09-01T05:00:00", packedAt: null, packingJobId: null, packageCount: 0 },
+        ],
+      },
+      deliveredWithoutShipment: 126,
+      couriersActive: false,
+      ...overrides,
+    });
+
+    it("counts packed orders ready for a shipment instead of pretending there is nothing", async () => {
+      api.get("/admin/shipments", page([]));
+      api.get("/admin/shipments/pipeline", pipeline());
+      renderUI(<AdminShipmentsView />);
+      expect(await screen.findByText("2 orders ready to create shipment")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Create shipment/ })).toHaveAttribute("href", "/admin/orders/detail?id=ORD050");
+      expect(await screen.findByText(/2 packed orders are ready — create their shipments/)).toBeInTheDocument();
+    });
+
+    it("says when no courier is on, and lists orders missing a shipment record", async () => {
+      api.get("/admin/shipments", page([]));
+      api.get("/admin/shipments/pipeline", pipeline());
+      renderUI(<AdminShipmentsView />);
+      expect(await screen.findByText(/No courier is switched on/)).toBeInTheDocument();
+      expect(screen.getByText("1 order was marked dispatched without a shipment record")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "#DCZ10030 (shipped)" })).toHaveAttribute("href", "/admin/orders/detail?id=ORD030");
+      expect(screen.getByText(/126 delivered orders have no shipment record/)).toBeInTheDocument();
+    });
+
+    it("shows nothing extra when everything is in order", async () => {
+      api.get("/admin/shipments", page([shipmentRow()]));
+      api.get("/admin/shipments/pipeline", pipeline({
+        readyToShip: { count: 0, items: [] }, missingShipments: { count: 0, items: [] },
+        deliveredWithoutShipment: 0, couriersActive: true,
+      }));
+      renderUI(<AdminShipmentsView />);
+      expect(await screen.findByRole("link", { name: "DCZ-SH-2026-000012" })).toBeInTheDocument();
+      expect(screen.queryByText(/ready to create shipment/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("next step", () => {
+    it("offers the server's next step and asks for a reason only when it needs one", async () => {
+      signIn("admin", "adm");
+      api.get("/admin/shipments", page([shipmentRow({
+        status: "ready-for-pickup", statusLabel: "Ready for pickup",
+        nextAction: { status: "pickup-scheduled", label: "Pickup scheduled", action: "Schedule pickup", kind: "forward",
+          requiresReason: false },
+      })]));
+      api.post("/admin/shipments/12/status", { id: 12, shipmentNumber: "DCZ-SH-2026-000012", status: "pickup-scheduled",
+        statusLabel: "Pickup scheduled" });
+      const { user } = renderUI(<AdminShipmentsView />);
+      await user.click(await screen.findByRole("button", { name: "Schedule pickup" }));
+      const dialog = screen.getByRole("dialog", { name: "Schedule pickup?" });
+      expect(within(dialog).queryByLabelText(/^Reason/)).not.toBeInTheDocument();
+      await user.click(within(dialog).getByRole("button", { name: "Schedule pickup" }));
+      await waitFor(() => expect(api.last("POST", "/admin/shipments/12/status")!.body).toEqual({
+        status: "pickup-scheduled", reason: "",
+      }));
+    });
+
+    it("shows the server's refusal in the dialog", async () => {
+      api.get("/admin/shipments", page([shipmentRow({
+        nextAction: { status: "at-destination-hub", label: "At destination hub", action: "Reached destination hub",
+          kind: "forward", requiresReason: false },
+      })]));
+      api.post("/admin/shipments/12/status",
+        fail(409, "Shipment cannot move from Delivered to At destination hub.", "INVALID_SHIPMENT_TRANSITION"));
+      const { user } = renderUI(<AdminShipmentsView />);
+      await user.click(await screen.findByRole("button", { name: "Reached destination hub" }));
+      const dialog = screen.getByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: "Reached destination hub" }));
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent("Shipment cannot move from Delivered");
     });
   });
 
@@ -106,8 +194,8 @@ describe("AdminShipmentsView", () => {
       expect(within(rows[1]!).getByText("9 Oct 2026")).toBeInTheDocument();
       expect(within(rows[1]!).getByText("2 Oct 2026")).toBeInTheDocument();
 
-      // Blank fields show a dash, and a failed courier request says why.
-      expect(within(rows[2]!).getAllByText("—")).toHaveLength(4);
+      // Blank fields show a dash (and no next step), and a failed courier request says why.
+      expect(within(rows[2]!).getAllByText("—")).toHaveLength(5);
       expect(within(rows[2]!).getByText("Courier request failed: Pincode not serviceable")).toBeInTheDocument();
       expect(within(rows[3]!).getByText("Waiting for the courier")).toBeInTheDocument();
 

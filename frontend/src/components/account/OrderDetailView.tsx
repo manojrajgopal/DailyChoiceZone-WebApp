@@ -26,6 +26,7 @@ import { useSession } from "@/hooks/useSession";
 import { cancelOrder, getOrder } from "@/services/orderService";
 import { ApiError } from "@/services/api/client";
 import { toast } from "@/store/toastStore";
+import { CUSTOMER_CANCELLABLE } from "@/lib/orders/orderFlow";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 
@@ -67,10 +68,10 @@ export function OrderDetailView() {
   const payOnDelivery =
     order?.paymentStatus === "cod-pending" && order.status !== "cancelled";
   const isPaid = order?.paymentStatus === "paid";
-  // The same stages the server lets a customer cancel from — before dispatch.
+  // The same stages the server lets a customer cancel from: before picking starts.
   const canCancel =
     order !== null &&
-    ["pending", "confirmed", "processing", "packed"].includes(order.status);
+    CUSTOMER_CANCELLABLE.has(order.status);
 
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);

@@ -11,9 +11,17 @@ See docs/packing-and-labels.md.
   to hook every path that confirms an order (checkout, a gateway webhook, a
   manual status change), and a job can never be missed.
 - **Packing never has its own order status system.** Starting to pick moves
-  the order to `processing`, marking the job packed moves it to `packed`, both
-  through `orders.update_status` (so the existing "we're preparing your order"
-  and "packed" messages go exactly once), and only ever forward.
+  the order to `processing` ("Packing"), marking the job packed moves it to
+  `packed`, and reopening a packed job to repack moves it back to
+  `processing`, all through `orders.update_status(source="packing")`, the
+  only source the workflow lets make those moves (`fulfilment/workflow.py`,
+  docs/order-fulfilment.md).
+- **Payment and stock come first.** Picking starts only when the order's
+  payment allows fulfilment (paid, or cash on delivery) and its stock is
+  committed to it.
+- **The packing queue is the warehouse's.** Once a job is handed to a
+  shipment (`ready-to-ship`) it leaves the open queue; the shipment carries
+  it from there.
 - **Picking never changes stock**: it was taken at the sale. A problem on the
   shelf is recorded on the line and blocks "picked" until it's cleared or the
   admin overrides it with a reason. Writing off damaged units is a separate,
@@ -43,14 +51,12 @@ from app.models.fulfilment import PackingEvent, PackingJob, PackingLine, Packing
 from app.models.shipping import Shipment
 from app.services import audit
 from app.services.fulfilment import settings as fulfilment_settings
+from app.services.fulfilment import workflow
 
 logger = logging.getLogger(__name__)
 
 STATUSES = ("pending", "picking", "picked", "packing", "packed", "ready-to-ship", "cancelled")
-STATUS_LABELS = {
-    "pending": "Waiting to pick", "picking": "Picking", "picked": "Picked", "packing": "Packing",
-    "packed": "Packed", "ready-to-ship": "Ready to ship", "cancelled": "Cancelled",
-}
+STATUS_LABELS = workflow.PACKING_LABELS
 PRIORITIES = ("normal", "high", "urgent")
 EXCEPTIONS = ("missing-stock", "damaged", "wrong-item")
 EXCEPTION_LABELS = {"missing-stock": "Missing stock", "damaged": "Damaged", "wrong-item": "Wrong item"}
@@ -284,15 +290,24 @@ def _reason(raw, *, field: str = "reason", required: bool = True) -> str:
     return text
 
 
-def _move_order(db: Session, order: Order, target: str, *, admin, note: str) -> None:
-    """Forward only. `update_status` commits the job's changes with the order's."""
+def _move_order(db: Session, order: Order, target: str, *, admin, note: str, job: Optional[PackingJob] = None,
+                reason: str = "") -> None:
+    """
+    Move the order with the job, through the workflow (source "packing").
+    `update_status` commits the job's changes with the order's, in one
+    transaction. An order already at or past `target` (a legacy order moved
+    by hand before packing was enforced) is left where it is.
+    """
     from app.services import orders
 
     current = order.status
-    if current not in orders.ORDER_FLOW or orders.ORDER_FLOW.index(target) <= orders.ORDER_FLOW.index(current):
+    backwards = target == "processing" and current == "packed" and bool(reason)
+    if not backwards and (current not in orders.ORDER_FLOW
+                          or orders.ORDER_FLOW.index(target) <= orders.ORDER_FLOW.index(current)):
         db.commit()
         return
-    orders.update_status(db, order.id, target, actor=_actor_id(admin), confirm=True, note=note)
+    orders.update_status(db, order.id, target, actor=_actor_id(admin), source="packing", note=note, reason=reason,
+                         related_type="packing", related_id=str(job.id) if job is not None else "")
 
 
 # ----------------------------------------------------------- assign, priority
@@ -361,13 +376,26 @@ def start_picking(db: Session, job_id, *, admin) -> PackingJob:
     order = _require_live_order(db, job)
     _require(job, ("pending",), "Picking has already started.")
     _begin_picking(db, job, order, admin=admin)
-    _move_order(db, order, "processing", admin=admin, note="Picking started.")
+    _move_order(db, order, "processing", admin=admin, note="Picking started.", job=job)
     return job
 
 
-def _begin_picking(db: Session, job: PackingJob, order: Order, *, admin) -> None:
+def picking_blocker(order: Order) -> Optional[Tuple[str, str]]:
+    """(error code, message) when this order mustn't be picked yet, else None."""
     if order.status == "pending":
-        raise ConflictError("This order is waiting for its payment.", error_code="AWAITING_PAYMENT")
+        return "AWAITING_PAYMENT", "Order cannot be packed until it is confirmed: it is waiting for its payment."
+    blocked = workflow.payment_blocker(order)
+    if blocked:
+        return "PAYMENT_REQUIRED", blocked
+    if order.stock_state != "consumed":
+        return "STOCK_NOT_COMMITTED", f"Order cannot be packed: its stock is not committed to it ({order.stock_state})."
+    return None
+
+
+def _begin_picking(db: Session, job: PackingJob, order: Order, *, admin) -> None:
+    blocked = picking_blocker(order)
+    if blocked:
+        raise ConflictError(blocked[1], error_code=blocked[0])
     job.picking_started_at = _now()
     if not job.assigned_to and isinstance(admin, AdminUser):
         job.assigned_to = admin.id
@@ -402,7 +430,7 @@ def pick_line(db: Session, job_id, line_id, quantity, *, admin) -> PackingJob:
         _audit(db, job, "pick", admin, f"Line {line.id}: {picked} of {line.quantity} picked",
                audit.diff({"pickedQty": before}, {"pickedQty": picked}))
     if to_move is not None:
-        _move_order(db, to_move, "processing", admin=admin, note="Picking started.")
+        _move_order(db, to_move, "processing", admin=admin, note="Picking started.", job=job)
     else:
         db.commit()
     return job
@@ -426,7 +454,7 @@ def pick_all(db: Session, job_id, *, admin) -> PackingJob:
                note=f"{len(changed)} line(s) marked fully picked.", details={"lineIds": changed})
         _audit(db, job, "pick-all", admin, f"{len(changed)} line(s) marked fully picked")
     if to_move is not None:
-        _move_order(db, to_move, "processing", admin=admin, note="Picking started.")
+        _move_order(db, to_move, "processing", admin=admin, note="Picking started.", job=job)
     else:
         db.commit()
     return job
@@ -451,7 +479,7 @@ def record_exception(db: Session, job_id, line_id, payload: dict, *, admin) -> P
     _audit(db, job, "exception", admin, f"Line {line.id}: {EXCEPTION_LABELS[kind]} x {quantity}",
            audit.diff(before, {"exception": kind, "exceptionQty": quantity}))
     if to_move is not None:
-        _move_order(db, to_move, "processing", admin=admin, note="Picking started.")
+        _move_order(db, to_move, "processing", admin=admin, note="Picking started.", job=job)
     else:
         db.commit()
     return job
@@ -813,7 +841,7 @@ def mark_packed(db: Session, job_id, *, admin, confirm: bool = False, override_r
     shipment = db.execute(select(Shipment).where(Shipment.active_key == order.id)).scalar_one_or_none()
     if shipment is not None:
         _link(db, job, shipment, admin=admin)
-    _move_order(db, order, "packed", admin=admin, note="Packed.")
+    _move_order(db, order, "packed", admin=admin, note="Packing completed.", job=job)
     return job
 
 
@@ -830,6 +858,7 @@ def reopen(db: Session, job_id, *, admin, target: str, reason) -> PackingJob:
                             error_code="SHIPMENT_ACTIVE")
     allowed = {"packing": ("packed",), "picking": ("picked", "packing", "packed")}[target]
     _require(job, allowed, f"A job that is {STATUS_LABELS[job.status].lower()} can't go back to {target}.")
+    was_packed = job.status == "packed"
     if target == "picking":
         job.picked_at = None
     job.packed_at, job.packed_by = None, ""
@@ -837,7 +866,12 @@ def reopen(db: Session, job_id, *, admin, target: str, reason) -> PackingJob:
         package.packed_at, package.packed_by = None, ""
     _set_status(db, job, target, "reopened", admin=admin, note=reason)
     _audit(db, job, "reopen", admin, f"Packing reopened to {target}: {reason}")
-    db.commit()
+    order = _order(db, job)
+    if was_packed and order is not None and order.status == "packed":
+        # The order goes back to Packing with it: it is no longer ready to ship.
+        _move_order(db, order, "processing", admin=admin, note=f"Reopened to {target}.", job=job, reason=reason)
+    else:
+        db.commit()
     return job
 
 
@@ -961,7 +995,7 @@ def actions(job: PackingJob, order: Optional[Order], check: dict) -> dict:
     status = job.status
     return {
         "assign": live and status in NOT_PACKED + ("packed",),
-        "startPicking": live and status == "pending" and order.status != "pending",
+        "startPicking": live and status == "pending" and picking_blocker(order) is None,
         "pick": live and status in ("pending", "picking"),
         "completePicking": live and status == "picking",
         "startPacking": live and status == "picked",
@@ -1043,6 +1077,7 @@ def detail_view(db: Session, job: PackingJob) -> dict:
             "courierName": shipment.courier_name, "awb": shipment.awb or "",
             "linked": job.shipment_id == shipment.id},
         "validation": check, "actions": actions(job, order, check),
+        "blocked": _blocked_view(job, order),
         "aging": _aging(job, order, int(config["slaHours"]), _now()) if order is not None else None,
         "pickOverrideReason": job.pick_override_reason, "packOverrideReason": job.pack_override_reason,
         "volumetricDivisor": divisor, "slipShowPrices": bool(config["slipShowPrices"]),
@@ -1055,6 +1090,14 @@ def detail_view(db: Session, job: PackingJob) -> dict:
                        "pickedAt": job.picked_at, "packingStartedAt": job.packing_started_at,
                        "packedAt": job.packed_at, "readyAt": job.ready_at, "cancelledAt": job.cancelled_at},
     }
+
+
+def _blocked_view(job: PackingJob, order: Optional[Order]) -> Optional[dict]:
+    """Why a job waiting to be picked can't start yet (payment, stock), for the workspace."""
+    if order is None or job.status != "pending":
+        return None
+    blocked = picking_blocker(order)
+    return {"code": blocked[0], "message": blocked[1]} if blocked else None
 
 
 def card_view(db: Session, order_id: str) -> dict:
@@ -1086,8 +1129,11 @@ def search(db: Session, *, admin=None, q: str = "", status: str = "", scope: str
     sla = _sla(db)
     now = _now()
     conditions = []
-    if scope != "all" and status != "cancelled":
-        conditions += [PackingJob.status != "cancelled", Order.status.not_in(GONE)]
+    # The open queue is the warehouse's work: not cancelled, not handed to a
+    # shipment, and the order still in the building. "Handed to shipping" and
+    # "Cancelled" are history tabs, shown when asked for.
+    open_scope = [PackingJob.status.in_(workflow.PACKING_OPEN), Order.status.not_in(GONE)]
+    history = status in ("ready-to-ship", "cancelled")
     # `q` is an Order ID (docs/id-lookup.md), matched exactly: never a name or an email.
     from app.services.lookup.filters import id_condition
 
@@ -1120,13 +1166,21 @@ def search(db: Session, *, admin=None, q: str = "", status: str = "", scope: str
         conditions.append(Order.delivery_method == shipping_type.strip()[:30])
     if overdue:
         conditions += [PackingJob.status.in_(NOT_PACKED), Order.placed_at < now - timedelta(hours=sla)]
+    filters = list(conditions)
+    if scope != "all" and not history:
+        conditions += open_scope
 
     def joined(statement):
         return (statement.join(Order, Order.id == PackingJob.order_id)
                 .outerjoin(Shipment, and_(Shipment.active_key == Order.id)))
 
     counts = dict(db.execute(joined(select(PackingJob.status, func.count()).select_from(PackingJob))
-                             .where(*conditions).group_by(PackingJob.status)).all())
+                             .where(*filters, *open_scope).group_by(PackingJob.status)).all())
+    # The history tabs count everything: they are never "open".
+    for key, value in db.execute(joined(select(PackingJob.status, func.count()).select_from(PackingJob))
+                                 .where(*filters, PackingJob.status.in_(("ready-to-ship", "cancelled")))
+                                 .group_by(PackingJob.status)).all():
+        counts[key] = value
     base = joined(select(PackingJob, Order, Shipment).select_from(PackingJob)).where(*conditions)
     if status in STATUSES:
         base = base.where(PackingJob.status == status)
@@ -1163,7 +1217,7 @@ def summary(db: Session) -> dict:
     now = _now()
     today = now.replace(hour=0, minute=0, second=0)
     sla = _sla(db)
-    open_scope = [PackingJob.status != "cancelled", Order.status.not_in(GONE)]
+    open_scope = [PackingJob.status.in_(workflow.PACKING_OPEN), Order.status.not_in(GONE)]
     counts = dict(db.execute(select(PackingJob.status, func.count()).join(Order, Order.id == PackingJob.order_id)
                              .where(*open_scope).group_by(PackingJob.status)).all())
     overdue = db.execute(select(func.count()).select_from(PackingJob).join(Order, Order.id == PackingJob.order_id)
@@ -1174,6 +1228,8 @@ def summary(db: Session) -> dict:
     return {
         "waitingToPick": int(counts.get("pending", 0) + counts.get("picking", 0)),
         "waitingToPack": int(counts.get("picked", 0) + counts.get("packing", 0)),
+        # Packed, waiting for a shipment to be created.
+        "readyToShip": int(counts.get("packed", 0)),
         "packedToday": int(packed_today),
         "overdue": int(overdue),
         "slaHours": sla,

@@ -9,6 +9,7 @@ import pytest
 
 from tests.integration.test_orders import add, place
 from tests.integration.test_payment_security import gateway  # noqa: F401 — fixture
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -156,12 +157,7 @@ class TestWhoGetsWhat:
         add(client, auth, "PRD001", 1)
         order = place(client, auth).json()["data"]["order"]
         outbox.clear()
-        client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
-                   json={"status": "processing"})
-        client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
-                   json={"status": "packed"})
-        client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
-                   json={"status": "shipped"})
+        advance(client, admin_auth, order["id"], "shipped")
         assert not outbox  # they turned shipping updates off
 
     def test_nothing_is_sent_without_an_account(self, client, auth, outbox, catalogue, settings_documents):
@@ -190,10 +186,13 @@ class TestEveryStepSendsSomething:
         order = place(client, auth).json()["data"]["order"]
         stages = ["processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"]
         for stage in stages:
+            if stage == "shipped":
+                # Booking the courier tells the customer too; that message is its own.
+                from tests.integration.fulfilment_helpers import _shipment
+
+                _shipment(client, admin_auth, order["id"])
             outbox.clear()
-            response = client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
-                                  json={"status": stage})
-            assert response.status_code == 200, response.text
+            advance(client, admin_auth, order["id"], stage)
             # Delivery also earns reward points, which is its own email; the
             # order update is still exactly one.
             updates = [mail for mail in outbox if "points" not in mail["subject"]]
@@ -206,8 +205,7 @@ class TestEveryStepSendsSomething:
         connect(client, admin_auth)
         add(client, auth, "PRD001", 1)
         order = place(client, auth).json()["data"]["order"]
-        client.put(f"/api/admin/orders/{order['id']}/status", headers=admin_auth,
-                   json={"status": "delivered", "confirm": True})
+        advance(client, admin_auth, order["id"], "delivered")
         outbox.clear()
         assert ask(client, auth, order).status_code == 201
         # The customer's confirmation; the store team is alerted separately.

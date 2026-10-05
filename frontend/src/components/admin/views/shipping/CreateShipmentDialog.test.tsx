@@ -80,6 +80,17 @@ describe("CreateShipmentDialog", () => {
       expect(within(dialog).getByRole("button", { name: "Create shipment" })).toBeDisabled();
     });
 
+    it("prefers the packed parcels over the courier's default package", () => {
+      const { dialog } = setup(orderShipping({
+        defaultPackage: PACKAGE,
+        packing: { jobId: 7, status: "packed", statusLabel: "Packed · ready to ship",
+          package: { weightGrams: 450, lengthCm: 20, widthCm: 15, heightCm: 8, count: 1, type: "box" } },
+      }));
+      expect(field(dialog, /^Weight/)).toHaveValue("450");
+      expect(field(dialog, /^Length/)).toHaveValue("20");
+      expect(dialog).toHaveTextContent("Prefilled from the packed parcels.");
+    });
+
     it("starts blank without a default package", () => {
       const { dialog } = setup(orderShipping());
       expect(field(dialog, /^Weight/)).toHaveValue("");

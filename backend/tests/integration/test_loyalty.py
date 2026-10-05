@@ -14,6 +14,7 @@ from app.core import rate_limit
 from app.models import LoyaltyAccount, LoyaltyLot, LoyaltyTransaction, Order
 from app.services import loyalty
 from tests.integration.wallet_helpers import fill_bag, mailbox, place, refund  # noqa: F401
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -26,9 +27,8 @@ def _fresh_limits():
 
 
 def deliver(client, admin_auth, order_id):
-    for status in ("processing", "packed", "shipped", "in-transit", "out-for-delivery", "delivered"):
-        response = client.put(f"/api/admin/orders/{order_id}/status", headers=admin_auth, json={"status": status})
-        assert response.status_code == 200, response.text
+    """Picked, packed, shipped and delivered, the way the store does it (docs/order-fulfilment.md)."""
+    advance(client, admin_auth, order_id, "delivered")
 
 
 def release_all(db, customer_id="CUS001"):
@@ -170,7 +170,8 @@ class TestTakingBack:
         fill_bag(client, auth)
         place(client, auth, points=147)
         assert available(db) == 0
-        client.put(f"/api/admin/orders/{placed['order']['id']}/status", headers=admin_auth, json={"status": "returned"})
+        # Items back after delivery are refunded (a return request ends in one), never a status change.
+        refund(client, admin_auth, placed["invoiceId"], 100000)
         db.expire_all()
         assert db.get(LoyaltyAccount, "CUS001").debt == 47 and loyalty.spendable(db, "CUS001") == -47
         summary = client.get("/api/account/rewards", headers=auth).json()["data"]
@@ -179,10 +180,19 @@ class TestTakingBack:
         give(client, admin_auth, 60)
         assert available(db) == 13
 
-    def test_a_return_status_takes_back_points(self, client, db, auth, admin_auth, catalogue, settings_documents,
-                                               mailbox):  # noqa: F811
+    def test_a_delivered_order_is_never_marked_returned(self, client, db, auth, admin_auth, catalogue,
+                                                        settings_documents, mailbox):  # noqa: F811
         placed = self._delivered(client, auth, admin_auth)
-        client.put(f"/api/admin/orders/{placed['order']['id']}/status", headers=admin_auth, json={"status": "returned"})
+        response = client.put(f"/api/admin/orders/{placed['order']['id']}/status", headers=admin_auth,
+                              json={"status": "returned", "reason": "Customer sent it back"})
+        assert response.status_code == 409
+        assert loyalty.pending(db, "CUS001") == 47
+
+    def test_a_return_to_origin_takes_back_nothing_it_never_gave(self, client, db, auth, admin_auth, catalogue,
+                                                                 settings_documents, mailbox):  # noqa: F811
+        fill_bag(client, auth)
+        placed = place(client, auth)
+        advance(client, admin_auth, placed["order"]["id"], "returned")
         assert loyalty.pending(db, "CUS001") == 0
 
 

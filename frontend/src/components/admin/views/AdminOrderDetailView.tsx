@@ -3,62 +3,40 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Check, Link2, Loader2, Package, Truck } from "lucide-react";
-
-import type { AdminOrderStatus } from "@/types/admin";
+import { Link2, Loader2, Package, Truck } from "lucide-react";
 
 import {
   AdminButton,
   AdminButtonLink,
   AdminCard,
   AdminPageHeader,
-  ConfirmDialog,
 } from "@/components/admin/ui/AdminChrome";
-import { AdminTextarea } from "@/components/admin/ui/AdminForm";
 import { DomainStatus, humanStatus } from "@/components/admin/ui/StatusBadge";
 import { OrderBillingPanel } from "@/components/admin/views/OrderBillingPanel";
 import { OrderRefundsCard } from "@/components/admin/views/refunds/OrderRefundsCard";
-import { OrderPackingPanel } from "@/components/admin/views/packing/OrderPackingPanel";
-import { OrderShippingCard } from "@/components/admin/views/shipping/OrderShippingCard";
+import { FulfilmentHistory } from "@/components/admin/views/fulfilment/FulfilmentHistory";
+import { OrderFulfilmentPanel } from "@/components/admin/views/fulfilment/OrderFulfilmentPanel";
 import { useAdminResource } from "@/hooks/useAdminResource";
 import { cn } from "@/lib/utils/cn";
 import { formatDate, formatPrice } from "@/lib/utils/format";
-import { currentActorId } from "@/services/admin/adminAuthService";
+import { stageLabel } from "@/lib/orders/orderFlow";
+import { getOrderFulfilment } from "@/services/admin/fulfilmentAdminService";
 import {
-  ORDER_FLOW,
-  ORDER_STAGES,
-  flowIndex,
-  needsConfirmation,
-  stageLabel,
-} from "@/lib/orders/orderFlow";
-import {
-  availableMovesFor,
   canSendPaymentLink,
   getOrder,
   sendPaymentLink,
-  updateOrderStatus,
 } from "@/services/admin/orderAdminService";
 import { toast } from "@/store/toastStore";
 import { paymentMethodLabel } from "@/services/billing/paymentService";
 
-/** The happy path, for the progress tracker. */
-const FUNNEL: readonly AdminOrderStatus[] = ORDER_FLOW;
-
-const MOVE_GROUPS = [
-  { kind: "next", label: "Next step" },
-  { kind: "skip", label: "Skip ahead — asks to confirm" },
-  { kind: "back", label: "Move back — asks to confirm" },
-  { kind: "cancel", label: "End the order" },
-  { kind: "return", label: "End the order" },
-] as const;
-
 /**
- * One order in full, with the ability to advance its status.
+ * One order in full, and where it is in fulfilment.
  *
- * The status control only offers transitions the service considers legal, so a
- * delivered order cannot be pushed back into processing and a cancelled one
- * cannot be revived. The timeline below is append-only — it records what
- * happened rather than the current state.
+ * There is no status dropdown. The fulfilment panel shows the lifecycle and
+ * the next valid actions the server allows for this order and this admin
+ * (docs/order-fulfilment.md): an order can't skip packing, be shipped without
+ * a shipment, or step back without a reason. The history below is
+ * append-only, across the order, its packing and its shipments.
  */
 export function AdminOrderDetailView() {
   const searchParams = useSearchParams();
@@ -73,12 +51,13 @@ export function AdminOrderDetailView() {
     [orderId],
   );
 
-  const [nextStatus, setNextStatus] = useState<AdminOrderStatus | "">("");
+  // The lifecycle, next actions and history: read again after every change.
+  const fulfilment = useAdminResource(
+    () => (orderId ? getOrderFulfilment(orderId) : Promise.resolve(null)),
+    [orderId],
+  );
   // Bumped after a refund, so the billing figures are read again.
   const [billingKey, setBillingKey] = useState(0);
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [sendingLink, setSendingLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
 
@@ -120,99 +99,11 @@ export function AdminOrderDetailView() {
     );
   }
 
-  const moves = availableMovesFor(order);
-  const currentIndex = flowIndex(order.status);
-  const isTerminal = moves.length === 0;
-  const chosen = moves.find((move) => move.target === nextStatus);
-
-  /**
-   * The next stage goes straight through. Skipping a stage, going back, or
-   * ending the order asks first — the server insists on `confirm` for the
-   * first two as well, so a stray selection cannot rewrite an order's history.
-   */
-  const onRequestUpdate = () => {
-    if (!chosen) return;
-    if (chosen.kind === "next") void onUpdateStatus(false);
-    else setConfirming(true);
+  /** After any step: the order, its fulfilment and its billing, all from the server again. */
+  const refreshAll = async () => {
+    await Promise.all([reload(), fulfilment.reload()]);
+    setBillingKey((value) => value + 1);
   };
-
-  const onUpdateStatus = async (confirm: boolean) => {
-    if (!nextStatus) return;
-    setSaving(true);
-    const result = await updateOrderStatus(
-      order.id,
-      nextStatus,
-      note.trim(),
-      currentActorId(),
-      confirm,
-    );
-    setSaving(false);
-    setConfirming(false);
-
-    if (!result.ok) {
-      toast.error(result.reason);
-      return;
-    }
-
-    toast.success(
-      `Order ${order.orderNumber} is now ${stageLabel(nextStatus).toLowerCase()}`,
-    );
-    setNextStatus("");
-    setNote("");
-    await reload();
-  };
-
-  const confirmCopy = chosen
-    ? {
-        skip: {
-          title: "Skip ahead?",
-          message: (
-            <>
-              This moves the order from{" "}
-              <strong>{stageLabel(order.status)}</strong> straight to{" "}
-              <strong>{stageLabel(chosen.target)}</strong>. {chosen.detail}. The
-              timeline will record that these stages were skipped.
-            </>
-          ),
-          label: `Skip to ${stageLabel(chosen.target)}`,
-          destructive: false,
-        },
-        back: {
-          title: "Move this order back?",
-          message: (
-            <>
-              This moves the order back from{" "}
-              <strong>{stageLabel(order.status)}</strong> to{" "}
-              <strong>{stageLabel(chosen.target)}</strong>. The customer&rsquo;s
-              tracking will show the earlier stage, and the timeline will record
-              the change.
-            </>
-          ),
-          label: `Move back to ${stageLabel(chosen.target)}`,
-          destructive: true,
-        },
-        cancel: {
-          title: "Cancel this order?",
-          message: (
-            <>
-              The items go back into stock and anything paid is refunded. A
-              cancelled order cannot be reopened.
-            </>
-          ),
-          label: "Cancel order",
-          destructive: true,
-        },
-        return: {
-          title: "Record a return?",
-          message: (
-            <>The order will be marked returned. This cannot be undone.</>
-          ),
-          label: "Mark returned",
-          destructive: true,
-        },
-        next: { title: "", message: null, label: "", destructive: false },
-      }[chosen.kind]
-    : null;
 
   const onSendPaymentLink = async () => {
     setSendingLink(true);
@@ -242,78 +133,20 @@ export function AdminOrderDetailView() {
         actions={
           <span className="flex items-center gap-2">
             <DomainStatus domain="payment" status={order.paymentStatus} />
-            <DomainStatus domain="order" status={order.status} />
+            <DomainStatus domain="order" status={order.status} label={stageLabel(order.status)} />
           </span>
         }
       />
 
-      {/* ------------------------------------------------- progress tracker */}
-      <AdminCard title="Progress" className="mb-4">
-        <ol className="flex flex-col gap-0 sm:flex-row sm:items-start">
-          {FUNNEL.map((stage, index) => {
-            // Cancelled and returned orders left the funnel; nothing after the
-            // point they left should read as reached.
-            const reached = currentIndex >= index && currentIndex !== -1;
-            const isLast = index === FUNNEL.length - 1;
-
-            return (
-              <li
-                key={stage}
-                className="flex flex-1 gap-3 sm:flex-col sm:gap-2"
-                aria-current={currentIndex === index ? "step" : undefined}
-              >
-                <div className="flex flex-col items-center sm:w-full sm:flex-row">
-                  <span
-                    className={cn(
-                      "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-[0.625rem] tabular-nums",
-                      reached
-                        ? "bg-[#0ca30c] text-white"
-                        : "bg-admin-border text-admin-muted",
-                    )}
-                  >
-                    {reached ? (
-                      <Check
-                        className="h-3.5 w-3.5"
-                        strokeWidth={3}
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      index + 1
-                    )}
-                  </span>
-
-                  {!isLast ? (
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "my-1 w-px flex-1 sm:my-0 sm:mx-2 sm:h-px sm:w-auto sm:flex-1",
-                        currentIndex > index
-                          ? "bg-[#0ca30c]"
-                          : "bg-admin-border",
-                      )}
-                    />
-                  ) : null}
-                </div>
-
-                <p
-                  className={cn(
-                    "pb-4 text-xs sm:pb-0",
-                    reached ? "font-medium text-admin-ink" : "text-admin-muted",
-                  )}
-                >
-                  {humanStatus(stage)}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-
-        {currentIndex === -1 ? (
-          <p className="mt-3 rounded-[3px] bg-[#fdeee7] px-3 py-2 text-xs text-[#9c4a24]">
-            This order was {order.status}.
-          </p>
-        ) : null}
-      </AdminCard>
+      {/* --------------------------------------------- lifecycle + next step */}
+      <OrderFulfilmentPanel
+        orderId={order.id}
+        data={fulfilment.data}
+        loading={fulfilment.isLoading}
+        failed={Boolean(fulfilment.error)}
+        onRetry={() => void fulfilment.reload()}
+        onChanged={refreshAll}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[1fr_20rem]">
         <div className="flex flex-col gap-4">
@@ -424,141 +257,30 @@ export function AdminOrderDetailView() {
           <OrderBillingPanel key={billingKey} orderId={order.id} />
           <OrderRefundsCard orderId={order.id} onChanged={() => { setBillingKey((value) => value + 1); void reload(); }} />
 
-          {/* ------------------------------------------------------ timeline */}
-          <AdminCard title="Timeline" description="Every update to this order.">
-            <ol className="flex flex-col gap-3">
-              {[...order.timeline].reverse().map((event, index) => (
-                <li
-                  key={`${event.status}-${event.at}-${index}`}
-                  className="flex gap-2.5"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-pill bg-copper-500"
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-xs font-medium text-admin-ink">
-                      {humanStatus(event.status)}
-                    </span>
-                    <span className="block text-[0.625rem] text-admin-muted">
-                      {formatDate(event.at)} · by {event.by}
-                    </span>
-                    {event.note ? (
-                      <span className="mt-0.5 block text-[0.6875rem] italic text-admin-muted">
-                        {event.note}
+          {/* ------------------------------------------------------ history */}
+          {fulfilment.data ? (
+            <FulfilmentHistory entries={fulfilment.data.history} />
+          ) : (
+            <AdminCard title="Timeline" description="Every update to this order.">
+              <ol className="flex flex-col gap-3">
+                {[...order.timeline].reverse().map((event, index) => (
+                  <li key={`${event.status}-${event.at}-${index}`} className="flex gap-2.5">
+                    <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-pill bg-copper-500" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-medium text-admin-ink">{humanStatus(event.status)}</span>
+                      <span className="block text-[0.625rem] text-admin-muted">
+                        {formatDate(event.at)} · by {event.by}
                       </span>
-                    ) : null}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </AdminCard>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </AdminCard>
+          )}
         </div>
 
         {/* -------------------------------------------------- side column */}
         <div className="flex flex-col gap-4">
-          <AdminCard title="Update status">
-            {isTerminal ? (
-              <p className="text-xs leading-relaxed text-admin-muted">
-                This order is {order.status}, so its status can no longer be
-                changed.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <p className="text-[0.6875rem] leading-relaxed text-admin-muted">
-                  Now{" "}
-                  <strong className="text-admin-ink">
-                    {stageLabel(order.status)}
-                  </strong>
-                  {" — "}
-                  {ORDER_STAGES[order.status]?.description}
-                </p>
-
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-admin-ink">
-                    Move to
-                  </span>
-                  <select
-                    value={nextStatus}
-                    onChange={(event) =>
-                      setNextStatus(event.target.value as AdminOrderStatus)
-                    }
-                    className="h-9 w-full rounded-[3px] border border-admin-border bg-admin-surface px-2.5 text-xs text-admin-ink focus:border-copper-500 focus:outline-none"
-                  >
-                    <option value="">Choose a status</option>
-                    {MOVE_GROUPS.filter(
-                      (group, index, all) =>
-                        all.findIndex(
-                          (entry) => entry.label === group.label,
-                        ) === index,
-                    ).map((group) => {
-                      const inGroup = moves.filter(
-                        (move) =>
-                          MOVE_GROUPS.find((entry) => entry.kind === move.kind)
-                            ?.label === group.label,
-                      );
-                      if (!inGroup.length) return null;
-                      return (
-                        <optgroup key={group.label} label={group.label}>
-                          {inGroup.map((move) => (
-                            <option key={move.target} value={move.target}>
-                              {stageLabel(move.target)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
-                </label>
-
-                {chosen && chosen.kind !== "next" ? (
-                  <p className="rounded-[3px] bg-[#fdf3e3] px-2.5 py-2 text-[0.6875rem] leading-relaxed text-[#8a5a12]">
-                    {chosen.kind === "skip"
-                      ? `${chosen.detail}. You will be asked to confirm.`
-                      : chosen.kind === "back"
-                        ? `Moves the order backwards. You will be asked to confirm.`
-                        : "Ends the order. You will be asked to confirm."}
-                  </p>
-                ) : null}
-
-                <AdminTextarea
-                  label="Note"
-                  rows={2}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  hint="Optional. Appears on the timeline."
-                />
-
-                <AdminButton
-                  variant="primary"
-                  onClick={onRequestUpdate}
-                  disabled={!nextStatus}
-                  loading={saving && !confirming}
-                >
-                  Update status
-                </AdminButton>
-
-                {confirmCopy && needsConfirmation(chosen) !== undefined ? (
-                  <ConfirmDialog
-                    open={confirming}
-                    onOpenChange={setConfirming}
-                    title={confirmCopy.title}
-                    message={confirmCopy.message}
-                    confirmLabel={confirmCopy.label}
-                    destructive={confirmCopy.destructive}
-                    loading={saving}
-                    onConfirm={() =>
-                      void onUpdateStatus(needsConfirmation(chosen))
-                    }
-                  />
-                ) : null}
-              </div>
-            )}
-          </AdminCard>
-
-          <OrderPackingPanel orderId={order.id} />
-          <OrderShippingCard orderId={order.id} onChanged={() => void reload()} />
-
           <AdminCard title="Customer">
             <p className="text-xs font-medium text-admin-ink">
               {order.customerName}

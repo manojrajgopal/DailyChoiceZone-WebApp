@@ -123,8 +123,13 @@ cancelled (from pending / ready-for-pickup / pickup-scheduled only)
 
 **Creating a shipment** is an explicit admin action, never automatic:
 
-- **Allowed** for an order that is `confirmed`, `processing` or `packed`.
-- **Refused** if the order is still awaiting payment, or is cancelled or delivered.
+- **Allowed** for a `packed` order whose packing job is packed, or to record
+  the missing shipment of an order already dispatched without one, or to
+  re-ship after a return to origin (docs/order-fulfilment.md).
+- **Refused** before packing is complete (`PACKING_INCOMPLETE`), if the payment
+  blocks fulfilment, or if the order is cancelled or delivered.
+- Manual status moves go one step at a time through
+  `POST /api/admin/shipments/{id}/status` (docs/order-fulfilment.md).
 
 **Idempotency.** An order has at most one *active* (non-cancelled) shipment, enforced by a unique `active_key` column (the order id while active, NULL once cancelled; the same pattern as price alerts). Creation also takes a client `idempotencyKey`:
 

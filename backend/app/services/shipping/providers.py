@@ -263,12 +263,30 @@ def save(db: Session, code: str, payload: dict, *, actor) -> ProviderRow:
     return row
 
 
-def test(db: Session, code: str, *, actor) -> dict:
+def test(db: Session, code: str, *, actor, payload: Optional[dict] = None) -> dict:
+    """Try the courier's credentials: the saved ones, with anything typed in `payload` (not yet saved) on top."""
     cls = registry.adapter_class(code)
     if cls is None:
         raise NotFoundError(f"There is no courier integration called '{code}'.", error_code="PROVIDER_NOT_FOUND")
     row = registry.row_for(db, cls.code)
     adapter = registry.adapter_for(cls.code, row)
+    payload = payload or {}
+    incoming = payload.get("credentials")
+    if incoming is not None and not isinstance(incoming, dict):
+        raise ValidationError("Credentials must be an object.", error_code="INVALID_CREDENTIALS")
+    for key, _, _ in cls.credential_fields:
+        value = (incoming or {}).get(key)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            continue
+        if not isinstance(value, str) or len(value) > 300:
+            raise ValidationError("Each credential must be text of up to 300 characters.",
+                                  error_code="INVALID_CREDENTIALS", details={"field": key})
+        adapter.credentials = {**adapter.credentials, key: value.strip()}
+    if payload.get("environment") is not None:
+        if payload["environment"] not in cls.environments:
+            raise ValidationError(f"{cls.name} offers: {', '.join(cls.environments)}.",
+                                  error_code="INVALID_ENVIRONMENT")
+        adapter.environment = payload["environment"]
     now = datetime.utcnow()
     if not adapter.configured():
         ok, message = False, "Enter the credentials first."

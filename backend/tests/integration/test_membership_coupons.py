@@ -10,6 +10,7 @@ import pytest
 
 from tests.integration.test_orders import add, place
 from tests.integration.test_payment_security import gateway  # noqa: F401 — fixture
+from tests.integration.fulfilment_helpers import advance
 
 pytestmark = pytest.mark.integration
 
@@ -283,10 +284,6 @@ class TestMembership:
         make_member(db, customer)
         add(client, auth, "PRD001", 1)
         order = place(client, auth).json()["data"]["order"]
-        client.put(
-            f"/api/admin/orders/{order['id']}/status",
-            headers=admin_auth,
-            json={"status": "delivered", "confirm": True},
-        )
+        advance(client, admin_auth, order["id"], "delivered")
         eligibility = client.get(f"/api/orders/{order['id']}/returns", headers=auth).json()["data"]["eligibility"]
         assert eligibility["windowDays"] == 30  # 15 + 15 for members
