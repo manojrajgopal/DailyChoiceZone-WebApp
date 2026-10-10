@@ -154,3 +154,33 @@ describe("AdminProductForm — category by ID", () => {
     expect(api.last("PUT", "/products/P1")!.body).toMatchObject({ categoryId: "CAT001", subcategory: "kurtas" });
   });
 });
+
+describe("AdminProductForm — status follows stock", () => {
+  it("says a restocked out-of-stock product will be saved as Active", async () => {
+    setLocation("/admin/products/edit?id=P1&section=status");
+    api.get("/categories", []);
+    api.get("/admin/products/P1", { ...PRODUCT, status: "out-of-stock", stock: 12 });
+    renderUI(<AdminProductForm mode="edit" />);
+
+    expect(await screen.findByText("Stock is 12 — this will be saved as Active.")).toBeInTheDocument();
+  });
+
+  it("warns beside the stock quantity too", async () => {
+    setLocation("/admin/products/edit?id=P1&section=inventory");
+    api.get("/categories", []);
+    api.get("/admin/products/P1", { ...PRODUCT, status: "out-of-stock", stock: 12 });
+    renderUI(<AdminProductForm mode="edit" />);
+
+    expect(await screen.findByText("Saving will set the status to Active.")).toBeInTheDocument();
+  });
+
+  it("says nothing when status and stock already agree", async () => {
+    setLocation("/admin/products/edit?id=P1&section=status");
+    api.get("/categories", []);
+    api.get("/admin/products/P1", { ...PRODUCT, status: "active", stock: 12 });
+    renderUI(<AdminProductForm mode="edit" />);
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Edit Linen shirt" })).toBeInTheDocument());
+    expect(screen.queryByText(/this will be saved as/)).not.toBeInTheDocument();
+  });
+});

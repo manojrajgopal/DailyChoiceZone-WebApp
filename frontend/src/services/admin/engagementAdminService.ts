@@ -10,7 +10,7 @@ import type { Paged } from "./operationsAdminService";
 
 const ADMIN = { auth: "admin" } as const;
 
-type Person = { id: string; name: string; email: string } | null;
+type Person = { id: string; name: string; email: string; phone?: string } | null;
 
 /* ------------------------------------------------------------------ alerts */
 
@@ -27,7 +27,7 @@ export interface AdminAlertRow {
   createdAt: string;
   notifiedAt: string | null;
   unsubscribedAt: string | null;
-  product: { id: string; name: string; slug: string; image: string; price: number; available: boolean } | null;
+  product: { id: string; name: string; slug: string; sku?: string; image: string; price: number; available: boolean } | null;
   customer: Person;
   attempts: number;
   lastAttemptAt: string | null;
@@ -42,6 +42,26 @@ export function listAlerts(
   filters: { status?: string; productId?: string; customerId?: string; page?: number; pageSize?: number },
 ) {
   return apiGet<Paged<AdminAlertRow> & { counts: Record<string, number> }>(`/admin/alerts/${kind}${query(filters)}`, ADMIN);
+}
+
+/** One product (and variant) that customers are waiting for, with how many. */
+export interface WaitingRow {
+  productId: string;
+  product: {
+    id: string; name: string; slug: string; sku: string; image: string; price: number;
+    available: boolean; stock: number; status: string;
+  } | null;
+  size: string;
+  color: string;
+  waiting: number;
+  oldest: string;
+  newest: string;
+}
+
+/** Back-in-stock requests grouped by product, most wanted first. `productId` is a Product ID or SKU, exact. */
+export function listWaiting(filters: { productId?: string; page?: number; pageSize?: number }) {
+  return apiGet<Paged<WaitingRow> & { summary: { requests: number; products: number; customers: number } }>(
+    `/admin/alerts/stock/waiting${query(filters)}`, ADMIN);
 }
 
 export function resendAlert(kind: "stock" | "price", id: number) {

@@ -10,7 +10,7 @@ import { AdminSidebar, OPEN_KEY, currentHref, type NavBadges } from "./AdminSide
 
 const BADGES: NavBadges = {
   lowStock: 0, openOrders: 4, pendingReviews: 0, openReturns: 2, openTickets: 0, pendingQuestions: 0,
-  referralsInReview: 0, failedNotifications: 0,
+  referralsInReview: 0, failedNotifications: 0, waitingCustomers: 0,
 };
 
 const GROUPS: AdminNavGroup[] = [

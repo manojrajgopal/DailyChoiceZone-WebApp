@@ -73,6 +73,7 @@ interface ApiInventoryRow {
   available: number;
   lowStockThreshold: number;
   status: InventoryItem["status"];
+  waitingCount?: number;
 }
 
 /**

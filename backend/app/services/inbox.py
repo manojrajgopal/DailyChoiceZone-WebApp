@@ -14,7 +14,6 @@ Nothing secret goes in: no gift card codes, no reset or verification links.
 from __future__ import annotations
 
 import re
-import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit
@@ -56,53 +55,26 @@ def customer(db: Session, customer_id: Optional[str], kind: str, title: str, bod
 
 
 def staff(db: Session, kind: str, title: str, body: str = "", href: str = "", admin_id: Optional[str] = None,
-          permission: Optional[str] = None) -> None:
+          permission: Optional[str] = None, key: Optional[str] = None) -> None:
     """
-    Tell the store team: an entry in the admin tray, and an email to each
-    active administrator whose role covers `permission` (super admins always).
-    The addresses are the administrators' own, from the database. If none of
-    them can receive mail, the store's sending mailbox gets it instead, so the
-    alert still reaches someone.
+    Tell the store team, on every channel the store has switched on: the admin
+    bell, email (administrators whose role covers `permission`, and the alert
+    recipients), SMS and WhatsApp (the alert recipients' phones). See
+    `app.services.staff_alerts`. `key` makes a repeat of the same alert (the
+    same product running low twice in a day) send nothing new by email or
+    message.
     """
-    from app.models import Notification
+    from app.services import staff_alerts
 
-    db.add(Notification(id=f"NTF-{secrets.token_hex(8)}", kind=kind[:30], title=title[:255], body=(body or "")[:500],
-                        href=(href or "")[:255], read=False, created_at=datetime.utcnow(), admin_id=admin_id))
-    try:
-        _email_staff(db, title, body, href, permission)
-    except Exception:  # an alert must never break the work that raised it
-        import logging
-
-        logging.getLogger(__name__).exception("Could not email the store team about %s", kind)
+    staff_alerts.send(db, kind, title, body, href, permission=permission, admin_id=admin_id, key=key)
 
 
-def _email_staff(db: Session, title: str, body: str, href: str, permission: Optional[str]) -> None:
-    import html as html_lib
-
-    from app.core.permissions import permissions_for
-    from app.models import AdminUser
-    from app.services import email as email_service
-    from app.services.email import senders
-
-    if not email_service.wants(db, "store_team", None):
-        return
-    admins = db.execute(select(AdminUser).where(AdminUser.status == "active")).scalars().all()
-    addresses = {}
-    for admin in admins:
-        allowed = admin.role == "super-admin" or permission is None or permission in (admin.permissions or [])             or permission in permissions_for(admin.role)
-        if allowed and admin.email:
-            addresses[admin.email.lower()] = admin.email
-    if not addresses or all(senders.undeliverable(a) for a in addresses.values()):
-        account = email_service.active_account(db)
-        if account is not None and account.sender_email:
-            addresses.setdefault(account.sender_email.lower(), account.sender_email)
-    link = f"{app_settings.STOREFRONT_URL.rstrip('/')}{href}" if href else ""
-    html = email_service.layout(title, html_lib.escape(body or ""), cta=("Open in the portal", link) if link else None,
-                                footnote="Sent to the Daily Choice Zone store team.", tone="info", icon="bell",
-                                eyebrow="Store team alert")
-    for address in addresses.values():
-        email_service.notify(db, "store_team", to=address, customer_id=None, subject=title, html=html,
-                             text=f"{title}. {body} {link}".strip(), reference="store-team")
+def new_customer(db: Session, customer, how: str = "email") -> None:
+    """A new account, by any route (sign-up form, Google/Apple/Microsoft, a one-time code)."""
+    name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or customer.email or customer.phone
+    contact = " · ".join(part for part in (customer.email, customer.phone) if part)
+    staff(db, "customer", f"New customer: {name}", f"{contact} — signed up with {how}.",
+          f"/admin/customers/detail?id={customer.id}", permission="customers", key=f"customer:{customer.id}")
 
 
 def _storefront_path(text: str) -> str:

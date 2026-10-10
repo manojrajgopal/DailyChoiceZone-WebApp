@@ -126,6 +126,12 @@ def create_review(
     )
 
     db.add(review)
+    from app.services import inbox
+
+    product = db.get(Product, product_id)
+    inbox.staff(db, "review", f"New {rating}★ review to approve: {product.name if product else product_id}",
+                f"{review.author}: {review.title or review.body[:150]}", "/admin/reviews?status=pending",
+                permission="reviews", key=f"review:{review.id}")
     db.commit()
     db.refresh(review)
     return review

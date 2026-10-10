@@ -293,6 +293,19 @@ class TestFactory:
         monkeypatch.setattr(settings, "PUBLIC_API_URL", "")
         assert providers.status_callback_url("twilio") == ""
 
+    @pytest.mark.parametrize("base", ["http://localhost:8000", "http://127.0.0.1:8000", "http://192.168.1.5",
+                                      "http://api.localhost", "http://backend:8000", "http://[::1]:8000"])
+    def test_no_status_callback_for_a_local_address(self, monkeypatch, base):
+        # Twilio rejects the whole message (HTTP 400) when the callback isn't reachable.
+        monkeypatch.setattr(settings, "PUBLIC_API_URL", base)
+        assert providers.status_callback_url("twilio") == ""
+
+    def test_local_api_sends_without_a_callback(self, transport, monkeypatch):
+        monkeypatch.setattr(settings, "PUBLIC_API_URL", "http://localhost:8000")
+        fake = transport({"sid": "SM1"})
+        TwilioSms("AC1", "tok", "+1").send(Message(to="+1", text="x"))
+        assert "StatusCallback" not in fake.form()
+
 
 # ---------------------------------------------------------------- storage
 

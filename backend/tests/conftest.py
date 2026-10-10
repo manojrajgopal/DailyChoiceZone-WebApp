@@ -263,6 +263,26 @@ def _no_real_gateway(monkeypatch):
     clear_cache()
 
 
+@pytest.fixture(autouse=True)
+def _no_real_messaging(monkeypatch):
+    """
+    Start every test with SMS and WhatsApp unconfigured, and codes on the
+    console, whatever `.env` says.
+
+    A developer's `.env` holding real Twilio credentials would otherwise turn
+    "not configured" tests into ones that try to send. Tests that need a
+    channel use the `sms_whatsapp` fixture or set the settings themselves.
+    """
+    from app.core.config import settings
+
+    for name, value in (("NOTIFICATION_SMS_PROVIDER", "none"), ("NOTIFICATION_WHATSAPP_PROVIDER", "none"),
+                        ("NOTIFICATION_SMS_SENDER", ""), ("NOTIFICATION_WHATSAPP_SENDER", ""),
+                        ("TWILIO_ACCOUNT_SID", ""), ("TWILIO_AUTH_TOKEN", ""),
+                        ("WHATSAPP_ACCESS_TOKEN", ""), ("WHATSAPP_PHONE_NUMBER_ID", ""),
+                        ("OTP_SMS_PROVIDER", "console")):
+        monkeypatch.setattr(settings, name, value)
+
+
 # ---------------------------------------------------------------- fixtures
 
 

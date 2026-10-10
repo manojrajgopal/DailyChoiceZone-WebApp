@@ -5,6 +5,8 @@ import { Loader2 } from "lucide-react";
 
 import type { StoreSettings } from "@/types/admin";
 
+import { StoreAlertsSection } from "./settings/StoreAlertsSection";
+
 import { AdminButton, AdminPageHeader } from "@/components/admin/ui/AdminChrome";
 import {
   AdminInput,
@@ -334,40 +336,31 @@ export function AdminSettingsView() {
       group: "Alerts",
       dirty: changed(draft.notifications, saved.notifications),
       content: (
-        <FormSection
-          title="Notifications"
-          description="Choose which emails your store sends to customers and staff."
-        >
-          <div className="flex flex-col divide-y divide-admin-border">
-            <AdminToggle
-              label="Order confirmations"
-              checked={draft.notifications.orderConfirmation}
-              onChange={(orderConfirmation) => patch("notifications", { orderConfirmation })}
-            />
-            <AdminToggle
-              label="Shipping updates"
-              checked={draft.notifications.shippingUpdates}
-              onChange={(shippingUpdates) => patch("notifications", { shippingUpdates })}
-            />
-            <AdminToggle
-              label="Low stock alerts"
-              description="Notify admins when a product falls below its threshold."
-              checked={draft.notifications.lowStockAlerts}
-              onChange={(lowStockAlerts) => patch("notifications", { lowStockAlerts })}
-            />
-            <AdminToggle
-              label="Review alerts"
-              description="Notify admins when a review needs moderating."
-              checked={draft.notifications.reviewAlerts}
-              onChange={(reviewAlerts) => patch("notifications", { reviewAlerts })}
-            />
-            <AdminToggle
-              label="Marketing emails"
-              checked={draft.notifications.marketingEmails}
-              onChange={(marketingEmails) => patch("notifications", { marketingEmails })}
-            />
-          </div>
-        </FormSection>
+        <div className="flex flex-col gap-4">
+          <FormSection title="Customer emails" description="Emails your store sends to customers.">
+            <div className="flex flex-col divide-y divide-admin-border">
+              <AdminToggle
+                label="Order confirmations"
+                checked={draft.notifications.orderConfirmation}
+                onChange={(orderConfirmation) => patch("notifications", { orderConfirmation })}
+              />
+              <AdminToggle
+                label="Shipping updates"
+                checked={draft.notifications.shippingUpdates}
+                onChange={(shippingUpdates) => patch("notifications", { shippingUpdates })}
+              />
+              <AdminToggle
+                label="Marketing emails"
+                checked={draft.notifications.marketingEmails}
+                onChange={(marketingEmails) => patch("notifications", { marketingEmails })}
+              />
+            </div>
+          </FormSection>
+          <StoreAlertsSection
+            value={draft.notifications}
+            onChange={(next) => patch("notifications", next)}
+          />
+        </div>
       ),
     },
     {

@@ -111,8 +111,16 @@ export function reopenPacking(id: number, target: "picking" | "packing", reason:
   return apiPost(`/admin/packing/${id}/reopen`, { target, reason }, ADMIN);
 }
 
-export function markReady(id: number): Promise<PackingJob> {
-  return apiPost(`/admin/packing/${id}/ready`, undefined, ADMIN);
+/**
+ * Hand the packages to the order's shipment, creating it with the default
+ * courier when there is none. A Manual courier answers SHIPMENT_DETAILS_REQUIRED
+ * until the courier name and AWB are given. One `idempotencyKey` per click.
+ */
+export function markReady(
+  id: number,
+  input: { idempotencyKey: string; providerCode?: string; courierName?: string; awb?: string },
+): Promise<PackingJob> {
+  return apiPost(`/admin/packing/${id}/ready`, input, ADMIN);
 }
 
 /* ------------------------------------------------------------------- labels */

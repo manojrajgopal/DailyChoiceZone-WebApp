@@ -20,6 +20,7 @@ the second straight away.
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import logging
 import urllib.error
@@ -60,6 +61,10 @@ class Message:
 class Provider:
     name = "none"
     channel = ""
+    # WhatsApp only: whether a message with no approved template may go as plain
+    # text (a "session" message, delivered within 24 hours of the customer's
+    # last message to the sender).
+    plain_text_whatsapp = False
 
     def configured(self) -> tuple:
         """(ready, reason it isn't)."""
@@ -145,9 +150,16 @@ class TwilioSms(Provider):
 
 
 class TwilioWhatsApp(TwilioSms):
-    """WhatsApp through Twilio: an approved Content template (HX…) with numbered variables."""
+    """
+    WhatsApp through Twilio: an approved Content template (HX…) with numbered
+    variables, or plain text when the notification has no template. The Twilio
+    Sandbox can't use the store's own templates, so plain text is how it sends;
+    it reaches numbers that have joined the sandbox and messaged it in the last
+    24 hours.
+    """
 
     channel = "whatsapp"
+    plain_text_whatsapp = True
 
     def configured(self) -> tuple:
         if not (self.sid and self.token):
@@ -213,10 +225,22 @@ class MetaWhatsApp(Provider):
 # ---------------------------------------------------------------- factory
 
 
+def _publicly_reachable(url: str) -> bool:
+    """False for localhost and private addresses: Twilio refuses those (HTTP 400) and the whole send fails."""
+    host = (urllib.parse.urlsplit(url).hostname or "").lower()
+    if not host or host == "localhost" or host.endswith(".localhost") or "." not in host and ":" not in host:
+        return False
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return True
+    return address.is_global
+
+
 def status_callback_url(provider: str) -> str:
-    """Where a provider reports delivery. Needs the API's public address."""
+    """Where a provider reports delivery. Needs the API's public address; empty in local development."""
     base = (settings.PUBLIC_API_URL or "").rstrip("/")
-    if not base:
+    if not base or not _publicly_reachable(base):
         return ""
     return f"{base}{settings.API_PREFIX}/notifications/webhooks/{provider}"
 

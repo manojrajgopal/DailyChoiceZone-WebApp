@@ -187,7 +187,8 @@ def _resolve(db: Session, provider: str, claims: VerifiedClaims) -> tuple:
     if not claims.email_verified:
         raise OAuthError(EMAIL_UNVERIFIED, "The provider hasn't verified this email address")
     customer = accounts.create_customer(db, email=claims.email, first_name=claims.first_name or claims.name,
-                                        last_name=claims.last_name, email_verified=True)
+                                        last_name=claims.last_name, email_verified=True,
+                                        how=provider.capitalize())
     accounts.add_identity(db, customer, provider, claims.subject, email=claims.email, email_verified=True,
                           name=claims.name)
     from app.services import accounts as account_links

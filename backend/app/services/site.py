@@ -91,7 +91,7 @@ ADDED_NAV_ITEMS = [
     ("/admin/payments/reconciliation", {"id": "webhooks", "label": "Payment webhooks",
                                         "href": "/admin/payments/webhooks", "icon": "webhooks"}),
     ("/admin/delivery", {"id": "alerts", "label": "Stock & price alerts", "href": "/admin/alerts",
-                         "icon": "alerts"}),
+                         "icon": "alerts", "badge": "waitingCustomers"}),
     ("/admin/reviews", {"id": "questions", "label": "Questions", "href": "/admin/questions",
                         "icon": "questions", "badge": "pendingQuestions"}),
     ("/admin/carts", {"id": "gift-cards", "label": "Gift cards", "href": "/admin/gift-cards",
@@ -252,7 +252,21 @@ def admin_navigation(db: Session) -> list:
                 break
         if not placed and groups:
             groups[-1]["items"] = groups[-1].get("items", []) + [dict(entry)]
+    # Counts added after a link was first saved: shown unless the store chose another.
+    for group in groups:
+        for item in _walk(group.get("items", [])):
+            if item.get("href") in DEFAULT_BADGES and not item.get("badge"):
+                item["badge"] = DEFAULT_BADGES[item["href"]]
     return _arrange(groups)
+
+
+DEFAULT_BADGES = {"/admin/alerts": "waitingCustomers"}
+
+
+def _walk(items):
+    for item in items:
+        yield item
+        yield from _walk(item.get("children") or [])
 
 
 def site_config(db: Session) -> dict:

@@ -45,7 +45,7 @@ def session(monkeypatch):
 
 # (module, the function(s) the pass calls, what a failure does: "logged" or "raised")
 JOBS = [
-    ("app.services.alerts", ["sweep"], "logged"),
+    ("app.services.alerts", ["digest_once", "sweep"], "logged"),  # the daily waitlist summary, then alerts
     ("app.services.cart_recovery", ["sweep"], "logged"),
     ("app.services.email.bounces", ["sweep"], "logged"),
     ("app.services.flash_sales", ["sweep"], "raised"),

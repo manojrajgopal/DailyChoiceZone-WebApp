@@ -449,6 +449,19 @@ class TestFanOut:
         assert all(r.status == "skipped" and "no usable phone number" in r.last_error and r.recipient == ""
                    and r.payload is None for r in nophone)
 
+    def test_twilio_whatsapp_without_a_template_sends_the_text(self, db, customer, sms_whatsapp):  # noqa: F811
+        _, whatsapp = sms_whatsapp
+        whatsapp.plain_text_whatsapp = True  # as Twilio's sender (and its sandbox) allows
+        route(db, "whatsapp", ["order_shipped", "invoice_issued"])
+        messaging.set_consent(db, "CUS001", "whatsapp", "transactional", True, source="test")
+        [row] = messaging.fan_out(db, "order_shipped", customer_id="CUS001", values=self.VALUES, reference="r",
+                                  key_base="plain")
+        assert row.status == "queued" and row.payload["template"] == "" and "DCZ1" in row.payload["text"]
+        # Nothing to say without SMS wording either: still skipped, with the reason.
+        [invoice] = messaging.fan_out(db, "invoice_issued", customer_id="CUS001", values=self.VALUES, reference="r",
+                                      key_base="plain-inv")
+        assert invoice.status == "skipped" and "No approved WhatsApp template" in invoice.last_error
+
 
 # ------------------------------------------------------------------- sending
 

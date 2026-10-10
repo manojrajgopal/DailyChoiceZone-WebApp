@@ -350,8 +350,11 @@ def list_all_products(
         prepared.conditions.append(("id", by_id))
     chosen = sort or ("relevance" if not prepared.terms.empty else "recommended")
     items, total = repo.query_products(db, query, prepared=prepared, sort=chosen)
+    from app.services import alerts
+
+    waiting = alerts.waiting_counts(db, [p.id for p in items])
     body = ok_list(
-        [AdminProductOut.from_model(p).model_dump(by_alias=True) for p in items],
+        [AdminProductOut.from_model(p, waiting=waiting.get(p.id, 0)).model_dump(by_alias=True) for p in items],
         Pagination.build(query.page, query.page_size, total),
     )
     body["counts"] = repo.status_counts(db, prepared)

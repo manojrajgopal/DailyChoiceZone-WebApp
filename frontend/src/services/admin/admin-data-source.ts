@@ -85,6 +85,7 @@ export interface NavCounts {
   pendingQuestions: number;
   referralsInReview: number;
   failedNotifications: number;
+  waitingCustomers: number;
 }
 
 export interface AdminDataSource {

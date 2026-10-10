@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select, update as sql_update
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -82,6 +82,10 @@ def save_document(
         from app.core import numbering
 
         payload = numbering.strip_locked(payload)
+    if key == "store" and "notifications" in payload:
+        from app.services import staff_alerts
+
+        payload = {**payload, "notifications": staff_alerts.clean(payload["notifications"])}
 
     row = db.get(SettingDocument, key)
     if row is None:
@@ -92,6 +96,38 @@ def save_document(
 
     db.commit()
     return ok(payload, message="Settings saved.")
+
+
+@router.get("/alert-channels", summary="How staff alerts can be delivered")
+def alert_channels(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(require_permission("settings")),
+):
+    """Per channel (in-app, email, SMS, WhatsApp): switched on, provider set up, and why not."""
+    from app.services import staff_alerts
+
+    return ok(staff_alerts.channel_status(db))
+
+
+@router.post("/alert-channels/test", summary="Send a test staff alert on every channel that is on")
+def test_alert(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(require_permission("settings")),
+):
+    """
+    Goes exactly where a real alert would — the bell, the administrators and
+    the alert recipients — so the store can check before it matters.
+    """
+    from app.core import rate_limit
+    from app.services import staff_alerts
+
+    rate_limit.check(f"test-alert:{admin.id}", limit=5, window_seconds=600,
+                     message="Too many test alerts. Please wait a few minutes.")
+    result = staff_alerts.send(db, "test", "Test alert from Daily Choice Zone",
+                               f"{admin.name or admin.id} sent this to check that store alerts arrive.",
+                               "/admin/settings", permission="settings")
+    db.commit()
+    return ok({"channels": staff_alerts.channel_status(db), "sent": result}, message="Test alert sent.")
 
 
 # -------------------------------------------------------- administrators
@@ -315,6 +351,7 @@ def nav_counts(
             "pendingQuestions": question_service.pending_count(db),
             "referralsInReview": _referrals_in_review(db),
             "failedNotifications": _failed_notifications(db),
+            "waitingCustomers": _waiting_customers(db),
         }
     )
 
@@ -324,6 +361,14 @@ def _failed_notifications(db: Session) -> int:
 
     return int(db.execute(select(func.count()).select_from(NotificationDelivery).where(
         NotificationDelivery.status == "dead", NotificationDelivery.category == "transactional")).scalar_one())
+
+
+def _waiting_customers(db: Session) -> int:
+    """Customers waiting for an out-of-stock product to be back (one each, however many products)."""
+    from app.models import StockAlert
+
+    return int(db.execute(select(func.count(func.distinct(StockAlert.customer_id))).where(
+        StockAlert.status == "active")).scalar_one())
 
 
 def _referrals_in_review(db: Session) -> int:
@@ -352,18 +397,31 @@ def get_navigation(
 # --------------------------------------------------------- notifications
 
 
+def _visible_to(admin: AdminUser):
+    """The tray items this administrator may see: everyone's, theirs, and those their role covers."""
+    from app.core.permissions import permissions_for
+
+    mine = (Notification.admin_id.is_(None)) | (Notification.admin_id == admin.id)
+    if admin.role == "super-admin":
+        return mine
+    granted = sorted(set(admin.permissions or []) | set(permissions_for(admin.role)))
+    return mine & (Notification.permission.is_(None) | Notification.permission.in_(granted or [""]))
+
+
 @router.get("/notifications", summary="The notification tray")
 def list_notifications(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    # Everyone's items, and the ones meant for this administrator alone.
+    """Newest first. `read` is this administrator's own: reading an item doesn't mark it read for the team."""
+    from app.models import NotificationRead
+
     rows = db.execute(
-        select(Notification)
-        .where((Notification.admin_id.is_(None)) | (Notification.admin_id == admin.id))
-        .order_by(Notification.created_at.desc())
-        .limit(200)
+        select(Notification).where(_visible_to(admin)).order_by(Notification.created_at.desc()).limit(200)
     ).scalars().all()
+    read_ids = set(db.execute(select(NotificationRead.notification_id).where(
+        NotificationRead.admin_id == admin.id,
+        NotificationRead.notification_id.in_([row.id for row in rows] or [""]))).scalars())
 
     return ok_list(
         [
@@ -373,12 +431,26 @@ def list_notifications(
                 "title": row.title,
                 "body": row.body,
                 "href": row.href,
-                "read": row.read,
+                "read": bool(row.read) or row.id in read_ids,
                 "at": row.created_at,
             }
             for row in rows
         ]
     )
+
+
+def _mark(db: Session, admin: AdminUser, ids) -> None:
+    from app.models import NotificationRead
+
+    ids = list(ids)
+    if not ids:
+        return
+    done = set(db.execute(select(NotificationRead.notification_id).where(
+        NotificationRead.admin_id == admin.id, NotificationRead.notification_id.in_(ids))).scalars())
+    now = datetime.utcnow()
+    for notification_id in ids:
+        if notification_id not in done:
+            db.add(NotificationRead(notification_id=notification_id, admin_id=admin.id, read_at=now))
 
 
 @router.put("/notifications/{notification_id}/read", summary="Mark one as read")
@@ -387,11 +459,12 @@ def mark_read(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    row = db.get(Notification, notification_id)
-    if row is None or (row.admin_id is not None and row.admin_id != admin.id):
+    row = db.execute(select(Notification).where(Notification.id == notification_id, _visible_to(admin))
+                     ).scalar_one_or_none()
+    if row is None:
         raise NotFoundError("No such notification.", error_code="NOTIFICATION_NOT_FOUND")
 
-    row.read = True
+    _mark(db, admin, [row.id])
     db.commit()
     return ok(message="Marked as read.")
 
@@ -401,11 +474,7 @@ def mark_all_read(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    db.execute(
-        sql_update(Notification)
-        .where(Notification.read.is_(False),
-               (Notification.admin_id.is_(None)) | (Notification.admin_id == admin.id))
-        .values(read=True)
-    )
+    ids = db.execute(select(Notification.id).where(_visible_to(admin), Notification.read.is_(False))).scalars()
+    _mark(db, admin, ids)
     db.commit()
     return ok(message="All marked as read.")

@@ -241,6 +241,11 @@ export function AdminProductsView() {
                 {product.reservedStock} held
               </span>
             ) : null}
+            {product.waitingCount ? (
+              <span className="block text-[0.625rem] text-copper-700">
+                {product.waitingCount} waiting
+              </span>
+            ) : null}
           </span>
         );
       },

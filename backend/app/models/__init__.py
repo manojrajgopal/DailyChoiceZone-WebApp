@@ -35,6 +35,7 @@ from app.models.commerce import (
     CouponUsage,
     HomepageSection,
     Notification,
+    NotificationRead,
     Review,
     SettingDocument,
 )
@@ -62,6 +63,7 @@ __all__ = [
     "Invoice",
     "InvoiceItem",
     "Notification",
+    "NotificationRead",
     "Order",
     "OrderEvent",
     "OrderItem",

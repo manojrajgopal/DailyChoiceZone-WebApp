@@ -130,7 +130,9 @@ class ProductOut(CamelModel):
             is_trending=product.is_trending,
             is_best_seller=product.is_best_seller,
             is_featured=product.is_featured,
-            stock=product.stock,
+            # What a shopper can buy now, by the same rule as checkout
+            # (`availability._answer`): held units and an out-of-stock listing count as none.
+            stock=product.available_stock if product.status == "active" else 0,
             is_returnable=bool(getattr(product, "is_returnable", True)),
             is_replaceable=bool(getattr(product, "is_replaceable", True)),
             sku=product.sku,
@@ -154,6 +156,7 @@ class AdminProductOut(ProductOut):
     status: str
     low_stock_threshold: int
     reserved_stock: int
+    waiting_count: int = 0
     barcode: str
     tax_rate_percent: float
     created_at: datetime
@@ -169,10 +172,19 @@ class AdminProductOut(ProductOut):
     shared_images: List[str] = []
 
     @classmethod
-    def from_model(cls, product) -> "AdminProductOut":
+    def from_model(cls, product, *, waiting: Optional[int] = None) -> "AdminProductOut":
+        """`waiting`: customers waiting for it to be back; looked up here when not given."""
+        if waiting is None:
+            from sqlalchemy.orm import object_session
+
+            from app.services import alerts
+
+            session = object_session(product)
+            waiting = alerts.waiting_count(session, product.id) if session is not None else 0
         base = ProductOut.from_model(product, offers=False).model_dump(by_alias=False)
         return cls(
-            **base,
+            **{**base, "stock": product.stock},  # the portal edits the real count
+            waiting_count=waiting,
             status=product.status,
             low_stock_threshold=product.low_stock_threshold,
             reserved_stock=product.reserved_stock,

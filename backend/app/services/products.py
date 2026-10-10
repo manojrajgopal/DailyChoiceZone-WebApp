@@ -274,6 +274,7 @@ def create_product(db: Session, payload: ProductWrite, actor: Optional[str] = No
     )
 
     _apply_children(db, product, payload)
+    _sync_status(product)
 
     db.add(product)
     db.commit()
@@ -302,6 +303,7 @@ def update_product(
     what distinguishes "set this to null" from "do not touch it".
     """
     product = get_product(db, product_id)
+    before_available = product.available_stock
     provided = payload.model_dump(exclude_unset=True, by_alias=False)
     old_price, old_original = float(product.price), float(product.original_price)
 
@@ -368,6 +370,12 @@ def update_product(
         product.discount = _discount_percent(float(product.price), float(product.original_price))
 
     _apply_children(db, product, payload)
+
+    # Whichever the admin changed, stock and status must agree: a restocked
+    # product left "out of stock" shows Buy now but fails at checkout.
+    if {"stock", "reserved_stock", "status"} & set(provided):
+        _sync_status(product)
+        _watch_stock(db, product, before_available)
 
     product.updated_by = actor or product.updated_by
 
@@ -518,11 +526,11 @@ def adjust_stock(
 
     product = get_product(db, product_id)
     before = product.stock
+    before_available = product.available_stock
 
     product.stock = quantity
-    if product.status in ("active", "out-of-stock"):
-        available = max(0, quantity - product.reserved_stock)
-        product.status = "active" if available > 0 else "out-of-stock"
+    _sync_status(product)
+    _watch_stock(db, product, before_available)
 
     db.add(
         StockAdjustment(
@@ -623,9 +631,7 @@ def receive_stock(
     product = _locked(db, product_id)
     before = product.stock
     product.stock = before + quantity
-    if product.status in ("active", "out-of-stock"):
-        available = max(0, product.stock - product.reserved_stock)
-        product.status = "active" if available > 0 else "out-of-stock"
+    _sync_status(product)
 
     db.add(
         StockAdjustment(
@@ -690,12 +696,46 @@ def _ledger(db: Session, product: Product, *, reason: str, before: int, delta: i
     )
 
 
+def _stock_level(available: int, threshold: int) -> int:
+    """2 in stock, 1 running low, 0 out of stock."""
+    return 0 if available <= 0 else (1 if available <= (threshold or 0) else 2)
+
+
+def _watch_stock(db: Session, product: Product, before_available: int) -> None:
+    """
+    Tell the store team when a product on sale runs low or runs out — once, at
+    the moment it crosses the line, not on every sale after. Settings →
+    Notifications → Low stock alerts switches it off.
+    """
+    if product.status not in ("active", "out-of-stock"):
+        return
+    threshold = product.low_stock_threshold or 0
+    before, after = _stock_level(before_available, threshold), _stock_level(product.available_stock, threshold)
+    if after >= before:
+        return
+    from app.services import inbox
+
+    day = datetime.utcnow().strftime("%Y%m%d")
+    href = f"/admin/inventory?productId={product.id}"
+    if after == 0:
+        inbox.staff(db, "stock", f"Out of stock: {product.name}",
+                    f"{product.sku} has none left to sell. Restock it, or customers can only ask to be told "
+                    "when it's back.", href, permission="products", key=f"stock:{product.id}:out:{day}")
+    else:
+        inbox.staff(db, "stock", f"Running low: {product.name}",
+                    f"{product.sku} has {product.available_stock} left (alert at {threshold}).", href,
+                    permission="products", key=f"stock:{product.id}:low:{day}")
+
+
 def _sync_status(product: Product) -> None:
-    """Keep the listing status in step with what can actually be bought."""
-    if product.status == "active" and product.stock <= 0:
-        product.status = "out-of-stock"
-    elif product.status == "out-of-stock" and product.stock > 0:
-        product.status = "active"
+    """
+    Keep the listing status in step with what can actually be bought: an active
+    product with nothing available is `out-of-stock`, and an `out-of-stock` one
+    with units to sell is `active` again. Drafts and archived products keep
+    their status, so restocking one doesn't publish it.
+    """
+    if product.status in ("active", "out-of-stock"):
+        product.status = "active" if product.available_stock > 0 else "out-of-stock"
 
 
 def consume_stock(db: Session, product_id: str, quantity: int, order_id: str) -> None:
@@ -712,9 +752,11 @@ def consume_stock(db: Session, product_id: str, quantity: int, order_id: str) ->
     _refuse_if_short(product, quantity)
 
     before = product.stock
+    before_available = product.available_stock
     product.stock -= quantity
     _sync_status(product)
     _ledger(db, product, reason="sale", before=before, delta=-quantity, note=f"Order {order_id}")
+    _watch_stock(db, product, before_available)
 
 
 def reserve_stock(db: Session, product_id: str, quantity: int, order_id: str) -> None:
@@ -735,7 +777,9 @@ def reserve_stock(db: Session, product_id: str, quantity: int, order_id: str) ->
 
     product = _locked(db, product_id)
     _refuse_if_short(product, quantity)
+    before_available = product.available_stock
     product.reserved_stock = (product.reserved_stock or 0) + quantity
+    _watch_stock(db, product, before_available)
 
 
 def commit_reservation(db: Session, product_id: str, quantity: int, order_id: str) -> None:

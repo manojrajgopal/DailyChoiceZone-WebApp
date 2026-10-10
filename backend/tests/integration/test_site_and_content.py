@@ -352,10 +352,13 @@ class TestAdminNotifications:
         assert [r["id"] for r in rows] == ["N2", "N1"]
         assert set(rows[0]) == {"id", "kind", "title", "body", "href", "read", "at"}
 
+    @staticmethod
+    def _read(client, headers) -> dict:
+        return {r["id"]: r["read"] for r in client.get("/api/admin/notifications", headers=headers).json()["data"]}
+
     def test_mark_one_read(self, client, admin_auth, db, tray):
         assert client.put("/api/admin/notifications/N1/read", headers=admin_auth).status_code == 200
-        db.expire_all()
-        assert db.get(Notification, "N1").read is True
+        assert self._read(client, admin_auth)["N1"] is True
 
     def test_cannot_read_someone_elses(self, client, admin_auth, tray):
         response = client.put("/api/admin/notifications/N3/read", headers=admin_auth)
@@ -365,10 +368,14 @@ class TestAdminNotifications:
         assert client.put("/api/admin/notifications/N999/read", headers=admin_auth).status_code == 404
 
     def test_mark_all_read_leaves_other_peoples(self, client, admin_auth, db, tray):
+        from app.models import NotificationRead
+
         assert client.put("/api/admin/notifications/read-all", headers=admin_auth).status_code == 200
+        assert self._read(client, admin_auth) == {"N1": True, "N2": True}
+        # Read for this administrator only: the editor's own item, and everyone's for the editor, stay unread.
         db.expire_all()
-        assert db.get(Notification, "N1").read and db.get(Notification, "N2").read
-        assert db.get(Notification, "N3").read is False
+        assert {r.notification_id for r in db.query(NotificationRead).filter_by(admin_id="ADM001")} == {"N1", "N2"}
+        assert db.query(NotificationRead).filter_by(notification_id="N3").count() == 0
 
 
 class TestAdminNavigation:

@@ -24,6 +24,7 @@ export interface NavBadges {
   pendingQuestions: number;
   referralsInReview: number;
   failedNotifications: number;
+  waitingCustomers: number;
 }
 
 /**
@@ -33,7 +34,7 @@ export interface NavBadges {
  * the navigation editor offers these and nothing else, because a fourth name
  * would save fine and then render no chip.
  */
-export const BADGE_NAMES: (keyof NavBadges)[] = ["openOrders", "openReturns", "openTickets", "lowStock", "pendingReviews", "pendingQuestions", "referralsInReview", "failedNotifications"];
+export const BADGE_NAMES: (keyof NavBadges)[] = ["openOrders", "openReturns", "openTickets", "lowStock", "pendingReviews", "pendingQuestions", "referralsInReview", "failedNotifications", "waitingCustomers"];
 
 /** Which groups and folders the person opened or closed, remembered per browser. */
 export const OPEN_KEY = "dcz-admin-nav-open";

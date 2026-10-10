@@ -56,7 +56,8 @@ def email_account(db, monkeypatch):
 
     class Outbox:
         def __init__(self):
-            self.sent, self.jobs, self.fail_with = [], [], None
+            # `sent` is customer mail; the store team's alerts go to `staff`.
+            self.sent, self.staff, self.jobs, self.fail_with = [], [], [], None
 
         def run(self):
             jobs, self.jobs = self.jobs, []
@@ -68,8 +69,9 @@ def email_account(db, monkeypatch):
     def fake_send(provider, credentials, account, to, subject, html, text):
         if outbox.fail_with is not None:
             raise outbox.fail_with
-        outbox.sent.append({"to": to, "subject": subject, "html": html, "text": text})
-        return f"<msg-{len(outbox.sent)}@example.com>"
+        box = outbox.staff if "Sent to the Daily Choice Zone store team" in (html or "") else outbox.sent
+        box.append({"to": to, "subject": subject, "html": html, "text": text})
+        return f"<msg-{len(outbox.sent) + len(outbox.staff)}@example.com>"
 
     class Deferred:
         def __init__(self, target, args=(), **_):

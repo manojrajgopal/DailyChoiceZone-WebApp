@@ -91,6 +91,19 @@ def unsubscribe(alert_id: int, kind: str = KIND, db: Session = Depends(get_db),
 # ------------------------------------------------------------------ admin
 
 
+@admin_router.get("/stock/waiting", summary="Customers waiting for products to be back, by product")
+def waiting(
+    product_id: str = Query("", max_length=64, alias="productId", description="A Product ID or SKU, exact."),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(require_access("alerts")),
+):
+    data = service.waiting_summary(db, product_id=product_id, page=page, page_size=page_size)
+    return ok({"items": data["items"], "summary": data["summary"],
+               "pagination": Pagination.build(page, page_size, data["total"]).model_dump()})
+
+
 @admin_router.get("/{kind}", summary="Stock or price alerts")
 def list_alerts(
     kind: str = KIND,

@@ -21,6 +21,8 @@ export interface ProductManagement {
   lowStockThreshold: number;
   /** Physically held back for unfulfilled orders; not sellable. */
   reservedStock: number;
+  /** Customers waiting to be told it's back in stock. Read-only. */
+  waitingCount?: number;
   barcode: string;
   taxRatePercent: number;
   createdAt: string;
@@ -75,6 +77,8 @@ export interface InventoryItem {
   available: number;
   lowStockThreshold: number;
   status: StockStatus;
+  /** Customers who asked to be told when it's back (Stock & price alerts). */
+  waitingCount?: number;
 }
 
 export interface StockAdjustment {
@@ -442,13 +446,7 @@ export interface StoreSettings {
     pricesIncludeTax: boolean;
     gstin: string;
   };
-  notifications: {
-    orderConfirmation: boolean;
-    shippingUpdates: boolean;
-    lowStockAlerts: boolean;
-    reviewAlerts: boolean;
-    marketingEmails: boolean;
-  };
+  notifications: StoreNotificationSettings;
   social: {
     instagram: string;
     facebook: string;
@@ -462,7 +460,39 @@ export interface StoreSettings {
 
 /* -------------------------------------------------------------- notifications */
 
-export type NotificationKind = "stock" | "order" | "review" | "coupon" | "system" | "support";
+export type AlertChannel = "email" | "sms" | "whatsapp" | "inApp";
+
+/** Settings → Notifications: customer emails, and how the store team hears about things. */
+export interface StoreNotificationSettings {
+  orderConfirmation: boolean;
+  shippingUpdates: boolean;
+  marketingEmails: boolean;
+  /** Store team alert groups. Alerts about something broken have no switch. */
+  orderAlerts: boolean;
+  paymentAlerts: boolean;
+  lowStockAlerts: boolean;
+  waitlistAlerts: boolean;
+  waitlistDigest: boolean;
+  reviewAlerts: boolean;
+  customerAlerts: boolean;
+  /** Who gets every alert, besides the administrators whose role covers it. */
+  alertRecipients: { emails: string[]; phones: string[] };
+  alertChannels: Record<AlertChannel, boolean>;
+  /** A WhatsApp message the store starts needs a template approved by Meta. */
+  whatsappAlertTemplate: { name: string; language: string };
+}
+
+export interface AlertChannelStatus {
+  enabled: boolean;
+  configured: boolean;
+  reason: string;
+}
+
+export type AlertChannels = Record<AlertChannel, AlertChannelStatus>;
+
+export type NotificationKind =
+  | "stock" | "order" | "order-cancelled" | "payment" | "review" | "customer" | "waitlist" | "waitlist-digest"
+  | "coupon" | "system" | "support" | "test" | (string & {});
 
 export interface AdminNotification {
   id: string;

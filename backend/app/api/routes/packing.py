@@ -201,9 +201,18 @@ def reopen(job_id: int, payload: dict = Body(...), db: Session = Depends(get_db)
                    "Reopened.")
 
 
-@packing_router.post("/{job_id}/ready", summary="Hand the packages to the order's shipment")
-def ready(job_id: int, db: Session = Depends(get_db), admin: AdminUser = Depends(packing_access)):
-    return _detail(db, packing.mark_ready(db, job_id, admin=admin), "Ready to ship.")
+@packing_router.post("/{job_id}/ready", summary="Hand the packages to the order's shipment, creating it if needed")
+def ready(job_id: int, payload: Optional[dict] = Body(None), db: Session = Depends(get_db),
+          admin: AdminUser = Depends(packing_access)):
+    """
+    Links the order's shipment, or creates one with the default courier (or
+    `providerCode`) and these packages. A Manual courier needs `courierName`
+    and `awb`; without them the answer is 409 SHIPMENT_DETAILS_REQUIRED.
+    Send an `idempotencyKey` so a retried click can't create two shipments.
+    """
+    job, created = packing.mark_ready(db, job_id, admin=admin, payload=_body(payload))
+    message = f"Shipment {created.shipment_number} created — ready to ship." if created else "Ready to ship."
+    return _detail(db, job, message)
 
 
 @packing_router.get("/{job_id}/slip", summary="The packing slip (PDF)")

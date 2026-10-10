@@ -116,7 +116,7 @@ export function CreateShipmentDialog({
     if (isManual) {
       if (!courierName.trim()) next.courierName = "Enter the courier's name.";
       if (!awb.trim()) next.awb = "Enter the AWB / tracking number.";
-      else if (!/^\S{3,64}$/.test(awb.trim())) next.awb = "3 to 64 characters, without spaces.";
+      else if (!/^[A-Za-z0-9-]{4,40}$/.test(awb.trim())) next.awb = "4 to 40 letters, digits or hyphens.";
     }
     setErrors(next);
     if (Object.values(next).some(Boolean)) return;

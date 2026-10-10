@@ -108,7 +108,7 @@ def test_staff_alerts_are_emailed_to_administrators_who_handle_them(client, db, 
 
     sent = []
 
-    def record(db, key, *, to, customer_id, subject, html, text, reference="", inbox=None):
+    def record(db, key, *, to, customer_id, subject, html, text, reference="", inbox=None, **_):
         sent.append({"key": key, "to": to, "subject": subject})
         return True
 

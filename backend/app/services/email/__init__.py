@@ -899,6 +899,7 @@ def notify_order(db: Session, order, stage: str, *, copy: Optional[tuple] = None
     }.get(stage)
     if not key:
         return
+    _tell_staff_about_order(db, order, stage, copy)
     subject, html, text = render_order(order, stage, copy)
     from app.services.messaging.catalogue import ORDER_STAGE_EVENTS
 
@@ -907,6 +908,25 @@ def notify_order(db: Session, order, stage: str, *, copy: Optional[tuple] = None
            event=ORDER_STAGE_EVENTS.get(stage), variables=order_variables(order, stage),
            extra_html=order_progress(stage) + _order_rows(order) + order_cards(order, delivery=stage not in ("cancelled", "returned")),
            idempotency_key=f"order:{order.order_number}:{stage}")
+
+
+def _tell_staff_about_order(db: Session, order, stage: str, copy: Optional[tuple]) -> None:
+    """A new order, or a cancelled one, is news for the store team too (the bell, email, SMS, WhatsApp)."""
+    if stage not in ("confirmed", "cancelled"):
+        return
+    from app.services import inbox
+
+    href = f"/admin/orders/detail?id={order.id}"
+    who = order.customer_name or order.customer_email
+    method = "cash on delivery" if order.payment_method == "cod" else (order.payment_method or "online")
+    if stage == "confirmed":
+        inbox.staff(db, "order", f"New order {order.order_number} — {_money(order.total)}",
+                    f"{who} · {order.item_count} item(s) · {method}.", href, permission="orders",
+                    key=f"order:{order.order_number}:confirmed")
+    else:
+        why = "payment wasn't completed in time" if copy is PAYMENT_EXPIRED_COPY else "cancelled"
+        inbox.staff(db, "order-cancelled", f"Order {order.order_number} cancelled — {_money(order.total)}",
+                    f"{who}: {why}.", href, permission="orders", key=f"order:{order.order_number}:cancelled")
 
 
 def order_variables(order, stage: str = "") -> dict:

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -36,10 +37,15 @@ import {
   createProduct,
   emptyProductDraft,
   getProduct,
+  statusForStock,
   updateProduct,
   validateProduct,
 } from "@/services/admin/productAdminService";
 import { toast } from "@/store/toastStore";
+
+const STATUS_NAMES: Record<ProductStatus, string> = {
+  draft: "Draft", active: "Active", "out-of-stock": "Out of stock", archived: "Archived",
+};
 
 /** Which section each validated field lives in. */
 const ERROR_SECTION: Record<string, string> = {
@@ -127,6 +133,9 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
     () => (selectedCategory?.groups ?? []).flatMap((group) => group.items),
     [selectedCategory],
   );
+
+  // What the status will be once saved: it follows the stock, so say so before the admin is surprised.
+  const savedStatus = statusForStock(draft.status, draft.stock, draft.reservedStock);
 
   const set = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -397,6 +406,7 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
               value={draft.stock}
               onChange={(event) => set("stock", Number(event.target.value))}
               error={errors.stock}
+              hint={savedStatus !== draft.status ? `Saving will set the status to ${STATUS_NAMES[savedStatus]}.` : undefined}
             />
 
             <AdminInput
@@ -415,6 +425,15 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
               placeholder="8901234567890"
             />
           </FormGrid>
+          {draft.waitingCount ? (
+            <p role="status" className="mt-3 rounded-[3px] border border-admin-border bg-admin-raised px-3 py-2 text-xs text-admin-ink">
+              {draft.waitingCount} customer{draft.waitingCount === 1 ? " is" : "s are"} waiting for this. They&apos;re
+              emailed as soon as it&apos;s back in stock.{" "}
+              <Link href={`/admin/alerts?productId=${encodeURIComponent(draft.id)}`} className="text-copper-700 underline">
+                See who
+              </Link>
+            </p>
+          ) : null}
         </FormSection>
       ),
     },
@@ -498,9 +517,17 @@ export function AdminProductForm({ mode }: { mode: "create" | "edit" }) {
               { value: "archived", label: "Archived — hidden and delisted" },
             ]}
           />
+          {savedStatus !== draft.status ? (
+            <p role="status" className="mt-2 rounded-[3px] border border-admin-border bg-admin-raised px-2.5 py-1.5 text-xs text-admin-ink">
+              {draft.stock - draft.reservedStock > 0
+                ? `Stock is ${draft.stock - draft.reservedStock} — this will be saved as Active.`
+                : "There's no stock to sell — this will be saved as Out of stock."}
+            </p>
+          ) : null}
           <p className="mt-2 text-[0.6875rem] leading-relaxed text-admin-muted">
-            Only Active and Out of stock products appear on the storefront. Setting stock to zero
-            moves an Active product to Out of stock automatically.
+            Only Active and Out of stock products appear on the storefront. Status follows stock: an
+            Active product with no stock shows as Out of stock, and adding stock makes it Active again.
+            Drafts and archived products are not changed.
           </p>
         </FormSection>
       ),

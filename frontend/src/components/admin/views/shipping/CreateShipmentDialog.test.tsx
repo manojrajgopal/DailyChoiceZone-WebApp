@@ -261,7 +261,7 @@ describe("CreateShipmentDialog", () => {
       await user.type(field(dialog, /^AWB/), "AB 12");
       await user.type(field(dialog, /^Weight/), "500");
       await user.click(within(dialog).getByRole("button", { name: "Create shipment" }));
-      expect(within(dialog).getByText("3 to 64 characters, without spaces.")).toBeInTheDocument();
+      expect(within(dialog).getByText("4 to 40 letters, digits or hyphens.")).toBeInTheDocument();
       expect(api.requests("POST", "/admin/shipments")).toHaveLength(0);
 
       await user.clear(field(dialog, /^AWB/));

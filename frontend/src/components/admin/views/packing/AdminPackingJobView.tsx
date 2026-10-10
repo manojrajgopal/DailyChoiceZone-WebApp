@@ -13,9 +13,13 @@ import { useAdminResource } from "@/hooks/useAdminResource";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { ApiError } from "@/services/api/client";
 import * as packing from "@/services/admin/packingAdminService";
+import { getOrderShipping, newIdempotencyKey } from "@/services/shippingService";
 import type { PackageInput, PackingJob, PackingLineView, PackingPriority, PickException } from "@/types/packing";
+import type { OrderShipping } from "@/types/shipping";
 import { EXCEPTION_LABELS } from "@/types/packing";
 import { toast } from "@/store/toastStore";
+
+import { CreateShipmentDialog } from "@/components/admin/views/shipping/CreateShipmentDialog";
 
 import { PackageForm } from "./PackageForm";
 import { PackingStatusBadge, agingLabel, dimensionsLabel, weightLabel } from "./shared";
@@ -67,6 +71,31 @@ export function AdminPackingJobView() {
     } catch (error) {
       toast.error(message(error, "That didn't save. Please try again."));
       return false;
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // The shipment form, opened when the courier needs details only a person has (Manual: name and AWB).
+  const [shipping, setShipping] = useState<OrderShipping | null>(null);
+
+  const shipNow = async () => {
+    if (!job) return;
+    setBusy("ready");
+    try {
+      const next = await packing.markReady(job.id, { idempotencyKey: newIdempotencyKey() });
+      setJob(next);
+      toast.success(next.shipment ? `Ready to ship with ${next.shipment.shipmentNumber}.` : "Ready to ship.");
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "SHIPMENT_DETAILS_REQUIRED" && job.order) {
+        try {
+          setShipping(await getOrderShipping(job.order.id));
+        } catch (loadError) {
+          toast.error(message(loadError, "The shipment form didn't load. Please try again."));
+        }
+      } else {
+        toast.error(message(error, "That didn't save. Please try again."));
+      }
     } finally {
       setBusy(null);
     }
@@ -200,8 +229,7 @@ export function AdminPackingJobView() {
               </AdminButton>
             ) : null}
             {a.ready ? (
-              <AdminButton variant="primary" loading={busy === "ready"}
-                onClick={() => void run("ready", () => packing.markReady(job.id), "Ready to ship.")}>
+              <AdminButton variant="primary" loading={busy === "ready"} disabled={busy !== null} onClick={() => void shipNow()}>
                 Ready to ship
               </AdminButton>
             ) : null}
@@ -410,7 +438,7 @@ export function AdminPackingJobView() {
               </div>
             ) : (
               <p className="text-xs text-admin-muted">
-                No shipment yet. Once packed, create one from the order&rsquo;s page — it takes these packages&rsquo; weight and size.
+                No shipment yet. Ready to ship creates one with your default courier, using these packages&rsquo; weight and size.
               </p>
             )}
           </AdminCard>
@@ -418,6 +446,20 @@ export function AdminPackingJobView() {
       </div>
 
       <AskDialogs key={askKey} job={job} ask={ask} setAsk={setAsk} busy={busy} run={run} />
+
+      {shipping && job.order ? (
+        <CreateShipmentDialog
+          orderId={job.order.id}
+          shipping={shipping}
+          onClose={() => setShipping(null)}
+          onCreated={(shipment) => {
+            setShipping(null);
+            toast.success(`Ready to ship with ${shipment.shipmentNumber}.`);
+            // Creating the shipment handed the packages over; show the job as it is now.
+            void packing.getPackingJob(job.id).then(setJob, () => void loaded.reload());
+          }}
+        />
+      ) : null}
     </div>
   );
 }

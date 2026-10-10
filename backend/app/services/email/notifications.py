@@ -66,6 +66,12 @@ def notify_payment(db: Session, order, amount_minor: int) -> None:
 
 
 def notify_payment_failed(db: Session, order, payment) -> None:
+    from app.services import inbox
+
+    inbox.staff(db, "payment", f"Payment failed on {order.order_number} — {_money(order.total)}",
+                f"{order.customer_name or order.customer_email} · {payment_label(order)}. The items are held "
+                "while they try again.", f"/admin/orders/detail?id={order.id}", permission="payments",
+                key=f"payment:{payment.id}:failed")
     esc = html_lib.escape
     intro = (
         f"{_hello(order.customer_name)}your payment for order <strong>{esc(order.order_number)}</strong> didn't go through, "

@@ -147,7 +147,7 @@ def _product_brief(product: Optional[Product]) -> Optional[dict]:
     from app.models.catalogue import images_for
 
     return {
-        "id": product.id, "slug": product.slug, "name": product.name, "brand": product.brand,
+        "id": product.id, "slug": product.slug, "sku": product.sku, "name": product.name, "brand": product.brand,
         "image": next(iter(images_for(product)), ""), "price": float(product.price),
         "originalPrice": float(product.original_price), "available": is_available(product),
         "listed": product.status in LISTED,
@@ -183,7 +183,30 @@ def subscribe_stock(db: Session, customer: Customer, product_id: str, *, size: s
         )).scalar_one()
         return existing, False
     db.refresh(alert)
+    _tell_staff_waiting(db, alert, product, customer)
     return alert, True
+
+
+def waiting_count(db: Session, product_id: str) -> int:
+    """How many customers are waiting for this product to be back (any variant)."""
+    return int(db.execute(select(func.count()).select_from(StockAlert).where(
+        StockAlert.product_id == product_id, StockAlert.status == "active")).scalar_one())
+
+
+def _tell_staff_waiting(db: Session, alert: StockAlert, product: Product, customer: Customer) -> None:
+    """Someone asked to hear when this is back: the store team hears too, with how many are waiting now."""
+    from app.services import inbox
+
+    variant = ", ".join(part for part in (alert.size, alert.color) if part)
+    waiting = waiting_count(db, product.id)
+    name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or customer.email
+    contact = " · ".join(part for part in (customer.email, customer.phone) if part)
+    inbox.staff(db, "waitlist",
+                f"{name} is waiting for {product.name}{f' ({variant})' if variant else ''} — {waiting} waiting now",
+                f"{contact}. {product.sku} is out of stock; restock it to sell to everyone waiting.",
+                f"/admin/alerts?view=waiting&productId={product.id}", permission="alerts",
+                key=f"waitlist:{alert.id}")
+    db.commit()
 
 
 def subscribe_price(db: Session, customer: Customer, product_id: str, *, mode: str = "any",
@@ -573,7 +596,8 @@ def admin_search(db: Session, kind: str, *, status: str = "", q: str = "", produ
         view = stock_view(row, products.get(row.product_id)) if kind == "stock" else price_view(row, products.get(row.product_id))
         customer = customers.get(row.customer_id)
         view.update({
-            "customer": {"id": customer.id, "name": customer.full_name, "email": customer.email} if customer else None,
+            "customer": {"id": customer.id, "name": customer.full_name, "email": customer.email,
+                         "phone": customer.phone or ""} if customer else None,
             "attempts": row.attempts, "lastAttemptAt": row.last_attempt_at, "lastError": row.last_error,
             "delivery": deliveries.get(f"{prefix}-{row.id}"),
         })
@@ -582,6 +606,53 @@ def admin_search(db: Session, kind: str, *, status: str = "", q: str = "", produ
                                 "outcome": n.outcome, "note": n.note, "at": n.created_at} for n in row.notifications]
         items.append(view)
     return items, total, counts
+
+
+def waiting_summary(db: Session, *, product_id: str = "", page: int = 1, page_size: int = 25) -> dict:
+    """
+    Who is waiting for what: active back-in-stock requests grouped by product
+    and variant, most-wanted first — what to restock, and for how many people.
+    `product_id` is a Product ID or SKU, matched exactly (docs/id-lookup.md).
+    """
+    from app.services.lookup.filters import id_condition
+
+    conditions = [StockAlert.status == "active"]
+    condition = id_condition("product", product_id, column=StockAlert.product_id, via=Product.id)
+    if condition is not None:
+        conditions.append(condition)
+    waiting = func.count(StockAlert.id).label("waiting")
+    grouped = (select(StockAlert.product_id, StockAlert.size, StockAlert.color, waiting,
+                      func.min(StockAlert.created_at).label("oldest"), func.max(StockAlert.created_at).label("newest"))
+               .where(*conditions).group_by(StockAlert.product_id, StockAlert.size, StockAlert.color))
+    total = db.execute(select(func.count()).select_from(grouped.subquery())).scalar_one()
+    rows = db.execute(grouped.order_by(waiting.desc(), func.min(StockAlert.created_at))
+                      .offset((max(1, page) - 1) * page_size).limit(page_size)).all()
+    products = {p.id: p for p in db.execute(select(Product).where(
+        Product.id.in_({r.product_id for r in rows}))).scalars()} if rows else {}
+    totals = db.execute(select(func.count(StockAlert.id), func.count(func.distinct(StockAlert.product_id)),
+                               func.count(func.distinct(StockAlert.customer_id)))
+                        .where(StockAlert.status == "active")).one()
+    items = []
+    for row in rows:
+        product = products.get(row.product_id)
+        brief = _product_brief(product)
+        if brief is not None:
+            brief.update({"stock": product.available_stock, "status": product.status})
+        items.append({"productId": row.product_id, "product": brief, "size": row.size, "color": row.color,
+                      "waiting": int(row.waiting), "oldest": row.oldest, "newest": row.newest})
+    return {"items": items, "total": int(total),
+            "summary": {"requests": int(totals[0]), "products": int(totals[1]), "customers": int(totals[2])}}
+
+
+def waiting_counts(db: Session, product_ids) -> dict:
+    """{product id: customers waiting}, for a page of products — one grouped query."""
+    ids = list({pid for pid in product_ids if pid})
+    if not ids:
+        return {}
+    return {pid: int(n) for pid, n in db.execute(
+        select(StockAlert.product_id, func.count()).where(StockAlert.status == "active",
+                                                          StockAlert.product_id.in_(ids))
+        .group_by(StockAlert.product_id)).all()}
 
 
 def admin_resend(db: Session, kind: str, alert_id: int) -> str:
@@ -638,10 +709,117 @@ def admin_resend(db: Session, kind: str, alert_id: int) -> str:
 INTERVAL_SECONDS = 120
 
 
+# ------------------------------------------------------------ daily digest
+
+IST = timedelta(hours=5, minutes=30)
+DIGEST_HOUR = 9  # store time
+DIGEST_STATE = "waitlist_digest"
+
+
+def _variant_label(size: str, color: str) -> str:
+    return ", ".join(part for part in (size, color) if part)
+
+
+def digest_once(db: Session, now: Optional[datetime] = None) -> Optional[dict]:
+    """
+    Once a day, after 09:00 store time: one email to the store team about
+    "Notify me" — who asked in the last day, the products with the most people
+    waiting, and how many were told it's back. Also a line by SMS / WhatsApp
+    and in the bell. Nothing is sent on a day with nothing to report, and
+    nothing twice in a day. Settings → Notifications → Daily waitlist summary
+    turns it off.
+
+    Returns what was done (None when it isn't the time yet, or already ran today).
+    """
+    from app.models import SettingDocument
+    from app.services import email as email_service
+    from app.services import staff_alerts
+    from app.services.email import templates as T
+
+    now = now or datetime.utcnow()
+    local = now + IST
+    if local.hour < DIGEST_HOUR:
+        return None
+    today = local.strftime("%Y-%m-%d")
+    row = db.get(SettingDocument, DIGEST_STATE)
+    if row is not None and (row.value or {}).get("lastDate") == today:
+        return None
+    if row is None:
+        row = SettingDocument(key=DIGEST_STATE, value={})
+        db.add(row)
+    row.value = {"lastDate": today, "at": now.isoformat()}
+    if not staff_alerts.config(db)["waitlistDigest"]:
+        db.commit()
+        return {"sent": False, "reason": "switched off"}
+
+    since = now - timedelta(days=1)
+    new_requests = db.execute(select(StockAlert).where(StockAlert.created_at >= since)
+                              .order_by(StockAlert.created_at.desc())).scalars().all()
+    notified = int(db.execute(select(func.count()).select_from(StockAlert).where(
+        StockAlert.notified_at >= since)).scalar_one())
+    summary = waiting_summary(db, page=1, page_size=10)
+    if not new_requests and not notified and not summary["items"]:
+        db.commit()
+        return {"sent": False, "reason": "nothing to report"}
+
+    products = {p.id: p for p in db.execute(select(Product).where(
+        Product.id.in_({a.product_id for a in new_requests}))).scalars()} if new_requests else {}
+    customers = {c.id: c for c in db.execute(select(Customer).where(
+        Customer.id.in_({a.customer_id for a in new_requests}))).scalars()} if new_requests else {}
+
+    totals = summary["summary"]
+    body = T.stats([("New requests", str(len(new_requests)), "in the last 24 hours"),
+                    ("Waiting now", str(totals["customers"]), f"for {totals['products']} product(s)"),
+                    ("Told it's back", str(notified), "in the last 24 hours")], tone="info")
+    if summary["items"]:
+        wanted = []
+        for item in summary["items"]:
+            product = item["product"] or {}
+            variant = _variant_label(item["size"], item["color"])
+            label = product.get("name", item["productId"]) + (f" ({variant})" if variant else "")
+            wanted.append((label, f"{item['waiting']} waiting · {product.get('stock', 0)} in stock"))
+        body += T.details(wanted, title="Most wanted")
+    if new_requests:
+        lines = []
+        for alert in new_requests[:15]:
+            customer, product = customers.get(alert.customer_id), products.get(alert.product_id)
+            who = (customer.full_name or customer.email) if customer else alert.customer_id
+            contact = " · ".join(part for part in ((customer.email, customer.phone) if customer else ()) if part)
+            variant = _variant_label(alert.size, alert.color)
+            lines.append((who + (f" — {contact}" if contact else ""),
+                          (product.name if product else alert.product_id) + (f" ({variant})" if variant else "")))
+        more = len(new_requests) - len(lines)
+        body += T.details(lines, title="Asked in the last day" + (f" (and {more} more)" if more > 0 else ""))
+
+    title = f"Waitlist today: {totals['customers']} waiting for {totals['products']} product(s)"
+    link = f"{app_settings.STOREFRONT_URL.rstrip('/')}/admin/alerts?view=waiting"
+    html = email_service.layout(title, "Customers who asked to be told when an out-of-stock product is back.",
+                                body, cta=("See who's waiting", link),
+                                footnote="Sent to the Daily Choice Zone store team, once a day.", tone="info",
+                                icon="bell", eyebrow="Daily waitlist summary")
+    line = f"{len(new_requests)} new request(s) in the last day; {notified} customer(s) told it's back."
+    sent = []
+    if staff_alerts.config(db)["alertChannels"]["email"] and email_service.wants(db, "store_team", None):
+        for lowered, address in staff_alerts.email_recipients(db, "alerts").items():
+            if email_service.notify(db, "store_team", to=address, customer_id=None, subject=title, html=html,
+                                    text=f"{title}. {line} {link}", reference="waitlist-digest",
+                                    idempotency_key=f"staff:waitlist-digest:{today}:{lowered}"):
+                sent.append(address)
+    staff_alerts.send(db, "waitlist-digest", title, line, "/admin/alerts?view=waiting", permission="alerts",
+                      key=f"digest:{today}", channels=("inApp", "sms", "whatsapp"))
+    db.commit()
+    return {"sent": True, "emails": sent, "newRequests": len(new_requests), "waiting": totals["customers"]}
+
+
 def _sweep_once() -> None:
     from app.core.database import SessionLocal
 
     with SessionLocal() as db:
+        try:
+            digest_once(db)
+        except Exception:  # noqa: BLE001 — logged; the next pass tries again
+            db.rollback()
+            logger.exception("Waitlist digest failed; retrying next interval.")
         try:
             sweep(db)
         except Exception:  # noqa: BLE001 — logged; the next pass tries again

@@ -93,6 +93,12 @@ class TestCreatingAProduct:
         portal = client.get(f"/api/admin/products/{data['id']}", headers=admin_auth)
         assert portal.status_code == 200 and portal.json()["data"]["status"] == "draft"
 
+    @pytest.mark.parametrize("status, stock, expected", [
+        ("out-of-stock", 5, "active"), ("active", 0, "out-of-stock"), ("draft", 0, "draft"),
+    ])
+    def test_the_status_follows_the_stock(self, client, admin_auth, catalogue, status, stock, expected):
+        assert create(client, admin_auth, status=status, stock=stock).json()["data"]["status"] == expected
+
     def test_the_category_can_be_named_by_id(self, client, admin_auth, catalogue):
         data = create(client, admin_auth, category="CAT002").json()["data"]
         assert data["category"] == "electronics"
@@ -386,6 +392,26 @@ class TestUpdatingAProduct:
         data = update(client, admin_auth, "PRD003", stock=4, status="active").json()["data"]
         assert data["stock"] == 4 and data["status"] == "active"
         assert "PRD003" in ids(client.get("/api/products?inStockOnly=true"))
+
+    def test_restocking_an_out_of_stock_product_makes_it_active(self, client, admin_auth, catalogue):
+        # The admin only raised the quantity; the status left at "out-of-stock" follows it.
+        data = update(client, admin_auth, "PRD003", stock=12, status="out-of-stock").json()["data"]
+        assert data["stock"] == 12 and data["status"] == "active"
+        public = client.get("/api/products/PRD003").json()["data"]
+        assert public["stock"] == 12
+
+    def test_emptying_an_active_product_marks_it_out_of_stock(self, client, admin_auth, catalogue):
+        data = update(client, admin_auth, "PRD001", stock=0).json()["data"]
+        assert data["status"] == "out-of-stock"
+
+    def test_restocking_a_draft_does_not_publish_it(self, client, admin_auth, catalogue):
+        data = update(client, admin_auth, "PRD004", stock=20).json()["data"]
+        assert data["status"] == "draft"
+
+    def test_stock_held_by_reservations_is_not_buyable(self, client, admin_auth, catalogue):
+        data = update(client, admin_auth, "PRD001", stock=4, reservedStock=4).json()["data"]
+        assert data["status"] == "out-of-stock" and data["stock"] == 4  # the portal sees the real count
+        assert client.get("/api/products/PRD001").json()["data"]["stock"] == 0  # the shop sees none to buy
 
     def test_archiving_hides_it_from_the_shop(self, client, admin_auth, catalogue):
         update(client, admin_auth, status="archived")

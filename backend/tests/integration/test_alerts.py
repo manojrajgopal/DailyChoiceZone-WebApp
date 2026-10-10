@@ -33,6 +33,8 @@ def mailbox(monkeypatch):
     def record(db, key, *, to, customer_id, subject, html, text, reference="", **_):
         if not email_service.wants(db, key, customer_id):
             return False
+        if key == "store_team":
+            return True  # the team's "someone is waiting" alert; these tests are about the customer's mail
         sent.append({"key": key, "to": to, "subject": subject, "html": html, "reference": reference})
         return True
 

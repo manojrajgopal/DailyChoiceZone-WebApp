@@ -94,6 +94,10 @@ queue.
 
 ## Shipments
 
+A shipment is created from the order page, or by **Ready to ship** on the
+packing job, which books it with the default courier (or asks for the AWB when
+that courier is Manual; see docs/packing-and-labels.md).
+
 A shipment can be created only in these cases (otherwise 409
 `PACKING_INCOMPLETE`, `PAYMENT_REQUIRED` or `ORDER_NOT_SHIPPABLE`):
 

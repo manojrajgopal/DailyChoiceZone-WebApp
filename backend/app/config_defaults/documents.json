@@ -39,7 +39,15 @@
       "shippingUpdates": true,
       "lowStockAlerts": true,
       "reviewAlerts": true,
-      "marketingEmails": false
+      "marketingEmails": false,
+      "orderAlerts": true,
+      "paymentAlerts": true,
+      "waitlistAlerts": true,
+      "waitlistDigest": true,
+      "customerAlerts": true,
+      "alertRecipients": { "emails": [], "phones": [] },
+      "alertChannels": { "email": true, "sms": false, "whatsapp": false, "inApp": true },
+      "whatsappAlertTemplate": { "name": "", "language": "en" }
     },
     "social": {
       "instagram": "https://instagram.com/dailychoicezone",

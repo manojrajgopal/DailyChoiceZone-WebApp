@@ -41,6 +41,15 @@ pending ──start picking──▶ picking ──picking complete──▶ pic
   messages go out exactly once.
 - **Payment first.** Picking starts only when the payment allows fulfilment
   (paid or cash on delivery); otherwise `PAYMENT_REQUIRED`.
+- **Ready to ship creates the shipment.** On a packed job, Ready to ship
+  (`POST /api/admin/packing/{id}/ready`) hands the packages to the order's
+  shipment, creating one when there is none. It uses the default courier (or
+  `providerCode`) and the packages' total weight and largest size. A courier
+  with an API (Shiprocket) is booked straight away. A Manual courier needs its
+  name and the AWB: without them the answer is 409 `SHIPMENT_DETAILS_REQUIRED`,
+  and the page opens the shipment form to ask. With no courier switched on the
+  answer is 409 `NO_COURIER`. Send an `idempotencyKey` so a retried click
+  can't book twice.
 - **The open queue is the warehouse's.** A job handed to a shipment
   (`ready-to-ship`, "Handed to shipping") leaves the open queue.
 - **Problems on the shelf.** A line can be flagged as missing stock, damaged or

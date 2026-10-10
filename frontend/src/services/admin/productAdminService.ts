@@ -71,6 +71,17 @@ export function validateProduct(draft: ProductDraft): Record<string, string> {
   return errors;
 }
 
+/**
+ * The status a product is saved with, given its stock. The server applies the
+ * same rule: an Active product with nothing left to sell is Out of stock, and an
+ * Out of stock one with stock is Active again. Drafts and archived products keep
+ * their status, so restocking one doesn't publish it.
+ */
+export function statusForStock(status: ProductStatus, stock: number, reservedStock = 0): ProductStatus {
+  if (status !== "active" && status !== "out-of-stock") return status;
+  return stock - reservedStock > 0 ? "active" : "out-of-stock";
+}
+
 /** Fill in everything the form does not collect directly. */
 function finalise(draft: ProductDraft, by: string): AdminProduct {
   const now = new Date().toISOString();
@@ -83,7 +94,7 @@ function finalise(draft: ProductDraft, by: string): AdminProduct {
     // the prices beside it destroys trust faster than it sells anything.
     discount: discountPercent(draft.price, originalPrice),
     // Stock and status must agree, whichever the admin changed last.
-    status: draft.stock <= 0 && draft.status === "active" ? "out-of-stock" : draft.status,
+    status: statusForStock(draft.status, draft.stock, draft.reservedStock),
     createdAt: now,
     updatedAt: now,
     updatedBy: by,

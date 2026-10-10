@@ -114,6 +114,63 @@ Unsigned or wrongly signed webhook calls are refused with 403.
 
 The sidebar shows how many transactional messages failed for good.
 
+## Store team alerts
+
+Everything the team should hear about goes through one function,
+`inbox.staff(...)` (`app/services/staff_alerts.py`), on every channel the store
+has switched on in **Settings → Notifications → Store team alerts**:
+
+| Channel | Who gets it |
+|---|---|
+| In the portal (the bell) | Administrators whose role covers the alert. Read is per administrator. |
+| Email | The same administrators, skipping an address that can't receive mail, plus the **alert recipients**. If that leaves nobody, the store's sending mailbox gets it. |
+| SMS | The alert recipients' phone numbers, through `NOTIFICATION_SMS_PROVIDER`. |
+| WhatsApp | The same numbers, through `NOTIFICATION_WHATSAPP_PROVIDER`, using the approved template named in the settings. |
+
+**Alert recipients** are up to 10 emails and 5 phone numbers that get every
+alert, whatever the administrators' roles. Use addresses someone reads: an
+administrator's address on a domain that doesn't exist is skipped, never
+"sent". **Send test alert** sends one on every channel that is on, so you can
+check before it matters.
+
+What raises an alert, and its switch:
+
+| Alert | Switch |
+|---|---|
+| New order (placed and confirmed, cash on delivery included); order cancelled, or its payment expired | Orders |
+| A customer's payment failed; a payment webhook failed | Payments |
+| A product on sale runs low (falls to its threshold) or runs out. Once per crossing, not on every sale | Low stock |
+| A customer taps **Notify me** on an out-of-stock product (who, what, and how many are waiting now) | Notify me requests |
+| One email each morning (after 09:00 IST): new requests, the most-wanted products, how many were told it's back. Not sent on a day with nothing to report | Daily waitlist summary |
+| A review is waiting for approval | Reviews |
+| A new customer account (sign-up form, Google/Apple/Microsoft, one-time code) | New customers |
+| Refund, return, shipment, webhook, backup, health, campaign and delivery problems | none: always sent |
+
+Each alert is its own delivery (its own idempotency key), so it's retried and
+appears in Admin → Notifications → Delivery history. An SMS or WhatsApp alert
+that can't go (no provider, no template) is recorded as **skipped** with the
+reason, and **Retry** sends it once the provider is set up.
+
+**WhatsApp template for alerts.** WhatsApp only lets a business start a
+conversation with a template Meta has approved. Create one (category
+*Utility*) with two body variables, for example:
+
+```
+Store alert: {{1}}
+{{2}}
+```
+
+`{{1}}` is the alert's title; `{{2}}` its details and the link. Enter the
+template's name and language in Settings → Notifications.
+
+### Who is waiting ("Notify me")
+
+**Stock & price alerts → Waiting customers** groups the active back-in-stock
+requests by product and variant, most wanted first, with the stock now; **See
+customers** lists each one with name, email and phone (CSV export included).
+Products and Inventory show the count beside the stock, the product form
+says how many are waiting, and the sidebar counts the customers waiting.
+
 ## Email templates and the email design
 
 `services/email/templates.py`.
@@ -318,18 +375,29 @@ log or put in a backup's metadata.
    website's logo is attached to every email automatically.
 3. **SMS (Twilio).** Set the Twilio variables and `PUBLIC_API_URL`, restart,
    then in Admin → Notifications switch SMS on and choose its events. Send a
-   test from Templates.
-4. **WhatsApp (Meta).** Create and get approval for message templates in
+   test from Templates. A local `PUBLIC_API_URL` (`localhost`, a private
+   address) sends no status callback — Twilio rejects the whole message when
+   the callback can't be reached — so messages show as "sent", not
+   "delivered", until the API has a public address.
+4. **WhatsApp (Twilio, including the Sandbox).** Set
+   `NOTIFICATION_WHATSAPP_PROVIDER=twilio` and `NOTIFICATION_WHATSAPP_SENDER`
+   (the sandbox number is `+14155238886`), switch WhatsApp on in Admin →
+   Notifications, and have the customer opt in to WhatsApp in their account.
+   An event with a Content template (`HX…`) on the Templates tab uses it; one
+   without goes as plain text (its SMS wording). WhatsApp delivers plain text
+   only within 24 hours of the customer's last message to the sender — in the
+   Sandbox, after they've sent the `join …` code.
+5. **WhatsApp (Meta).** Create and get approval for message templates in
    WhatsApp Manager (e.g. `order_update` with `{{1}}` name, `{{2}}` order
    number). Set the Meta variables and point the webhook at the URL above.
    In Admin → Notifications → Templates enter each event's template name and
    its variables in order; switch WhatsApp on and choose events.
-5. **Campaigns.** Nothing to configure; customers opt in from their account
+6. **Campaigns.** Nothing to configure; customers opt in from their account
    or at sign-up. Set `PUBLIC_API_URL` to measure email opens.
-6. **Backups.** Set `BACKUP_ENCRYPTION_KEY` (and S3 settings if wanted).
+7. **Backups.** Set `BACKUP_ENCRYPTION_KEY` (and S3 settings if wanted).
    Check Admin → Settings → Backups, press **Back up now** once, download it
    and run `python -m app.tools.backup verify` on it to see the whole cycle.
-7. **Permissions.** New areas: `notifications`, `campaigns`, `backups`.
+8. **Permissions.** New areas: `notifications`, `campaigns`, `backups`.
    Admins get notifications and campaigns; managers get campaigns; backups
    are the super admin's unless granted.
 

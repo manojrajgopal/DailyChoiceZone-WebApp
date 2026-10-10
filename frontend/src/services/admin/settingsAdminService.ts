@@ -1,11 +1,61 @@
-import type { AdminResult, AdminUser, StoreSettings } from "@/types/admin";
+import type {
+  AdminResult,
+  AdminUser,
+  AlertChannels,
+  StoreNotificationSettings,
+  StoreSettings,
+} from "@/types/admin";
+import { apiGet, apiPost, ApiError } from "@/services/api/client";
 
 import { adminDataSource } from "./admin-data-source.instance";
 
 /** Store settings and admin user management. */
 
-export function getSettings(): Promise<StoreSettings> {
-  return adminDataSource.getSettings();
+/** What the store has before it saves anything here (the server applies the same defaults). */
+export const DEFAULT_NOTIFICATIONS: StoreNotificationSettings = {
+  orderConfirmation: true,
+  shippingUpdates: true,
+  marketingEmails: false,
+  orderAlerts: true,
+  paymentAlerts: true,
+  lowStockAlerts: true,
+  waitlistAlerts: true,
+  waitlistDigest: true,
+  reviewAlerts: true,
+  customerAlerts: true,
+  alertRecipients: { emails: [], phones: [] },
+  alertChannels: { email: true, sms: false, whatsapp: false, inApp: true },
+  whatsappAlertTemplate: { name: "", language: "en" },
+};
+
+/** Settings saved before a field existed come back without it: fill those in. */
+export function withNotificationDefaults(saved: Partial<StoreNotificationSettings> | undefined): StoreNotificationSettings {
+  const value = saved ?? {};
+  return {
+    ...DEFAULT_NOTIFICATIONS,
+    ...value,
+    alertRecipients: {
+      emails: value.alertRecipients?.emails ?? [],
+      phones: value.alertRecipients?.phones ?? [],
+    },
+    alertChannels: { ...DEFAULT_NOTIFICATIONS.alertChannels, ...(value.alertChannels ?? {}) },
+    whatsappAlertTemplate: { ...DEFAULT_NOTIFICATIONS.whatsappAlertTemplate, ...(value.whatsappAlertTemplate ?? {}) },
+  };
+}
+
+export async function getSettings(): Promise<StoreSettings> {
+  const settings = await adminDataSource.getSettings();
+  return { ...settings, notifications: withNotificationDefaults(settings.notifications) };
+}
+
+/** Per channel: switched on, provider set up, and why not. */
+export function getAlertChannels(): Promise<AlertChannels> {
+  return apiGet<AlertChannels>("/admin/alert-channels", { auth: "admin" });
+}
+
+/** A test alert on every channel that is on, exactly where a real one would go. */
+export function sendTestAlert(): Promise<{ channels: AlertChannels; sent: Record<string, unknown> }> {
+  return apiPost("/admin/alert-channels/test", {}, { auth: "admin" });
 }
 
 export async function saveSettings(settings: StoreSettings): Promise<AdminResult<StoreSettings>> {
@@ -22,7 +72,18 @@ export async function saveSettings(settings: StoreSettings): Promise<AdminResult
     return { ok: false, reason: "Enter a tax rate between 0 and 28 percent." };
   }
 
-  return { ok: true, data: await adminDataSource.saveSettings(settings) };
+  const emails = settings.notifications?.alertRecipients?.emails ?? [];
+  const bad = emails.find((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim()));
+  if (bad) {
+    return { ok: false, reason: `"${bad}" isn't an email address.` };
+  }
+
+  try {
+    return { ok: true, data: await adminDataSource.saveSettings(settings) };
+  } catch (error) {
+    if (error instanceof ApiError) return { ok: false, reason: error.message };
+    throw error;
+  }
 }
 
 /* ----------------------------------------------------------- admin users */

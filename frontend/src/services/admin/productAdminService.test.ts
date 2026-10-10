@@ -134,6 +134,20 @@ describe("createProduct", () => {
     expect((result as { data: AdminProduct }).data.status).toBe("out-of-stock");
   });
 
+  it("makes a restocked out-of-stock product active again, and leaves drafts alone", async () => {
+    api.post("/products", (req) => req.body);
+    const restocked = await productAdmin.createProduct(draft({ stock: 12, status: "out-of-stock" }), "A1");
+    expect((restocked as { data: AdminProduct }).data.status).toBe("active");
+    const unpublished = await productAdmin.createProduct(draft({ stock: 12, status: "draft" }), "A1");
+    expect((unpublished as { data: AdminProduct }).data.status).toBe("draft");
+  });
+
+  it("counts reserved units as gone", () => {
+    expect(productAdmin.statusForStock("active", 4, 4)).toBe("out-of-stock");
+    expect(productAdmin.statusForStock("out-of-stock", 5, 4)).toBe("active");
+    expect(productAdmin.statusForStock("archived", 0)).toBe("archived");
+  });
+
   it("never lets the original price fall below the selling price", async () => {
     api.post("/products", (req) => req.body);
     const result = await productAdmin.createProduct(draft({ price: 500, originalPrice: 1000 }), "A1");

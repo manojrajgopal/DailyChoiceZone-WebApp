@@ -135,6 +135,9 @@ def register(db: Session, payload: RegisterRequest, *, ip: str = "",
     try:
         _claim_first_administrator(db, customer, password_hash)
         db.flush()
+        from app.services import inbox
+
+        inbox.new_customer(db, customer, "email and password")
         # A referral code is checked here, inside the same transaction: a
         # code that isn't valid refuses the sign-up so it can be corrected,
         # rather than the account being made without the referral.

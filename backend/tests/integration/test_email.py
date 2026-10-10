@@ -36,10 +36,12 @@ def outbox(monkeypatch):
     monkeypatch.setattr(senders, "deliver", fake_deliver)
     monkeypatch.setattr(email_service, "deliver", fake_deliver)
     # Background jobs run inline and are recorded, not written to a database.
+    # The store team's alerts (a new order, a cancellation) aren't customer mail: not counted here.
     monkeypatch.setattr(email_service, "_worker", lambda jobs: [
         fake_deliver(job["provider"], job["credentials"], email_service.build_message(
             sender_email=job["sender_email"], sender_name=job["sender_name"], reply_to=job["reply_to"],
             to=job["to"], subject=job["subject"], html=job["html"], text=job["text"])) for job in jobs
+        if "Sent to the Daily Choice Zone store team" not in job["html"]
     ])
 
     class Thread:

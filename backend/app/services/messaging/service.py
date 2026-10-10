@@ -639,7 +639,8 @@ def fan_out(db: Session, event: str, *, customer_id: Optional[str], values: dict
             continue
         skip = ("" if number else "The customer has no usable phone number.") or \
                ("" if ready else reason) or \
-               ("" if channel != "whatsapp" or short.get("template") else
+               ("" if channel != "whatsapp" or short.get("template") or
+                (provider.plain_text_whatsapp and short.get("text")) else
                 "No approved WhatsApp template is set for this notification.") or \
                ("" if channel != "sms" or short.get("text") else "This notification has no SMS wording.")
         row = queue(db, key=dedupe, event=event, channel=channel, category="transactional", customer_id=customer_id,

@@ -231,6 +231,25 @@ class Notification(Base):
     # Meant for one administrator (a ticket assigned to them); NULL is for
     # everybody, which is what every earlier notification is.
     admin_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    # Shown only to administrators whose role covers this permission; NULL is everyone.
+    permission: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+
+
+class NotificationRead(Base):
+    """
+    One administrator has read one tray item. Read is per person: before this,
+    one admin opening an alert marked it read for the whole team. (`Notification.read`
+    is kept, for items meant for a single administrator written before.)
+    """
+
+    __tablename__ = "notification_reads"
+    __table_args__ = (UniqueConstraint("notification_id", "admin_id", name="uq_notification_read"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    notification_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False, index=True)
+    admin_id: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    read_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
 
 class SettingDocument(Base, TimestampMixin):

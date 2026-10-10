@@ -104,7 +104,7 @@ class StockUpdate(CamelModel):
     note: str = ""
 
 
-def _inventory_row(product: Product) -> dict:
+def _inventory_row(product: Product, waiting: int = 0) -> dict:
     """
     An inventory row, derived from the product.
 
@@ -132,6 +132,8 @@ def _inventory_row(product: Product) -> dict:
         "available": available,
         "lowStockThreshold": product.low_stock_threshold,
         "status": status,
+        # Customers who asked to be told when it's back (Stock & price alerts).
+        "waitingCount": waiting,
     }
 
 
@@ -154,7 +156,10 @@ def list_inventory(
         .scalars()
         .all()
     )
-    return ok_list([_inventory_row(product) for product in products])
+    from app.services import alerts
+
+    waiting = alerts.waiting_counts(db, [product.id for product in products])
+    return ok_list([_inventory_row(product, waiting.get(product.id, 0)) for product in products])
 
 
 @inventory_router.put("/{product_id}", summary="Set a product's stock")
@@ -179,7 +184,10 @@ def update_stock(
         note=payload.note,
         actor=admin.id,
     )
-    return ok(_inventory_row(product), message=f"{product.name} stock set to {payload.quantity}.")
+    from app.services import alerts
+
+    return ok(_inventory_row(product, alerts.waiting_count(db, product.id)),
+              message=f"{product.name} stock set to {payload.quantity}.")
 
 
 @inventory_router.get("/log", summary="Every stock movement")

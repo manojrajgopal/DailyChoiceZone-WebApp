@@ -179,6 +179,24 @@ export function AdminInventoryView() {
       ),
     },
     {
+      id: "waiting",
+      header: "Waiting",
+      align: "right",
+      sortValue: (item) => item.waitingCount ?? 0,
+      cell: (item) =>
+        item.waitingCount ? (
+          <Link
+            href={`/admin/alerts?productId=${encodeURIComponent(item.productId)}`}
+            className="font-medium tabular-nums text-copper-700 hover:underline"
+            aria-label={`${item.waitingCount} customer${item.waitingCount === 1 ? "" : "s"} waiting for ${item.name}`}
+          >
+            {item.waitingCount}
+          </Link>
+        ) : (
+          <span className="tabular-nums text-admin-faint">0</span>
+        ),
+    },
+    {
       id: "threshold",
       header: "Threshold",
       align: "right",

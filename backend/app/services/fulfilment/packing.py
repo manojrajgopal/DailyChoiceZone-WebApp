@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
@@ -888,16 +889,58 @@ def _link(db: Session, job: PackingJob, shipment: Shipment, *, admin=None) -> No
     _audit(db, job, "ready", admin, f"Ready to ship with {shipment.shipment_number}")
 
 
-def mark_ready(db: Session, job_id, *, admin) -> PackingJob:
+def mark_ready(db: Session, job_id, *, admin,
+               payload: Optional[dict] = None) -> Tuple[PackingJob, Optional[Shipment]]:
+    """
+    Hand a packed job to its shipment, creating the shipment when there is none
+    yet: with the courier in `payload.providerCode`, or the default one, and the
+    packages' weight and size. Returns (job, the shipment created or None).
+
+    A Manual courier can't be booked without its name and the AWB: unless the
+    payload has them, 409 SHIPMENT_DETAILS_REQUIRED tells the page to ask.
+    """
     job = get(db, job_id, lock=True)
     _require_live_order(db, job)
     _require(job, ("packed",), "Only a packed order can be made ready to ship.")
     shipment = db.execute(select(Shipment).where(Shipment.active_key == job.order_id)).scalar_one_or_none()
-    if shipment is None:
-        raise ConflictError("Create the shipment first (on the order page).", error_code="SHIPMENT_REQUIRED")
-    _link(db, job, shipment, admin=admin)
-    db.commit()
-    return job
+    if shipment is not None:
+        _link(db, job, shipment, admin=admin)
+        db.commit()
+        return job, None
+
+    from app.services.shipping import registry
+    from app.services.shipping import service as shipping_service
+
+    payload = payload if isinstance(payload, dict) else {}
+    provider_code = payload.get("providerCode") if isinstance(payload.get("providerCode"), str) else ""
+    if not provider_code:
+        default = registry.default_row(db)
+        if default is None:
+            raise ConflictError("Switch on a courier in Settings → Couriers first.", error_code="NO_COURIER")
+        provider_code = default.code
+    _, adapter = registry.active_provider(db, provider_code)
+    if adapter.manual_awb and not (payload.get("courierName") or payload.get("awb")):
+        raise ConflictError(f"Enter the courier and AWB to ship with {adapter.name}.",
+                            error_code="SHIPMENT_DETAILS_REQUIRED",
+                            details={"orderId": job.order_id, "providerCode": provider_code})
+
+    order_id, job_key = job.order_id, job.id
+    db.rollback()  # let go of the job: creating the shipment commits, and links the job itself
+    request = {"orderId": order_id, "providerCode": provider_code, "package": {},
+               "idempotencyKey": payload.get("idempotencyKey") or f"packing-ready-{job_key}-{uuid.uuid4().hex[:16]}"}
+    for field in ("service", "courierCode", "courierName", "awb"):
+        if payload.get(field):
+            request[field] = payload[field]
+    shipment, _ = shipping_service.create(db, admin, request)
+    if shipment.active_key != order_id:
+        raise ConflictError("That request key belongs to a cancelled shipment. Please try again.",
+                            error_code="IDEMPOTENCY_KEY_REUSED")
+
+    job = get(db, job_key, lock=True)
+    if job.status == "packed":  # created, but the hand-over didn't happen with it
+        _link(db, job, shipment, admin=admin)
+        db.commit()
+    return job, shipment
 
 
 def aggregate(packages: List[PackingPackage]) -> Optional[dict]:

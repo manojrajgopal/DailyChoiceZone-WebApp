@@ -428,16 +428,16 @@ class TestTheBell:
 
     def test_a_failing_email_never_breaks_the_tray(self, db, monkeypatch, caplog):
         from app.models import Notification
-        from app.services import inbox
+        from app.services import inbox, staff_alerts
 
         def broken(*args):
             raise RuntimeError("smtp down")
 
-        monkeypatch.setattr(inbox, "_email_staff", broken)
+        monkeypatch.setattr(staff_alerts, "_email", broken)
         inbox.staff(db, "question", "A new question", "Body", "/admin/questions")
         db.flush()
         assert db.query(Notification).filter_by(kind="question").count() == 1
-        assert "Could not email the store team" in caplog.text
+        assert "Could not send the staff alert" in caplog.text
 
     @pytest.fixture()
     def mail(self, monkeypatch):
@@ -445,39 +445,43 @@ class TestTheBell:
 
         sent = []
         monkeypatch.setattr(email_service, "wants", lambda db, key, customer_id: True)
-        monkeypatch.setattr(email_service, "notify", lambda db, key, **k: sent.append(k))
+        monkeypatch.setattr(email_service, "notify", lambda db, key, **k: sent.append(k) or True)
         return sent
 
     def test_staff_are_emailed_by_permission(self, db, admin, editor, mail):
-        from app.services import inbox
+        from app.services import staff_alerts
 
-        inbox._email_staff(db, "Order trouble", "Details", "/admin/orders", "orders")
+        staff_alerts.send(db, "x", "Order trouble", "Details", "/admin/orders", permission="orders",
+                          channels=("email",))
         assert [m["to"] for m in mail] == [admin.email]
         mail.clear()
-        inbox._email_staff(db, "New article", "Details", "", "content")
+        staff_alerts.send(db, "x", "New article", "Details", "", permission="content", channels=("email",))
         assert {m["to"] for m in mail} == {admin.email, editor.email}
-        assert all(m["customer_id"] is None and m["reference"] == "store-team" for m in mail)
+        assert all(m["customer_id"] is None for m in mail)
+        # Each alert has its own key, so each is its own delivery (retried, and listed).
+        assert len({m["idempotency_key"] for m in mail}) == 2
 
     def test_nothing_when_the_store_team_mail_is_off(self, db, admin, monkeypatch, mail):
         from app.services import email as email_service
-        from app.services import inbox
+        from app.services import staff_alerts
 
         monkeypatch.setattr(email_service, "wants", lambda db, key, customer_id: False)
-        inbox._email_staff(db, "Anything", "", "", None)
+        staff_alerts.send(db, "x", "Anything", channels=("email",))
         assert mail == []
 
     def test_the_sending_mailbox_hears_when_nobody_else_can(self, db, admin, monkeypatch, mail):
         from types import SimpleNamespace
 
         from app.services import email as email_service
-        from app.services import inbox
+        from app.services import staff_alerts
         from app.services.email import senders
 
         monkeypatch.setattr(senders, "undeliverable", lambda address: "no mail server")
         monkeypatch.setattr(email_service, "active_account",
                             lambda db: SimpleNamespace(sender_email="Orders@Shop.example.com"))
-        inbox._email_staff(db, "Alert", "Body", "", None)
-        assert {m["to"] for m in mail} == {admin.email, "Orders@Shop.example.com"}
+        staff_alerts.send(db, "x", "Alert", "Body", channels=("email",))
+        # An address that can't receive mail isn't tried; the store's own mailbox gets it instead.
+        assert {m["to"] for m in mail} == {"Orders@Shop.example.com"}
 
     def test_links_in_the_bell(self, monkeypatch):
         from app.core.config import settings

@@ -92,8 +92,8 @@ def ways_in(db: Session, customer: Customer, *, without: Optional[int] = None) -
 
 
 def create_customer(db: Session, *, email: str, first_name: str = "", last_name: str = "", phone: str = "",
-                    email_verified: bool = False) -> Customer:
-    """A new account with no password. The caller commits."""
+                    email_verified: bool = False, how: str = "a one-time code") -> Customer:
+    """A new account with no password. The caller commits. The store team hears of it (`how` they signed up)."""
     now = datetime.utcnow()
     customer = Customer(
         id=next_id(db, Customer, "customer"), email=email.strip().lower(), password_hash=None,
@@ -103,6 +103,9 @@ def create_customer(db: Session, *, email: str, first_name: str = "", last_name:
     )
     db.add(customer)
     db.flush()
+    from app.services import inbox
+
+    inbox.new_customer(db, customer, how)
     return customer
 
 
@@ -257,7 +260,7 @@ def otp_sign_up(db: Session, signup_token: str, *, first_name: str, last_name: s
             raise ConflictError("An account already uses that email. Sign in to it, then add your mobile number "
                                 "in Settings → Security.", error_code="EMAIL_TAKEN")
         customer = create_customer(db, email=address, first_name=first_name, last_name=last_name,
-                                   phone=destination, email_verified=False)
+                                   phone=destination, email_verified=False, how="a one-time code by SMS")
         customer.phone_verified_at = datetime.utcnow()
         add_identity(db, customer, PHONE, destination)
         account_links.send_verification(db, customer)
@@ -267,7 +270,7 @@ def otp_sign_up(db: Session, signup_token: str, *, first_name: str, last_name: s
             raise ConflictError("That email already has an account. Sign in with a code instead.",
                                 error_code="EMAIL_TAKEN")
         customer = create_customer(db, email=destination, first_name=first_name, last_name=last_name,
-                                   email_verified=True)
+                                   email_verified=True, how="a one-time code by email")
         account_links.send_welcome(db, customer)
         method = "otp-email"
     if referral_code:

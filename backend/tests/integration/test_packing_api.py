@@ -26,7 +26,13 @@ from tests.integration.test_packing_helpers import (  # noqa: F401
     packing_order,
     picked,
 )
-from tests.integration.test_shipping_helpers import created, manual_on, place_order  # noqa: F401
+from tests.integration.test_shipping_helpers import (  # noqa: F401
+    created,
+    manual_on,
+    place_order,
+    shiprocket,
+    shiprocket_on,
+)
 from tests.integration.test_suppliers_helpers import role_headers
 
 pytestmark = pytest.mark.integration
@@ -454,11 +460,76 @@ class TestShipment:
         assert [i["id"] for i in handed["items"]] == [job["id"]]
         assert handed["counts"]["ready-to-ship"] == 1
 
-    def test_ready_needs_a_shipment(self, client, admin_auth, packing_order, manual_on):
+    def test_ready_books_the_shipment_with_the_default_courier(self, client, admin_auth, db, packing_order,
+                                                               shiprocket_on, shiprocket):
+        from app.models.shipping import Shipment
+
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        response = client.post(f"{BASE}/{job['id']}/ready", headers=admin_auth, json={"idempotencyKey": "ready-key-1"})
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["data"]["status"] == "ready-to-ship" and body["data"]["shipment"]["linked"] is True
+        assert body["message"].startswith("Shipment ") and body["message"].endswith("created — ready to ship.")
+        shipment = db.execute(select(Shipment).where(Shipment.order_id == packing_order["id"])).scalar_one()
+        assert shipment.provider_code == "shiprocket" and shipment.weight_grams == BOX["weightGrams"]
+        assert (shipment.length_cm, shipment.width_cm, shipment.height_cm) == (30, 20, 5)
+        assert shiprocket.count("POST /orders/create/adhoc") == 1
+        assert {p["shipmentId"] for p in body["data"]["packages"]} == {shipment.id}
+
+    def test_ready_asks_for_the_awb_when_the_courier_is_manual(self, client, admin_auth, db, packing_order,
+                                                               manual_on):
+        from app.models.shipping import Shipment
+
         job = job_for(client, admin_auth, packing_order["id"])
         packed(client, admin_auth, job)
         response = client.post(f"{BASE}/{job['id']}/ready", headers=admin_auth)
-        assert response.status_code == 409 and response.json()["error_code"] == "SHIPMENT_REQUIRED"
+        assert response.status_code == 409, response.text
+        body = response.json()
+        assert body["error_code"] == "SHIPMENT_DETAILS_REQUIRED"
+        assert body["details"] == {"orderId": packing_order["id"], "providerCode": "manual"}
+        assert db.execute(select(func.count(Shipment.id))).scalar() == 0
+        assert detail(client, admin_auth, job["id"])["status"] == "packed"
+
+    def test_ready_with_the_awb_ships_manually(self, client, admin_auth, packing_order, manual_on):
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        response = client.post(f"{BASE}/{job['id']}/ready", headers=admin_auth,
+                               json={"courierName": "Blue Dart", "awb": "BD-12345", "idempotencyKey": "ready-key-2"})
+        assert response.status_code == 200, response.text
+        data = response.json()["data"]
+        assert data["status"] == "ready-to-ship"
+        assert data["shipment"]["courierName"] == "Blue Dart" and data["shipment"]["awb"] == "BD-12345"
+
+    def test_ready_needs_a_courier_switched_on(self, client, admin_auth, packing_order):
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        response = client.post(f"{BASE}/{job['id']}/ready", headers=admin_auth)
+        assert response.status_code == 409 and response.json()["error_code"] == "NO_COURIER"
+
+    def test_ready_links_a_shipment_that_already_exists(self, client, admin_auth, db, packing_order, manual_on):
+        from app.models.shipping import Shipment
+
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        shipment = created(client, admin_auth, packing_order["id"])
+        # Creating the shipment already handed the job over; ready changes nothing more.
+        response = client.post(f"{BASE}/{job['id']}/ready", headers=admin_auth)
+        assert response.status_code == 409 and response.json()["error_code"] == "INVALID_PACKING_TRANSITION"
+        assert detail(client, admin_auth, job["id"])["shipment"]["id"] == shipment["id"]
+        assert db.execute(select(func.count(Shipment.id))).scalar() == 1
+
+    def test_a_second_click_books_nothing_more(self, client, admin_auth, db, packing_order, shiprocket_on, shiprocket):
+        from app.models.shipping import Shipment
+
+        job = job_for(client, admin_auth, packing_order["id"])
+        packed(client, admin_auth, job)
+        url = f"{BASE}/{job['id']}/ready"
+        assert client.post(url, headers=admin_auth, json={"idempotencyKey": "same-key-123"}).status_code == 200
+        again = client.post(url, headers=admin_auth, json={"idempotencyKey": "same-key-123"})
+        assert again.status_code == 409 and again.json()["error_code"] == "INVALID_PACKING_TRANSITION"
+        assert db.execute(select(func.count(Shipment.id))).scalar() == 1
+        assert shiprocket.count("POST /orders/create/adhoc") == 1
 
     def test_the_shipment_is_prefilled_from_the_packages(self, client, admin_auth, packing_order, manual_on):
         from tests.integration.test_shipping_helpers import create

@@ -14,6 +14,7 @@ import {
   queueRow,
 } from "@/test/packing-fixtures";
 import { renderUI, screen, signIn, waitFor, within } from "@/test/render";
+import { orderShipping, shipment as shipmentFixture } from "@/test/shipping-fixtures";
 import { useToastStore } from "@/store/toastStore";
 
 import { AdminPackingJobView } from "./AdminPackingJobView";
@@ -242,6 +243,44 @@ describe("AdminPackingJobView", () => {
     await user.click(within(form).getByRole("button", { name: "Add package" }));
     expect(within(form).getByText("Enter the weight in whole grams.")).toBeInTheDocument();
     expect(api.requests("POST", "/admin/packing/7/packages")).toHaveLength(0);
+  });
+
+  it("ready to ship books the shipment in one click", async () => {
+    const { user } = await openJob(packingJob({
+      status: "packed", statusLabel: "Packed", packages: [packageView()], actions: packingActions({ ready: true, reopen: true }),
+    }));
+    api.post("/admin/packing/7/ready", packingJob({
+      status: "ready-to-ship", statusLabel: "Handed to shipping", packages: [packageView()],
+      shipment: { id: 12, shipmentNumber: "SHP-2026-000012", status: "pending", courierName: "", awb: "", linked: true },
+    }));
+    await user.click(screen.getByRole("button", { name: "Ready to ship" }));
+    expect(await screen.findByText("Packages handed over.")).toBeInTheDocument();
+    const body = api.last("POST", "/admin/packing/7/ready")?.body as { idempotencyKey: string };
+    expect(body.idempotencyKey.length).toBeGreaterThanOrEqual(8);
+    expect(toasts()).toContain("success:Ready to ship with SHP-2026-000012.");
+  });
+
+  it("asks for the courier and AWB when the default courier is manual", async () => {
+    const { user } = await openJob(packingJob({
+      status: "packed", statusLabel: "Packed", packages: [packageView()], actions: packingActions({ ready: true, reopen: true }),
+    }));
+    api.post("/admin/packing/7/ready", fail(409, "Enter the courier and AWB to ship with Manual.", "SHIPMENT_DETAILS_REQUIRED",
+      { orderId: "ORD042", providerCode: "manual" }));
+    api.get("/admin/orders/ORD042/shipping", orderShipping({
+      providers: orderShipping().providers.map((p) => ({ ...p, isDefault: p.code === "manual" })),
+    }));
+    api.post("/admin/shipments", shipmentFixture({ shipmentNumber: "SHP-2026-000013" }));
+    api.get("/admin/packing/7", packingJob({ status: "ready-to-ship", statusLabel: "Handed to shipping" }));
+    await user.click(screen.getByRole("button", { name: "Ready to ship" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/^Courier name/), "DTDC");
+    await user.type(within(dialog).getByLabelText(/^AWB/), "D123456789");
+    await user.type(within(dialog).getByLabelText(/^Weight/), "500");
+    await user.click(within(dialog).getByRole("button", { name: "Create shipment" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(api.last("POST", "/admin/shipments")?.body).toMatchObject({ orderId: "ORD042", providerCode: "manual", awb: "D123456789" });
+    expect(toasts()).toContain("success:Ready to ship with SHP-2026-000013.");
   });
 
   it("confirms warnings with a reason before marking packed", async () => {
