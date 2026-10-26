@@ -57,6 +57,7 @@ JOBS = [
     ("app.services.shipping.jobs", ["sweep"], "raised"),
     ("app.services.refunds", ["sweep"], "raised"),  # partial refunds
     ("app.services.search.jobs", ["sweep"], "raised"),  # search & filters
+    ("app.services.try_on.jobs", ["sweep"], "logged"),  # virtual try-on housekeeping
 ]
 
 

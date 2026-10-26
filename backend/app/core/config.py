@@ -156,6 +156,9 @@ class Settings(BaseSettings):
     AWS_S3_PUBLIC_URL: str = ""
     AWS_S3_ENDPOINT_URL: str = ""
     AWS_S3_PREFIX: str = "products"
+    # No access keys: use the server's IAM role (instance profile, ECS task
+    # role…) through boto3's default credential chain. Preferred in production.
+    AWS_USE_DEFAULT_CREDENTIALS: bool = False
 
 
     # SMS. "none" (the default) keeps the channel off; "twilio" sends through
@@ -255,6 +258,49 @@ class Settings(BaseSettings):
     OTP_PER_ACCOUNT_HOURLY: int = 10
     MSG91_AUTH_KEY: str = ""
     MSG91_TEMPLATE_ID: str = ""
+
+    # Virtual try-on (docs/virtual-try-on.md). AI provider credentials are
+    # added in the portal and stored encrypted with a key derived from
+    # VTO_ENCRYPTION_KEY (in production, credentials can't be saved or used
+    # without it; development falls back to JWT_SECRET_KEY). After rotating the key, put the old one in
+    # VTO_ENCRYPTION_KEY_PREVIOUS until the portal's "Re-encrypt" has run.
+    VTO_ENCRYPTION_KEY: str = ""
+    VTO_ENCRYPTION_KEY_PREVIOUS: str = ""
+    # Where photos and results go: "auto" (S3 when the AWS settings above are
+    # set, otherwise "ephemeral"), "s3", "ephemeral" (encrypted, short-lived
+    # files in VTO_TEMP_DIR, deleted within VTO_EPHEMERAL_TTL_MINUTES; nothing
+    # is ever kept) or "disabled".
+    VTO_STORAGE: str = "auto"
+    # A private bucket for try-on images; empty uses AWS_S3_BUCKET. The prefix
+    # must not be the public product-photo prefix.
+    VTO_S3_BUCKET: str = ""
+    VTO_S3_PREFIX: str = "try-on"
+    # Server-side encryption for stored objects: "AES256" or "aws:kms" (with
+    # VTO_S3_KMS_KEY_ID for a customer-managed key).
+    VTO_S3_SSE: str = "AES256"
+    VTO_S3_KMS_KEY_ID: str = ""
+    # Seconds a signed link to a private result works for.
+    VTO_SIGNED_URL_SECONDS: int = 120
+    # Ephemeral storage: a folder outside anything served (empty: a folder in
+    # the system temp directory) and how long a file may live there.
+    VTO_TEMP_DIR: str = ""
+    VTO_EPHEMERAL_TTL_MINUTES: int = 30
+    # The generation worker: parallel generations per server process, how
+    # long a claimed request may run before another worker may take it back,
+    # and how often the queue is checked when idle.
+    VTO_WORKER_CONCURRENCY: int = 2
+    VTO_WORKER_LEASE_SECONDS: int = 300
+    VTO_WORKER_POLL_SECONDS: int = 2
+    VTO_HOUSEKEEPING_INTERVAL_SECONDS: int = 300
+    # Largest photo accepted from any plan, in megabytes.
+    VTO_MAX_UPLOAD_MB: int = 10
+    # Allows the offline "mock" provider (development and tests only; it is
+    # never available in production whatever this says).
+    VTO_ALLOW_MOCK_PROVIDER: bool = True
+    # Reach AI provider hosts (Hugging Face) over IPv4 first. Some networks
+    # resolve their IPv6 addresses but reset the connections; see
+    # app/services/try_on/network.py. Only those hosts are affected.
+    VTO_PREFER_IPV4: bool = True
 
     @field_validator("CORS_ORIGINS", "TRUSTED_PROXIES", mode="before")
     @classmethod

@@ -8,6 +8,7 @@ import {
   Headphones,
   Percent,
   RotateCcw,
+  Shirt,
   Sparkles,
   Truck,
 } from "lucide-react";
@@ -73,6 +74,10 @@ export function benefitLines(benefits: Partial<MembershipBenefits>): string[] {
   }
   if (benefits.earlyAccess) lines.push("Early access to every sale");
   if (benefits.prioritySupport) lines.push("Priority customer care");
+  if (benefits.tryOn?.enabled) {
+    const limit = benefits.tryOn.perPeriod;
+    lines.push(limit ? `${limit} virtual try-ons every month` : "Unlimited virtual try-ons");
+  }
   return lines;
 }
 
@@ -169,6 +174,13 @@ function highlights(plans: MembershipPlan[]) {
       icon: Sparkles,
       title: "Early access",
       text: "Shop every sale before it opens to everyone else.",
+    });
+  }
+  if (plans.some((plan) => plan.tryOn?.enabled)) {
+    items.push({
+      icon: Shirt,
+      title: "Virtual try-on",
+      text: "See clothes on you before you buy, from your own photo.",
     });
   }
   if (plans.some((plan) => plan.prioritySupport)) {

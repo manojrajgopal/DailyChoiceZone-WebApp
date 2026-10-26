@@ -12,6 +12,7 @@ import { imagesFor, initialColour } from "@/lib/products/colourImages";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Dialog";
+import { TryOnButton } from "@/components/tryon/TryOnButton";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { useAddToCart } from "@/hooks/useCart";
@@ -218,6 +219,8 @@ function QuickViewBody({
               />
             </Button>
           </div>
+
+          <TryOnButton product={product} color={color} size={size} className="mt-2 w-full" />
 
           <Link
             href={`/product/${product.id}`}

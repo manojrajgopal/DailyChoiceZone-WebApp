@@ -86,6 +86,13 @@ def get_plan(db: Session, plan_id: str) -> MembershipPlan:
     return plan
 
 
+def _try_on(value):
+    """A plan's virtual try-on entitlement, checked (docs/virtual-try-on.md)."""
+    from app.services.try_on.entitlements import normalise
+
+    return normalise(value)
+
+
 PLAN_FIELDS = {
     "name": ("name", str),
     "description": ("description", str),
@@ -101,6 +108,7 @@ PLAN_FIELDS = {
     "badge": ("badge", str),
     "active": ("active", bool),
     "sortOrder": ("sort_order", int),
+    "tryOn": ("try_on", _try_on),
 }
 
 
@@ -156,7 +164,7 @@ def delete_plan(db: Session, plan_id: str) -> str:
 
 
 def benefits_of(plan: MembershipPlan) -> dict:
-    return {
+    benefits = {
         "freeDelivery": bool(plan.free_delivery),
         "freeDeliveriesPerMonth": plan.free_deliveries_per_month,
         "memberDiscountPercent": float(plan.member_discount_percent or 0),
@@ -164,6 +172,11 @@ def benefits_of(plan: MembershipPlan) -> dict:
         "earlyAccess": bool(plan.early_access),
         "prioritySupport": bool(plan.priority_support),
     }
+    # Only plans that include virtual try-on carry the key (docs/virtual-try-on.md).
+    try_on = getattr(plan, "try_on", None)
+    if try_on:
+        benefits["tryOn"] = _try_on(try_on)
+    return benefits
 
 
 # -------------------------------------------------------------- memberships

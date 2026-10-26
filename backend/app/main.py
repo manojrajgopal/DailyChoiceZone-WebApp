@@ -124,13 +124,20 @@ async def lifespan(_: FastAPI):
 
     search_sweeper = asyncio.create_task(search_jobs.run_forever())
 
+    # Virtual try-on: the generation queue, and expiry, clean-up and health
+    # checks of try-on images and credentials (docs/virtual-try-on.md).
+    from app.services.try_on import jobs as try_on_jobs, worker as try_on_worker
+
+    try_on_queue = asyncio.create_task(try_on_worker.run_forever())
+    try_on_sweeper = asyncio.create_task(try_on_jobs.run_forever())
+
     try:
         yield
     finally:
         for task in (sweeper, support_sweeper, bounce_sweeper, cart_sweeper, alert_sweeper, rewards_sweeper,
                      flash_sweeper, referral_sweeper, health_sweeper, message_sweeper, campaign_sweeper,
                      backup_sweeper, shipping_sweeper, discovery_sweeper, segments_sweeper,
-                     auth_sweeper, refunds_sweeper, search_sweeper):
+                     auth_sweeper, refunds_sweeper, search_sweeper, try_on_queue, try_on_sweeper):
             if task is None:
                 continue
             task.cancel()
@@ -165,7 +172,9 @@ app.add_middleware(
     # request without it gets ngrok's HTML warning page instead of this API —
     # no CORS headers, so the browser reports a CORS error. The storefront
     # sends it only when its API URL is an ngrok host. It carries no authority.
-    allow_headers=["Authorization", "Content-Type", "ngrok-skip-browser-warning"],
+    # `Idempotency-Key`: a virtual try-on request sends one, so a retried
+    # request is never charged twice (docs/virtual-try-on.md).
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "ngrok-skip-browser-warning"],
 )
 
 register_error_handlers(app)

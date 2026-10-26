@@ -135,6 +135,20 @@ ADDED_NAV_ITEMS = [
                             "icon": "attributes"}),
     ("/admin/analytics", {"id": "search-analytics", "label": "Search analytics", "href": "/admin/search",
                           "icon": "searchAnalytics"}),
+    # Virtual try-on (docs/virtual-try-on.md): its own folder in Storefront.
+    ("/admin/banners", {"id": "try-on", "label": "Overview", "href": "/admin/try-on", "icon": "tryOn"}),
+    ("/admin/try-on", {"id": "try-on-requests", "label": "Requests", "href": "/admin/try-on/requests",
+                       "icon": "tryOn"}),
+    ("/admin/try-on/requests", {"id": "try-on-credentials", "label": "Credentials",
+                                "href": "/admin/try-on/credentials", "icon": "tryOn"}),
+    ("/admin/try-on/credentials", {"id": "try-on-catalogue", "label": "Models & categories",
+                                   "href": "/admin/try-on/catalogue", "icon": "tryOn"}),
+    ("/admin/try-on/catalogue", {"id": "try-on-plans", "label": "Plan entitlements", "href": "/admin/try-on/plans",
+                                 "icon": "tryOn"}),
+    ("/admin/try-on/plans", {"id": "try-on-allocations", "label": "Access & allocations",
+                             "href": "/admin/try-on/allocations", "icon": "tryOn", "badge": "tryOnAccessRequests"}),
+    ("/admin/try-on/allocations", {"id": "try-on-settings", "label": "Try-on settings",
+                                   "href": "/admin/try-on/settings", "icon": "tryOn"}),
 ]
 
 
@@ -169,7 +183,12 @@ NAV_LAYOUT = [
     ("nav_marketing", "Marketing", [
         "/admin/coupons", "/admin/flash-sales", "/admin/bundles", "/admin/marketing/campaigns",
     ]),
-    ("nav_storefront", "Storefront", ["/admin/homepage", "/admin/banners"]),
+    ("nav_storefront", "Storefront", [
+        "/admin/homepage", "/admin/banners",
+        ("try-on-folder", "Virtual try-on", "tryOn",
+         ["/admin/try-on", "/admin/try-on/requests", "/admin/try-on/credentials", "/admin/try-on/catalogue",
+          "/admin/try-on/plans", "/admin/try-on/allocations", "/admin/try-on/settings"]),
+    ]),
     ("nav_admin", "Administration", [
         ("store-setup-folder", "Store setup", "settings",
          ["/admin/settings", "/admin/settings/site", "/admin/settings/content", "/admin/settings/navigation",

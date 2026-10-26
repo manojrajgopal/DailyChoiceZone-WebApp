@@ -495,6 +495,20 @@ def membership(db: Session, row) -> dict:
                 links=[related("customer", row.customer_id, "Customer"), related("membership_plan", row.plan_id, "Plan")])
 
 
+def try_on_request(db: Session, row) -> dict:
+    return card(title=row.product_name or "Try-on", subtitle=row.customer_id, status=row.status,
+                fields=[field("Try-on type", row.capability_key), field("Plan", row.plan_name),
+                        field("Error", row.error_badge), field("Created", row.created_at, "date")],
+                links=[related("customer", row.customer_id, "Customer"), related("product", row.product_id, "Product")])
+
+
+def try_on_access_request(db: Session, row) -> dict:
+    return card(title="More try-on access" if row.kind == "more_usage" else "Dedicated try-on capacity",
+                subtitle=row.customer_id, status=row.status,
+                fields=[field("Expected use", row.expected_usage, "number"), field("Requested", row.created_at, "date")],
+                links=[related("customer", row.customer_id, "Customer")])
+
+
 def referral_code(db: Session, row) -> dict:
     from app.models.growth import Referral
 

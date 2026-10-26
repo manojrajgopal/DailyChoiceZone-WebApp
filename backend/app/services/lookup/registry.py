@@ -43,6 +43,8 @@ from app.models import (
     ReturnRequest,
     Review,
     SupportTicket,
+    VtoAllocationRequest,
+    VtoRequest,
 )
 from app.models.delivery import DeliveryPincode
 from app.models.discovery import SizeGuide
@@ -251,6 +253,11 @@ _ADMIN = [
            previews.membership_plan, "MBP001", access=_any("customers"), volatile=False),
     Entity("membership", "Membership", CustomerMembership, (_business("membership"),),
            previews.membership, "MEM001", access=_any("customers")),
+    # --- virtual try-on
+    Entity("try_on_request", "Try-on", VtoRequest, (_business("vto_request"),), previews.try_on_request, "VTR001",
+           access=_any("try-on")),
+    Entity("try_on_access_request", "Try-on access request", VtoAllocationRequest,
+           (_business("vto_allocation_request"),), previews.try_on_access_request, "VAR001", access=_any("try-on")),
     Entity("referral_code", "Referral code", ReferralCode, (IdColumn("code"),), previews.referral_code,
            "ASHA2026", access=_any("referrals")),
     Entity("segment", "Segment", Segment, (IdColumn("id", kind="int"),), previews.segment, "3",

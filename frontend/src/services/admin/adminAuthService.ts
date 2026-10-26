@@ -164,7 +164,10 @@ export type Permission =
   | "manage:marketing"
   | "manage:storefront"
   | "manage:settings"
-  | "manage:adminUsers";
+  | "manage:adminUsers"
+  // Virtual try-on: the area, and the AI credentials (secrets) apart from it.
+  | "manage:tryOn"
+  | "manage:tryOnCredentials";
 
 /**
  * The portal's names, in the backend's vocabulary.
@@ -182,7 +185,16 @@ const SERVER_PERMISSION: Record<Permission, string | null> = {
   "manage:storefront": "content",
   "manage:settings": "settings",
   "manage:adminUsers": "admins",
+  "manage:tryOn": "try-on",
+  "manage:tryOnCredentials": "try-on-credentials",
 };
+
+/**
+ * Permissions added after administrators were set up. An administrator's stored
+ * list predates them, so — like the API's `require_access` — their role's current
+ * list also counts.
+ */
+const ADDED_LATER = new Set<Permission>(["manage:tryOn", "manage:tryOnCredentials"]);
 
 /**
  * What each role may do, when the server has not said.
@@ -195,13 +207,15 @@ const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   "super-admin": [
     "view:dashboard", "manage:catalogue", "manage:orders", "manage:customers",
     "manage:marketing", "manage:storefront", "manage:settings", "manage:adminUsers",
+    "manage:tryOn", "manage:tryOnCredentials",
   ],
   admin: [
     "view:dashboard", "manage:catalogue", "manage:orders", "manage:customers",
     "manage:marketing", "manage:storefront", "manage:settings",
+    "manage:tryOn", "manage:tryOnCredentials",
   ],
   manager: [
-    "view:dashboard", "manage:orders", "manage:customers", "manage:catalogue",
+    "view:dashboard", "manage:orders", "manage:customers", "manage:catalogue", "manage:tryOn",
   ],
   editor: ["view:dashboard", "manage:catalogue", "manage:storefront"],
 };
@@ -221,7 +235,8 @@ export function can(user: AdminUser | null, permission: Permission): boolean {
 
   if (user.permissions) {
     const key = SERVER_PERMISSION[permission];
-    return key === null || user.permissions.includes(key);
+    if (key === null || user.permissions.includes(key)) return true;
+    return ADDED_LATER.has(permission) && (ROLE_PERMISSIONS[user.role]?.includes(permission) ?? false);
   }
 
   return ROLE_PERMISSIONS[user.role]?.includes(permission) ?? false;

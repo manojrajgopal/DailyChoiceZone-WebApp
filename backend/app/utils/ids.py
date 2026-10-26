@@ -33,6 +33,14 @@ PREFIXES = {
     "supplier": "SUP",
     "purchase_order": "POR",
     "size_guide": "SZG",
+    # Virtual try-on.
+    "vto_provider": "VPR",
+    "vto_model": "VMD",
+    "vto_credential": "VCR",
+    "vto_request": "VTR",
+    "vto_photo": "VPH",
+    "vto_allocation_request": "VAR",
+    "vto_allocation": "VAL",
 }
 
 _PATTERN = re.compile(r"^([A-Z]{3})(\d+)$")

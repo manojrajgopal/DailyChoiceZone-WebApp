@@ -197,3 +197,20 @@ from app.models.discovery import (  # noqa: E402
 )
 # Customer segmentation: per-customer metrics, segments, members, history (docs/customer-segmentation.md).
 from app.models.segments import CustomerMetrics, Segment, SegmentEvent, SegmentMember  # noqa: E402
+# Virtual try-on: capabilities, models, credentials, requests, usage (docs/virtual-try-on.md).
+from app.models.try_on import (  # noqa: E402
+    VtoAllocation,
+    VtoAllocationRequest,
+    VtoAttempt,
+    VtoCapability,
+    VtoCategoryMapping,
+    VtoCleanupTask,
+    VtoCredential,
+    VtoHealthCheck,
+    VtoModel,
+    VtoPhoto,
+    VtoProductSetting,
+    VtoProvider,
+    VtoRequest,
+    VtoUsage,
+)

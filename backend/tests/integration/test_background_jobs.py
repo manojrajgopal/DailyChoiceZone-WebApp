@@ -90,8 +90,9 @@ class TestTracked:
 
     def test_every_expected_job_has_a_description(self):
         assert all(jobs.EXPECTED.values())
-        # 13 before product discovery's clean-up, then refunds, segments, sign-in (auth) and search.
-        assert len(jobs.EXPECTED) == 18
+        # 13 before product discovery's clean-up, then refunds, segments, sign-in (auth), search
+        # and virtual try-on.
+        assert len(jobs.EXPECTED) == 19
 
 
 # ------------------------------------------------------------------ loops

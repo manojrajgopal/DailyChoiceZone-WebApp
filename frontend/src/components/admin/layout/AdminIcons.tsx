@@ -47,6 +47,7 @@ import {
   // search & filters
   SlidersHorizontal,
   TextSearch,
+  Shirt,
 } from "lucide-react";
 
 /**
@@ -112,6 +113,8 @@ const ICONS = {
   // search & filters
   attributes: SlidersHorizontal,
   searchAnalytics: TextSearch,
+  // Virtual try-on
+  tryOn: Shirt,
 } as const;
 
 export type AdminIconName = keyof typeof ICONS;

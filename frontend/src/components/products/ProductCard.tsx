@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { CompareButton } from "@/components/compare/CompareControls";
+import { TryOnBadge } from "@/components/tryon/TryOnButton";
 import { useWishlistItem } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils/cn";
 import { imagesFor, productHref } from "@/lib/products/colourImages";
@@ -127,6 +128,7 @@ export function ProductCard({
                 {product.discount >= 25 ? (
                   <Badge tone="sale">{product.discount}% off</Badge>
                 ) : null}
+                <TryOnBadge product={product} />
               </>
             )}
           </div>

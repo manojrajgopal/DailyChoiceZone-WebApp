@@ -46,6 +46,9 @@ tzdata==2026.4
 # File storage (Amazon S3) — see app/services/storage.py
 boto3==1.40.76
 
+# Virtual try-on: calling Hugging Face Spaces (docs/virtual-try-on.md)
+gradio_client==1.14.0
+
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.25.0

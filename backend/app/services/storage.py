@@ -19,8 +19,12 @@ Optional:
     AWS_S3_ENDPOINT_URL     an S3-compatible service instead of AWS
     AWS_S3_PREFIX           folder inside the bucket; defaults to "products"
 
-Without the first three, `is_configured()` is False: the upload endpoint
-refuses, and the product form offers "paste an image address" only.
+    AWS_USE_DEFAULT_CREDENTIALS
+                            true: no access keys — boto3's default chain
+                            (an instance/task IAM role) supplies them
+
+Without credentials and a bucket, `is_configured()` is False: the upload
+endpoint refuses, and the product form offers "paste an image address" only.
 
 The bucket must let the public read these files — a bucket policy granting
 `s3:GetObject` on the prefix (see backend/README.md). Objects are written
@@ -49,13 +53,17 @@ class StorageFailedError(AppError):
     error_code = "UPLOAD_FAILED"
 
 
+def credentials_available() -> bool:
+    """Access keys are set, or the server is told to use its IAM role."""
+    return bool(
+        (settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY)
+        or settings.AWS_USE_DEFAULT_CREDENTIALS
+    )
+
+
 def is_configured() -> bool:
     """True when the credentials and bucket are set."""
-    return bool(
-        settings.AWS_ACCESS_KEY_ID
-        and settings.AWS_SECRET_ACCESS_KEY
-        and settings.AWS_S3_BUCKET
-    )
+    return bool(credentials_available() and settings.AWS_S3_BUCKET)
 
 
 @lru_cache(maxsize=4)
@@ -65,12 +73,23 @@ def _client(key_id: str, secret: str, region: str, endpoint: Optional[str]):
 
     return boto3.client(
         "s3",
-        aws_access_key_id=key_id,
-        aws_secret_access_key=secret,
+        # Empty keys: boto3's default chain (an IAM role) supplies them.
+        aws_access_key_id=key_id or None,
+        aws_secret_access_key=secret or None,
         region_name=region,
         endpoint_url=endpoint or None,
         # Never hang a request on a slow bucket.
         config=Config(connect_timeout=5, read_timeout=20, retries={"max_attempts": 2}),
+    )
+
+
+def client():
+    """The S3 client for the configured credentials (for other services' private files)."""
+    return _client(
+        settings.AWS_ACCESS_KEY_ID,
+        settings.AWS_SECRET_ACCESS_KEY,
+        settings.AWS_REGION,
+        settings.AWS_S3_ENDPOINT_URL,
     )
 
 

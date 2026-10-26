@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Award, BellRing, Bookmark, Crown, FileText, Gift, Heart, History, LifeBuoy, LogOut, MapPin, Package, Settings, User, Wallet } from "lucide-react";
+import { Award, BellRing, Bookmark, Crown, FileText, Gift, Heart, History, LifeBuoy, LogOut, MapPin, Package, Settings, Sparkles, User, Wallet } from "lucide-react";
 
 import { VerifyEmailBanner } from "@/components/account/AccountRecovery";
 import { AuthPanel } from "@/components/account/AuthPanel";
@@ -34,6 +34,7 @@ const ICONS: Record<string, typeof User> = {
   gift: Gift,
   history: History,
   bookmark: Bookmark,
+  sparkles: Sparkles,
 };
 
 /** Account pages added after the menu document was first saved. */
@@ -46,6 +47,7 @@ const ADDED_ENTRIES = [
   { after: "/account/wallet", entry: { href: "/account/referrals", label: "Refer a friend", icon: "gift" } },
   { after: "/account/wishlist", entry: { href: "/account/saved-for-later", label: "Saved for later", icon: "bookmark" } },
   { after: "/account/wishlist", entry: { href: "/account/recently-viewed", label: "Recently viewed", icon: "history" } },
+  { after: "/account/membership", entry: { href: "/account/try-on", label: "Virtual try-on", icon: "sparkles" } },
 ];
 
 /**

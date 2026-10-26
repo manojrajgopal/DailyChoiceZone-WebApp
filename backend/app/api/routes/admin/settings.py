@@ -352,8 +352,17 @@ def nav_counts(
             "referralsInReview": _referrals_in_review(db),
             "failedNotifications": _failed_notifications(db),
             "waitingCustomers": _waiting_customers(db),
+            "tryOnAccessRequests": _try_on_access_requests(db),
         }
     )
+
+
+def _try_on_access_requests(db: Session) -> int:
+    """Customers' requests for more try-on access, waiting for an answer."""
+    from app.models import VtoAllocationRequest
+
+    return int(db.execute(select(func.count()).select_from(VtoAllocationRequest).where(
+        VtoAllocationRequest.status == "pending")).scalar_one())
 
 
 def _failed_notifications(db: Session) -> int:

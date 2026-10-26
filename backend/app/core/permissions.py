@@ -87,6 +87,11 @@ RESOURCES = (
     # Search & filters: search analytics, search settings (popular searches,
     # synonyms) and rebuilding the search index.
     "search",
+    # Virtual try-on: the dashboard, requests, models, category mappings and
+    # customers' allocations; and the AI provider credentials themselves,
+    # which are secrets — kept apart, like the couriers' (docs/virtual-try-on.md).
+    "try-on",
+    "try-on-credentials",
 )
 
 PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
@@ -104,7 +109,7 @@ PERMISSIONS_BY_ROLE: Dict[str, List[str]] = {
                 "flash-sales", "bundles", "analytics", "campaigns", "shipments", "suppliers", "purchasing",
                 "packing", "segments",
                 "refunds",
-                "search"],
+                "search", "try-on"],
     "editor": ["products", "content", "questions", "bundles",
                "search"],
     "staff": ["products", "orders", "reviews", "support", "questions", "shipments",

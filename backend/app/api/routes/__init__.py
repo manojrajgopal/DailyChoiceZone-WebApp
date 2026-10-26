@@ -40,6 +40,7 @@ from app.api.routes import (
     support,
     support_admin,
     suppliers,
+    try_on,
     wallet,
     wishlist,
 )
@@ -106,6 +107,8 @@ all_routers = [
     site.router,
     # Find your own orders, invoices, returns… by ID (docs/id-lookup.md).
     lookup.account_router,
+    # Virtual try-on (docs/virtual-try-on.md).
+    try_on.router,
     # --- portal ----------------------------------------------------------
     auth.admin_auth_router,
     # Any record by its ID, with a short preview (docs/id-lookup.md).
@@ -169,4 +172,6 @@ all_routers = [
     search.attributes_router,
     search.product_attributes_router,
     search.admin_router,
+    # Virtual try-on: dashboard, credentials, models, allocations (docs/virtual-try-on.md).
+    try_on.admin_router,
 ]

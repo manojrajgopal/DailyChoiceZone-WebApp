@@ -14,6 +14,7 @@ import { createElement, type ImgHTMLAttributes } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 
 import { clearIdCache } from "@/services/lookupService";
+import { resetTryOnCatalogue } from "@/services/tryOnService";
 
 import { installFakeApi } from "./api";
 import { navigationMock, resetNavigation } from "./navigation";
@@ -95,6 +96,8 @@ afterEach(() => {
   resetStores();
   // ID previews are cached for a minute; one test's records must not answer the next's.
   clearIdCache();
+  // The try-on catalogue is shared by every badge on a page; each test starts without one.
+  resetTryOnCatalogue();
   try {
     window.localStorage.clear();
     window.sessionStorage.clear();

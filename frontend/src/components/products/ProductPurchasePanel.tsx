@@ -19,6 +19,7 @@ import { Price } from "@/components/ui/Price";
 import { FlashSaleNotice } from "@/components/growth/FlashSales";
 import { useProductColour } from "@/components/products/ProductColourScope";
 import { ShareButton } from "@/components/products/ShareButton";
+import { TryOnButton } from "@/components/tryon/TryOnButton";
 import { Rating } from "@/components/ui/Rating";
 import { useAddToCart } from "@/hooks/useCart";
 import { useWishlistItem } from "@/hooks/useWishlist";
@@ -270,6 +271,15 @@ export function ProductPurchasePanel({
           text={`${product.name} by ${product.brand} — ${formatPrice(product.price)}`}
         />
       </div>
+
+      {/* Virtual try-on: shown only for items that support it (docs/virtual-try-on.md). */}
+      <TryOnButton
+        product={product}
+        color={color}
+        size={size}
+        onAddToBag={outOfStock ? undefined : onAddToBag}
+        className="mt-2.5 w-full"
+      />
 
       <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
         <PriceAlertLink product={product} />

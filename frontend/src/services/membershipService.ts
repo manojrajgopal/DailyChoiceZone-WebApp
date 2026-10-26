@@ -23,6 +23,17 @@ export interface MembershipProgramme {
   enabled: boolean;
 }
 
+/** A plan's virtual try-on entitlement (docs/virtual-try-on.md). Null when not included. */
+export interface MembershipTryOn {
+  enabled: boolean;
+  /** Per membership month; null means unlimited. */
+  perPeriod: number | null;
+  perDay: number | null;
+  retention: "temporary" | "permanent";
+  retentionDays: number;
+  download: boolean;
+}
+
 export interface MembershipPlan {
   id: string;
   name: string;
@@ -43,6 +54,7 @@ export interface MembershipPlan {
   prioritySupport: boolean;
   /** e.g. "Best value". Empty for none. */
   badge: string;
+  tryOn?: MembershipTryOn | null;
   active: boolean;
   sortOrder: number;
 }
@@ -59,6 +71,7 @@ export interface MembershipBenefits {
   extraReturnDays: number;
   earlyAccess: boolean;
   prioritySupport: boolean;
+  tryOn?: MembershipTryOn | null;
 }
 
 export interface MembershipSummary {

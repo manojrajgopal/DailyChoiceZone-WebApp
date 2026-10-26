@@ -45,6 +45,8 @@ EXPECTED = {
     "auth": "Expired sign-in codes and sessions clean-up",
     # Search & filters (docs/search-and-filters.md).
     "search": "Search analytics and the search index",
+    # Virtual try-on (docs/virtual-try-on.md).
+    "try_on": "Try-on image expiry, clean-up and credential checks",
 }
 
 

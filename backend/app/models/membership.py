@@ -42,6 +42,9 @@ class MembershipPlan(Base):
     priority_support: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # A one-line highlight, e.g. "Best value".
     badge: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    # Virtual try-on entitlement (docs/virtual-try-on.md): enabled, limits,
+    # retention… validated by `services.try_on.entitlements`. NULL = not included.
+    try_on: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

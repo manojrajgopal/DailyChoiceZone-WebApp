@@ -52,6 +52,7 @@ def plan_out(plan: MembershipPlan) -> dict:
         "earlyAccess": plan.early_access,
         "prioritySupport": plan.priority_support,
         "badge": plan.badge,
+        "tryOn": service.benefits_of(plan).get("tryOn"),
         "active": plan.active,
         "sortOrder": plan.sort_order,
     }

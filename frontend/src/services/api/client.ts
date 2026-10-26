@@ -441,6 +441,39 @@ export async function apiDownload(path: string, audience: Audience, fallbackName
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * A private image from the API, as an object URL an `<img>` can show.
+ *
+ * For images only their owner may see (a virtual try-on result): an `<img
+ * src>` cannot send the Authorization header, so the image is fetched with
+ * it. The caller revokes the URL when it is done with it.
+ */
+export async function apiBlobUrl(path: string, audience: Audience, signal?: AbortSignal): Promise<string> {
+  const headers: Record<string, string> = { ...TUNNEL_HEADERS };
+  const token = getToken(audience);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), { headers, cache: "no-store", signal: signal ?? AbortSignal.timeout(60_000) });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    throw new ApiError(OFFLINE_MESSAGE, 0, "NETWORK_ERROR", error);
+  }
+  if (!response.ok) {
+    let message = "This image isn't available.";
+    let code = "IMAGE_UNAVAILABLE";
+    try {
+      const body = (await response.json()) as { message?: string; error_code?: string };
+      message = body.message ?? message;
+      code = body.error_code ?? code;
+    } catch {
+      // not JSON: keep the plain message
+    }
+    throw new ApiError(message, response.status, code);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
 /** Build a query string, dropping anything unset. */
 export function query(params: Record<string, unknown>): string {
   const search = new URLSearchParams();
